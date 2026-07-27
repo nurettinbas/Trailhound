@@ -104,8 +104,8 @@ struct TripRowView: View {
                     .padding(.vertical, -4)
             }
         }
-        .scaleEffect(emphasizeLanding && !reduceMotion ? 1.03 : 1)
-        .animation(TrailhoundMotion.cardSpring, value: emphasizeLanding)
+        .scaleEffect(emphasizeLanding && !reduceMotion ? 1.02 : 1)
+        .animation(TrailhoundMotion.recordingMorph, value: emphasizeLanding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
         .task(id: trip.id) {
@@ -113,13 +113,13 @@ struct TripRowView: View {
             thumbnail = nil
 
             if emphasizeLanding, !reduceMotion {
-                // Hold shimmer briefly so morph settles before snapshot lands.
-                try? await Task.sleep(for: .milliseconds(420))
+                // Brief hold so morph settles before snapshot lands.
+                try? await Task.sleep(for: .milliseconds(140))
             }
 
             let image = await TripMapSnapshotCache.shared.snapshot(for: trip)
             if !reduceMotion {
-                withAnimation(emphasizeLanding ? TrailhoundMotion.cardSpring : TrailhoundMotion.gentle) {
+                withAnimation(emphasizeLanding ? TrailhoundMotion.recordingMorph : TrailhoundMotion.gentle) {
                     thumbnail = image
                     thumbnailLoaded = true
                 }

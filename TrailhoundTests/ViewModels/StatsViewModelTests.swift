@@ -189,4 +189,64 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(interval.start, start)
         XCTAssertEqual(interval.end, end)
     }
+
+    func testMonthIntervalUsesCalendarMonth() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let selected = calendar.date(from: DateComponents(year: 2026, month: 6, day: 18))!
+        let interval = StatsViewModel.calendarMonthInterval(containing: selected, calendar: calendar)
+
+        XCTAssertEqual(calendar.component(.day, from: interval.start), 1)
+        XCTAssertEqual(calendar.component(.month, from: interval.start), 6)
+        XCTAssertEqual(calendar.component(.month, from: interval.end), 7)
+        XCTAssertEqual(calendar.component(.day, from: interval.end), 1)
+    }
+
+    func testSelectableMonthsSpansFirstTripToNow() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 7, day: 27))!
+        let earliest = calendar.date(from: DateComponents(year: 2026, month: 5, day: 3))!
+        let months = StatsViewModel.selectableMonths(
+            earliestTripStart: earliest,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(months.count, 3)
+        XCTAssertEqual(calendar.component(.month, from: months[0]), 7)
+        XCTAssertEqual(calendar.component(.month, from: months[1]), 6)
+        XCTAssertEqual(calendar.component(.month, from: months[2]), 5)
+    }
+
+    func testSelectableMonthsWithoutTripsIsCurrentMonthOnly() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 7, day: 27))!
+        let months = StatsViewModel.selectableMonths(
+            earliestTripStart: nil,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(months.count, 1)
+        XCTAssertEqual(calendar.component(.month, from: months[0]), 7)
+    }
+
+    func testClampedMonthDeduplicatesToSelectableStart() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 7, day: 27))!
+        let earliest = calendar.date(from: DateComponents(year: 2026, month: 5, day: 3))!
+        let midJune = calendar.date(from: DateComponents(year: 2026, month: 6, day: 18, hour: 15))!
+        let clamped = StatsViewModel.clampedMonth(
+            midJune,
+            earliestTripStart: earliest,
+            now: now,
+            calendar: calendar
+        )
+        let juneStart = StatsViewModel.calendarMonthInterval(containing: midJune, calendar: calendar).start
+
+        XCTAssertEqual(clamped, juneStart)
+    }
 }

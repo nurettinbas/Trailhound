@@ -80,6 +80,13 @@ struct TripDetailView: View {
         trip.stops.sorted { $0.startedAt < $1.startedAt }
     }
 
+    private var sortedDetailVehicles: [VehicleProfile] {
+        vehicles.sorted { lhs, rhs in
+            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
     private var viewModel: TripDetailViewModel {
         TripDetailViewModel(trip: trip, places: places, privacyRadius: settings.privacyRadiusMeters)
     }
@@ -372,15 +379,30 @@ struct TripDetailView: View {
                     }
 
                     if !vehicles.isEmpty {
-                        detailSection(title: L10n.string("trip.edit.vehicle")) {
-                            Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
-                                Text(L10n.string("trip.edit.vehicle_none")).tag(UUID?.none)
-                                ForEach(vehicles) { vehicle in
-                                    Text(vehicle.name).tag(Optional(vehicle.id))
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(L10n.string("trip.edit.vehicle"))
+                                .font(.subheadline.weight(.semibold))
+
+                            detailMiniCard {
+                                Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
+                                    Label(L10n.string("trip.edit.vehicle_none"), systemImage: "minus.circle")
+                                        .tag(UUID?.none)
+                                    ForEach(sortedDetailVehicles) { vehicle in
+                                        Label(vehicle.name, systemImage: vehicle.systemImage)
+                                            .tag(Optional(vehicle.id))
+                                    }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.menu)
+                                .buttonStyle(.plain)
+                                .font(.callout)
+                                .tint(.primary)
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .onChange(of: selectedVehicleID) { _, _ in
+                                    dismissNoteKeyboard()
                                 }
                             }
-                            .pickerStyle(.menu)
-                            .tint(TrailhoundBrandColors.brandBottom)
                         }
                     }
 
@@ -532,36 +554,50 @@ struct TripDetailView: View {
     }
 
     private func tripTimePicker(title: String, selection: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
-            DatePicker(title, selection: selection, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .font(.caption)
-                .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .glassField(cornerRadius: 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Menu {
+                DatePicker(title, selection: selection, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .tint(TrailhoundBrandColors.brandBottom)
+            } label: {
+                detailTransparentPickerLabel(DateFormatters.tripDateOnly.string(from: selection.wrappedValue))
+            }
+            .tint(.primary)
 
-            DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .font(.caption)
-                .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .glassField(cornerRadius: 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Menu {
+                DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .frame(width: 200, height: 120)
+                    .tint(TrailhoundBrandColors.brandBottom)
+            } label: {
+                detailTransparentPickerLabel(DateFormatters.tripTime.string(from: selection.wrappedValue))
+            }
+            .tint(.primary)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func detailTransparentPickerLabel(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private func trimStepperCell(
@@ -626,11 +662,9 @@ struct TripDetailView: View {
                 .labelsHidden()
                 .pickerStyle(.menu)
                 .buttonStyle(.plain)
-                .font(.subheadline)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .glassField(cornerRadius: 8)
+                .font(.callout)
+                .tint(.primary)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -638,8 +672,8 @@ struct TripDetailView: View {
 
     private func detailMiniCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .glassChrome(cornerRadius: 12)
     }

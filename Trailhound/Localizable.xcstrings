@@ -8011,6 +8011,57 @@
         }
       }
     },
+    "stats.period.next_month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next month"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonraki ay"
+          }
+        }
+      }
+    },
+    "stats.period.previous_month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous month"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Önceki ay"
+          }
+        }
+      }
+    },
+    "stats.period.select_month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select month"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ay seç"
+          }
+        }
+      }
+    },
     "stats.period.start" : {
       "extractionState" : "stale",
       "localizations" : {

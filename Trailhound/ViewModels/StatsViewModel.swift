@@ -135,7 +135,12 @@ struct StatsViewModel {
         }
     }
 
-    static func interval(for period: StatsPeriod, customStart: Date, customEnd: Date) -> DateInterval {
+    static func interval(
+        for period: StatsPeriod,
+        customStart: Date,
+        customEnd: Date,
+        selectedMonth: Date = Date()
+    ) -> DateInterval {
         let calendar = Calendar.current
         let end = Date()
         switch period {
@@ -143,8 +148,7 @@ struct StatsViewModel {
             let start = calendar.date(byAdding: .day, value: -7, to: end) ?? end
             return DateInterval(start: start, end: end)
         case .month:
-            let start = calendar.date(byAdding: .month, value: -1, to: end) ?? end
-            return DateInterval(start: start, end: end)
+            return calendarMonthInterval(containing: selectedMonth, calendar: calendar)
         case .custom:
             let start = min(customStart, customEnd)
             let finish = max(customStart, customEnd)
@@ -152,10 +156,75 @@ struct StatsViewModel {
         }
     }
 
+    /// Half-open calendar month `[startOfMonth, startOfNextMonth)`.
+    static func calendarMonthInterval(
+        containing date: Date,
+        calendar: Calendar = .current
+    ) -> DateInterval {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        let start = calendar.date(from: components) ?? calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start.addingTimeInterval(86400)
+        return DateInterval(start: start, end: end)
+    }
+
+    static func shiftMonth(_ date: Date, by value: Int, calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: .month, value: value, to: calendarMonthInterval(containing: date, calendar: calendar).start)
+            ?? date
+    }
+
+    /// Months from the first trip's month through the current month, newest first.
+    /// With no trips, only the current month is offered.
+    static func selectableMonths(
+        earliestTripStart: Date?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [Date] {
+        let currentStart = calendarMonthInterval(containing: now, calendar: calendar).start
+        let earliestStart: Date = {
+            guard let earliestTripStart else { return currentStart }
+            return calendarMonthInterval(containing: earliestTripStart, calendar: calendar).start
+        }()
+
+        guard earliestStart <= currentStart else { return [currentStart] }
+
+        var months: [Date] = []
+        var cursor = currentStart
+        while cursor >= earliestStart {
+            months.append(cursor)
+            guard let previous = calendar.date(byAdding: .month, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+        return months
+    }
+
+    /// Ensures `month` is one of the selectable month starts (no duplicate picker rows).
+    static func clampedMonth(
+        _ month: Date,
+        earliestTripStart: Date?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        let months = selectableMonths(
+            earliestTripStart: earliestTripStart,
+            now: now,
+            calendar: calendar
+        )
+        let normalized = calendarMonthInterval(containing: month, calendar: calendar).start
+        if let exact = months.first(where: { calendar.isDate($0, equalTo: normalized, toGranularity: .month) }) {
+            return exact
+        }
+        return months.first ?? normalized
+    }
+
     static func previousInterval(for interval: DateInterval) -> DateInterval {
         let duration = interval.duration
         let start = interval.start.addingTimeInterval(-duration)
         return DateInterval(start: start, end: interval.start)
+    }
+
+    static func previousMonthInterval(containing date: Date, calendar: Calendar = .current) -> DateInterval {
+        let previous = shiftMonth(date, by: -1, calendar: calendar)
+        return calendarMonthInterval(containing: previous, calendar: calendar)
     }
 
     static func trendPercent(current: Double, previous: Double) -> Double? {

@@ -75,6 +75,7 @@ struct ContentView: View {
                 }
             }
             .background(Color.clear)
+            .animation(TrailhoundMotion.tabSwitch, value: tabSelection.selectedTab)
         }
         .tint(TrailhoundBrandColors.brandBottom)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)

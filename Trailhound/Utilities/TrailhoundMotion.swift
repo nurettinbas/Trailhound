@@ -3,17 +3,21 @@ import SwiftUI
 import UIKit
 
 enum TrailhoundMotion {
-    static let snappy = Animation.snappy(duration: 0.35)
-    static let gentle = Animation.easeInOut(duration: 0.3)
-    static let cardSpring = Animation.spring(response: 0.45, dampingFraction: 0.82)
-    /// Recording card entrance — single fade-in.
-    static let coldOpenFade = Animation.easeOut(duration: 0.3)
+    static let snappy = Animation.snappy(duration: 0.28)
+    /// Tab bar content switch — keep snappy so tab taps don't feel laggy.
+    static let tabSwitch = Animation.easeOut(duration: 0.15)
+    static let gentle = Animation.easeInOut(duration: 0.22)
+    static let cardSpring = Animation.spring(response: 0.32, dampingFraction: 0.86)
+    /// Recording card ↔ list row morph / stop settle.
+    static let recordingMorph = Animation.spring(response: 0.26, dampingFraction: 0.9)
+    /// Recording card entrance — card rise + car drive-in.
+    static let coldOpenFade = Animation.spring(response: 0.28, dampingFraction: 0.88)
     /// Soft sheet rise for TripDetail panel.
-    static let sheetRise = Animation.spring(response: 0.72, dampingFraction: 0.86)
+    static let sheetRise = Animation.spring(response: 0.55, dampingFraction: 0.88)
     /// Map clarity / dark→clear open.
     static let mapClear = Animation.easeOut(duration: 0.9)
     /// Pin pop with a bit of overshoot.
-    static let pinPop = Animation.spring(response: 0.42, dampingFraction: 0.68)
+    static let pinPop = Animation.spring(response: 0.36, dampingFraction: 0.72)
 
     /// Soft rise (fade + slight upward settle).
     static var softRiseTransition: AnyTransition {

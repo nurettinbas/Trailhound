@@ -12,6 +12,9 @@ struct StatsView: View {
     @State private var selectedPeriod: StatsPeriod = .week
     @State private var selectedCategoryID: String?
     @State private var selectedVehicleID: UUID?
+    @State private var selectedMonth = Calendar.current.date(
+        from: Calendar.current.dateComponents([.year, .month], from: Date())
+    ) ?? Date()
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
     @State private var customEnd = Date()
     @State private var animatedProgress: Double = 0
@@ -22,11 +25,19 @@ struct StatsView: View {
     }
 
     private var selectedInterval: DateInterval {
-        StatsViewModel.interval(for: selectedPeriod, customStart: customStart, customEnd: customEnd)
+        StatsViewModel.interval(
+            for: selectedPeriod,
+            customStart: customStart,
+            customEnd: customEnd,
+            selectedMonth: selectedMonth
+        )
     }
 
     private var previousInterval: DateInterval {
-        StatsViewModel.previousInterval(for: selectedInterval)
+        if selectedPeriod == .month {
+            return StatsViewModel.previousMonthInterval(containing: selectedMonth)
+        }
+        return StatsViewModel.previousInterval(for: selectedInterval)
     }
 
     private var periodTrips: [Trip] {
@@ -117,9 +128,7 @@ struct StatsView: View {
     }
 
     private var monthInterval: DateInterval {
-        let end = Date()
-        let start = Calendar.current.date(byAdding: .month, value: -1, to: end) ?? end
-        return DateInterval(start: start, end: end)
+        StatsViewModel.calendarMonthInterval(containing: Date())
     }
 
     private var monthDistanceMeters: Double {
@@ -261,7 +270,13 @@ struct StatsView: View {
         .glassListChrome()
         .navigationTitle(L10n.string("stats.title"))
         .onAppear {
+            normalizeSelectedMonth()
             updateAnimatedProgress(animated: false)
+        }
+        .onChange(of: selectedPeriod) { _, newPeriod in
+            if newPeriod == .month {
+                normalizeSelectedMonth()
+            }
         }
         .onChange(of: goalProgress) { _, _ in
             updateAnimatedProgress(animated: true)
@@ -269,6 +284,13 @@ struct StatsView: View {
         .onChange(of: monthDistanceMeters) { _, _ in
             updateAnimatedProgress(animated: true)
         }
+    }
+
+    private func normalizeSelectedMonth() {
+        selectedMonth = StatsViewModel.clampedMonth(
+            selectedMonth,
+            earliestTripStart: earliestTripStart
+        )
     }
 
     private var selectedVehicleName: String {
@@ -311,6 +333,11 @@ struct StatsView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(L10n.string("stats.period.title"))
+
+            if selectedPeriod == .month {
+                statsMonthPicker
+                    .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
+            }
 
             if selectedPeriod == .custom {
                 HStack(alignment: .top, spacing: 10) {
@@ -372,6 +399,99 @@ struct StatsView: View {
         }
         .padding(.vertical, 6)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
+    }
+
+    private var earliestTripStart: Date? {
+        completedTrips.map(\.startedAt).min()
+    }
+
+    private var selectableMonths: [Date] {
+        StatsViewModel.selectableMonths(earliestTripStart: earliestTripStart)
+    }
+
+    private var selectedMonthTitle: String {
+        DateFormatters.monthYear.string(from: selectedMonth)
+    }
+
+    private var canGoToPreviousMonth: Bool {
+        guard let earliest = selectableMonths.last else { return false }
+        let selectedStart = StatsViewModel.calendarMonthInterval(containing: selectedMonth).start
+        return selectedStart > earliest
+    }
+
+    private var canGoToNextMonth: Bool {
+        let selectedStart = StatsViewModel.calendarMonthInterval(containing: selectedMonth).start
+        let currentStart = StatsViewModel.calendarMonthInterval(containing: Date()).start
+        return selectedStart < currentStart
+    }
+
+    private var selectedMonthBinding: Binding<Date> {
+        Binding(
+            get: {
+                StatsViewModel.clampedMonth(
+                    selectedMonth,
+                    earliestTripStart: earliestTripStart
+                )
+            },
+            set: { newValue in
+                selectedMonth = StatsViewModel.clampedMonth(
+                    newValue,
+                    earliestTripStart: earliestTripStart
+                )
+            }
+        )
+    }
+
+    private var statsMonthPicker: some View {
+        HStack(spacing: 10) {
+            Button {
+                selectedMonth = StatsViewModel.clampedMonth(
+                    StatsViewModel.shiftMonth(selectedMonth, by: -1),
+                    earliestTripStart: earliestTripStart
+                )
+                TrailhoundHaptics.selection()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canGoToPreviousMonth)
+            .accessibilityLabel(L10n.string("stats.period.previous_month"))
+
+            Picker(L10n.string("stats.period.select_month"), selection: selectedMonthBinding) {
+                ForEach(selectableMonths, id: \.self) { month in
+                    Text(DateFormatters.monthYear.string(from: month))
+                        .tag(month)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(TrailhoundBrandColors.brandBottom)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel(L10n.string("stats.period.select_month"))
+            .accessibilityValue(selectedMonthTitle)
+
+            Button {
+                selectedMonth = StatsViewModel.clampedMonth(
+                    StatsViewModel.shiftMonth(selectedMonth, by: 1),
+                    earliestTripStart: earliestTripStart
+                )
+                TrailhoundHaptics.selection()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canGoToNextMonth)
+            .accessibilityLabel(L10n.string("stats.period.next_month"))
+        }
+        .onAppear {
+            selectedMonth = StatsViewModel.clampedMonth(
+                selectedMonth,
+                earliestTripStart: earliestTripStart
+            )
+        }
     }
 
     private func statsCustomDateField(title: String, date: Binding<Date>) -> some View {
@@ -455,36 +575,44 @@ struct StatsView: View {
         )
     }
 
-    /// Keep x-axis readable: every day for short ranges, then every 2nd/3rd day.
+    /// Keep x-axis readable: daily for week, weekly ticks for month-sized ranges.
     private var dailyAxisLabelStride: Int {
-        switch dailyChartDayCount {
-        case ...10: 1
-        case ...20: 2
-        default: 3
+        switch selectedPeriod {
+        case .week:
+            return 1
+        case .month:
+            return 5
+        case .custom:
+            switch dailyChartDayCount {
+            case ...10: return 1
+            case ...20: return 2
+            default: return 5
+            }
         }
     }
 
     private func dailyAxisDayLabel(_ date: Date) -> String {
-        String(format: "%02d", Calendar.current.component(.day, from: date))
+        DateFormatters.chartDay.string(from: date)
     }
 
-    private func shouldShowDailyAxisLabel(for date: Date, in days: [Date]) -> Bool {
-        guard let index = days.firstIndex(where: { Calendar.current.isDate($0, inSameDayAs: date) }) else {
-            return false
-        }
+    private func dailyAxisLabelDates(from days: [Date]) -> [Date] {
         let stride = dailyAxisLabelStride
-        return index % stride == 0 || index == days.count - 1
+        return days.enumerated().compactMap { index, day in
+            (index % stride == 0 || index == days.count - 1) ? day : nil
+        }
     }
 
     @AxisContentBuilder
     private func dailyChartXAxis(days: [Date]) -> some AxisContent {
-        AxisMarks(values: days) { value in
+        AxisMarks(values: dailyAxisLabelDates(from: days)) { value in
             AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
             AxisTick()
-            if let date = value.as(Date.self), shouldShowDailyAxisLabel(for: date, in: days) {
-                AxisValueLabel {
+            if let date = value.as(Date.self) {
+                AxisValueLabel(centered: true) {
                     Text(dailyAxisDayLabel(date))
-                        .font(.caption2.monospacedDigit())
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
             }
         }

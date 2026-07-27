@@ -14,6 +14,7 @@ struct PairingVehicleEditorView: View {
 
     var body: some View {
         Group {
+            
             if let vehicle {
                 PairingVehicleEditorForm(vehicle: vehicle)
             } else {

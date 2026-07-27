@@ -144,34 +144,33 @@ struct RecordingEndCreditsView: View {
         TrailhoundHaptics.recordingStopped()
 
         showBrakeLights = true
-        withAnimation(.easeOut(duration: 0.24)) {
+        withAnimation(.easeOut(duration: 0.14)) {
             brakeProgress = 1
         }
-        withAnimation(.easeInOut(duration: 0.09)) {
-            carNoseDive = -2.5
+        withAnimation(.easeInOut(duration: 0.06)) {
+            carNoseDive = -2.0
         }
-        try? await Task.sleep(for: .milliseconds(75))
-        withAnimation(.spring(response: 0.18, dampingFraction: 0.68)) {
-            carNoseDive = 0.8
+        try? await Task.sleep(for: .milliseconds(40))
+        withAnimation(.spring(response: 0.14, dampingFraction: 0.72)) {
+            carNoseDive = 0.6
         }
-        try? await Task.sleep(for: .milliseconds(65))
-        withAnimation(.spring(response: 0.17, dampingFraction: 0.84)) {
+        try? await Task.sleep(for: .milliseconds(35))
+        withAnimation(.spring(response: 0.12, dampingFraction: 0.86)) {
             carNoseDive = 0
         }
-        try? await Task.sleep(for: .milliseconds(65))
 
         showStats = true
-        withAnimation(.easeOut(duration: 0.11)) {
+        withAnimation(.easeOut(duration: 0.08)) {
             stoppedBadgeOpacity = 1
             chromeOpacity = 0
             statsOpacity = 1
             sceneOpacity = 0.8
         }
-        try? await Task.sleep(for: .milliseconds(135))
 
-        let steps = 14
+        // Draw route in fewer ticks so stop→list doesn't feel stuck on the card.
+        let steps = 8
         for step in 1...steps {
-            try? await Task.sleep(for: .milliseconds(12))
+            try? await Task.sleep(for: .milliseconds(10))
             guard !Task.isCancelled else {
                 finishOnce()
                 return
@@ -179,7 +178,7 @@ struct RecordingEndCreditsView: View {
             routeProgress = CGFloat(step) / CGFloat(steps)
         }
 
-        try? await Task.sleep(for: .milliseconds(135))
+        try? await Task.sleep(for: .milliseconds(40))
         // Keep the blue bar fully visible — parent slides it into the list.
         finishOnce()
     }

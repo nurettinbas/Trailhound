@@ -320,7 +320,7 @@ struct TripListView: View {
                let endedAt = newest.endedAt,
                Date().timeIntervalSince(endedAt) < 2.5 {
                 morphingTripID = newest.id
-                clearMorphingTripSoon(delayMilliseconds: reduceMotion ? 50 : 700)
+                clearMorphingTripSoon(delayMilliseconds: reduceMotion ? 50 : 280)
             }
         }
         .onChange(of: scrollToTopToken) { _, _ in
@@ -403,7 +403,7 @@ struct TripListView: View {
                 }
             }
         }
-        .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: morphingTripID)
+        .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)
         .overlay {
             if let endCredits {
                 GeometryReader { geo in
@@ -585,7 +585,7 @@ struct TripListView: View {
 
         let sessionID = snapshot.sessionID
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(for: .seconds(2.2))
             if endCredits?.sessionID == sessionID, !isCreditsSliding {
                 startCreditsSlideIntoList()
             }
@@ -598,7 +598,7 @@ struct TripListView: View {
         if reduceMotion {
             selectedCategoryID = nil
         } else {
-            withAnimation(TrailhoundMotion.cardSpring) {
+            withAnimation(TrailhoundMotion.recordingMorph) {
                 selectedCategoryID = nil
             }
         }
@@ -611,7 +611,7 @@ struct TripListView: View {
 
     private func performScrollToTop(scrollProxy: ScrollViewProxy) {
         let target = TripListScrollTarget.top
-        let delays: [UInt64] = [0, 80, 180, 350, 550, 750]
+        let delays: [UInt64] = [0, 50, 140]
         Task { @MainActor in
             for (index, delay) in delays.enumerated() {
                 if delay > 0 {
@@ -637,12 +637,12 @@ struct TripListView: View {
 
         isCreditsSliding = true
 
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
             creditsSlideY = distance
         }
 
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(315))
+            try? await Task.sleep(for: .milliseconds(210))
             // Swap overlay → real row with no List insert morph / empty-cell fade.
             var transaction = Transaction()
             transaction.disablesAnimations = true
@@ -653,11 +653,11 @@ struct TripListView: View {
                 pinnedCreditsCardAnchor = CreditsCardAnchor()
             }
             TrailhoundHaptics.selection()
-            clearMorphingTripSoon(delayMilliseconds: 490)
+            clearMorphingTripSoon(delayMilliseconds: 220)
         }
     }
 
-    private func clearMorphingTripSoon(delayMilliseconds: Int = 700) {
+    private func clearMorphingTripSoon(delayMilliseconds: Int = 280) {
         let clearingID = morphingTripID
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(delayMilliseconds))
@@ -772,7 +772,7 @@ private struct TripListScrollToTopInstaller: UIViewRepresentable {
     }
 
     private func scheduleScrollToTop(from view: UIView) {
-        let delays: [TimeInterval] = [0, 0.08, 0.18, 0.35, 0.55, 0.75]
+        let delays: [TimeInterval] = [0, 0.05, 0.14]
         for (index, delay) in delays.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 let animated = index == delays.count - 1

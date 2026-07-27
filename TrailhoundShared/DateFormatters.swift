@@ -34,6 +34,23 @@ public enum DateFormatters {
     public static var tripDateOnly: DateFormatter { tripDateOnlyFormatter() }
     public static var tripTime: DateFormatter { tripTimeFormatter() }
 
+    public static func monthYearFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = currentLocale
+        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return formatter
+    }
+
+    public static func chartDayFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = currentLocale
+        formatter.setLocalizedDateFormatFromTemplate("d MMM")
+        return formatter
+    }
+
+    public static var monthYear: DateFormatter { monthYearFormatter() }
+    public static var chartDay: DateFormatter { chartDayFormatter() }
+
     public static func formatDuration(_ interval: TimeInterval) -> String {
         let totalSeconds = max(0, Int(interval.rounded()))
         let hours = totalSeconds / 3600

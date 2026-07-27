@@ -87,7 +87,9 @@ struct ActiveTripView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var breadcrumbCamera: MapCameraPosition = .automatic
-    @State private var cardVisible = true
+    @State private var cardReveal: CGFloat = 1
+    @State private var carDriveIn: CGFloat = 1
+    @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
 
     init(
@@ -102,11 +104,18 @@ struct ActiveTripView: View {
         self.playEntranceReveal = playEntranceReveal
         self.onEntranceFinished = onEntranceFinished
         self.onStop = onStop
-        _cardVisible = State(initialValue: !playEntranceReveal)
+        let settled = !playEntranceReveal
+        _cardReveal = State(initialValue: settled ? 1 : 0)
+        _carDriveIn = State(initialValue: settled ? 1 : 0)
+        _detailsReveal = State(initialValue: settled ? 1 : 0)
     }
 
     private var isPaused: Bool {
         recordingService.state == .paused
+    }
+
+    private var cardVisible: Bool {
+        cardReveal > 0.02
     }
 
     private var speedText: String {
@@ -147,7 +156,11 @@ struct ActiveTripView: View {
             statusRow
 
             HStack(alignment: .center, spacing: 10) {
-                RecordingCarAnimationView(compact: true, isAnimating: !isPaused && cardVisible)
+                RecordingCarAnimationView(
+                    compact: true,
+                    isAnimating: !isPaused && cardVisible,
+                    driveInProgress: carDriveIn
+                )
                     .frame(maxWidth: .infinity)
                     .matchedGeometryEffectIfAvailable(
                         stringID: RecordingMorphID.car,
@@ -162,6 +175,8 @@ struct ActiveTripView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
                     }
+                    .opacity(detailsReveal)
+                    .scaleEffect(0.92 + 0.08 * detailsReveal)
                     .matchedGeometryEffectIfAvailable(
                         id: morphID,
                         namespace: morphNamespace,
@@ -179,8 +194,12 @@ struct ActiveTripView: View {
                     text: distanceText
                 )
             }
+            .opacity(detailsReveal)
+            .offset(y: (1 - detailsReveal) * 10)
 
             actionsRow
+                .opacity(detailsReveal)
+                .offset(y: (1 - detailsReveal) * 8)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -193,7 +212,9 @@ struct ActiveTripView: View {
                 .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
         }
         .padding(.horizontal)
-        .opacity(cardVisible ? 1 : 0)
+        .opacity(cardReveal)
+        .offset(y: (1 - cardReveal) * 22)
+        .scaleEffect(0.96 + 0.04 * cardReveal, anchor: .top)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
         .accessibilityHidden(!cardVisible)
@@ -207,10 +228,11 @@ struct ActiveTripView: View {
         }
         .onAppear { syncBreadcrumbCamera(animated: false) }
         .onChange(of: breadcrumbCoordinates.count) { _, _ in
-            syncBreadcrumbCamera(animated: !reduceMotion)
+            // Snap camera — animated Map updates during GPS ticks cause hitching.
+            syncBreadcrumbCamera(animated: false)
         }
         .onChange(of: locationService.lastLocation?.coordinate.latitude) { _, _ in
-            syncBreadcrumbCamera(animated: !reduceMotion)
+            syncBreadcrumbCamera(animated: false)
         }
     }
 
@@ -285,14 +307,23 @@ struct ActiveTripView: View {
     private func prepareEntranceReplay() {
         didRunEntrance = false
         guard !reduceMotion else { return }
-        cardVisible = false
+        cardReveal = 0
+        carDriveIn = 0
+        detailsReveal = 0
+    }
+
+    @MainActor
+    private func settleEntrance() {
+        cardReveal = 1
+        carDriveIn = 1
+        detailsReveal = 1
     }
 
     @MainActor
     private func runEntranceIfNeeded() async {
         guard playEntranceReveal else {
             if !didRunEntrance {
-                cardVisible = true
+                settleEntrance()
                 didRunEntrance = true
             }
             return
@@ -301,19 +332,38 @@ struct ActiveTripView: View {
         didRunEntrance = true
 
         if reduceMotion {
-            cardVisible = true
+            settleEntrance()
             onEntranceFinished?()
             return
         }
 
-        withAnimation(TrailhoundMotion.coldOpenFade) {
-            cardVisible = true
+        // 1) Card rises in
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            cardReveal = 1
         }
-        try? await Task.sleep(for: .milliseconds(320))
-        if Task.isCancelled {
-            cardVisible = true
+        // 2) Car drives onto the road almost immediately
+        try? await Task.sleep(for: .milliseconds(30))
+        guard !Task.isCancelled else {
+            settleEntrance()
             onEntranceFinished?()
             return
+        }
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            carDriveIn = 1
+        }
+        // 3) Map + stats + buttons settle in
+        try? await Task.sleep(for: .milliseconds(90))
+        guard !Task.isCancelled else {
+            settleEntrance()
+            onEntranceFinished?()
+            return
+        }
+        withAnimation(.easeOut(duration: 0.18)) {
+            detailsReveal = 1
+        }
+        try? await Task.sleep(for: .milliseconds(170))
+        if Task.isCancelled {
+            settleEntrance()
         }
         onEntranceFinished?()
     }

@@ -3,13 +3,16 @@ import SwiftUI
 struct RecordingCarAnimationView: View {
     var compact: Bool = false
     var isAnimating: Bool = true
+    /// 0 = car off-screen left, 1 = settled driving position.
+    var driveInProgress: CGFloat = 1
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var sceneHeight: CGFloat { compact ? 44 : 80 }
     private var shouldAnimate: Bool { isAnimating && !reduceMotion }
     private var animationInterval: TimeInterval {
-        ProcessInfo.processInfo.isLowPowerModeEnabled ? (1 / 15) : (1 / 30)
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { return 1 / 12 }
+        return compact ? (1 / 20) : (1 / 30)
     }
 
     var body: some View {
@@ -19,7 +22,8 @@ struct RecordingCarAnimationView: View {
                 shouldAnimate: shouldAnimate,
                 isPaused: !isAnimating,
                 compact: compact,
-                sceneHeight: sceneHeight
+                sceneHeight: sceneHeight,
+                driveInProgress: driveInProgress
             )
         }
         .frame(height: sceneHeight)
@@ -35,6 +39,7 @@ private struct RoadSceneDriver: View {
     let isPaused: Bool
     let compact: Bool
     let sceneHeight: CGFloat
+    let driveInProgress: CGFloat
 
     @State private var frozenRoadTime: TimeInterval = 0
 
@@ -43,7 +48,12 @@ private struct RoadSceneDriver: View {
     }
 
     var body: some View {
-        RoadDrivingScene(time: sceneTime, compact: compact, isPaused: isPaused)
+        RoadDrivingScene(
+            time: sceneTime,
+            compact: compact,
+            isPaused: isPaused,
+            driveInProgress: driveInProgress
+        )
             .frame(height: sceneHeight)
             .onAppear {
                 frozenRoadTime = liveTime
@@ -67,6 +77,7 @@ private struct RoadDrivingScene: View {
     let time: TimeInterval
     var compact: Bool = false
     var isPaused: Bool = false
+    var driveInProgress: CGFloat = 1
 
     private var roadHeight: CGFloat { compact ? 18 : 30 }
     private var carSize: CGFloat { compact ? 22 : 36 }
@@ -74,18 +85,23 @@ private struct RoadDrivingScene: View {
     var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
-            let carCenterX = width * 0.58
+            let settledX = width * 0.58
+            let startX = -carSize * 0.8
+            let eased = Self.easeOutCubic(min(1, max(0, driveInProgress)))
+            let carCenterX = startX + (settledX - startX) * eased
             let roadTop = geo.size.height - roadHeight
             let carY = roadTop - carSize * 0.35
+            let carOpacity = Double(0.35 + 0.65 * eased)
 
             ZStack(alignment: .bottom) {
                 roadSurface(width: width)
                 laneMarkings(width: width)
                 exhaustSmoke(
                     originX: carCenterX - carSize * 0.48,
-                    originY: carY + carSize * 0.08
+                    originY: carY + carSize * 0.08,
+                    strength: eased
                 )
-                carIcon(centerX: carCenterX, centerY: carY)
+                carIcon(centerX: carCenterX, centerY: carY, opacity: carOpacity)
 
                 if isPaused {
                     Image(systemName: "pause.circle.fill")
@@ -96,6 +112,10 @@ private struct RoadDrivingScene: View {
                 }
             }
         }
+    }
+
+    private static func easeOutCubic(_ t: CGFloat) -> CGFloat {
+        1 - pow(1 - t, 3)
     }
 
     private func roadSurface(width: CGFloat) -> some View {
@@ -145,20 +165,20 @@ private struct RoadDrivingScene: View {
         )
     }
 
-    private func carIcon(centerX: CGFloat, centerY: CGFloat) -> some View {
+    private func carIcon(centerX: CGFloat, centerY: CGFloat, opacity: Double) -> some View {
         let bounce = isPaused ? 0 : sin(time * 8) * 1.2
 
         return Image(systemName: "car.side.fill")
             .font(.system(size: carSize, weight: .semibold))
-            .foregroundStyle(.white.opacity(isPaused ? 0.75 : 1))
+            .foregroundStyle(.white.opacity(isPaused ? 0.75 : opacity))
             .scaleEffect(x: -1, y: 1)
             .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
             .position(x: centerX, y: centerY + bounce)
     }
 
-    private func exhaustSmoke(originX: CGFloat, originY: CGFloat) -> some View {
+    private func exhaustSmoke(originX: CGFloat, originY: CGFloat, strength: CGFloat) -> some View {
         Group {
-            if !isPaused {
+            if !isPaused, strength > 0.2 {
                 ZStack {
                     ForEach(0..<7, id: \.self) { index in
                         smokePuff(
@@ -166,7 +186,8 @@ private struct RoadDrivingScene: View {
                             originY: originY,
                             index: index,
                             cycle: 1.1,
-                            stagger: 0.16
+                            stagger: 0.16,
+                            strength: strength
                         )
                     }
                 }
@@ -179,14 +200,15 @@ private struct RoadDrivingScene: View {
         originY: CGFloat,
         index: Int,
         cycle: Double,
-        stagger: Double
+        stagger: Double,
+        strength: CGFloat
     ) -> some View {
         let progress = (time + stagger * Double(index)).truncatingRemainder(dividingBy: cycle) / cycle
         let drift = CGFloat(progress)
         let size = 6 + drift * 14
         let x = originX - drift * 36 - CGFloat(index % 2) * 4
         let y = originY - drift * 22 + sin(progress * .pi) * 6
-        let opacity = Double(1 - progress) * 0.55
+        let opacity = Double(1 - progress) * 0.55 * Double(strength)
 
         return Circle()
             .fill(Color.white.opacity(opacity))
