@@ -47,31 +47,60 @@ actor GeocodingService {
 
         do {
             let response = try await search.start()
-            var seen = Set<String>()
-            var results: [NearbyPlaceOption] = []
-
-            for item in response.mapItems {
-                let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                guard !name.isEmpty else { continue }
-
-                let key = "\(name)|\(item.placemark.coordinate.latitude)|\(item.placemark.coordinate.longitude)"
-                guard seen.insert(key).inserted else { continue }
-
-                results.append(
-                    NearbyPlaceOption(
-                        id: key,
-                        name: name,
-                        subtitle: formattedAddress(from: item.placemark),
-                        coordinate: item.placemark.coordinate
-                    )
-                )
-                if results.count >= 8 { break }
-            }
-
-            return results
+            return mapItemsToPlaceOptions(response.mapItems, limit: 8)
         } catch {
             return []
         }
+    }
+
+    func searchPlaces(
+        query: String,
+        near coordinate: CLLocationCoordinate2D,
+        regionSpan: CLLocationDegrees = 0.35
+    ) async -> [NearbyPlaceOption] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { return [] }
+
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = trimmed
+        request.region = MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: regionSpan, longitudeDelta: regionSpan)
+        )
+
+        let search = MKLocalSearch(request: request)
+
+        do {
+            let response = try await search.start()
+            return mapItemsToPlaceOptions(response.mapItems, limit: 10)
+        } catch {
+            return []
+        }
+    }
+
+    private func mapItemsToPlaceOptions(_ mapItems: [MKMapItem], limit: Int) -> [NearbyPlaceOption] {
+        var seen = Set<String>()
+        var results: [NearbyPlaceOption] = []
+
+        for item in mapItems {
+            let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !name.isEmpty else { continue }
+
+            let key = "\(name)|\(item.placemark.coordinate.latitude)|\(item.placemark.coordinate.longitude)"
+            guard seen.insert(key).inserted else { continue }
+
+            results.append(
+                NearbyPlaceOption(
+                    id: key,
+                    name: name,
+                    subtitle: formattedAddress(from: item.placemark),
+                    coordinate: item.placemark.coordinate
+                )
+            )
+            if results.count >= limit { break }
+        }
+
+        return results
     }
 
     private func suggestedName(from placemark: CLPlacemark?) -> String? {

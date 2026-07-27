@@ -23,6 +23,7 @@ public enum DevLogCategory: String, Sendable, CaseIterable, Hashable {
     case recording
     case location
     case widget
+    case tripDetail
     case general
 }
 

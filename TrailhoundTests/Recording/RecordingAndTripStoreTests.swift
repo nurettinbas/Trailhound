@@ -13,6 +13,126 @@ final class AppSettingsRecordingRequestTests: XCTestCase {
         settings.expireStaleRecordingRequests()
         XCTAssertFalse(settings.pendingStartRecordingRequest)
     }
+
+    func testExpireStaleRecordingRequestsClearsOldStopFlag() {
+        let defaults = UserDefaults(suiteName: "test.trailhound.recording.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        settings.pendingStopRecordingRequest = true
+        defaults.set(Date().addingTimeInterval(-120).timeIntervalSince1970, forKey: "recording.requestStopAt")
+
+        settings.expireStaleRecordingRequests()
+        XCTAssertFalse(settings.pendingStopRecordingRequest)
+    }
+}
+
+@MainActor
+final class RecordingControlBridgeRequestTests: XCTestCase {
+    private let keys = [
+        RecordingControlBridge.Keys.requestStart,
+        RecordingControlBridge.Keys.requestStop,
+        RecordingControlBridge.Keys.requestPause,
+        RecordingControlBridge.Keys.requestResume,
+        RecordingControlBridge.Keys.requestStartAt,
+        RecordingControlBridge.Keys.requestStopAt,
+        RecordingControlBridge.Keys.requestPauseAt,
+        RecordingControlBridge.Keys.requestResumeAt,
+        RecordingControlBridge.Keys.isActive,
+        RecordingControlBridge.Keys.isPaused
+    ]
+
+    override func tearDown() {
+        let defaults = RecordingControlBridge.sharedDefaults()
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+        super.tearDown()
+    }
+
+    func testRequestStartFromControlSurfaceSetsPendingStartFlag() {
+        let defaults = RecordingControlBridge.sharedDefaults()
+        defaults.set(true, forKey: RecordingControlBridge.Keys.requestStop)
+        defaults.set(true, forKey: RecordingControlBridge.Keys.requestPause)
+        defaults.set(true, forKey: RecordingControlBridge.Keys.requestResume)
+
+        RecordingControlBridge.requestStartFromControlSurface()
+
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestStart))
+        XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestStartAt), 0)
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.requestStop))
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.requestPause))
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.requestResume))
+    }
+
+    func testRequestStopPauseResumeFromControlSurfaceSetPendingFlags() {
+        let defaults = RecordingControlBridge.sharedDefaults()
+
+        RecordingControlBridge.requestStopFromControlSurface()
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestStop))
+        XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestStopAt), 0)
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.isActive))
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.isPaused))
+
+        RecordingControlBridge.requestPauseFromControlSurface()
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestPause))
+        XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestPauseAt), 0)
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.isPaused))
+
+        RecordingControlBridge.requestResumeFromControlSurface()
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestResume))
+        XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestResumeAt), 0)
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.isPaused))
+        XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.requestPause))
+    }
+}
+
+@MainActor
+final class ExternalRecordingRequestTests: XCTestCase {
+    func testProcessExternalStartRequestAwaitsConfirmationWhenEnabled() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.external.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        settings.confirmExternalRecordingStart = true
+        settings.pendingStartRecordingRequest = true
+
+        let container = try ModelContainer(
+            for: Trip.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: container.mainContext)
+
+        recordingService.processExternalStartRequest()
+
+        XCTAssertTrue(settings.awaitingExternalStartConfirmation)
+        XCTAssertFalse(settings.pendingStartRecordingRequest)
+        XCTAssertEqual(recordingService.state, .idle)
+    }
+
+    func testProcessExternalStartRequestStartsWhenConfirmationDisabled() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.external.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        settings.confirmExternalRecordingStart = false
+        settings.pendingStartRecordingRequest = true
+
+        let container = try ModelContainer(
+            for: Trip.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: container.mainContext)
+
+        recordingService.processExternalStartRequest()
+        defer { recordingService.stopManualRecording() }
+
+        XCTAssertFalse(settings.awaitingExternalStartConfirmation)
+        XCTAssertFalse(settings.pendingStartRecordingRequest)
+        XCTAssertEqual(recordingService.state, .recording)
+    }
 }
 
 final class RecordingStopPolicyTests: XCTestCase {
@@ -22,30 +142,6 @@ final class RecordingStopPolicyTests: XCTestCase {
             reason: .manual,
             duration: 10,
             distanceMeters: 10,
-            minimumDurationSeconds: 120,
-            minimumDistanceMeters: 200
-        )
-        XCTAssertTrue(shouldSave)
-    }
-
-    func testAutoStopRequiresMinimumThreshold() {
-        let shouldSave = RecordingStopPolicy.shouldSaveTrip(
-            saveTrip: true,
-            reason: .bluetooth,
-            duration: 60,
-            distanceMeters: 50,
-            minimumDurationSeconds: 120,
-            minimumDistanceMeters: 200
-        )
-        XCTAssertFalse(shouldSave)
-    }
-
-    func testAutoStopSavesWhenAboveThreshold() {
-        let shouldSave = RecordingStopPolicy.shouldSaveTrip(
-            saveTrip: true,
-            reason: .bluetooth,
-            duration: 300,
-            distanceMeters: 5000,
             minimumDurationSeconds: 120,
             minimumDistanceMeters: 200
         )

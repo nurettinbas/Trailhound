@@ -1,6 +1,70 @@
 import CoreLocation
 import MapKit
+import SwiftData
 import SwiftUI
+
+struct RecordingVehiclePicker: View {
+    let vehicles: [VehicleProfile]
+    let selectedVehicleID: UUID?
+    let onSelect: (UUID) -> Void
+    var compact: Bool = false
+
+    private var sortedVehicles: [VehicleProfile] {
+        vehicles.sorted { lhs, rhs in
+            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private var selectedVehicle: VehicleProfile? {
+        guard let selectedVehicleID else { return nil }
+        return vehicles.first(where: { $0.id == selectedVehicleID })
+    }
+
+    private var selectedName: String {
+        selectedVehicle?.name ?? L10n.string("recording.vehicle.choose")
+    }
+
+    private var selectedSystemImage: String {
+        selectedVehicle?.systemImage ?? VehicleIconOption.default.rawValue
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(sortedVehicles) { vehicle in
+                Button {
+                    onSelect(vehicle.id)
+                    TrailhoundHaptics.selection()
+                } label: {
+                    if vehicle.id == selectedVehicleID {
+                        Label(vehicle.name, systemImage: "checkmark")
+                    } else {
+                        Label(vehicle.name, systemImage: vehicle.systemImage)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: selectedSystemImage)
+                    .font(compact ? .caption.weight(.semibold) : .subheadline)
+                if !compact {
+                    Text(selectedName)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                }
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(compact ? Color.white.opacity(0.9) : TrailhoundBrandColors.brandBottom)
+            .padding(.horizontal, compact ? 8 : 10)
+            .padding(.vertical, compact ? 5 : 6)
+            .background(compact ? Color.white.opacity(0.14) : TrailhoundBrandColors.brandBottom.opacity(0.1))
+            .clipShape(Capsule())
+        }
+        .accessibilityLabel(L10n.string("recording.vehicle.accessibility"))
+        .accessibilityValue(selectedName)
+    }
+}
 
 enum RecordingMorphID {
     static let statusChip = "recording.statusChip"
@@ -17,6 +81,9 @@ struct ActiveTripView: View {
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(LocationService.self) private var locationService
+    @Environment(\.modelContext) private var modelContext
+    @Query private var vehicles: [VehicleProfile]
+    @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var breadcrumbCamera: MapCameraPosition = .automatic
@@ -166,6 +233,15 @@ struct ActiveTripView: View {
             )
 
             Spacer(minLength: 4)
+
+            if !vehicles.isEmpty {
+                RecordingVehiclePicker(
+                    vehicles: vehicles,
+                    selectedVehicleID: recordingService.activeRecordingVehicleID(in: modelContext),
+                    onSelect: { recordingService.setRecordingVehicle($0) },
+                    compact: true
+                )
+            }
 
             GPSQualityBadge(quality: locationService.gpsQuality)
         }

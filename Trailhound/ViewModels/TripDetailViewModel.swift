@@ -61,6 +61,10 @@ struct TripDetailViewModel {
 
     private static var speedSegmentCache: [UUID: (pointCount: Int, segments: [SpeedColoredSegment])] = [:]
 
+    static func invalidateSpeedSegmentCache(for tripID: UUID) {
+        speedSegmentCache.removeValue(forKey: tripID)
+    }
+
     var durationText: String {
         guard let duration = trip.duration else { return "—" }
         return DateFormatters.formatDuration(duration)

@@ -1,9 +1,8 @@
 import Foundation
-import SwiftData
 
 enum RecordingStopPolicy {
     enum StopReason {
-        case manual, bluetooth
+        case manual
     }
 
     static func shouldSaveTrip(

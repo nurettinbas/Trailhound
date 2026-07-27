@@ -73,10 +73,25 @@ final class TripRecordingService {
         self.modelContainer = modelContext.container
     }
 
-    func startServices() {
-        guard settings.hasAutoTriggerVehicle else { return }
-        locationService.requestPermission()
-        locationService.startVehicleConnectionMonitoring()
+    /// Persists the vehicle for new trips, marks it default in Pairing, and updates the active trip if recording.
+    func setRecordingVehicle(_ vehicleID: UUID) {
+        guard let modelContext else { return }
+        guard let vehicle = VehicleResolver.vehicle(withID: vehicleID, in: modelContext) else { return }
+
+        settings.recordingVehicleID = vehicleID
+        VehiclePairingService.setDefaultVehicle(vehicle, in: modelContext)
+
+        if let trip = activeTrip {
+            VehicleResolver.assign(vehicle: vehicle, to: trip)
+            try? modelContext.save()
+        }
+    }
+
+    func activeRecordingVehicleID(in context: ModelContext) -> UUID? {
+        if let trip = activeTrip, let id = trip.vehicleID {
+            return id
+        }
+        return VehicleResolver.resolveActiveVehicle(in: context, settings: settings)?.id
     }
 
     func stopIdleServices() {
@@ -97,7 +112,7 @@ final class TripRecordingService {
         settings.pendingStopRecordingRequest = false
         switch state {
         case .recording, .paused:
-            stopRecording(saveTrip: true, reason: .manual)
+            stopRecording(saveTrip: true)
         case .idle:
             break
         }
@@ -140,7 +155,7 @@ final class TripRecordingService {
         DevLog.shared.log(.recording, "processExternalStopRequest (state: \(state))")
         settings.pendingStopRecordingRequest = false
         guard state.isActiveSession else { return }
-        stopRecording(saveTrip: true, reason: .manual)
+        stopRecording(saveTrip: true)
     }
 
     func processExternalPauseRequest() {
@@ -177,50 +192,6 @@ final class TripRecordingService {
         startElapsedTimer()
         syncExternalState(force: true)
         TrailhoundHaptics.recordingResumed()
-    }
-
-    func handleVehicleConnected(trigger: VehicleRecordingTrigger) {
-        DevLog.shared.log(.recording, "handleVehicleConnected(trigger: \(trigger), state: \(state))")
-        switch trigger {
-        case .bluetooth:
-            guard state == .idle else {
-                DevLog.shared.log(.recording, "Bluetooth connect skipped: state is not idle")
-                AutoRecordingEventLog.shared.recordConnectSkipped(
-                    channel: .bluetooth,
-                    vehicleName: settings.pairedVehicleName
-                )
-                return
-            }
-            guard settings.hasAutoTriggerVehicle else { return }
-            beginRecording(trigger: .bluetooth)
-        case .manual:
-            break
-        }
-    }
-
-    func handleVehicleDisconnected(trigger: VehicleRecordingTrigger) {
-        // This fires only when the paired vehicle has fully disconnected, so any
-        // active session (manual or automatic) ends here: leaving the car ends
-        // the trip and saves it (subject to the automatic-stop thresholds).
-        DevLog.shared.warning(.recording, "handleVehicleDisconnected(trigger: \(trigger), state: \(state))")
-        switch trigger {
-        case .bluetooth:
-            guard state.isActiveSession else {
-                AutoRecordingEventLog.shared.recordDisconnectSkipped(channel: .bluetooth)
-                return
-            }
-            stopRecording(saveTrip: true, reason: .bluetooth)
-        case .manual:
-            break
-        }
-    }
-
-    private enum RecordingTrigger {
-        case manual, bluetooth
-    }
-
-    private enum StopReason {
-        case manual, bluetooth
     }
 
     func resumeRecording(trip: Trip) {
@@ -366,17 +337,10 @@ final class TripRecordingService {
 
     private func beginRecording(trigger: RecordingTrigger) {
         guard state == .idle else { return }
-        beginRecordingImmediately(trigger: trigger)
-    }
-
-    private func restartVehicleConnectionMonitoring() {
-        if settings.hasAutoTriggerVehicle {
-            locationService.startVehicleConnectionMonitoring()
-        }
+        beginRecordingImmediately()
     }
 
     private func beginRecordingImmediately(
-        trigger: RecordingTrigger,
         startedAt: Date? = nil,
         announceStart: Bool = true,
         processInitialLocation: Bool = true
@@ -399,12 +363,9 @@ final class TripRecordingService {
         liveBreadcrumbCoordinates = []
 
         let trip = Trip(startedAt: resolvedStartedAt)
-        let vehicleTrigger: VehicleRecordingTrigger = switch trigger {
-        case .manual: .manual
-        case .bluetooth: .bluetooth
-        }
-        if let vehicle = VehicleResolver.resolveActiveVehicle(in: modelContext, trigger: vehicleTrigger, settings: settings) {
+        if let vehicle = VehicleResolver.resolveActiveVehicle(in: modelContext, settings: settings) {
             VehicleResolver.assign(vehicle: vehicle, to: trip)
+            settings.recordingVehicleID = vehicle.id
         }
         modelContext.insert(trip)
         do {
@@ -416,7 +377,7 @@ final class TripRecordingService {
             return
         }
         activeTrip = trip
-        DevLog.shared.log(.recording, "Trip started: id=\(trip.id), trigger=\(trigger)")
+        DevLog.shared.log(.recording, "Trip started: id=\(trip.id)")
 
         locationService.requestPermission()
         locationService.startTracking()
@@ -432,8 +393,10 @@ final class TripRecordingService {
         if processInitialLocation, let location = locationService.lastLocation {
             processRecordingLocationUpdate(location)
         }
+    }
 
-        logAutoRecordingStart(for: trigger)
+    private enum RecordingTrigger {
+        case manual
     }
 
     private func appendPoint(from location: CLLocation, speed: Double) {
@@ -469,18 +432,12 @@ final class TripRecordingService {
         }
     }
 
-    private func stopRecording(saveTrip: Bool, reason: StopReason) {
+    private func stopRecording(saveTrip: Bool) {
         guard state.isActiveSession else { return }
         DevLog.shared.log(
             .recording,
-            "stopRecording: reason=\(reason), saveTrip=\(saveTrip), distance=\(Int(currentDistanceMeters))m, elapsed=\(Int(elapsedTime))s"
+            "stopRecording: saveTrip=\(saveTrip), distance=\(Int(currentDistanceMeters))m, elapsed=\(Int(elapsedTime))s"
         )
-
-        defer {
-            if reason == .manual {
-                VehicleConnectionCoordinator.shared.notifyManualRecordingStopped()
-            }
-        }
 
         finalizeRecordingLocation()
         finalizeStopIfNeeded()
@@ -495,7 +452,6 @@ final class TripRecordingService {
         TrailhoundHaptics.recordingStopped()
         TrailhoundSounds.recordingStopped()
         locationService.stopTracking()
-        restartVehicleConnectionMonitoring()
         stopElapsedTimer()
         ensureTripHasAnchorPointIfNeeded()
         flushPointsToStore()
@@ -511,14 +467,9 @@ final class TripRecordingService {
 
         let endedAt = Date()
         let duration = endedAt.timeIntervalSince(trip.startedAt)
-        let policyReason: RecordingStopPolicy.StopReason = switch reason {
-        case .manual: .manual
-        case .bluetooth: .bluetooth
-        }
-        let stopDistanceMeters = currentDistanceMeters
         let shouldSave = RecordingStopPolicy.shouldSaveTrip(
             saveTrip: saveTrip,
-            reason: policyReason,
+            reason: .manual,
             duration: duration,
             distanceMeters: currentDistanceMeters,
             minimumDurationSeconds: settings.stopMinimumDurationSeconds,
@@ -578,7 +529,6 @@ final class TripRecordingService {
         }
 
         resetActiveSession()
-        logAutoRecordingStop(reason: reason, distanceMeters: stopDistanceMeters)
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
         WidgetCenter.shared.reloadAllTimelines()
@@ -618,33 +568,6 @@ final class TripRecordingService {
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
-    }
-
-    private func logAutoRecordingStart(for trigger: RecordingTrigger) {
-        switch trigger {
-        case .bluetooth:
-            AutoRecordingEventLog.shared.recordConnectStarted(
-                channel: .bluetooth,
-                vehicleName: settings.pairedVehicleName
-            )
-        case .manual:
-            break
-        }
-    }
-
-    private func logAutoRecordingStop(
-        reason: StopReason,
-        distanceMeters: Double
-    ) {
-        switch reason {
-        case .bluetooth:
-            AutoRecordingEventLog.shared.recordDisconnectStopped(
-                channel: .bluetooth,
-                distanceMeters: distanceMeters
-            )
-        case .manual:
-            break
-        }
     }
 
     private func syncExternalState(force: Bool = false) {
@@ -803,17 +726,43 @@ enum TripPostProcessor {
         trip.points.removeAll()
 
         for (index, coordinate) in simplified.enumerated() {
+            let source = nearestSourcePoint(to: coordinate, in: sorted)
             let point = TripPoint(
-                timestamp: trip.startedAt.addingTimeInterval(TimeInterval(index)),
+                timestamp: source?.timestamp ?? trip.startedAt.addingTimeInterval(TimeInterval(index)),
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude,
                 sequence: index,
+                speedMps: source?.speedMps,
                 trip: trip
             )
             trip.points.append(point)
             context.insert(point)
         }
         trip.invalidatePointCaches()
+        TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
+
+        let preservedSpeedCount = trip.sortedPoints.filter { ($0.speedMps ?? 0) > 0 }.count
+        DevLog.shared.log(
+            .tripDetail,
+            "simplify trip=\(trip.id.uuidString.prefix(8)) points \(sorted.count)→\(simplified.count), speedMps on \(preservedSpeedCount)/\(simplified.count) points"
+        )
+        if preservedSpeedCount == 0, simplified.count >= 2 {
+            DevLog.shared.warning(
+                .tripDetail,
+                "simplify left no speed data — trip detail speed chart will be hidden and map colors may be uniform"
+            )
+        }
+    }
+
+    private static func nearestSourcePoint(
+        to coordinate: CLLocationCoordinate2D,
+        in source: [TripPoint]
+    ) -> TripPoint? {
+        guard !source.isEmpty else { return nil }
+        let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        return source.min { lhs, rhs in
+            lhs.location.distance(from: target) < rhs.location.distance(from: target)
+        }
     }
 
     private static func enrichTripWithAddresses(

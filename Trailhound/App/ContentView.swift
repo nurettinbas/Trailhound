@@ -157,7 +157,6 @@ struct ContentView: View {
         .environment(PreviewData.shared.recordingService)
         .environment(LocationService())
         .environment(AppLockService())
-        .environment(BluetoothTriggerService())
         .environment(GeocodingRetryService(geocodingService: GeocodingService()))
         .environment(NetworkMonitor.shared)
 }

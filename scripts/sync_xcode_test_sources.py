@@ -18,6 +18,12 @@ UNIT_GROUP = "EAD0FC18DADB4E359AC65213"
 UI_SOURCES_PHASE = "UITESTSRC00000000000001"
 UI_GROUP = "UITESTGRP00000000000001"
 
+STALE_TEST_FILENAMES = [
+    "TrailhoundTests.swift",
+    "PairingAndCoordinatorTests.swift",
+    "VehicleConnectRecordingTests.swift",
+]
+
 
 def new_id() -> str:
     return uuid.uuid4().hex[:24].upper()
@@ -51,19 +57,19 @@ def make_entries(files: list[Path]) -> tuple[str, str, str, str]:
 
 def strip_target_sources(text: str, filename: str) -> str:
     text = re.sub(
-        rf"\n\t\t[A-F0-9]{{24}} /\* {re.escape(filename)} in Sources \*/ = \{{isa = PBXBuildFile; fileRef = [A-F0-9]{{24}} /\* {re.escape(filename)} \*/; \}};",
+        rf"\n\t\t[A-Z0-9]+ /\* {re.escape(filename)} in Sources \*/ = \{{isa = PBXBuildFile; fileRef = [A-Z0-9]+ /\* {re.escape(filename)} \*/; \}};",
         "",
         text,
     )
     text = re.sub(
-        rf"\n\t\t[A-F0-9]{{24}} /\* {re.escape(filename)} \*/ = \{{isa = PBXFileReference;.*?\}};",
+        rf"\n\t\t[A-Z0-9]+ /\* {re.escape(filename)} \*/ = \{{isa = PBXFileReference;.*?\}};",
         "",
         text,
         flags=re.DOTALL,
     )
-    text = re.sub(rf"\n\t\t\t\t[A-F0-9]{{24}} /\* {re.escape(filename)} \*/,?", "", text)
+    text = re.sub(rf"\n\t\t\t\t[A-Z0-9]+ /\* {re.escape(filename)} \*/,?", "", text)
     text = re.sub(
-        rf"\n\t\t\t\t[A-F0-9]{{24}} /\* {re.escape(filename)} in Sources \*/,?",
+        rf"\n\t\t\t\t[A-Z0-9]+ /\* {re.escape(filename)} in Sources \*/,?",
         "",
         text,
     )
@@ -72,12 +78,29 @@ def strip_target_sources(text: str, filename: str) -> str:
 
 def replace_group_children(text: str, group_id: str, group_name: str, children: str) -> str:
     pattern = (
-        rf"({group_id} /\* {re.escape(group_name)} \*/ = \{{\n\t\t\tisa = PBXGroup;\n\t\t\tchildren = \(\n)"
+        rf"{group_id} /\* {re.escape(group_name)} \*/ = \{{\n"
+        rf"\t\t\tisa = PBXGroup;\n"
+        rf"\t\t\tchildren = \(\n"
         r".*?"
-        rf"(\n\t\t\t\);\n\t\t\tpath = {re.escape(group_name)};)"
+        rf"\t\t\t\);\n"
+        rf"\t\t\tpath = {re.escape(group_name)};\n"
+        rf"\t\t\tsourceTree = \"<group>\";\n"
+        rf"\t\t\}};"
     )
-    replacement = rf"\1{children}\2"
-    return re.sub(pattern, replacement, text, count=1, flags=re.DOTALL)
+    replacement = (
+        f"{group_id} /* {group_name} */ = {{\n"
+        f"\t\t\tisa = PBXGroup;\n"
+        f"\t\t\tchildren = (\n"
+        f"{children}\n"
+        f"\t\t\t);\n"
+        f"\t\t\tpath = {group_name};\n"
+        f"\t\t\tsourceTree = \"<group>\";\n"
+        f"\t\t}};"
+    )
+    updated, count = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)
+    if count != 1:
+        raise ValueError(f"Failed to replace group children for {group_name}")
+    return updated
 
 
 def replace_sources_phase(text: str, phase_id: str, children: str) -> str:
@@ -104,7 +127,7 @@ def replace_sources_phase(text: str, phase_id: str, children: str) -> str:
 def strip_existing_test_entries(text: str, files: list[Path]) -> str:
     for path in files:
         text = strip_target_sources(text, path.name)
-    for stale in ["TrailhoundTests.swift"]:
+    for stale in STALE_TEST_FILENAMES:
         text = strip_target_sources(text, stale)
     return text
 

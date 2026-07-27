@@ -24,18 +24,33 @@ private struct RevealedRouteSegment: Identifiable {
     let color: Color
 }
 
+@MainActor
+private enum TripDetailRevealSession {
+    static var completedTripIDs: Set<UUID> = []
+
+    static func markCompleted(_ tripID: UUID) {
+        completedTripIDs.insert(tripID)
+    }
+
+    static func hasCompleted(_ tripID: UUID) -> Bool {
+        completedTripIDs.contains(tripID)
+    }
+}
+
 struct TripDetailView: View {
     @Bindable var trip: Trip
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
+    @Query private var vehicles: [VehicleProfile]
     @Bindable private var settings = AppSettings.shared
 
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var noteText: String = ""
     @State private var selectedLabel: String = ""
     @State private var selectedCategoryID: String = BuiltInCategory.personalID.uuidString
+    @State private var selectedVehicleID: UUID?
     @State private var startAddressText: String = ""
     @State private var endAddressText: String = ""
     @State private var startPlaceNameText: String = ""
@@ -150,19 +165,26 @@ struct TripDetailView: View {
             originalNoteText = noteText
             selectedLabel = trip.label ?? ""
             selectedCategoryID = trip.categoryID
+            selectedVehicleID = trip.vehicleID
             startAddressText = trip.startAddress ?? ""
             endAddressText = trip.endAddress ?? ""
             startPlaceNameText = trip.startPlaceName ?? ""
             endPlaceNameText = trip.endPlaceName ?? ""
             editedStartedAt = trip.startedAt
             editedEndedAt = trip.endedAt ?? Date()
-            if reduceMotion {
+            if reduceMotion || TripDetailRevealSession.hasCompleted(trip.id) {
                 finishDetailRevealInstant()
+                logTripDetailDiagnostics(context: "appear instant")
             } else {
                 startDetailReveal()
+                logTripDetailDiagnostics(context: "appear animate")
             }
         }
         .onDisappear {
+            logTripDetailDiagnostics(context: "disappear")
+            if routeRevealProgress >= 0.95 {
+                TripDetailRevealSession.markCompleted(trip.id)
+            }
             detailRevealTask?.cancel()
             detailRevealTask = nil
             didStartDetailReveal = false
@@ -226,6 +248,8 @@ struct TripDetailView: View {
         }
         speedChartRevealProgress = 1
 
+        TripDetailRevealSession.markCompleted(trip.id)
+
         withAnimation(TrailhoundMotion.pinPop) {
             endPinVisible = true
         }
@@ -248,6 +272,7 @@ struct TripDetailView: View {
             uniqueKeysWithValues: viewModel.summaryMetrics.map { ($0.id, 1.0) }
         )
         speedChartRevealProgress = 1
+        TripDetailRevealSession.markCompleted(trip.id)
         if let region = viewModel.mapRegion(fit: .detailWithPanel) {
             cameraPosition = .region(region)
         }
@@ -343,6 +368,19 @@ struct TripDetailView: View {
                         }
                         .onChange(of: selectedLabel) { _, _ in
                             dismissNoteKeyboard()
+                        }
+                    }
+
+                    if !vehicles.isEmpty {
+                        detailSection(title: L10n.string("trip.edit.vehicle")) {
+                            Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
+                                Text(L10n.string("trip.edit.vehicle_none")).tag(UUID?.none)
+                                ForEach(vehicles) { vehicle in
+                                    Text(vehicle.name).tag(Optional(vehicle.id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(TrailhoundBrandColors.brandBottom)
                         }
                     }
 
@@ -824,6 +862,12 @@ struct TripDetailView: View {
         trip.note = noteText.isEmpty ? nil : noteText
         trip.label = selectedLabel.isEmpty ? nil : selectedLabel
         trip.categoryID = selectedCategoryID
+        let vehicle = selectedVehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
+        VehicleResolver.assign(vehicle: vehicle, to: trip)
+        trip.estimatedFuelCost = FuelCostCalculator.estimateCost(
+            distanceMeters: trip.distanceMeters,
+            vehicle: vehicle
+        )
         trip.startAddress = startAddressText.isEmpty ? nil : startAddressText
         trip.endAddress = endAddressText.isEmpty ? nil : endAddressText
         trip.startPlaceName = startPlaceNameText.isEmpty ? nil : startPlaceNameText
@@ -878,8 +922,35 @@ struct TripDetailView: View {
 
         trip.distanceMeters = distance
         trip.invalidatePointCaches()
+        TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
+        DevLog.shared.log(.tripDetail, "gps trim trip=\(trip.id.uuidString.prefix(8)) head=\(trimHeadCount) tail=\(trimTailCount)")
         trimHeadCount = 0
         trimTailCount = 0
+    }
+
+    private func logTripDetailDiagnostics(context: String) {
+        let points = trip.sortedPoints
+        let speedPointCount = points.filter { ($0.speedMps ?? 0) > 0 }.count
+        let sampleCount = viewModel.speedSamples.count
+        let segmentCount = viewModel.speedColoredSegments.count
+
+        DevLog.shared.log(
+            .tripDetail,
+            "\(context) trip=\(trip.id.uuidString.prefix(8)) points=\(points.count) speedPts=\(speedPointCount) chartSamples=\(sampleCount) mapSegments=\(segmentCount) reveal=\(Int(routeRevealProgress * 100))% chartReveal=\(Int(speedChartRevealProgress * 100))%"
+        )
+
+        if points.count >= 2, sampleCount == 0 {
+            DevLog.shared.warning(
+                .tripDetail,
+                "speed chart hidden (no speedMps>0 samples); map may show single-color route"
+            )
+        }
+        if routeRevealProgress < 0.95, context.hasPrefix("disappear") {
+            DevLog.shared.warning(
+                .tripDetail,
+                "left detail before reveal finished — next open may flash empty until instant reveal"
+            )
+        }
     }
 }
 

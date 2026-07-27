@@ -101,18 +101,6 @@ enum TripNotificationService {
         )
     }
 
-    /// Nudge shown when the phone connects to a car but no auto-start vehicle is
-    /// configured yet. Tapping opens the Pairing tab so the user can set it up.
-    static func notifyVehiclePairingSuggestion() {
-        deliver(
-            identifier: "trailhound.pairing.suggestion",
-            kind: .pairingSuggestion,
-            title: L10n.pairingSuggestionTitle,
-            body: L10n.pairingSuggestionBody,
-            action: openPairingAction
-        )
-    }
-
     private static func orphanNotificationID(tripID: UUID) -> String {
         "trailhound.trip.orphan.\(tripID.uuidString)"
     }

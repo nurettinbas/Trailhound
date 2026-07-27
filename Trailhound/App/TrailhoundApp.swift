@@ -9,7 +9,6 @@ final class AppRuntime {
     private var geocoding: GeocodingService?
     private var geocodingRetry: GeocodingRetryService?
     private var recording: TripRecordingService?
-    private var bluetooth: BluetoothTriggerService?
     private var lock: AppLockService?
     private var network: NetworkMonitor?
     private var didRecordingBootstrap = false
@@ -47,13 +46,6 @@ final class AppRuntime {
         return service
     }
 
-    var bluetoothService: BluetoothTriggerService {
-        if let bluetooth { return bluetooth }
-        let service = BluetoothTriggerService()
-        bluetooth = service
-        return service
-    }
-
     var appLockService: AppLockService {
         if let lock { return lock }
         let service = AppLockService()
@@ -72,17 +64,8 @@ final class AppRuntime {
         guard !didRecordingBootstrap else { return }
         didRecordingBootstrap = true
 
-        bluetoothService.activate()
         tripRecordingService.configure(modelContext: container.mainContext)
-        VehicleConnectionCoordinator.shared.configure(
-            recordingService: tripRecordingService,
-            bluetoothService: bluetoothService
-        )
-        tripRecordingService.startServices()
-        wireVehicleConnectionHandlers(container: container)
-        wireMonitoringWake()
         wireRecordingRequestHandlers()
-        bluetoothService.syncRouteSnapshot()
         reconcileRecordingStateAfterLaunch()
     }
 
@@ -100,9 +83,6 @@ final class AppRuntime {
             currentSpeedKmh: 0
         )
 
-        // Shortcuts / widget intents can start recording immediately after bootstrap.
-        // Re-check session state before tearing down Live Activities so we don't race
-        // with RecordingLiveActivityService.start().
         Task { @MainActor in
             await Task.yield()
             let hasActiveSession = tripRecordingService.state.isActiveSession
@@ -117,6 +97,8 @@ final class AppRuntime {
         bootstrapRecording(container: container)
         guard !didFullBootstrap else { return }
         didFullBootstrap = true
+
+        VehiclePairingService.migrateLegacyBluetoothAutoStart(in: container.mainContext)
 
         networkMonitor.startIfNeeded()
         CategorySeeder.seedIfNeeded(in: container.mainContext)
@@ -143,51 +125,22 @@ final class AppRuntime {
         }
     }
 
-    var shouldKeepVehicleMonitoring: Bool {
-        let settings = AppSettings.shared
-        return tripRecordingService.state.isActiveSession
-            || settings.hasAutoTriggerVehicle
+    var shouldKeepLocationServicesActive: Bool {
+        tripRecordingService.state.isActiveSession
     }
 
     func resumeMonitoringIfNeeded() {
-        if shouldKeepVehicleMonitoring {
-            DevLog.shared.log(.lifecycle, "resumeMonitoringIfNeeded: resuming vehicle monitoring")
-            tripRecordingService.startServices()
-            refreshVehicleConnections()
-        }
-    }
-
-    func refreshVehicleConnections() {
-        // Re-evaluate with snapshot reporting so foreground/wake can drive connect.
-        bluetoothService.syncRouteSnapshot()
-        VehicleConnectionCoordinator.shared.refreshLiveSnapshots()
+        guard shouldKeepLocationServicesActive else { return }
+        DevLog.shared.log(.lifecycle, "resumeMonitoringIfNeeded: active recording session")
     }
 
     func suspendIdleMonitoringIfNeeded() {
-        guard !shouldKeepVehicleMonitoring else {
-            DevLog.shared.log(.lifecycle, "suspendIdleMonitoringIfNeeded: kept active (session or paired vehicle)")
+        guard !shouldKeepLocationServicesActive else {
+            DevLog.shared.log(.lifecycle, "suspendIdleMonitoringIfNeeded: kept active (recording session)")
             return
         }
         DevLog.shared.log(.lifecycle, "suspendIdleMonitoringIfNeeded: stopping idle services")
         tripRecordingService.stopIdleServices()
-    }
-
-    private func wireVehicleConnectionHandlers(container: ModelContainer) {
-        // The route monitor reports the paired Bluetooth audio route, so a route
-        // snapshot change is a vehicle connect/disconnect signal.
-        bluetoothService.onRouteSnapshotChanged = { isConnected in
-            VehicleConnectionCoordinator.shared.handleVehicleSnapshot(isConnected: isConnected)
-        }
-    }
-
-    private func wireMonitoringWake() {
-        locationService.onMonitoringWake = { [weak self] in
-            guard let self else { return }
-            if self.tripRecordingService.state.isActiveSession
-                || AppSettings.shared.hasAutoTriggerVehicle {
-                self.refreshVehicleConnections()
-            }
-        }
     }
 
     private func wireRecordingRequestHandlers() {
@@ -242,7 +195,6 @@ struct TrailhoundApp: App {
                 .modelContainer(modelContainer)
                 .environment(runtime.locationService)
                 .environment(runtime.tripRecordingService)
-                .environment(runtime.bluetoothService)
                 .environment(runtime.appLockService)
                 .environment(runtime.geocodingRetryService)
                 .environment(runtime.networkMonitor)
@@ -258,7 +210,6 @@ struct TrailhoundApp: App {
                     runtime.bootstrap(container: modelContainer)
                     guard TrailhoundDeepLink.handle(url) else { return }
                     runtime.processPendingRecordingRequests()
-                    // Widget deep link can arrive before UI/auth is ready; retry once.
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         runtime.processPendingRecordingRequests()
@@ -293,12 +244,6 @@ struct TrailhoundApp: App {
         }
     }
 
-    /// Re-writes the App Group distance stats and refreshes the accessory
-    /// (lock-screen) widget whenever the app comes to the foreground. The
-    /// once-only `bootstrap` guard skips this on background→foreground returns,
-    /// so the monthly ring could otherwise show a stale value until relaunch.
-    /// Note: lock-screen widget reloads are still subject to WidgetKit's system
-    /// reload budget, so this maximizes freshness but cannot guarantee instant updates.
     private func refreshLockScreenWidgetStats() {
         TripStore.syncWidgetWeekDistance(in: modelContainer.mainContext)
         WidgetCenter.shared.reloadTimelines(ofKind: "TrailhoundLockScreenWidget")

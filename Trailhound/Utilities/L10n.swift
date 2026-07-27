@@ -134,6 +134,12 @@ enum L10n {
     static var placePickerUseCurrentLocation: String { string("place.picker.use_current_location") }
     static var placePickerResolvingAddress: String { string("place.picker.resolving_address") }
     static var placePickerNearbySection: String { string("place.picker.nearby_section") }
+    static var placePickerSearchPlaceholder: String { string("place.picker.search.placeholder") }
+    static var placePickerSearchSection: String { string("place.picker.search.section") }
+    static var placePickerSearchEmpty: String { string("place.picker.search.empty") }
+    static var placePickerSearchHint: String { string("place.picker.search.hint") }
+    static var placePickerSearchLoading: String { string("place.picker.search.loading") }
+    static var placePickerSearchClear: String { string("place.picker.search.clear") }
     static var placePickerUseAddressAsName: String { string("place.picker.use_address_as_name") }
     static var placePickerEditTitle: String { string("place.picker.edit_title") }
     static var placePickerNewTitle: String { string("place.picker.new_title") }
@@ -312,17 +318,15 @@ enum L10n {
     static var pairingTabEmptyMessage: String { string("pairing.tab.empty.message") }
     static var pairingTabVehicleSection: String { string("pairing.tab.vehicle.section") }
     static var pairingTabVehicleName: String { string("pairing.tab.vehicle.name") }
+    static var pairingTabVehicleIcon: String { string("pairing.tab.vehicle.icon") }
     static var pairingTabVehicleNotFound: String { string("pairing.tab.vehicle.not_found") }
     static var pairingTabFuelType: String { string("pairing.tab.vehicle.fuel_type") }
     static var pairingTabChargePrice: String { string("pairing.tab.vehicle.charge_price") }
     static var pairingTabDefaultVehicle: String { string("pairing.tab.vehicle.default") }
-    static var pairingTabEditorPairingHint: String { string("pairing.tab.editor.pairing_hint") }
     static var pairingTabSave: String { string("pairing.tab.save") }
     static var pairingTabNewVehicleName: String { string("pairing.tab.new_vehicle_name") }
     static var pairingTabMissingConnection: String { string("pairing.tab.missing_connection") }
     static var pairingTabWaitingBluetooth: String { string("pairing.tab.waiting_bluetooth") }
-    static var pairingAutoStart: String { string("pairing.auto_start") }
-    static var pairingAutoStartHint: String { string("pairing.auto_start.hint") }
     static var pairingLiveConnectionTitle: String { string("pairing.live_connection.title") }
     static var pairingLiveConnectionNone: String { string("pairing.live_connection.none") }
     static func pairingConnectionBluetooth(_ name: String, _ portType: String) -> String {
@@ -367,9 +371,9 @@ enum L10n {
         return String(format: format, count)
     }
 
-    static func weekSummary(_ distance: String) -> String {
+    static func weekSummary(distance: String, duration: String) -> String {
         let format = string("week.summary")
-        return String(format: format, distance)
+        return String(format: format, distance, duration)
     }
 
     static func formatSpeedKmh(_ kmh: Double) -> String {

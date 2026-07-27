@@ -10,12 +10,60 @@ struct DailyDistance: Identifiable {
     var distanceKilometers: Double { distanceMeters / 1000 }
 }
 
+struct DailyDuration: Identifiable {
+    let id: Date
+    let day: Date
+    let duration: TimeInterval
+
+    var durationHours: Double { duration / 3600 }
+}
+
+struct DailyAverageSpeed: Identifiable {
+    let id: Date
+    let day: Date
+    let speedKmh: Double
+}
+
+struct DailyMaxSpeed: Identifiable {
+    let id: Date
+    let day: Date
+    let speedKmh: Double
+}
+
 struct CategoryDistance: Identifiable {
     let id: String
     let name: String
     let distanceMeters: Double
 
     var distanceKilometers: Double { distanceMeters / 1000 }
+}
+
+struct CategoryDuration: Identifiable {
+    let id: String
+    let name: String
+    let duration: TimeInterval
+
+    var durationHours: Double { duration / 3600 }
+}
+
+struct VehicleDistance: Identifiable {
+    let id: String
+    let name: String
+    let distanceMeters: Double
+
+    static let unassignedID = "unassigned"
+
+    var distanceKilometers: Double { distanceMeters / 1000 }
+}
+
+struct VehicleDuration: Identifiable {
+    let id: String
+    let name: String
+    let duration: TimeInterval
+
+    static let unassignedID = VehicleDistance.unassignedID
+
+    var durationHours: Double { duration / 3600 }
 }
 
 enum StatsPeriod: String, CaseIterable, Identifiable {
@@ -35,10 +83,11 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
 }
 
 struct StatsViewModel {
-    static func stats(for trips: [Trip], categoryID: String? = nil) -> TripStats {
+    static func stats(for trips: [Trip], categoryID: String? = nil, vehicleID: UUID? = nil) -> TripStats {
         let completed = trips.filter { trip in
             guard trip.endedAt != nil else { return false }
-            if let categoryID { return trip.categoryID == categoryID }
+            if let categoryID, trip.categoryID != categoryID { return false }
+            if let vehicleID, trip.vehicleID != vehicleID { return false }
             return true
         }
 
@@ -49,15 +98,26 @@ struct StatsViewModel {
         }
         let count = completed.count
         let averageDuration = count > 0 ? totalDuration / Double(count) : 0
+        let averageSpeedKmh = averageSpeedKmh(distanceMeters: totalDistance, duration: totalDuration)
+        let maxSpeedKmh = completed.compactMap(\.maxSpeedMps).filter { $0 > 0 }.map { $0 * 3.6 }.max() ?? 0
         let nightRatio = nightDrivingRatio(for: completed)
 
         return TripStats(
             tripCount: count,
             totalDistanceMeters: totalDistance,
+            totalDuration: totalDuration,
             averageDuration: averageDuration,
+            averageSpeedKmh: averageSpeedKmh,
+            maxSpeedKmh: maxSpeedKmh,
             estimatedFuelCost: totalFuel,
             nightDrivingRatio: nightRatio
         )
+    }
+
+    static func averageSpeedKmh(distanceMeters: Double, duration: TimeInterval) -> Double {
+        guard duration > 0, distanceMeters > 0 else { return 0 }
+        let kmh = distanceMeters * 3.6 / duration
+        return kmh > 0 ? kmh : 0
     }
 
     static func fuelCost(for trip: Trip) -> Double {
@@ -133,6 +193,86 @@ struct StatsViewModel {
         }
     }
 
+    static func dailyDurations(in interval: DateInterval, from trips: [Trip]) -> [DailyDuration] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets: [Date: TimeInterval] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            buckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            guard let duration = trip.duration, duration > 0 else { continue }
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            buckets[tripDay, default: 0] += duration
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyDuration(id: day, day: day, duration: buckets[day] ?? 0)
+        }
+    }
+
+    static func dailyAverageSpeeds(in interval: DateInterval, from trips: [Trip]) -> [DailyAverageSpeed] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var distanceBuckets: [Date: Double] = [:]
+        var durationBuckets: [Date: TimeInterval] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            distanceBuckets[day] = 0
+            durationBuckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            distanceBuckets[tripDay, default: 0] += trip.distanceMeters
+            if let duration = trip.duration, duration > 0 {
+                durationBuckets[tripDay, default: 0] += duration
+            }
+        }
+
+        return distanceBuckets.keys.sorted().map { day in
+            let speed = averageSpeedKmh(
+                distanceMeters: distanceBuckets[day] ?? 0,
+                duration: durationBuckets[day] ?? 0
+            )
+            return DailyAverageSpeed(id: day, day: day, speedKmh: speed)
+        }
+    }
+
+    static func dailyMaxSpeeds(in interval: DateInterval, from trips: [Trip]) -> [DailyMaxSpeed] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets: [Date: Double] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            buckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            guard let maxSpeedMps = trip.maxSpeedMps, maxSpeedMps > 0 else { continue }
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            buckets[tripDay, default: 0] = max(buckets[tripDay, default: 0], maxSpeedMps * 3.6)
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyMaxSpeed(id: day, day: day, speedKmh: buckets[day] ?? 0)
+        }
+    }
+
     static func categoryBreakdown(for trips: [Trip], categories: [UserCategory]) -> [CategoryDistance] {
         let filtered = trips.filter { $0.endedAt != nil }
         var totals: [String: Double] = [:]
@@ -148,6 +288,73 @@ struct StatsViewModel {
             return CategoryDistance(id: key, name: name, distanceMeters: distance)
         }
         .sorted { $0.distanceMeters > $1.distanceMeters }
+    }
+
+    static func categoryDurationBreakdown(for trips: [Trip], categories: [UserCategory]) -> [CategoryDuration] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var totals: [String: TimeInterval] = [:]
+
+        for trip in filtered {
+            guard let duration = trip.duration, duration > 0 else { continue }
+            totals[trip.categoryID, default: 0] += duration
+        }
+
+        return totals.map { key, duration in
+            let name = categories.first(where: { $0.storageKey == key })?.name
+                ?? TripCategory(rawValue: key)?.displayName
+                ?? L10n.string("label.other")
+            return CategoryDuration(id: key, name: name, duration: duration)
+        }
+        .sorted { $0.duration > $1.duration }
+    }
+
+    static func vehicleBreakdown(for trips: [Trip], vehicles: [VehicleProfile]) -> [VehicleDistance] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var totals: [String: Double] = [:]
+
+        for trip in filtered {
+            let key = trip.vehicleID?.uuidString ?? VehicleDistance.unassignedID
+            totals[key, default: 0] += trip.distanceMeters
+        }
+
+        return totals.map { key, distance in
+            let name: String
+            if key == VehicleDistance.unassignedID {
+                name = L10n.string("stats.vehicle.unassigned")
+            } else if let id = UUID(uuidString: key),
+                      let vehicle = vehicles.first(where: { $0.id == id }) {
+                name = vehicle.name
+            } else {
+                name = L10n.string("stats.vehicle.unknown")
+            }
+            return VehicleDistance(id: key, name: name, distanceMeters: distance)
+        }
+        .sorted { $0.distanceMeters > $1.distanceMeters }
+    }
+
+    static func vehicleDurationBreakdown(for trips: [Trip], vehicles: [VehicleProfile]) -> [VehicleDuration] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var totals: [String: TimeInterval] = [:]
+
+        for trip in filtered {
+            guard let duration = trip.duration, duration > 0 else { continue }
+            let key = trip.vehicleID?.uuidString ?? VehicleDuration.unassignedID
+            totals[key, default: 0] += duration
+        }
+
+        return totals.map { key, duration in
+            let name: String
+            if key == VehicleDuration.unassignedID {
+                name = L10n.string("stats.vehicle.unassigned")
+            } else if let id = UUID(uuidString: key),
+                      let vehicle = vehicles.first(where: { $0.id == id }) {
+                name = vehicle.name
+            } else {
+                name = L10n.string("stats.vehicle.unknown")
+            }
+            return VehicleDuration(id: key, name: name, duration: duration)
+        }
+        .sorted { $0.duration > $1.duration }
     }
 
     static func nightDrivingRatio(for trips: [Trip]) -> Double {
@@ -194,26 +401,42 @@ struct StatsViewModel {
 struct TripStats {
     let tripCount: Int
     let totalDistanceMeters: Double
+    let totalDuration: TimeInterval
     let averageDuration: TimeInterval
+    let averageSpeedKmh: Double
+    let maxSpeedKmh: Double
     let estimatedFuelCost: Double
     let nightDrivingRatio: Double
 
     init(
         tripCount: Int,
         totalDistanceMeters: Double,
+        totalDuration: TimeInterval,
         averageDuration: TimeInterval,
+        averageSpeedKmh: Double = 0,
+        maxSpeedKmh: Double = 0,
         estimatedFuelCost: Double,
         nightDrivingRatio: Double = 0
     ) {
         self.tripCount = tripCount
         self.totalDistanceMeters = totalDistanceMeters
+        self.totalDuration = totalDuration
         self.averageDuration = averageDuration
+        self.averageSpeedKmh = averageSpeedKmh
+        self.maxSpeedKmh = maxSpeedKmh
         self.estimatedFuelCost = estimatedFuelCost
         self.nightDrivingRatio = nightDrivingRatio
     }
 
     var totalDistanceText: String { DateFormatters.formatDistance(totalDistanceMeters) }
+    var totalDurationText: String { DateFormatters.formatDuration(totalDuration) }
     var averageDurationText: String { DateFormatters.formatDuration(averageDuration) }
+    var averageSpeedText: String {
+        averageSpeedKmh > 0 ? L10n.formatSpeedKmh(averageSpeedKmh) : "—"
+    }
+    var maxSpeedText: String {
+        maxSpeedKmh > 0 ? L10n.formatSpeedKmh(maxSpeedKmh) : "—"
+    }
     var fuelCostText: String { FuelCostCalculator.formatCost(estimatedFuelCost) }
     var nightDrivingText: String { StatsViewModel.nightDrivingPercentText(for: nightDrivingRatio) }
 }

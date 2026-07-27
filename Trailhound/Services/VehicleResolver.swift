@@ -5,19 +5,13 @@ enum VehicleResolver {
     @MainActor
     static func resolveActiveVehicle(
         in context: ModelContext,
-        trigger: VehicleRecordingTrigger,
         settings: AppSettings = .shared
     ) -> VehicleProfile? {
         let vehicles = fetchVehicles(in: context)
         guard !vehicles.isEmpty else { return nil }
 
-        if let activeID = settings.activeAutoTriggerVehicleID,
-           let active = vehicles.first(where: { $0.id == activeID }) {
-            return active
-        }
-
-        if trigger == .bluetooth, let uid = settings.pairedRouteUID,
-           let match = vehicles.first(where: { $0.autoStartEnabled && $0.pairedRouteUID == uid }) {
+        if let preferredID = settings.recordingVehicleID,
+           let match = vehicles.first(where: { $0.id == preferredID }) {
             return match
         }
 
@@ -36,9 +30,4 @@ enum VehicleResolver {
     private static func fetchVehicles(in context: ModelContext) -> [VehicleProfile] {
         (try? context.fetch(FetchDescriptor<VehicleProfile>())) ?? []
     }
-}
-
-enum VehicleRecordingTrigger {
-    case manual
-    case bluetooth
 }

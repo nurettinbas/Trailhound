@@ -82,27 +82,27 @@ PY
 
 boot_simulator_if_needed
 
-set +e
-if ((${#TEST_ARGS[@]})); then
-  xcodebuild test \
-    -project Trailhound.xcodeproj \
-    -scheme Trailhound \
-    -destination "$DESTINATION" \
-    -resultBundlePath "$RESULT_BUNDLE" \
-    -parallel-testing-enabled NO \
-    "${RETRY_ARGS[@]}" \
-    "${XCODEBUILD_SETTINGS[@]}" \
-    "${TEST_ARGS[@]}"
-else
-  xcodebuild test \
-    -project Trailhound.xcodeproj \
-    -scheme Trailhound \
-    -destination "$DESTINATION" \
-    -resultBundlePath "$RESULT_BUNDLE" \
-    -parallel-testing-enabled NO \
-    "${RETRY_ARGS[@]}" \
-    "${XCODEBUILD_SETTINGS[@]}"
+# Bash 3.2 + `set -u` treats empty "${arr[@]}" as unbound; build one argv list instead.
+XCODEBUILD_ARGV=(
+  test
+  -project Trailhound.xcodeproj
+  -scheme Trailhound
+  -destination "$DESTINATION"
+  -resultBundlePath "$RESULT_BUNDLE"
+  -parallel-testing-enabled NO
+)
+if ((${#RETRY_ARGS[@]})); then
+  XCODEBUILD_ARGV+=("${RETRY_ARGS[@]}")
 fi
+if ((${#XCODEBUILD_SETTINGS[@]})); then
+  XCODEBUILD_ARGV+=("${XCODEBUILD_SETTINGS[@]}")
+fi
+if ((${#TEST_ARGS[@]})); then
+  XCODEBUILD_ARGV+=("${TEST_ARGS[@]}")
+fi
+
+set +e
+xcodebuild "${XCODEBUILD_ARGV[@]}"
 STATUS=$?
 set -e
 

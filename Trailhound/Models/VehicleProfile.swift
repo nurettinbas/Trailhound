@@ -9,6 +9,7 @@ final class VehicleProfile {
     var consumption: Double
     var chargePricePerKWh: Double?
     var isDefault: Bool
+    var iconName: String = "car.fill"
 
     /// Auto-start binding: when enabled, the paired Bluetooth audio route
     /// (identified by `pairedRouteUID`) triggers connect-start / disconnect-stop.
@@ -26,6 +27,7 @@ final class VehicleProfile {
         consumption: Double = 7.5,
         chargePricePerKWh: Double? = nil,
         isDefault: Bool = false,
+        iconName: String = VehicleIconOption.default.rawValue,
         autoStartEnabled: Bool = false,
         pairedRouteUID: String? = nil,
         pairedRouteName: String? = nil,
@@ -37,6 +39,7 @@ final class VehicleProfile {
         self.consumption = consumption
         self.chargePricePerKWh = chargePricePerKWh
         self.isDefault = isDefault
+        self.iconName = iconName
         self.autoStartEnabled = autoStartEnabled
         self.pairedRouteUID = pairedRouteUID
         self.pairedRouteName = pairedRouteName
@@ -46,6 +49,10 @@ final class VehicleProfile {
     var fuelType: VehicleFuelType {
         get { VehicleFuelType(rawValue: fuelTypeRaw) ?? .petrol }
         set { fuelTypeRaw = newValue.rawValue }
+    }
+
+    var systemImage: String {
+        VehicleIconOption.resolved(iconName).rawValue
     }
 
     var consumptionLabel: String {

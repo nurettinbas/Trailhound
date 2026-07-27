@@ -26,6 +26,17 @@ final class AppSettings {
         didSet { defaults.set(tripStopMinimumDurationSeconds, forKey: Key.tripStopMinimumDurationSeconds) }
     }
 
+    /// Vehicle used for new recordings and fuel estimates when none is set on the trip.
+    var recordingVehicleID: UUID? {
+        didSet {
+            if let recordingVehicleID {
+                defaults.set(recordingVehicleID.uuidString, forKey: Key.recordingVehicleID)
+            } else {
+                defaults.removeObject(forKey: Key.recordingVehicleID)
+            }
+        }
+    }
+
     private enum Key {
         static let recordingSounds = "recordingSoundsEnabled"
         static let fuelLitersPer100km = "fuelLitersPer100km"
@@ -39,15 +50,13 @@ final class AppSettings {
         static let hasCompletedCarSetup = "hasCompletedCarSetup"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let monthlyDistanceGoalMeters = "monthlyDistanceGoalMeters"
-        static let pairedVehicleName = "pairedVehicleName"
-        static let pairedRouteUID = "pairedRouteUID"
-        static let activeAutoTriggerVehicleID = "activeAutoTriggerVehicleID"
         static let preferredLanguageCode = "preferredLanguageCode"
         static let stopSpeedKmh = "recording.stopSpeedKmh"
         static let stopMinimumDistanceMeters = "recording.stopMinimumDistanceMeters"
         static let stopMinimumDurationSeconds = "recording.stopMinimumDurationSeconds"
         static let tripStopMinimumDurationSeconds = "recording.tripStopMinimumDurationSeconds"
         static let developerModeEnabled = "developerModeEnabled"
+        static let recordingVehicleID = "recording.vehicleID"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -81,6 +90,10 @@ final class AppSettings {
             key: Key.tripStopMinimumDurationSeconds,
             default: 300
         )
+        if let raw = resolvedDefaults.string(forKey: Key.recordingVehicleID),
+           let id = UUID(uuidString: raw) {
+            recordingVehicleID = id
+        }
     }
 
     func completeOnboarding() {
@@ -93,6 +106,20 @@ final class AppSettings {
         if !hasCompletedCarSetup {
             hasCompletedCarSetup = true
             defaults.set(true, forKey: Key.hasCompletedCarSetup)
+        }
+    }
+
+    /// One-time cleanup after removing in-app Bluetooth auto-start.
+    func migrateLegacyBluetoothAutoStartKeys() {
+        let legacyKeys = [
+            "pairedVehicleName",
+            "pairedRouteUID",
+            "activeAutoTriggerVehicleID",
+            "vehicle.lastConnected",
+            "vehicle.lastTrigger"
+        ]
+        for key in legacyKeys {
+            defaults.removeObject(forKey: key)
         }
     }
 
@@ -164,22 +191,6 @@ final class AppSettings {
         set { defaults.set(newValue, forKey: Key.blurExportCoordinates) }
     }
 
-    var pairedVehicleName: String? {
-        get { defaults.string(forKey: Key.pairedVehicleName) }
-        set { defaults.set(newValue, forKey: Key.pairedVehicleName) }
-    }
-
-    /// UID (or normalized name) of the Bluetooth audio route bound to the active
-    /// auto-start vehicle. Only this route triggers connect-start / disconnect-stop.
-    var pairedRouteUID: String? {
-        get { defaults.string(forKey: Key.pairedRouteUID) }
-        set { defaults.set(newValue, forKey: Key.pairedRouteUID) }
-    }
-
-    var pairingIdentity: BluetoothPairingIdentity {
-        BluetoothPairingIdentity(uid: pairedRouteUID, displayName: pairedVehicleName)
-    }
-
     var developerModeEnabled: Bool {
         get { defaults.bool(forKey: Key.developerModeEnabled) }
         set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
@@ -203,34 +214,6 @@ final class AppSettings {
         guard defaults.object(forKey: key) != nil else { return defaultValue }
         let value = defaults.double(forKey: key)
         return value > 0 ? value : defaultValue
-    }
-
-    func clearPairedVehicle() {
-        pairedVehicleName = nil
-        pairedRouteUID = nil
-    }
-
-    func pairVehicle(uid: String?, name: String) {
-        pairedRouteUID = uid
-        pairedVehicleName = name
-    }
-
-    var activeAutoTriggerVehicleID: UUID? {
-        get {
-            guard let raw = defaults.string(forKey: Key.activeAutoTriggerVehicleID) else { return nil }
-            return UUID(uuidString: raw)
-        }
-        set {
-            if let newValue {
-                defaults.set(newValue.uuidString, forKey: Key.activeAutoTriggerVehicleID)
-            } else {
-                defaults.removeObject(forKey: Key.activeAutoTriggerVehicleID)
-            }
-        }
-    }
-
-    var hasAutoTriggerVehicle: Bool {
-        activeAutoTriggerVehicleID != nil && pairedRouteUID != nil
     }
 
     func syncRecordingState(

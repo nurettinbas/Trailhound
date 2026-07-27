@@ -53,8 +53,16 @@ struct SettingsView: View {
 
             Section(L10n.settingsRecordingSensitivitySection) {
                 sensitivityGrid
-                    .padding(12)
-                    .glassListRow()
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: 14,
+                            leading: GlassTokens.listContentHorizontalInset,
+                            bottom: 14,
+                            trailing: GlassTokens.listContentHorizontalInset
+                        )
+                    )
             }
 
             Section {
@@ -408,8 +416,9 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
+                .multilineTextAlignment(.leading)
                 .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
 
             HStack(spacing: 6) {
                 sensitivityStepButton(systemImage: "minus") {
@@ -429,7 +438,7 @@ struct SettingsView: View {
             }
         }
         .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .glassChrome(cornerRadius: 12)
     }
 

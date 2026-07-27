@@ -5,8 +5,8 @@ enum DeviceTestChecklist {
     static let items = [
         "30+ dk gerçek sürüş: km ve süre akıyor",
         "Arka plana at, 5 dk bekle: kayıt devam ediyor",
-        "Eşleşmiş araca Bluetooth ile bağlanınca otomatik başla (müzik çalmadan)",
-        "Araçtan ayrılınca / Bluetooth kesilince otomatik dur",
+        "Kısayollar: araca bağlanınca kayıt başlar",
+        "Kısayollar: araçtan ayrılınca kayıt durur",
         "Uygulamayı öldür → aç → orphan banner / recovery",
         "Detay haritada rota gerçekçi (denizden geçmiyor)"
     ]

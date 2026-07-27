@@ -4,7 +4,7 @@
 
 **Privacy-first trip recorder for iOS** — track drives with GPS, estimate fuel cost, and keep every mile on your device. No account, no cloud, no third-party SDKs.
 
-Trailhound is a native SwiftUI app built with SwiftData. It records routes locally, works offline, and starts automatically the moment your paired car connects over **Bluetooth** — and stops when it disconnects. No music playback required.
+Trailhound is a native SwiftUI app built with SwiftData. It records routes locally, works offline, and can start/stop automatically via **Shortcuts Personal Automations** (Bluetooth, CarPlay, or Wi‑Fi) — or manually from the app, widget, Live Activity, and Siri.
 
 [English](#features) · [Türkçe](#özellikler)
 
@@ -14,18 +14,17 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Recording
 - Manual start/stop, pause/resume
-- **Connect-start / disconnect-stop**: recording begins automatically when the paired vehicle's **Bluetooth** audio route connects and ends when it disconnects (no motion or speed checks)
-- **Bluetooth** auto-start — the paired car is matched by its `AVAudioSessionPortDescription.uid`, detected as soon as the route appears (no music playback needed)
+- **Shortcuts auto-start / auto-stop**: Personal Automations run Trailhound’s *Start trip* / *End trip* actions when you connect to or leave the car (Bluetooth, CarPlay, or Wi‑Fi). Setup guide lives under the **Pairing** tab
 - Vehicle profiles with fuel/EV cost per trip
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
+- Optional confirmation before widget/shortcut/deep-link recording start
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)
 - Offline-first recording; geocoding retries when online
 - Home/work saved places with privacy radius (route clipping)
 - Optional Face ID app lock (device passcode required)
-- Optional confirmation before widget/shortcut/deep-link recording start
 - Configurable auto-delete (30/90/365 days)
 - Export: JSON, CSV, GPX, KML, monthly business PDF
 
@@ -49,9 +48,8 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 |----------|-----------------|--------|
 | **iPhone (iOS)** | **17.0** | ✅ Primary target |
 | **iPadOS** | 17.0 | ⚠️ Runs as iPhone app (not optimized for iPad) |
-| **Bluetooth auto-start** | iOS 17.0+ | ✅ Paired car audio route (uid match) |
 | **Widget + Live Activity** | iOS 17.0+ | ✅ Home Screen & Lock Screen |
-| **Siri / Shortcuts** | iOS 17.0+ | ✅ App Intents (4 recording actions) |
+| **Siri / Shortcuts** | iOS 17.0+ | ✅ App Intents + Personal Automations |
 | **macOS / visionOS / tvOS** | — | ❌ Not supported |
 
 ### Why iOS 17?
@@ -62,12 +60,12 @@ Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern 
 
 | Requirement | Used for |
 |-------------|----------|
-| GPS (Always / When In Use) | Route recording, background trips, keeping the connection monitor alive |
-| Bluetooth car audio route | Auto-start connect/disconnect trigger (uid match) |
+| GPS (Always / When In Use) | Route recording and background trips |
 | Notifications | Trip started/ended alerts |
 | Face ID (optional) | App lock |
+| Shortcuts (system) | Auto-start/stop Personal Automations |
 
-**Physical iPhone recommended** for real-world testing (GPS, Bluetooth, background recording). Simulator is fine for UI and basic location simulation.
+**Physical iPhone recommended** for real-world testing (GPS, background recording, Shortcuts automations). Simulator is fine for UI and basic location simulation.
 
 ---
 
@@ -75,7 +73,7 @@ Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern 
 
 | | |
 |---|---|
-| **Xcode** | 15.0+ (iOS 17 SDK) |
+| **Xcode** | 15.0+ (iOS 17 SDK); CI uses **Xcode 26.5** on `macos-26` |
 | **Swift** | 5.0 (strict concurrency enabled) |
 | **iOS deployment target** | 17.0 |
 | **Dependencies** | None (Apple frameworks only) |
@@ -108,8 +106,8 @@ open Trailhound.xcodeproj
 Run the full unit + UI smoke suite locally:
 
 ```bash
-chmod +x scripts/run_tests.sh
-./scripts/run_tests.sh
+chmod +x scripts/run_tests.sh scripts/ci_pick_simulator.sh
+DESTINATION="$(./scripts/ci_pick_simulator.sh)" ./scripts/run_tests.sh
 ```
 
 Unit tests only (faster):
@@ -118,27 +116,35 @@ Unit tests only (faster):
 INCLUDE_UI_TESTS=0 ./scripts/run_tests.sh
 ```
 
+UI tests only:
+
+```bash
+ONLY_UI_TESTS=1 ./scripts/run_tests.sh
+```
+
 Override the simulator destination if needed:
 
 ```bash
 DESTINATION='platform=iOS Simulator,name=iPhone 17,OS=26.5' ./scripts/run_tests.sh
 ```
 
-CI runs the same script on every push and pull request to `main` via GitHub Actions.
+CI runs the same script on every push and pull request to `main` via GitHub Actions (`.github/workflows/ios-tests.yml`).
 
-### Siri Shortcuts
+### Siri Shortcuts & auto-recording
 
-Requires **iOS 17+** and **Siri enabled**. After first launch:
+Requires **iOS 17+** and **Siri / Shortcuts** available. After first launch:
 
-1. Open **Shortcuts** → search **Trailhound**
-2. Add the four actions: **Start trip**, **Pause trip**, **Resume trip**, **End trip**
-3. Or use **Settings → Recording → Open Shortcuts** in the app
+1. Open **Pairing** in Trailhound → follow **Auto-start with Shortcuts**
+2. Or open **Shortcuts** → search **Trailhound** and add: **Start trip**, **Pause trip**, **Resume trip**, **End trip**
+3. For hands-free start/stop: create Personal Automations (Bluetooth / CarPlay / Wi‑Fi connect & disconnect) that run those actions
 
 **English Siri examples:** *“Start trip in Trailhound”*, *“Pause trip in Trailhound”*
 
 **Turkish Siri examples:** *“Trailhound yolculuğu başlat”*, *“Trailhound yolculuğu duraklat”*, *“Trailhound yolculuğu sürdür”*, *“Trailhound yolculuğu bitir”*
 
 > Siri language and system language can differ. Shortcuts list follows system language; voice phrases follow Siri language.
+>
+> In-app Bluetooth audio-route auto-start was removed. Auto-record now relies on Shortcuts Personal Automations (more reliable across iOS versions and CarPlay).
 
 ---
 
@@ -148,18 +154,19 @@ Requires **iOS 17+** and **Siri enabled**. After first launch:
 Trailhound/
 ├── App/              # App entry, runtime bootstrap, scene lifecycle
 ├── Models/           # SwiftData models (Trip, VehicleProfile, …)
-├── Services/         # Location, recording, Bluetooth connection, geocoding, export
-├── Views/            # SwiftUI screens
+├── Services/         # Location, recording, geocoding, export, pairing
+├── Views/            # SwiftUI screens (incl. Pairing Shortcuts guide)
 ├── Intents/          # App Intents & Siri Shortcuts
 ├── Utilities/        # L10n, PDF reports, migrations
 TrailhoundShared/        # App Group bridge (widget, Live Activity, deep links)
 TrailhoundWidget/        # WidgetKit + Live Activity extension
 TrailhoundTests/         # Unit + integration tests
 TrailhoundUITests/       # UI smoke tests (XCUITest)
+scripts/              # CI simulator pick + xcodebuild test runner
 docs/                 # Battery optimization, TestFlight checklist
 ```
 
-**Stack:** SwiftUI · SwiftData · MapKit · CoreLocation · AVFoundation · App Intents · WidgetKit · ActivityKit
+**Stack:** SwiftUI · SwiftData · MapKit · CoreLocation · App Intents · WidgetKit · ActivityKit
 
 ---
 
@@ -175,7 +182,7 @@ docs/                 # Battery optimization, TestFlight checklist
 Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik odaklı bir sürüş günlüğüdür.
 
 - GPS ile rota ve mesafe takibi
-- **Bluetooth** ile otomatik başlat-bitir (eşleşmiş araca bağlanınca, müzik çalmadan)
+- **Kısayollar otomasyonu** ile otomatik başlat-bitir (Bluetooth / CarPlay / Wi‑Fi; Pairing sekmesindeki rehber)
 - Siri: *Yolculuğu başlat*, *duraklat*, *sürdür*, *bitir*
 - Widget ve Live Activity
 - İş/kişisel kategori, yakıt/EV maliyet tahmini
@@ -188,14 +195,13 @@ Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik od
 |----------|---------------|-------|
 | **iPhone (iOS)** | **17.0** | ✅ Ana hedef |
 | **iPadOS** | 17.0 | ⚠️ iPhone uygulaması olarak çalışır |
-| **Bluetooth otomatik başlatma** | iOS 17.0+ | ✅ Eşleşmiş araç ses rotası (uid eşleşme) |
 | **Widget + Live Activity** | iOS 17.0+ | ✅ Ana ekran ve kilit ekranı |
-| **Siri / Kısayollar** | iOS 17.0+ | ✅ 4 kayıt eylemi |
+| **Siri / Kısayollar** | iOS 17.0+ | ✅ App Intents + Kişisel Otomasyonlar |
 | **macOS / visionOS / tvOS** | — | ❌ Desteklenmiyor |
 
 **iOS 17 zorunlu** — SwiftData, App Intents ve Live Activity bu sürümü gerektirir. iOS 16 ve altı desteklenmez.
 
-Gerçek sürüş ve Bluetooth testleri için **fiziksel iPhone** önerilir.
+Gerçek sürüş, arka plan kaydı ve Kısayollar otomasyonları için **fiziksel iPhone** önerilir.
 
 ---
 

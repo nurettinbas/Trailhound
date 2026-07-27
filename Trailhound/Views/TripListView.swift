@@ -72,11 +72,14 @@ struct TripListView: View {
             from: trips.filter { $0.endedAt != nil }
         )
         let stats = StatsViewModel.stats(for: weekTrips)
-        return L10n.weekSummary(stats.totalDistanceText)
+        return L10n.weekSummary(
+            distance: stats.totalDistanceText,
+            duration: stats.totalDurationText
+        )
     }
 
     private var showsVehicleSetupPrompt: Bool {
-        !settings.hasCompletedCarSetup && vehicles.isEmpty
+        !settings.hasCompletedCarSetup
     }
 
     private var visibleOrphan: TripRecoveryService.OrphanTrip? {
@@ -114,7 +117,7 @@ struct TripListView: View {
                         Text(L10n.tripListSetupVehicleMessage)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Button(L10n.settingsDefineVehicle) {
+                        Button(L10n.string("onboarding.shortcuts.link")) {
                             tabSelection.openPairing()
                         }
                         .buttonStyle(.borderedProminent)
@@ -337,23 +340,32 @@ struct TripListView: View {
                     }
                     .disabled(mergeSelection.count < 2)
                 } else if !recordingService.state.isActiveSession {
-                    Button {
-                        coldOpenArmed = true
-                        if recordingService.startManualRecording(),
-                           let tripID = recordingService.activeTripID {
-                            coldOpenTripID = tripID
-                            requestScrollToTop()
-                        } else {
-                            coldOpenArmed = false
-                            coldOpenTripID = nil
+                    HStack(spacing: 8) {
+                        if !vehicles.isEmpty {
+                            RecordingVehiclePicker(
+                                vehicles: vehicles,
+                                selectedVehicleID: recordingService.activeRecordingVehicleID(in: modelContext),
+                                onSelect: { recordingService.setRecordingVehicle($0) }
+                            )
                         }
-                    } label: {
+                        Button {
+                            coldOpenArmed = true
+                            if recordingService.startManualRecording(),
+                               let tripID = recordingService.activeTripID {
+                                coldOpenTripID = tripID
+                                requestScrollToTop()
+                            } else {
+                                coldOpenArmed = false
+                                coldOpenTripID = nil
+                            }
+                        } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "record.circle")
                             Text(L10n.string("action.start"))
                         }
                     }
                     .transition(.opacity)
+                    }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {

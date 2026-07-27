@@ -35,47 +35,6 @@ final class RoutePrivacyClipperTests: XCTestCase {
     }
 }
 
-final class BluetoothRouteMatcherTests: XCTestCase {
-    func testMatchesByUID() {
-        let candidate = BluetoothRouteCandidate(uid: "AA:BB:CC", name: "Ford Puma", portTypeLabel: "HFP")
-        let pairing = BluetoothPairingIdentity(uid: "AA:BB:CC", displayName: "Ford Puma", legacyIdentifier: "AA:BB:CC")
-
-        XCTAssertEqual(
-            BluetoothRouteMatcher.match(candidate: candidate, pairing: pairing),
-            .uid
-        )
-    }
-
-    func testMatchesByNameWhenUIDChangesBetweenPorts() {
-        let candidate = BluetoothRouteCandidate(uid: "AA:BB:DD", name: "Ford Puma", portTypeLabel: "A2DP")
-        let pairing = BluetoothPairingIdentity(uid: "AA:BB:CC", displayName: "Ford Puma", legacyIdentifier: "AA:BB:CC")
-
-        XCTAssertEqual(
-            BluetoothRouteMatcher.match(candidate: candidate, pairing: pairing),
-            .name
-        )
-    }
-
-    func testMatchesLegacyIdentifierWhenOnlyNameWasStored() {
-        let candidate = BluetoothRouteCandidate(uid: "AA:BB:CC", name: "Ford Puma", portTypeLabel: "HFP")
-        let pairing = BluetoothPairingIdentity(uid: nil, displayName: "Ford Puma", legacyIdentifier: "ford puma")
-
-        XCTAssertEqual(
-            BluetoothRouteMatcher.match(candidate: candidate, pairing: pairing),
-            .name
-        )
-    }
-
-    func testDoesNotMatchUnknownDevice() {
-        let candidate = BluetoothRouteCandidate(uid: "UNKNOWN", name: "AirPods Pro", portTypeLabel: "A2DP")
-        let pairing = BluetoothPairingIdentity(uid: "AA:BB:CC", displayName: "Ford Puma", legacyIdentifier: "AA:BB:CC")
-
-        XCTAssertNil(
-            BluetoothRouteMatcher.match(candidate: candidate, pairing: pairing)
-        )
-    }
-}
-
 final class TripDateGroupingTests: XCTestCase {
     func testGroupsTodayTrip() {
         let trip = Trip(startedAt: Date(), endedAt: Date())

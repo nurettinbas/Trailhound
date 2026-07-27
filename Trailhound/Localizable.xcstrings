@@ -1189,6 +1189,23 @@
         }
       }
     },
+    "filter.vehicle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç"
+          }
+        }
+      }
+    },
     "Filtreye uygun yolculuk yok" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2585,13 +2602,47 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recording starts automatically when your car's Bluetooth connects."
+            "value" : "Optional: automate start and stop with Shortcuts when you connect or leave the car."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aracının Bluetooth'una bağlanınca kayıt kendiliğinden başlar."
+            "value" : "İstersen Kısayollar ile araca bağlanınca başlat, ayrılınca durdur."
+          }
+        }
+      }
+    },
+    "onboarding.features.insights" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stats, categories, and fuel estimates — per trip and per vehicle."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İstatistikler, kategoriler ve yakıt tahmini — yolculuk ve araç bazında."
+          }
+        }
+      }
+    },
+    "onboarding.features.recording" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start and stop from the app; recording keeps running in the background."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uygulamadan başlat ve durdur; kayıt arka planda devam eder."
           }
         }
       }
@@ -2636,13 +2687,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trailhound requires \"Always\" location access. Without it, GPS tracking stops when Bluetooth auto-start begins recording while the app is in the background."
+            "value" : "\"Always\" location keeps GPS tracking on while a trip records in the background."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trailhound için \"Her Zaman\" konum izni zorunludur. Bu izin olmadan uygulama arka plandayken Bluetooth otomatik kayıt başlattığında GPS takibi kesilir."
+            "value" : "Arka planda kayıt sürerken GPS'in kesilmemesi için \"Her Zaman\" konum izni gerekir."
           }
         }
       }
@@ -2789,13 +2840,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For the most reliable auto-start, use Shortcuts automations when your car connects or disconnects."
+            "value" : "Want hands-free trips? Set up a Shortcuts automation — CarPlay, Bluetooth, or Wi‑Fi. The step-by-step guide takes about 2 minutes. You can also do this later from Pairing."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En güvenilir otomatik kayıt için araca bağlanınca veya ayrılınca Kısayollar otomasyonlarını kullan."
+            "value" : "Eller serbest kayıt istersen Kısayollar otomasyonunu kur — CarPlay, Bluetooth veya Wi‑Fi. Adım adım rehber yaklaşık 2 dakika. İstersen bunu sonra Eşleştirme sekmesinden de yapabilirsin."
           }
         }
       }
@@ -2806,13 +2857,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auto record with Shortcuts"
+            "value" : "Optional hands-free setup"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kısayollar ile otomatik kayıt"
+            "value" : "İsteğe bağlı: eller serbest kurulum"
           }
         }
       }
@@ -2908,13 +2959,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your trips record themselves when you get in the car."
+            "value" : "Your drive log on the map — distance, duration, routes, and fuel at a glance."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Araca bindiğinde yolculuğun kendiliğinden kayda geçsin."
+            "value" : "Sürüş günlüğün haritada — mesafe, süre, rotalar ve yakıt tek bakışta."
           }
         }
       }
@@ -3292,13 +3343,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use Shortcuts automations with Bluetooth, CarPlay, or Wi-Fi connect/disconnect events. Works even when audio isn't playing."
+            "value" : "Set up once in Shortcuts: start when you connect, stop when you leave. CarPlay, Bluetooth, or Wi‑Fi."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kısayollar ile Bluetooth, CarPlay veya Wi-Fi bağlanma/kopma olaylarını kullan. Ses açmadan da çalışır."
+            "value" : "Kısayollar'da bir kez kur — bağlanınca kayıt başlar, ayrılınca durur. CarPlay, Bluetooth veya Wi‑Fi."
           }
         }
       }
@@ -3309,13 +3360,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Most reliable auto-start"
+            "value" : "Auto-start with Shortcuts"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En güvenilir otomatik başlatma"
+            "value" : "Kısayollar ile otomatik kayıt"
           }
         }
       }
@@ -4731,6 +4782,23 @@
         }
       }
     },
+    "pairing.tab.vehicle.icon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Icon"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İkon"
+          }
+        }
+      }
+    },
     "pairing.tab.vehicle.name" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5139,6 +5207,108 @@
         }
       }
     },
+    "place.picker.search.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search address or place"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adres veya yer ara"
+          }
+        }
+      }
+    },
+    "place.picker.search.section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search results"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arama sonuçları"
+          }
+        }
+      }
+    },
+    "place.picker.search.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No places found. Try a different search."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonuç bulunamadı. Farklı bir arama dene."
+          }
+        }
+      }
+    },
+    "place.picker.search.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a result to move the map pin, or drag the map to fine-tune."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Harita iğnesini taşımak için bir sonuç seç veya ince ayar için haritayı kaydır."
+          }
+        }
+      }
+    },
+    "place.picker.search.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching places…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yerler aranıyor…"
+          }
+        }
+      }
+    },
+    "place.picker.search.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear search"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aramayı temizle"
+          }
+        }
+      }
+    },
     "place.picker.new_title" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5322,6 +5492,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İş"
+          }
+        }
+      }
+    },
+    "recording.vehicle.accessibility" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kayıt aracı"
+          }
+        }
+      }
+    },
+    "recording.vehicle.choose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç seç"
           }
         }
       }
@@ -7365,6 +7569,57 @@
         }
       }
     },
+    "stats.average_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ortalama hız"
+          }
+        }
+      }
+    },
+    "stats.max_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maksimum hız"
+          }
+        }
+      }
+    },
+    "stats.chart.categories_section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By category"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kategoriye göre"
+          }
+        }
+      }
+    },
     "stats.chart.categories" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7378,6 +7633,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kategoriye göre mesafe"
+          }
+        }
+      }
+    },
+    "stats.chart.categories_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driving time by category"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kategoriye göre sürüş süresi"
+          }
+        }
+      }
+    },
+    "stats.chart.vehicles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distance by vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araca göre mesafe"
           }
         }
       }
@@ -7429,6 +7718,142 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Günlük mesafe"
+          }
+        }
+      }
+    },
+    "stats.chart.weekly_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily driving time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük sürüş süresi"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily trends"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük özet"
+          }
+        }
+      }
+    },
+    "stats.chart.vehicles_section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araca göre"
+          }
+        }
+      }
+    },
+    "stats.chart.vehicles_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driving time by vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araca göre sürüş süresi"
+          }
+        }
+      }
+    },
+    "stats.chart.duration_hours" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hours"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saat"
+          }
+        }
+      }
+    },
+    "stats.chart.speed_kmh" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "km/h"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "km/s"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_average_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily average speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük ortalama hız"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_max_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily max speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük maksimum hız"
           }
         }
       }
@@ -7688,6 +8113,23 @@
         }
       }
     },
+    "stats.total_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total driving time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toplam sürüş süresi"
+          }
+        }
+      }
+    },
     "stats.trend.format" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7718,6 +8160,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yolculuklar"
+          }
+        }
+      }
+    },
+    "stats.vehicle.unassigned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç atanmamış"
+          }
+        }
+      }
+    },
+    "stats.vehicle.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silinmiş araç"
           }
         }
       }
@@ -8099,6 +8575,40 @@
         }
       }
     },
+    "trip.edit.vehicle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vehicle"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç"
+          }
+        }
+      }
+    },
+    "trip.edit.vehicle_none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yok"
+          }
+        }
+      }
+    },
     "trip.edit.times" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8242,13 +8752,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pair your vehicle for automatic recording when Bluetooth connects."
+            "value" : "Set up Shortcuts for hands-free recording, or add a vehicle for fuel estimates."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bluetooth bağlandığında otomatik kayıt için aracını eşleştir."
+            "value" : "Kısayollar ile eller serbest kayıt kur veya yakıt hesabı için araç ekle."
           }
         }
       }
@@ -8259,13 +8769,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Set up your vehicle"
+            "value" : "Finish setup"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aracınızı tanımlayın"
+            "value" : "Kurulumu tamamla"
           }
         }
       }
@@ -9074,13 +9584,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This week %@"
+            "value" : "%@ · %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu hafta %@"
+            "value" : "%@ · %@"
           }
         }
       }

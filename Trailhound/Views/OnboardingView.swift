@@ -4,7 +4,6 @@ private enum OnboardingStep: Int, CaseIterable {
     case welcome
     case location
     case shortcuts
-    case vehicle
 
     static var count: Int { allCases.count }
 }
@@ -12,7 +11,6 @@ private enum OnboardingStep: Int, CaseIterable {
 struct OnboardingView: View {
     @Environment(LocationService.self) private var locationService
     @Bindable private var settings = AppSettings.shared
-    @Bindable private var tabSelection = TabSelection.shared
 
     @State private var page = OnboardingStep.welcome.rawValue
     @State private var showShortcutsAutomationGuide = false
@@ -31,8 +29,6 @@ struct OnboardingView: View {
                         .tag(OnboardingStep.location.rawValue)
                     shortcutsPage
                         .tag(OnboardingStep.shortcuts.rawValue)
-                    vehiclePage
-                        .tag(OnboardingStep.vehicle.rawValue)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(TrailhoundMotion.gentle, value: page)
@@ -60,12 +56,20 @@ struct OnboardingView: View {
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 onboardingFeatureRow(
-                    icon: "antenna.radiowaves.left.and.right",
-                    text: L10n.string("onboarding.features.auto")
-                )
-                onboardingFeatureRow(
                     icon: "point.topleft.down.curvedto.point.bottomright.up",
                     text: L10n.string("onboarding.features.routes")
+                )
+                onboardingFeatureRow(
+                    icon: "chart.bar.fill",
+                    text: L10n.string("onboarding.features.insights")
+                )
+                onboardingFeatureRow(
+                    icon: "record.circle",
+                    text: L10n.string("onboarding.features.recording")
+                )
+                onboardingFeatureRow(
+                    icon: "bolt.horizontal.circle.fill",
+                    text: L10n.string("onboarding.features.auto")
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,7 +93,7 @@ struct OnboardingView: View {
 
     private var shortcutsPage: some View {
         onboardingHeroPage(
-            icon: "bolt.horizontal.circle.fill",
+            icon: "car.side.fill",
             title: L10n.string("onboarding.shortcuts.title"),
             message: L10n.string("onboarding.shortcuts.message")
         ) {
@@ -105,33 +109,6 @@ struct OnboardingView: View {
                 .font(.body.weight(.semibold))
             }
             .foregroundStyle(TrailhoundBrandColors.brandBottom)
-            .padding(.top, 4)
-        }
-    }
-
-    private var vehiclePage: some View {
-        onboardingHeroPage(
-            icon: "link.circle",
-            title: L10n.string("onboarding.vehicle.title"),
-            message: L10n.string("onboarding.vehicle.message")
-        ) {
-            VStack(spacing: 12) {
-                Button(action: defineVehicleAndFinish) {
-                    Text(L10n.string("onboarding.vehicle.define"))
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(TrailhoundBrandColors.brandBottom)
-
-                Button(action: skipVehicleSetup) {
-                    Text(L10n.string("onboarding.vehicle.skip"))
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                }
-                .foregroundStyle(.secondary)
-            }
             .padding(.top, 4)
         }
     }
@@ -237,11 +214,17 @@ struct OnboardingView: View {
 
             Spacer()
 
-            if page < OnboardingStep.vehicle.rawValue {
+            if page < OnboardingStep.shortcuts.rawValue {
                 Button(L10n.string("onboarding.next")) {
                     withAnimation(TrailhoundMotion.gentle) {
                         page += 1
                     }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(TrailhoundBrandColors.brandBottom)
+            } else {
+                Button(L10n.string("onboarding.finish")) {
+                    finishOnboarding()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(TrailhoundBrandColors.brandBottom)
@@ -257,15 +240,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func defineVehicleAndFinish() {
-        settings.completeOnboarding()
-        TrailhoundHaptics.selection()
-        DispatchQueue.main.async {
-            tabSelection.openPairing()
-        }
-    }
-
-    private func skipVehicleSetup() {
+    private func finishOnboarding() {
         settings.completeOnboarding()
         settings.skipCarSetup()
         TrailhoundHaptics.selection()

@@ -24,9 +24,14 @@ struct PlacePickerView: View {
   @State private var isResolvingAddress = false
   @State private var nearbyPlaces: [NearbyPlaceOption] = []
   @State private var isLoadingNearby = false
+  @State private var searchQuery = ""
+  @State private var searchResults: [NearbyPlaceOption] = []
+  @State private var isSearchingPlaces = false
   @State private var geocodeTask: Task<Void, Never>?
   @State private var nearbyTask: Task<Void, Never>?
+  @State private var searchTask: Task<Void, Never>?
   @FocusState private var isNameFocused: Bool
+  @FocusState private var isSearchFocused: Bool
 
   private let geocodingService = GeocodingService()
 
@@ -34,6 +39,47 @@ struct PlacePickerView: View {
 
   private var selectedCoordinate: CLLocationCoordinate2D {
     CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+  }
+
+  private var trimmedSearchQuery: String {
+    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  private var isPlaceSearchActive: Bool {
+    trimmedSearchQuery.count >= 2
+  }
+
+  private var showsInlineSearchResults: Bool {
+    isPlaceSearchActive || isSearchingPlaces
+  }
+
+  private var showsNearbySection: Bool {
+    !isPlaceSearchActive && (isLoadingNearby || !nearbyPlaces.isEmpty)
+  }
+
+  private var locationSectionRowKinds: [LocationSectionRowKind] {
+    var rows: [LocationSectionRowKind] = [.search]
+    rows.append(.map)
+    rows.append(.selected)
+    if let suggestedName, name != suggestedName {
+      rows.append(.useAddressAsName)
+    }
+    rows.append(.useCurrentLocation)
+    return rows
+  }
+
+  private enum LocationSectionRowKind {
+    case search
+    case map
+    case selected
+    case useAddressAsName
+    case useCurrentLocation
+  }
+
+  private func locationSectionPosition(_ kind: LocationSectionRowKind) -> GlassRowPosition {
+    let rows = locationSectionRowKinds
+    guard let index = rows.firstIndex(of: kind) else { return .middle }
+    return GlassRowPosition.index(index, in: rows.count)
   }
 
   private var suggestions: [(name: String, coordinate: CLLocationCoordinate2D, visits: Int)] {
@@ -91,27 +137,41 @@ struct PlacePickerView: View {
         Text(L10n.placePrivacyZoneHint)
       }
 
-      Section(L10n.string("place.location.section")) {
+      Section {
+        VStack(alignment: .leading, spacing: 12) {
+          locationSearchField
+
+          if showsInlineSearchResults {
+            inlineSearchResults
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassRow(position: locationSectionPosition(.search))
+
         mapPicker
-          .glassRow(position: .first)
+          .glassRow(position: locationSectionPosition(.map))
 
         selectedLocationCard
-          .glassRow(position: .middle)
+          .glassRow(position: locationSectionPosition(.selected))
 
         if let suggestedName, name != suggestedName {
           Button(L10n.placePickerUseAddressAsName) {
             name = suggestedName
           }
-          .glassRow(position: .middle)
+          .glassRow(position: locationSectionPosition(.useAddressAsName))
         }
 
         Button(L10n.placePickerUseCurrentLocation) {
           useCurrentLocation()
         }
-        .glassRow(position: .last)
+        .glassRow(position: locationSectionPosition(.useCurrentLocation))
+      } header: {
+        Text(L10n.string("place.location.section"))
+      } footer: {
+        Text(L10n.placePickerSearchHint)
       }
 
-      if isLoadingNearby || !nearbyPlaces.isEmpty {
+      if showsNearbySection {
         Section(L10n.placePickerNearbySection) {
           if isLoadingNearby {
             HStack {
@@ -125,28 +185,9 @@ struct PlacePickerView: View {
 
           ForEach(Array(nearbyPlaces.enumerated()), id: \.element.id) { index, place in
             Button {
-              selectNearbyPlace(place)
+              selectPlaceOption(place)
             } label: {
-              HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "mappin.and.ellipse")
-                  .foregroundStyle(.blue)
-                  .padding(.top, 2)
-                VStack(alignment: .leading, spacing: 2) {
-                  Text(place.name)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.primary)
-                  if let subtitle = place.subtitle {
-                    Text(subtitle)
-                      .font(.caption)
-                      .foregroundStyle(.secondary)
-                  }
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                  .font(.caption.weight(.semibold))
-                  .foregroundStyle(.tertiary)
-              }
-              .contentShape(Rectangle())
+              placeResultRow(place)
             }
             .buttonStyle(.plain)
             .glassRow(position: nearbyRowPosition(placeIndex: index))
@@ -175,7 +216,97 @@ struct PlacePickerView: View {
     .onDisappear {
       geocodeTask?.cancel()
       nearbyTask?.cancel()
+      searchTask?.cancel()
     }
+    .onChange(of: searchQuery) { _, _ in
+      schedulePlaceSearch()
+    }
+  }
+
+  private var locationSearchField: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "magnifyingglass")
+        .font(.body.weight(.medium))
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+
+      TextField(L10n.placePickerSearchPlaceholder, text: $searchQuery)
+        .font(.body)
+        .focused($isSearchFocused)
+        .textInputAutocapitalization(.words)
+        .autocorrectionDisabled()
+        .submitLabel(.search)
+        .onSubmit { schedulePlaceSearch() }
+
+      if !searchQuery.isEmpty {
+        Button {
+          clearPlaceSearch()
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .font(.body)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.placePickerSearchClear)
+      }
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .glassField(cornerRadius: 12)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(L10n.placePickerSearchPlaceholder)
+  }
+
+  @ViewBuilder
+  private var inlineSearchResults: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      if isSearchingPlaces {
+        HStack(spacing: 10) {
+          ProgressView()
+          Text(L10n.placePickerSearchLoading)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+      } else if searchResults.isEmpty {
+        Text(L10n.placePickerSearchEmpty)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 8)
+      } else {
+        ScrollView {
+          VStack(spacing: 0) {
+            ForEach(searchResults) { place in
+              Button {
+                selectPlaceOption(place)
+              } label: {
+                placeResultRow(place)
+                  .padding(.vertical, 10)
+              }
+              .buttonStyle(.plain)
+
+              if place.id != searchResults.last?.id {
+                Divider()
+              }
+            }
+          }
+        }
+        .frame(maxHeight: 280)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private var nearbyRowCount: Int {
+    (isLoadingNearby ? 1 : 0) + nearbyPlaces.count
+  }
+
+  private func nearbyRowPosition(placeIndex: Int) -> GlassRowPosition {
+    let offset = isLoadingNearby ? 1 : 0
+    return GlassRowPosition.index(placeIndex + offset, in: nearbyRowCount)
   }
 
   private var mapPicker: some View {
@@ -234,13 +365,38 @@ struct PlacePickerView: View {
     .allowsHitTesting(false)
   }
 
-  private var nearbyRowCount: Int {
-    (isLoadingNearby ? 1 : 0) + nearbyPlaces.count
+  private func placeResultRow(_ place: NearbyPlaceOption) -> some View {
+    HStack(alignment: .top, spacing: 10) {
+      Image(systemName: "mappin.and.ellipse")
+        .foregroundStyle(.blue)
+        .padding(.top, 2)
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(place.name)
+          .font(.body.weight(.medium))
+          .foregroundStyle(.primary)
+        if let subtitle = place.subtitle {
+          Text(subtitle)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+      Spacer(minLength: 0)
+      Image(systemName: "chevron.right")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.tertiary)
+        .accessibilityHidden(true)
+    }
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(placeOptionAccessibilityLabel(place))
   }
 
-  private func nearbyRowPosition(placeIndex: Int) -> GlassRowPosition {
-    let offset = isLoadingNearby ? 1 : 0
-    return GlassRowPosition.index(placeIndex + offset, in: nearbyRowCount)
+  private func placeOptionAccessibilityLabel(_ place: NearbyPlaceOption) -> String {
+    if let subtitle = place.subtitle, !subtitle.isEmpty {
+      return "\(place.name), \(subtitle)"
+    }
+    return place.name
   }
 
   private var selectedLocationCard: some View {
@@ -326,7 +482,9 @@ struct PlacePickerView: View {
 
   private func refreshLocationDetails() {
     scheduleAddressLookup()
-    loadNearbyPlaces()
+    if !isPlaceSearchActive {
+      loadNearbyPlaces()
+    }
   }
 
   private func scheduleAddressLookup() {
@@ -369,18 +527,63 @@ struct PlacePickerView: View {
       guard !Task.isCancelled else { return }
 
       await MainActor.run {
+        guard !isPlaceSearchActive else { return }
         nearbyPlaces = results
         isLoadingNearby = false
       }
     }
   }
 
-  private func selectNearbyPlace(_ place: NearbyPlaceOption) {
+  private func schedulePlaceSearch() {
+    searchTask?.cancel()
+
+    let query = trimmedSearchQuery
+    guard query.count >= 2 else {
+      searchResults = []
+      isSearchingPlaces = false
+      loadNearbyPlaces()
+      return
+    }
+
+    isSearchingPlaces = true
+    let coordinate = selectedCoordinate
+
+    searchTask = Task {
+      try? await Task.sleep(for: .milliseconds(375))
+      guard !Task.isCancelled else { return }
+
+      let results = await geocodingService.searchPlaces(query: query, near: coordinate)
+      guard !Task.isCancelled else { return }
+
+      await MainActor.run {
+        guard trimmedSearchQuery == query else { return }
+        searchResults = results
+        isSearchingPlaces = false
+      }
+    }
+  }
+
+  private func clearPlaceSearch() {
+    searchQuery = ""
+    searchResults = []
+    isSearchingPlaces = false
+    searchTask?.cancel()
+    isSearchFocused = false
+    loadNearbyPlaces()
+  }
+
+  private func selectPlaceOption(_ place: NearbyPlaceOption) {
+    isSearchFocused = false
+    searchQuery = ""
+    searchResults = []
+    isSearchingPlaces = false
+    searchTask?.cancel()
+
     name = place.name
     suggestedName = place.name
     selectedAddress = place.subtitle
     moveCamera(to: place.coordinate)
-    loadNearbyPlaces()
+    refreshLocationDetails()
   }
 
   private func applySuggestion(_ suggestion: (name: String, coordinate: CLLocationCoordinate2D, visits: Int)) {
@@ -392,6 +595,7 @@ struct PlacePickerView: View {
 
   private func dismissNameKeyboard() {
     isNameFocused = false
+    isSearchFocused = false
     KeyboardDismiss.dismiss()
   }
 

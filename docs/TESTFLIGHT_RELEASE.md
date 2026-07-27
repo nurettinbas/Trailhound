@@ -35,17 +35,24 @@
 
 Bu maddeler `DeviceTestChecklist` enum'unda kod olarak da korunur (`DeviceTestChecklistTests`).
 
-- [ ] **Bluetooth auto-start** — Eşleşmiş araca Bluetooth ile bağlanınca otomatik kayıt başlar (müzik çalmadan)
-- [ ] **Bluetooth auto-stop** — Araçtan ayrılınca / Bluetooth kesilince otomatik kayıt durur
-- [ ] **Unpaired device guard** — Eşleşmemiş cihazlara (AirPods vb.) bağlanınca kayıt **başlamamalı**
-- [ ] **Manuel kayıt** — Uygulama içinden başlat / duraklat / bitir akışı sorunsuz
-- [ ] **Widget / kısayol** — Widget veya Siri kısayolu ile kayıt başlatma / durdurma
-- [ ] **Export** — JSON, CSV, GPX veya KML dışa aktarma çalışır
+- [ ] **30+ dk gerçek sürüş** — km ve süre akıyor
+- [ ] **Arka plan** — uygulamayı arka plana at, 5 dk bekle: kayıt devam ediyor
+- [ ] **Kısayollar auto-start** — araca bağlanınca (Bluetooth / CarPlay / Wi‑Fi otomasyonu) kayıt başlar
+- [ ] **Kısayollar auto-stop** — araçtan ayrılınca kayıt durur
+- [ ] **Orphan recovery** — uygulamayı öldür → aç → orphan banner / recovery
+- [ ] **Harita** — detay haritada rota gerçekçi (denizden geçmiyor)
 
-## Bluetooth otomatik başlatma
+Ek smoke (opsiyonel):
 
-- Auto-start yalnızca eşleşmiş aracın Bluetooth ses rotasına bağlıdır (`AVAudioSessionPortDescription.uid` eşleşmesi).
-- Ek entitlement gerekmez; yalnızca konum ve arka plan konum modu kullanılır.
+- [ ] **Manuel kayıt** — uygulama içinden başlat / duraklat / bitir
+- [ ] **Widget / Siri** — widget veya Siri kısayolu ile kayıt başlatma / durdurma
+- [ ] **Export** — JSON, CSV, GPX veya KML dışa aktarma
+
+## Kısayollar ile otomatik kayıt
+
+- Otomatik başlat/bitir **Shortcuts Personal Automations** ile kurulur (Pairing sekmesindeki rehber).
+- Uygulama içi Bluetooth ses-rotası eşleştirmesi kaldırıldı; ekstra Bluetooth entitlement gerekmez.
+- Konum + arka plan konum modu yalnızca aktif kayıt için kullanılır.
 
 ## Release sırası (özet)
 

@@ -18,7 +18,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func applicationDidBecomeActive(_ application: UIApplication) {
         Task { @MainActor in
             AppServices.bootstrapRecordingIfNeeded()
-            AppServices.runtime.refreshVehicleConnections()
         }
     }
 
