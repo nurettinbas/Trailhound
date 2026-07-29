@@ -18,113 +18,32 @@ struct StatsView: View {
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
     @State private var customEnd = Date()
     @State private var animatedProgress: Double = 0
+    @State private var snapshot: StatsDisplaySnapshot?
+    @State private var snapshotRefreshTask: Task<Void, Never>?
     @Namespace private var periodChipNamespace
+
+    private var snap: StatsDisplaySnapshot {
+        snapshot ?? .empty
+    }
 
     private var completedTrips: [Trip] {
         trips.filter { $0.endedAt != nil }
     }
 
-    private var selectedInterval: DateInterval {
-        StatsViewModel.interval(
-            for: selectedPeriod,
+    private var snapshotInputs: StatsSnapshotInputs {
+        StatsSnapshotInputs(
+            completedCount: completedTrips.count,
+            latestEndedAt: completedTrips.compactMap(\.endedAt).max(),
+            liveTripsCount: trips.count,
+            categoryCount: categories.count,
+            vehicleCount: vehicles.count,
+            period: selectedPeriod,
             customStart: customStart,
             customEnd: customEnd,
-            selectedMonth: selectedMonth
+            selectedMonth: selectedMonth,
+            selectedCategoryID: selectedCategoryID,
+            selectedVehicleID: selectedVehicleID
         )
-    }
-
-    private var previousInterval: DateInterval {
-        if selectedPeriod == .month {
-            return StatsViewModel.previousMonthInterval(containing: selectedMonth)
-        }
-        return StatsViewModel.previousInterval(for: selectedInterval)
-    }
-
-    private var periodTrips: [Trip] {
-        StatsViewModel.trips(in: selectedInterval, from: completedTrips)
-    }
-
-    private var previousTrips: [Trip] {
-        StatsViewModel.trips(in: previousInterval, from: completedTrips)
-    }
-
-    private var stats: TripStats {
-        StatsViewModel.stats(for: periodTrips, categoryID: selectedCategoryID, vehicleID: selectedVehicleID)
-    }
-
-    private var previousStats: TripStats {
-        StatsViewModel.stats(for: previousTrips, categoryID: selectedCategoryID, vehicleID: selectedVehicleID)
-    }
-
-    private var distanceTrendText: String? {
-        StatsViewModel.trendText(
-            current: stats.totalDistanceMeters,
-            previous: previousStats.totalDistanceMeters
-        )
-    }
-
-    private var tripCountTrendText: String? {
-        StatsViewModel.trendText(
-            current: Double(stats.tripCount),
-            previous: Double(previousStats.tripCount)
-        )
-    }
-
-    private var durationTrendText: String? {
-        StatsViewModel.trendText(
-            current: stats.totalDuration,
-            previous: previousStats.totalDuration
-        )
-    }
-
-    private var averageSpeedTrendText: String? {
-        StatsViewModel.trendText(
-            current: stats.averageSpeedKmh,
-            previous: previousStats.averageSpeedKmh
-        )
-    }
-
-    private var maxSpeedTrendText: String? {
-        StatsViewModel.trendText(
-            current: stats.maxSpeedKmh,
-            previous: previousStats.maxSpeedKmh
-        )
-    }
-
-    private var dailyChartData: [DailyDistance] {
-        StatsViewModel.dailyDistances(in: selectedInterval, from: completedTrips)
-    }
-
-    private var dailyDurationChartData: [DailyDuration] {
-        StatsViewModel.dailyDurations(in: selectedInterval, from: completedTrips)
-    }
-
-    private var dailyAverageSpeedChartData: [DailyAverageSpeed] {
-        StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: completedTrips)
-    }
-
-    private var dailyMaxSpeedChartData: [DailyMaxSpeed] {
-        StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: completedTrips)
-    }
-
-    private var categoryChartData: [CategoryDistance] {
-        StatsViewModel.categoryBreakdown(for: periodTrips, categories: categories)
-    }
-
-    private var categoryDurationChartData: [CategoryDuration] {
-        StatsViewModel.categoryDurationBreakdown(for: periodTrips, categories: categories)
-    }
-
-    private var vehicleChartData: [VehicleDistance] {
-        StatsViewModel.vehicleBreakdown(for: periodTrips, vehicles: vehicles)
-    }
-
-    private var vehicleDurationChartData: [VehicleDuration] {
-        StatsViewModel.vehicleDurationBreakdown(for: periodTrips, vehicles: vehicles)
-    }
-
-    private var showsVehicleBreakdownCharts: Bool {
-        !vehicleChartData.isEmpty && (vehicles.count > 1 || vehicleChartData.count > 1)
     }
 
     private var monthInterval: DateInterval {
@@ -181,86 +100,117 @@ struct StatsView: View {
             }
 
             Section(L10n.string("stats.summary.section")) {
-                trendRow(L10n.string("stats.trips"), value: "\(stats.tripCount)", trend: tripCountTrendText)
+                trendRow(L10n.string("stats.trips"), value: "\(snap.stats.tripCount)", trend: snap.tripCountTrendText())
                     .glassRow(position: .first)
-                trendRow(L10n.string("stats.total_distance"), value: stats.totalDistanceText, trend: distanceTrendText)
+                trendRow(L10n.string("stats.total_distance"), value: snap.stats.totalDistanceText, trend: snap.distanceTrendText())
                     .glassRow(position: .middle)
-                trendRow(L10n.string("stats.total_duration"), value: stats.totalDurationText, trend: durationTrendText)
+                trendRow(L10n.string("stats.total_duration"), value: snap.stats.totalDurationText, trend: snap.durationTrendText())
                     .glassRow(position: .middle)
-                statRow(L10n.string("stats.average_duration"), value: stats.averageDurationText)
+                statRow(L10n.string("stats.average_duration"), value: snap.stats.averageDurationText)
                     .glassRow(position: .middle)
-                trendRow(L10n.string("stats.average_speed"), value: stats.averageSpeedText, trend: averageSpeedTrendText)
+                trendRow(L10n.string("stats.average_speed"), value: snap.stats.averageSpeedText, trend: snap.averageSpeedTrendText())
                     .glassRow(position: .middle)
-                trendRow(L10n.string("stats.max_speed"), value: stats.maxSpeedText, trend: maxSpeedTrendText)
+                trendRow(L10n.string("stats.max_speed"), value: snap.stats.maxSpeedText, trend: snap.maxSpeedTrendText())
                     .glassRow(position: .middle)
-                statRow(L10n.estimatedFuel, value: stats.fuelCostText)
+                statRow(L10n.estimatedFuel, value: snap.stats.fuelCostText)
                     .glassRow(position: .middle)
-                statRow(L10n.string("stats.night_driving"), value: stats.nightDrivingText)
+                statRow(L10n.string("stats.night_driving"), value: snap.stats.nightDrivingText)
                     .glassRow(position: .last)
             }
             .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
 
-            if !dailyChartData.isEmpty || !dailyDurationChartData.isEmpty
-                || !dailyAverageSpeedChartData.isEmpty || !dailyMaxSpeedChartData.isEmpty {
+            if snap.hasAnyDailyChart {
                 Section(L10n.string("stats.chart.daily_section")) {
-                    VStack(spacing: StatsChartPairTokens.cardSpacing) {
-                        if !dailyChartData.isEmpty {
-                            dailyDistanceChart
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
+                    if !snap.dailyDistance.isEmpty {
+                        StatsDeferredChart(
+                            title: L10n.string("stats.chart.weekly_distance"),
+                            chartHeight: 200,
+                            reduceMotion: reduceMotion
+                        ) {
+                            dailyDistanceChartBody(snap.dailyDistance)
                         }
-                        if !dailyDurationChartData.isEmpty {
-                            dailyDurationChart
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
-                        }
-                        if !dailyAverageSpeedChartData.isEmpty {
-                            dailyAverageSpeedChart
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
-                        }
-                        if !dailyMaxSpeedChartData.isEmpty {
-                            dailyMaxSpeedChart
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
-                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
                     }
-                    .statsPairedChartsListRow()
+                    if !snap.dailyDuration.isEmpty {
+                        StatsDeferredChart(
+                            title: L10n.string("stats.chart.weekly_duration"),
+                            chartHeight: 200,
+                            reduceMotion: reduceMotion
+                        ) {
+                            dailyDurationChartBody(snap.dailyDuration)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
+                    if !snap.dailyAverageSpeed.isEmpty {
+                        StatsDeferredChart(
+                            title: L10n.string("stats.chart.daily_average_speed"),
+                            chartHeight: 200,
+                            reduceMotion: reduceMotion
+                        ) {
+                            dailyAverageSpeedChartBody(snap.dailyAverageSpeed)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
+                    if !snap.dailyMaxSpeed.isEmpty {
+                        StatsDeferredChart(
+                            title: L10n.string("stats.chart.daily_max_speed"),
+                            chartHeight: 200,
+                            reduceMotion: reduceMotion
+                        ) {
+                            dailyMaxSpeedChartBody(snap.dailyMaxSpeed)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
                 }
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
             }
 
-            if showsVehicleBreakdownCharts {
+            if snap.showsVehicleBreakdownCharts {
                 Section(L10n.string("stats.chart.vehicles_section")) {
-                    HStack(alignment: .top, spacing: StatsChartPairTokens.cardSpacing) {
-                        vehicleDistanceDonut
-                            .frame(maxWidth: .infinity)
-                            .statsPairedChartCard()
-                        if !vehicleDurationChartData.isEmpty {
-                            vehicleDurationDonut
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
-                        }
+                    StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                        vehicleDistanceDonut(data: snap.vehicleDistance)
                     }
+                    .frame(maxWidth: .infinity)
+                    .statsPairedChartCard()
                     .statsPairedChartsListRow()
+
+                    if !snap.vehicleDuration.isEmpty {
+                        StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                            vehicleDurationDonut(data: snap.vehicleDuration)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
                 }
             }
 
-            if !categoryChartData.isEmpty || !categoryDurationChartData.isEmpty {
+            if snap.hasCategoryCharts {
                 Section(L10n.string("stats.chart.categories_section")) {
-                    HStack(alignment: .top, spacing: StatsChartPairTokens.cardSpacing) {
-                        if !categoryChartData.isEmpty {
-                            categoryDistanceDonut
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
+                    if !snap.categoryDistance.isEmpty {
+                        StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                            categoryDistanceDonut(data: snap.categoryDistance)
                         }
-                        if !categoryDurationChartData.isEmpty {
-                            categoryDurationDonut
-                                .frame(maxWidth: .infinity)
-                                .statsPairedChartCard()
-                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
                     }
-                    .statsPairedChartsListRow()
+                    if !snap.categoryDuration.isEmpty {
+                        StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                            categoryDurationDonut(data: snap.categoryDuration)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
                 }
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             }
@@ -272,6 +222,10 @@ struct StatsView: View {
         .onAppear {
             normalizeSelectedMonth()
             updateAnimatedProgress(animated: false)
+            scheduleSnapshotRefresh()
+        }
+        .onChange(of: snapshotInputs) { _, _ in
+            scheduleSnapshotRefresh()
         }
         .onChange(of: selectedPeriod) { _, newPeriod in
             if newPeriod == .month {
@@ -283,6 +237,40 @@ struct StatsView: View {
         }
         .onChange(of: monthDistanceMeters) { _, _ in
             updateAnimatedProgress(animated: true)
+        }
+        .onDisappear {
+            snapshotRefreshTask?.cancel()
+        }
+    }
+
+    private func scheduleSnapshotRefresh() {
+        snapshotRefreshTask?.cancel()
+        let completed = completedTrips
+        let categoriesCopy = categories
+        let vehiclesCopy = vehicles
+        let period = selectedPeriod
+        let start = customStart
+        let end = customEnd
+        let month = selectedMonth
+        let categoryID = selectedCategoryID
+        let vehicleID = selectedVehicleID
+
+        snapshotRefreshTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            let built = StatsDisplaySnapshotBuilder.build(
+                completedTrips: completed,
+                categories: categoriesCopy,
+                vehicles: vehiclesCopy,
+                selectedPeriod: period,
+                customStart: start,
+                customEnd: end,
+                selectedMonth: month,
+                selectedCategoryID: categoryID,
+                selectedVehicleID: vehicleID
+            )
+            guard !Task.isCancelled else { return }
+            snapshot = built
         }
     }
 
@@ -567,10 +555,10 @@ struct StatsView: View {
 
     private var dailyChartDayCount: Int {
         max(
-            dailyChartData.count,
-            dailyDurationChartData.count,
-            dailyAverageSpeedChartData.count,
-            dailyMaxSpeedChartData.count,
+            snap.dailyDistance.count,
+            snap.dailyDuration.count,
+            snap.dailyAverageSpeed.count,
+            snap.dailyMaxSpeed.count,
             1
         )
     }
@@ -618,84 +606,60 @@ struct StatsView: View {
         }
     }
 
-    private var dailyDistanceChart: some View {
+    private func dailyDistanceChartBody(_ dailyChartData: [DailyDistance]) -> some View {
         let days = dailyChartData.map(\.day)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.weekly_distance"))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-            Chart(dailyChartData) { item in
-                BarMark(
-                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
-                    y: .value(L10n.string("stats.chart.distance_km"), item.distanceKilometers)
-                )
-                .foregroundStyle(TrailhoundBrandColors.brandBottom.gradient)
-            }
-            .chartXAxis { dailyChartXAxis(days: days) }
-            .chartYAxisLabel(L10n.string("stats.chart.distance_km"))
-            .frame(height: 200)
+        return Chart(dailyChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.distance_km"), item.distanceKilometers)
+            )
+            .foregroundStyle(TrailhoundBrandColors.brandBottom.gradient)
         }
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.distance_km"))
+        .frame(height: 200)
     }
 
-    private var dailyDurationChart: some View {
+    private func dailyDurationChartBody(_ dailyDurationChartData: [DailyDuration]) -> some View {
         let days = dailyDurationChartData.map(\.day)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.weekly_duration"))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-            Chart(dailyDurationChartData) { item in
-                BarMark(
-                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
-                    y: .value(L10n.string("stats.chart.duration_hours"), item.durationHours)
-                )
-                .foregroundStyle(statsDurationBarFill)
-            }
-            .chartXAxis { dailyChartXAxis(days: days) }
-            .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
-            .frame(height: 200)
+        return Chart(dailyDurationChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.duration_hours"), item.durationHours)
+            )
+            .foregroundStyle(statsDurationBarFill)
         }
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
+        .frame(height: 200)
     }
 
-    private var dailyAverageSpeedChart: some View {
+    private func dailyAverageSpeedChartBody(_ dailyAverageSpeedChartData: [DailyAverageSpeed]) -> some View {
         let days = dailyAverageSpeedChartData.map(\.day)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.daily_average_speed"))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-            Chart(dailyAverageSpeedChartData) { item in
-                BarMark(
-                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
-                    y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
-                )
-                .foregroundStyle(statsAverageSpeedBarFill)
-            }
-            .chartXAxis { dailyChartXAxis(days: days) }
-            .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
-            .frame(height: 200)
+        return Chart(dailyAverageSpeedChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
+            )
+            .foregroundStyle(statsAverageSpeedBarFill)
         }
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .frame(height: 200)
     }
 
-    private var dailyMaxSpeedChart: some View {
+    private func dailyMaxSpeedChartBody(_ dailyMaxSpeedChartData: [DailyMaxSpeed]) -> some View {
         let days = dailyMaxSpeedChartData.map(\.day)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.daily_max_speed"))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-            Chart(dailyMaxSpeedChartData) { item in
-                BarMark(
-                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
-                    y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
-                )
-                .foregroundStyle(statsMaxSpeedBarFill)
-            }
-            .chartXAxis { dailyChartXAxis(days: days) }
-            .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
-            .frame(height: 200)
+        return Chart(dailyMaxSpeedChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
+            )
+            .foregroundStyle(statsMaxSpeedBarFill)
         }
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .frame(height: 200)
     }
 
     private var statsDurationBarFill: LinearGradient {
@@ -752,7 +716,7 @@ struct StatsView: View {
         StatsChartSliceColors.scale(for: names, durationStyle: durationStyle)
     }
 
-    private var vehicleDistanceDonut: some View {
+    private func vehicleDistanceDonut(data vehicleChartData: [VehicleDistance]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.string("stats.chart.vehicles"))
                 .font(.caption.weight(.semibold))
@@ -783,7 +747,7 @@ struct StatsView: View {
         }
     }
 
-    private var vehicleDurationDonut: some View {
+    private func vehicleDurationDonut(data vehicleDurationChartData: [VehicleDuration]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.string("stats.chart.vehicles_duration"))
                 .font(.caption.weight(.semibold))
@@ -814,7 +778,7 @@ struct StatsView: View {
         }
     }
 
-    private var categoryDistanceDonut: some View {
+    private func categoryDistanceDonut(data categoryChartData: [CategoryDistance]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.string("stats.chart.categories"))
                 .font(.caption.weight(.semibold))
@@ -845,7 +809,7 @@ struct StatsView: View {
         }
     }
 
-    private var categoryDurationDonut: some View {
+    private func categoryDurationDonut(data categoryDurationChartData: [CategoryDuration]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.string("stats.chart.categories_duration"))
                 .font(.caption.weight(.semibold))
@@ -875,6 +839,20 @@ struct StatsView: View {
             }
         }
     }
+}
+
+private struct StatsSnapshotInputs: Equatable {
+    let completedCount: Int
+    let latestEndedAt: Date?
+    let liveTripsCount: Int
+    let categoryCount: Int
+    let vehicleCount: Int
+    let period: StatsPeriod
+    let customStart: Date
+    let customEnd: Date
+    let selectedMonth: Date
+    let selectedCategoryID: String?
+    let selectedVehicleID: UUID?
 }
 
 /// Distinct slice hues for donut charts; same label → same color when it appears in the same domain.

@@ -22,6 +22,7 @@
 		9F1147C812224C1AA80A7163 /* AsyncTestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0076E65CD2A441CE890E4B91 /* AsyncTestHelpers.swift */; };
 		92CA86DAB998453D9051108F /* DeviceTestChecklist.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0684CD595B4A0DA831C6E9 /* DeviceTestChecklist.swift */; };
 		379524599DB84495958CDB19 /* StatsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F83930540F4D4EB4C6DA6F /* StatsViewModelTests.swift */; };
+		A1STATSDISPSNAPTEST00001 /* StatsDisplaySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAPTEST00001 /* StatsDisplaySnapshotTests.swift */; };
 		7D744EC44CE64B238C4888BE /* TripDetailRevealPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9793365E7B24D1096F2499E /* TripDetailRevealPolicyTests.swift */; };
 		5E00B35C64AC46F9AC49551C /* TripDetailViewModelRevealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6881D86C3D4F9DA0E285BC /* TripDetailViewModelRevealTests.swift */; };
 		24EC7354446E49B2A15FBB08 /* TripListViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74389F00F6A497AABC4ED36 /* TripListViewModelTests.swift */; };
@@ -59,6 +60,8 @@
 		A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSSTYLE000000000001 /* GlassStyle.swift */; };
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
+		A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */; };
+		A1STATSDEFCHART00000001 /* StatsDeferredChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */; };
 		A1TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */; };
 		A1UITESTSUPPORT00000001 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2UITESTSUPPORT00000001 /* UITestSupport.swift */; };
 		A1TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */; };
@@ -197,6 +200,7 @@
 		0076E65CD2A441CE890E4B91 /* AsyncTestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Support/AsyncTestHelpers.swift; sourceTree = SOURCE_ROOT; };
 		AB0684CD595B4A0DA831C6E9 /* DeviceTestChecklist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Support/DeviceTestChecklist.swift; sourceTree = SOURCE_ROOT; };
 		A9F83930540F4D4EB4C6DA6F /* StatsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
+		A2STATSDISPSNAPTEST00001 /* StatsDisplaySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsDisplaySnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		B9793365E7B24D1096F2499E /* TripDetailRevealPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripDetailRevealPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		DD6881D86C3D4F9DA0E285BC /* TripDetailViewModelRevealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripDetailViewModelRevealTests.swift; sourceTree = SOURCE_ROOT; };
 		A74389F00F6A497AABC4ED36 /* TripListViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripListViewModelTests.swift; sourceTree = SOURCE_ROOT; };
@@ -239,6 +243,8 @@
 		A2GLASSSTYLE000000000001 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
+		A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDisplaySnapshot.swift; sourceTree = "<group>"; };
+		A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDeferredChart.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailRevealPolicy.swift; sourceTree = "<group>"; };
 		A2UITESTSUPPORT00000001 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundSounds.swift; sourceTree = "<group>"; };
@@ -470,6 +476,7 @@
 			isa = PBXGroup;
 			children = (
 				D171349C59CE45DEA7298678 /* StatsViewModel.swift */,
+				A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */,
 				A20000000000000000000011 /* TripListViewModel.swift */,
 				A20000000000000000000012 /* TripDetailViewModel.swift */,
 			);
@@ -493,6 +500,7 @@
 			isa = PBXGroup;
 			children = (
 				809405DA3B0A4D33AFE11517 /* StatsView.swift */,
+				A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */,
 				89C5F75B18D74EB4B35E48C0 /* PlacePickerView.swift */,
 				1F8346A303B84C5089017287 /* AppLockView.swift */,
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
@@ -771,6 +779,7 @@
 				9F1147C812224C1AA80A7163 /* AsyncTestHelpers.swift in Sources */,
 				92CA86DAB998453D9051108F /* DeviceTestChecklist.swift in Sources */,
 				379524599DB84495958CDB19 /* StatsViewModelTests.swift in Sources */,
+				A1STATSDISPSNAPTEST00001 /* StatsDisplaySnapshotTests.swift in Sources */,
 				7D744EC44CE64B238C4888BE /* TripDetailRevealPolicyTests.swift in Sources */,
 				5E00B35C64AC46F9AC49551C /* TripDetailViewModelRevealTests.swift in Sources */,
 				24EC7354446E49B2A15FBB08 /* TripListViewModelTests.swift in Sources */,
@@ -813,6 +822,8 @@
 				A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */,
 				A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
+				A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */,
+				A1STATSDEFCHART00000001 /* StatsDeferredChart.swift in Sources */,
 				A1TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift in Sources */,
 				A1UITESTSUPPORT00000001 /* UITestSupport.swift in Sources */,
 				A1TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift in Sources */,

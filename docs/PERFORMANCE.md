@@ -42,9 +42,16 @@ Reduce Motion always uses instant reveal.
 
 - Stats, Pairing, Settings, and Dev Log views mount only while their tab is selected (Trips stays mounted for the recording card).
 
+## Stats tab
+
+- Chart aggregations build into a `StatsDisplaySnapshot` on filter/trip changes (after `Task.yield`), not on every scroll frame.
+- Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable).
+- No SwiftData schema changes for stats performance — read-path only.
+
 ## Profiling checklist
 
 1. Instruments → Time Profiler + Core Animation on device.
 2. Pairing → edit vehicle name with keyboard — should feel smooth vs list screens.
 3. Start recording, scroll trip list, switch tabs — CPU should drop on non-Trips tabs.
 4. Open a long trip detail — should not hitch for multi-second map reveal.
+5. Stats tab with many trips — scroll through charts; rows below the fold should appear after placeholders, without blocking the summary header.
