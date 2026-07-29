@@ -16,6 +16,7 @@ struct TripListView: View {
 
     @State private var selectedLabel: String?
     @State private var selectedCategoryID: String?
+    @State private var selectedDateSection: TripDateSection?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
     @Bindable private var tabSelection = TabSelection.shared
@@ -39,16 +40,27 @@ struct TripListView: View {
     @State private var showNotificationsList = false
     @State private var scrollToTopToken = 0
     @State private var scrollToTopRequest: TripListScrollToTopRequest?
+    @State private var topListAnchorMinY: CGFloat = .greatestFiniteMagnitude
 
     private var hasActiveFilters: Bool {
-        selectedLabel != nil || selectedCategoryID != nil || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        selectedLabel != nil
+            || selectedCategoryID != nil
+            || selectedDateSection != nil
+            || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var allCompletedTrips: [Trip] {
+        trips.filter { $0.endedAt != nil }
     }
 
     private var completedTrips: [Trip] {
-        trips.filter { trip in
-            guard trip.endedAt != nil else { return false }
+        allCompletedTrips.filter { trip in
             if let selectedLabel, trip.label != selectedLabel { return false }
             if let selectedCategoryID, trip.categoryID != selectedCategoryID { return false }
+            if let selectedDateSection,
+               TripDateGrouping.section(for: trip.startedAt) != selectedDateSection {
+                return false
+            }
             if !TripListViewModel.matchesSearch(
                 trip,
                 searchText: searchText,
@@ -88,6 +100,18 @@ struct TripListView: View {
         }
     }
 
+    private var showsActiveRecordingNavAffordance: Bool {
+        guard recordingService.state.isActiveSession,
+              endCredits == nil,
+              recordingService.activeTripID != nil
+        else { return false }
+
+        if creditsCardAnchor.width > 0, creditsCardAnchor.minY < 110 {
+            return true
+        }
+        return topListAnchorMinY < 110
+    }
+
     var body: some View {
         ScrollViewReader { scrollProxy in
             tripList(scrollProxy: scrollProxy)
@@ -101,8 +125,16 @@ struct TripListView: View {
                 LocationPermissionBanner()
                     .id(TripListScrollTarget.top)
                     .background {
-                        TripListScrollToTopInstaller(request: scrollToTopRequest)
-                            .frame(width: 0, height: 0)
+                        ZStack {
+                            TripListScrollToTopInstaller(request: scrollToTopRequest)
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: TripListTopAnchorMinYKey.self,
+                                    value: geo.frame(in: .global).minY
+                                )
+                            }
+                        }
+                        .frame(width: 0, height: 0)
                     }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
@@ -197,7 +229,7 @@ struct TripListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            if !completedTrips.isEmpty {
+            if !allCompletedTrips.isEmpty {
                 Section {
                     HStack(spacing: 12) {
                         Image(systemName: "calendar")
@@ -220,24 +252,34 @@ struct TripListView: View {
                 .glassListRow()
             }
 
-            Section {
-                TripFilterChips(selectedCategoryID: $selectedCategoryID)
+            if !allCompletedTrips.isEmpty {
+                Section {
+                    TripListFiltersBar(
+                        searchText: $searchText,
+                        selectedDateSection: $selectedDateSection,
+                        selectedCategoryID: $selectedCategoryID
+                    )
                     .background {
                         GeometryReader { geo in
                             Color.clear.preference(
                                 key: CreditsListLandingYKey.self,
-                                // Land just under the filters — top of the trip list.
                                 value: geo.frame(in: .global).maxY + 6
                             )
                         }
                     }
+                }
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
 
             if completedTrips.isEmpty {
-                if !recordingService.state.isActiveSession, endCredits == nil, coldOpenTripID == nil {
+                let showFilteredEmpty = hasActiveFilters && !allCompletedTrips.isEmpty
+                let showDefaultEmpty = allCompletedTrips.isEmpty
+                    && !recordingService.state.isActiveSession
+                    && endCredits == nil
+                    && coldOpenTripID == nil
+                if showFilteredEmpty || showDefaultEmpty {
                     GlassEmptyState(
                         title: hasActiveFilters ? L10n.tripsEmptyFilteredTitle : L10n.tripsEmptyTitle,
                         systemImage: "car",
@@ -264,15 +306,16 @@ struct TripListView: View {
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: completedTrips.count)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .listSectionSpacing(12)
         .glassListChrome()
+        .onPreferenceChange(TripListTopAnchorMinYKey.self) { topListAnchorMinY = $0 }
         .onPreferenceChange(CreditsListLandingYKey.self) { listLandingMinY = $0 }
         .onPreferenceChange(CreditsCardAnchorKey.self) { newValue in
             if newValue.width > 0 {
                 creditsCardAnchor = newValue
             }
         }
-        .searchable(text: $searchText, prompt: L10n.searchTrips)
         .navigationDestination(for: UUID.self) { tripID in
             if let trip = trips.first(where: { $0.id == tripID }) {
                 TripDetailView(trip: trip)
@@ -286,7 +329,8 @@ struct TripListView: View {
         .navigationDestination(isPresented: $showNotificationsList) {
             NotificationsListView()
         }
-        .navigationTitle("Trailhound")
+        .navigationTitle(showsActiveRecordingNavAffordance ? "" : "Trailhound")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             refreshOrphans()
             notificationStore.reload()
@@ -308,6 +352,8 @@ struct TripListView: View {
                 if endCredits != nil {
                     endCredits = nil
                 }
+            } else {
+                topListAnchorMinY = .greatestFiniteMagnitude
             }
             if !wasActive, isActive, endCredits == nil {
                 beginColdOpenIfNeeded()
@@ -339,6 +385,24 @@ struct TripListView: View {
                         showMergeConfirm = true
                     }
                     .disabled(mergeSelection.count < 2)
+                } else if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
+                    Button {
+                        TrailhoundHaptics.selection()
+                        scrollToActiveTrip(scrollProxy: scrollProxy)
+                    } label: {
+                        HStack(spacing: 6) {
+                            TripListActiveRecordingNavIcon(
+                                isPaused: recordingService.state == .paused,
+                                reduceMotion: reduceMotion
+                            )
+                            Text("Trailhound")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.string("trips.active_recording.show"))
+                    .accessibilityIdentifier("trips.active_recording.nav")
                 } else if !recordingService.state.isActiveSession {
                     HStack(spacing: 8) {
                         if !vehicles.isEmpty {
@@ -626,6 +690,27 @@ struct TripListView: View {
         }
     }
 
+    private func scrollToActiveTrip(scrollProxy: ScrollViewProxy) {
+        guard let tripID = recordingService.activeTripID else {
+            requestScrollToTop()
+            return
+        }
+
+        let delays: [UInt64] = [0, 50, 140]
+        Task { @MainActor in
+            for (index, delay) in delays.enumerated() {
+                if delay > 0 {
+                    try? await Task.sleep(for: .milliseconds(delay))
+                }
+                var transaction = Transaction()
+                transaction.disablesAnimations = index < delays.count - 1 || reduceMotion
+                withTransaction(transaction) {
+                    scrollProxy.scrollTo(tripID, anchor: .top)
+                }
+            }
+        }
+    }
+
     private func startCreditsSlideIntoList() {
         guard endCredits != nil, !isCreditsSliding else { return }
 
@@ -720,6 +805,64 @@ struct TripListView: View {
         } catch {
             AppErrorPresenter.shared.present(error.localizedDescription)
         }
+    }
+}
+
+private struct TripListActiveRecordingNavIcon: View {
+    var isPaused: Bool
+    var reduceMotion: Bool
+
+    @State private var steeringTilt: Double = 0
+
+    private var accent: Color {
+        isPaused ? TrailhoundBrandColors.paused : TrailhoundBrandColors.recording
+    }
+
+    private let badgeSize: CGFloat = 30
+    /// SF Symbol steering wheel sits left of its layout box — nudge right for optical center.
+    private let glyphOpticalOffset = CGSize(width: 3, height: 0.35)
+
+    var body: some View {
+        Image(systemName: "steeringwheel")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(accent)
+            .frame(width: badgeSize, height: badgeSize)
+            .offset(glyphOpticalOffset)
+            .rotationEffect(.degrees(steeringTilt), anchor: .center)
+            .accessibilityHidden(true)
+            .task(id: wobbleTaskID) {
+                await runSteeringWobble()
+            }
+    }
+
+    private var wobbleTaskID: String {
+        "\(isPaused)-\(reduceMotion)"
+    }
+
+    @MainActor
+    private func runSteeringWobble() async {
+        steeringTilt = 0
+        guard !isPaused, !reduceMotion else { return }
+
+        while !Task.isCancelled {
+            withAnimation(.easeInOut(duration: 3.5)) {
+                steeringTilt = 55
+            }
+            try? await Task.sleep(for: .milliseconds(3500))
+            guard !Task.isCancelled else { break }
+            withAnimation(.easeInOut(duration: 3.5)) {
+                steeringTilt = -55
+            }
+            try? await Task.sleep(for: .milliseconds(3500))
+        }
+    }
+}
+
+private struct TripListTopAnchorMinYKey: PreferenceKey {
+    static var defaultValue: CGFloat { .greatestFiniteMagnitude }
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
     }
 }
 

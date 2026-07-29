@@ -246,7 +246,6 @@ struct ActiveTripView: View {
                 Text(statusText)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
-                    .contentTransition(.numericText())
             }
             .matchedGeometryEffectIfAvailable(
                 stringID: RecordingMorphID.statusChip,

@@ -269,14 +269,16 @@ private struct BrakeToStopScene: View {
         let pattern = dashWidth + dashSpacing
         let scrollSpeed: CGFloat = 80
         let offset = -CGFloat(time.truncatingRemainder(dividingBy: Double(pattern / scrollSpeed))) * scrollSpeed
-        let count = Int(width / pattern) + 4
+        let count = max(0, Int(width / pattern) + 4)
 
         return ZStack(alignment: .leading) {
-            ForEach(0..<count, id: \.self) { index in
-                Capsule()
-                    .fill(Color.white.opacity(0.75))
-                    .frame(width: dashWidth, height: 2.5)
-                    .offset(x: offset + CGFloat(index) * pattern)
+            if count > 0 {
+                ForEach(0..<count, id: \.self) { index in
+                    Capsule()
+                        .fill(Color.white.opacity(0.75))
+                        .frame(width: dashWidth, height: 2.5)
+                        .offset(x: offset + CGFloat(index) * pattern)
+                }
             }
         }
         .frame(height: roadHeight)

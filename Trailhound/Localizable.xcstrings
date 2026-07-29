@@ -9173,6 +9173,40 @@
         }
       }
     },
+    "trips.active_recording.show" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show active recording"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktif kayda git"
+          }
+        }
+      }
+    },
+    "trips.filters" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtreler"
+          }
+        }
+      }
+    },
     "trips.empty.filtered.message" : {
       "extractionState" : "manual",
       "localizations" : {

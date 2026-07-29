@@ -106,6 +106,7 @@ enum L10n {
     static var sectionThisMonth: String { string("section.this_month") }
     static var sectionOlder: String { string("section.older") }
     static var searchTrips: String { string("search.trips") }
+    static var tripsFilters: String { string("trips.filters") }
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
     static var mapFullscreen: String { string("map.fullscreen") }

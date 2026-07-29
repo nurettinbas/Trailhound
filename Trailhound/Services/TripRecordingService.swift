@@ -220,11 +220,13 @@ final class TripRecordingService {
         }
         RecordingDiagnostics.logResumed(tripID: trip.id, orphanResume: true)
         startElapsedTimer()
-        RecordingLiveActivityService.start(
-            startedAt: trip.startedAt,
-            elapsed: elapsedTime,
-            distanceMeters: currentDistanceMeters
-        )
+        if !UITestSupport.isUnitTesting {
+            RecordingLiveActivityService.start(
+                startedAt: trip.startedAt,
+                elapsed: elapsedTime,
+                distanceMeters: currentDistanceMeters
+            )
+        }
         syncExternalState(force: true)
     }
 
@@ -508,10 +510,12 @@ final class TripRecordingService {
             )
         }
         startElapsedTimer()
-        RecordingLiveActivityService.start(startedAt: resolvedStartedAt)
-        TripNotificationService.notifyTripStarted(tripID: trip.id)
+        if !UITestSupport.isUnitTesting {
+            RecordingLiveActivityService.start(startedAt: resolvedStartedAt)
+            TripNotificationService.notifyTripStarted(tripID: trip.id)
+        }
         syncExternalState(force: true)
-        if announceStart {
+        if announceStart, !UITestSupport.isUnitTesting {
             TrailhoundHaptics.recordingStarted()
             TrailhoundSounds.recordingStarted()
         }
@@ -642,13 +646,17 @@ final class TripRecordingService {
             distanceMeters: 0,
             currentSpeedKmh: 0
         )
-        TrailhoundHaptics.recordingStopped()
-        TrailhoundSounds.recordingStopped()
+        if !UITestSupport.isUnitTesting {
+            TrailhoundHaptics.recordingStopped()
+            TrailhoundSounds.recordingStopped()
+        }
         locationService.stopTracking()
         stopElapsedTimer()
         ensureTripHasAnchorPointIfNeeded()
         flushPointsToStore()
-        RecordingLiveActivityService.stop()
+        if !UITestSupport.isUnitTesting {
+            RecordingLiveActivityService.stop()
+        }
         RecordingSyncCoordinator.reset()
 
         guard let trip = activeTrip, let modelContext else {
@@ -667,7 +675,9 @@ final class TripRecordingService {
             return
         }
 
-        TripNotificationService.cancelOrphanStaleNotification(tripID: trip.id)
+        if !UITestSupport.isUnitTesting {
+            TripNotificationService.cancelOrphanStaleNotification(tripID: trip.id)
+        }
 
         let endedAt = Date()
         let duration = endedAt.timeIntervalSince(trip.startedAt)
@@ -701,12 +711,14 @@ final class TripRecordingService {
                 syncExternalState()
                 return
             }
-            TripNotificationService.notifyTripEnded(
-                tripID: trip.id,
-                distanceMeters: currentDistanceMeters,
-                duration: duration,
-                routeSummary: routeSummary
-            )
+            if !UITestSupport.isUnitTesting {
+                TripNotificationService.notifyTripEnded(
+                    tripID: trip.id,
+                    distanceMeters: currentDistanceMeters,
+                    duration: duration,
+                    routeSummary: routeSummary
+                )
+            }
 
             let tripUUID = trip.id
             let container = modelContainer
@@ -718,7 +730,7 @@ final class TripRecordingService {
                 )
             }
         } else {
-            if saveTrip {
+            if saveTrip, !UITestSupport.isUnitTesting {
                 TripNotificationService.notifyTripDiscarded(tripID: trip.id)
             }
             modelContext.delete(trip)
@@ -831,6 +843,8 @@ final class TripRecordingService {
             distanceMeters: currentDistanceMeters,
             currentSpeedKmh: speedKmh
         )
+        guard !UITestSupport.isUnitTesting else { return }
+
         if state.isActiveSession, let recordingStartedAt {
             RecordingLiveActivityService.ensureActiveIfNeeded(
                 startedAt: recordingStartedAt,

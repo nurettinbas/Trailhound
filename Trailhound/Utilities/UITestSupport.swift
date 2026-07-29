@@ -6,6 +6,11 @@ enum UITestSupport {
         ProcessInfo.processInfo.arguments.contains("-UITesting")
     }
 
+    /// `TrailhoundTests` runs inside the app process (`TEST_HOST`); side effects must not touch host UI.
+    static var isUnitTesting: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     @MainActor
     static func configureAppIfNeeded() {
         guard isEnabled else { return }

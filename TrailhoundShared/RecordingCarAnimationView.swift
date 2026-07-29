@@ -145,14 +145,16 @@ private struct RoadDrivingScene: View {
         let patternLength = dashWidth + dashSpacing
         let scrollSpeed: CGFloat = 90
         let offset = -CGFloat(time.truncatingRemainder(dividingBy: Double(patternLength / scrollSpeed))) * scrollSpeed
-        let dashCount = Int(width / patternLength) + 4
+        let dashCount = max(0, Int(width / patternLength) + 4)
 
         return ZStack(alignment: .leading) {
-            ForEach(0..<dashCount, id: \.self) { index in
-                Capsule()
-                    .fill(Color.white.opacity(isPaused ? 0.45 : 0.85))
-                    .frame(width: dashWidth, height: 3)
-                    .offset(x: offset + CGFloat(index) * patternLength)
+            if dashCount > 0 {
+                ForEach(0..<dashCount, id: \.self) { index in
+                    Capsule()
+                        .fill(Color.white.opacity(isPaused ? 0.45 : 0.85))
+                        .frame(width: dashWidth, height: 3)
+                        .offset(x: offset + CGFloat(index) * patternLength)
+                }
             }
         }
         .frame(height: roadHeight, alignment: .center)
