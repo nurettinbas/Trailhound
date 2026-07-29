@@ -51,20 +51,6 @@ struct SettingsView: View {
                 .glassRow(position: .last)
             }
 
-            Section(L10n.settingsRecordingSensitivitySection) {
-                sensitivityGrid
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: 14,
-                            leading: GlassTokens.listContentHorizontalInset,
-                            bottom: 14,
-                            trailing: GlassTokens.listContentHorizontalInset
-                        )
-                    )
-            }
-
             Section {
                 if places.isEmpty {
                     Text(L10n.settingsFavoritePlacesEmpty)
@@ -353,107 +339,6 @@ struct SettingsView: View {
         let days = settings.autoDeleteDays
         guard days > 0 else { return }
         _ = try? TripCleanupService.cleanupOldTrips(in: modelContext, olderThanDays: days)
-    }
-
-    private var sensitivityGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
-            ],
-            spacing: 10
-        ) {
-            sensitivityCell(
-                title: L10n.settingsStopSpeed,
-                value: Binding(
-                    get: { Int(settings.stopSpeedKmh) },
-                    set: { settings.stopSpeedKmh = Double($0) }
-                ),
-                range: 1...10,
-                step: 1
-            )
-
-            sensitivityCell(
-                title: L10n.settingsStopMinimumDistance,
-                value: Binding(
-                    get: { Int(settings.stopMinimumDistanceMeters) },
-                    set: { settings.stopMinimumDistanceMeters = Double($0) }
-                ),
-                range: 50...1000,
-                step: 50
-            )
-
-            sensitivityCell(
-                title: L10n.settingsStopMinimumDuration,
-                value: Binding(
-                    get: { Int(settings.stopMinimumDurationSeconds) },
-                    set: { settings.stopMinimumDurationSeconds = TimeInterval($0) }
-                ),
-                range: 60...600,
-                step: 30
-            )
-
-            sensitivityCell(
-                title: L10n.settingsTripStopMinimumDuration,
-                value: Binding(
-                    get: { Int(settings.tripStopMinimumDurationSeconds) },
-                    set: { settings.tripStopMinimumDurationSeconds = TimeInterval($0) }
-                ),
-                range: 60...900,
-                step: 30
-            )
-        }
-    }
-
-    private func sensitivityCell(
-        title: String,
-        value: Binding<Int>,
-        range: ClosedRange<Int>,
-        step: Int
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
-
-            HStack(spacing: 6) {
-                sensitivityStepButton(systemImage: "minus") {
-                    value.wrappedValue = max(range.lowerBound, value.wrappedValue - step)
-                }
-                .disabled(value.wrappedValue <= range.lowerBound)
-
-                Text("\(value.wrappedValue)")
-                    .font(.body.weight(.semibold))
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity)
-
-                sensitivityStepButton(systemImage: "plus") {
-                    value.wrappedValue = min(range.upperBound, value.wrappedValue + step)
-                }
-                .disabled(value.wrappedValue >= range.upperBound)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .glassChrome(cornerRadius: 12)
-    }
-
-    private func sensitivityStepButton(
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.caption2.weight(.bold))
-                .frame(width: 26, height: 26)
-                .background(Color.white.opacity(0.22))
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
     }
 
     private var appLockEnabledBinding: Binding<Bool> {

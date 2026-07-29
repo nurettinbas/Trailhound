@@ -12,6 +12,7 @@
 		70B0F38EDDB34766A54C800C /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146E38A60EAA48E8998FE29E /* ExportServiceTests.swift */; };
 		84485053D86C4C36B1C08176 /* VehiclePairingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27C68D0744C4C15A3A90CA5 /* VehiclePairingServiceTests.swift */; };
 		34963008383C46C9AED3EB3F /* RecordingAndTripStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F72FCAD53FB446AB328BFDB /* RecordingAndTripStoreTests.swift */; };
+		A1RECMOVEPOLICYTEST0001 /* RecordingMovementPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECMOVEPOLICYTEST0001 /* RecordingMovementPolicyTests.swift */; };
 		79AF138CC27D42D5A5706CE0 /* AppNotificationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 503EDD2BA22145E29CA8E8CF /* AppNotificationStoreTests.swift */; };
 		2F9B0A4F1BE54805A33ABEFE /* PlaceMatchingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB9972A494149F39AC324E8 /* PlaceMatchingServiceTests.swift */; };
 		FDC70700ED3E453AB0C0717C /* TripMergeServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25051FE8D9646B29D5CB399 /* TripMergeServiceTests.swift */; };
@@ -112,7 +113,9 @@
 		A1MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift */; };
 		A1SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */; };
 		A1TRIPRECOVERY0000000001 /* TripRecoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */; };
-		A1RECSTOPPOLICY00000001 /* RecordingStopPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingStopPolicy.swift */; };
+		A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */; };
+        A1RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */; };
+		A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDIAG000000000001 /* RecordingDiagnostics.swift */; };
 		A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
@@ -175,6 +178,7 @@
 		146E38A60EAA48E8998FE29E /* ExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Export/ExportServiceTests.swift; sourceTree = SOURCE_ROOT; };
 		D27C68D0744C4C15A3A90CA5 /* VehiclePairingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePairingServiceTests.swift; sourceTree = SOURCE_ROOT; };
 		5F72FCAD53FB446AB328BFDB /* RecordingAndTripStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingAndTripStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		A2RECMOVEPOLICYTEST0001 /* RecordingMovementPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingMovementPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		503EDD2BA22145E29CA8E8CF /* AppNotificationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/AppNotificationStoreTests.swift; sourceTree = SOURCE_ROOT; };
 		FEB9972A494149F39AC324E8 /* PlaceMatchingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/PlaceMatchingServiceTests.swift; sourceTree = SOURCE_ROOT; };
 		B25051FE8D9646B29D5CB399 /* TripMergeServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/TripMergeServiceTests.swift; sourceTree = SOURCE_ROOT; };
@@ -256,7 +260,9 @@
 		A2MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedRoutePoint.swift; sourceTree = "<group>"; };
 		A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundSchemaMigration.swift; sourceTree = "<group>"; };
 		A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecoveryService.swift; sourceTree = "<group>"; };
-		A2RECSTOPPOLICY00000001 /* RecordingStopPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingStopPolicy.swift; sourceTree = "<group>"; };
+		A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingConfiguration.swift; sourceTree = "<group>"; };
+		A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMovementPolicy.swift; sourceTree = "<group>"; };
+		A2RECDIAG000000000001 /* RecordingDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDiagnostics.swift; sourceTree = "<group>"; };
 		A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSyncCoordinator.swift; sourceTree = "<group>"; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
@@ -433,7 +439,9 @@
 		A5RECORDING0000000000001 /* Recording */ = {
 			isa = PBXGroup;
 			children = (
-				A2RECSTOPPOLICY00000001 /* RecordingStopPolicy.swift */,
+				A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */,
+				A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */,
+				A2RECDIAG000000000001 /* RecordingDiagnostics.swift */,
 				A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */,
 			);
 			path = Recording;
@@ -559,6 +567,7 @@
 				146E38A60EAA48E8998FE29E /* ExportServiceTests.swift */,
 				D27C68D0744C4C15A3A90CA5 /* VehiclePairingServiceTests.swift */,
 				5F72FCAD53FB446AB328BFDB /* RecordingAndTripStoreTests.swift */,
+				A2RECMOVEPOLICYTEST0001 /* RecordingMovementPolicyTests.swift */,
 				503EDD2BA22145E29CA8E8CF /* AppNotificationStoreTests.swift */,
 				FEB9972A494149F39AC324E8 /* PlaceMatchingServiceTests.swift */,
 				B25051FE8D9646B29D5CB399 /* TripMergeServiceTests.swift */,
@@ -725,6 +734,7 @@
 				70B0F38EDDB34766A54C800C /* ExportServiceTests.swift in Sources */,
 				84485053D86C4C36B1C08176 /* VehiclePairingServiceTests.swift in Sources */,
 				34963008383C46C9AED3EB3F /* RecordingAndTripStoreTests.swift in Sources */,
+				A1RECMOVEPOLICYTEST0001 /* RecordingMovementPolicyTests.swift in Sources */,
 				79AF138CC27D42D5A5706CE0 /* AppNotificationStoreTests.swift in Sources */,
 				2F9B0A4F1BE54805A33ABEFE /* PlaceMatchingServiceTests.swift in Sources */,
 				FDC70700ED3E453AB0C0717C /* TripMergeServiceTests.swift in Sources */,
@@ -802,7 +812,9 @@
 				A1MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift in Sources */,
 				A1SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift in Sources */,
 				A1TRIPRECOVERY0000000001 /* TripRecoveryService.swift in Sources */,
-				A1RECSTOPPOLICY00000001 /* RecordingStopPolicy.swift in Sources */,
+				A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */,
+				A1RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift in Sources */,
+				A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */,
 				A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,

@@ -23,6 +23,8 @@ final class TripRecordingService {
     private(set) var elapsedTime: TimeInterval = 0
     /// Live breadcrumb path for the active session (updates as points are recorded).
     private(set) var liveBreadcrumbCoordinates: [CLLocationCoordinate2D] = []
+    /// Breadcrumb polylines split at GPS gaps (no straight chords over missing data).
+    private(set) var liveBreadcrumbSegments: [[CLLocationCoordinate2D]] = []
 
     var activeTripID: UUID? { activeTrip?.id }
 
@@ -42,14 +44,8 @@ final class TripRecordingService {
     private var currentStopStartedAt: Date?
     private var currentStopCoordinate: CLLocationCoordinate2D?
 
-    private let minimumDistanceSampleMeters: CLLocationDistance = 2
-    private let minimumPointSpacingMeters: CLLocationDistance = 8
-    private let maximumPlausibleSegmentMeters: CLLocationDistance = 250
-    private let stationarySpeedMps: Double = 0.5
-    private let stationaryDistanceMeters: CLLocationDistance = 5
-
     private var stopSpeedMps: Double {
-        settings.stopSpeedKmh / 3.6
+        RecordingConfiguration.stopDetectionSpeedKmh / 3.6
     }
 
     private static weak var elapsedTimerService: TripRecordingService?
@@ -180,6 +176,7 @@ final class TripRecordingService {
         guard state == .recording else { return }
         updateElapsedTime()
         state = .paused
+        RecordingDiagnostics.logPaused(tripID: activeTrip?.id)
         stopElapsedTimer()
         syncExternalState(force: true)
         TrailhoundHaptics.recordingPaused()
@@ -189,6 +186,7 @@ final class TripRecordingService {
         guard state == .paused else { return }
         recordingStartedAt = Date().addingTimeInterval(-elapsedTime)
         state = .recording
+        RecordingDiagnostics.logResumed(tripID: activeTrip?.id, orphanResume: false)
         startElapsedTimer()
         syncExternalState(force: true)
         TrailhoundHaptics.recordingResumed()
@@ -207,12 +205,20 @@ final class TripRecordingService {
         maxSpeedMps = trip.maxSpeedMps ?? 0
         lastRecordedLocation = trip.sortedPoints.last?.location
         liveBreadcrumbCoordinates = trip.coordinates
+        liveBreadcrumbSegments = Self.breadcrumbSegments(from: trip.sortedPoints)
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         pointsSinceLastSave = 0
 
         locationService.requestPermission()
         locationService.startTracking()
+        if !locationService.canRecordInBackground {
+            DevLog.shared.warning(
+                .recording,
+                "resume orphan \(trip.id.uuidString.prefix(8)): background GPS not active"
+            )
+        }
+        RecordingDiagnostics.logResumed(tripID: trip.id, orphanResume: true)
         startElapsedTimer()
         RecordingLiveActivityService.start(
             startedAt: trip.startedAt,
@@ -223,16 +229,38 @@ final class TripRecordingService {
     }
 
     private func handleLocationUpdate(_ location: CLLocation) {
-        guard state == .recording else { return }
+        guard state == .recording else {
+            if state == .paused {
+                RecordingDiagnostics.logIncomingFix(
+                    tripID: activeTrip?.id,
+                    location: location,
+                    state: state
+                )
+            }
+            return
+        }
         processRecordingLocationUpdate(location)
     }
 
     private func processRecordingLocationUpdate(_ location: CLLocation) {
+        RecordingDiagnostics.logIncomingFix(tripID: activeTrip?.id, location: location, state: state)
         updateElapsedTime()
 
         let speed = location.speed >= 0 ? location.speed : 0
         currentSpeedMps = speed
-        if speed > maxSpeedMps { maxSpeedMps = speed }
+        if RecordingMovementPolicy.isPlausibleRecordedSpeed(speed), speed > maxSpeedMps {
+            maxSpeedMps = speed
+        } else if let previous = lastRecordedLocation {
+            let delta = location.distance(from: previous)
+            let timeDelta = max(0.01, location.timestamp.timeIntervalSince(previous.timestamp))
+            if let implied = RecordingMovementPolicy.effectiveSpeedMps(
+                locationSpeedMps: speed,
+                delta: delta,
+                timeDelta: timeDelta
+            ), implied > maxSpeedMps {
+                maxSpeedMps = implied
+            }
+        }
 
         if speed < stopSpeedMps {
             if currentStopStartedAt == nil {
@@ -251,36 +279,101 @@ final class TripRecordingService {
         if let previous = lastRecordedLocation {
             let delta = location.distance(from: previous)
             let timeDelta = max(0.01, location.timestamp.timeIntervalSince(previous.timestamp))
-            guard shouldAccumulateDistance(delta: delta, speed: speed) else { return }
-            guard isPlausibleMovement(delta: delta, timeDelta: timeDelta) else { return }
+            let decision = RecordingMovementPolicy.decision(
+                delta: delta,
+                timeDelta: timeDelta,
+                speed: speed
+            )
 
-            currentDistanceMeters += delta
-            lastRecordedLocation = location
-            activeTrip?.distanceMeters = currentDistanceMeters
-
-            if forcePoint || shouldRecordPoint(delta: delta, timeDelta: timeDelta) {
-                appendPoint(from: location, speed: speed)
+            switch decision {
+            case .ignore:
+                RecordingDiagnostics.logMovement(
+                    tripID: activeTrip?.id,
+                    decision: .ignore,
+                    delta: delta,
+                    timeDelta: timeDelta,
+                    accuracy: location.horizontalAccuracy,
+                    locationSpeedKmh: speed * 3.6,
+                    storedSpeedKmh: nil,
+                    distanceMeters: currentDistanceMeters,
+                    pointSequence: pointSequence,
+                    mapNewSegment: false,
+                    ignoreReason: RecordingMovementPolicy.ignoreReason(
+                        delta: delta,
+                        timeDelta: timeDelta,
+                        locationSpeedMps: speed
+                    )
+                )
+                return
+            case .accumulate:
+                currentDistanceMeters += delta
+                lastRecordedLocation = location
+                activeTrip?.distanceMeters = currentDistanceMeters
+                let storedSpeed = RecordingMovementPolicy.effectiveSpeedMps(
+                    locationSpeedMps: speed,
+                    delta: delta,
+                    timeDelta: timeDelta
+                ) ?? speed
+                RecordingDiagnostics.logMovement(
+                    tripID: activeTrip?.id,
+                    decision: .accumulate,
+                    delta: delta,
+                    timeDelta: timeDelta,
+                    accuracy: location.horizontalAccuracy,
+                    locationSpeedKmh: speed * 3.6,
+                    storedSpeedKmh: storedSpeed * 3.6,
+                    distanceMeters: currentDistanceMeters,
+                    pointSequence: pointSequence,
+                    mapNewSegment: false
+                )
+                appendPoint(
+                    from: location,
+                    speed: storedSpeed,
+                    startsNewMapSegment: false
+                )
+            case .gapResume:
+                lastRecordedLocation = location
+                activeTrip?.distanceMeters = currentDistanceMeters
+                let storedSpeed = RecordingMovementPolicy.effectiveSpeedMps(
+                    locationSpeedMps: speed,
+                    delta: delta,
+                    timeDelta: timeDelta
+                ) ?? speed
+                RecordingDiagnostics.logMovement(
+                    tripID: activeTrip?.id,
+                    decision: .gapResume,
+                    delta: delta,
+                    timeDelta: timeDelta,
+                    accuracy: location.horizontalAccuracy,
+                    locationSpeedKmh: speed * 3.6,
+                    storedSpeedKmh: storedSpeed * 3.6,
+                    distanceMeters: currentDistanceMeters,
+                    pointSequence: pointSequence,
+                    mapNewSegment: true
+                )
+                appendPoint(
+                    from: location,
+                    speed: storedSpeed,
+                    startsNewMapSegment: true
+                )
             }
         } else {
+            RecordingDiagnostics.logMovement(
+                tripID: activeTrip?.id,
+                decision: .accumulate,
+                delta: 0,
+                timeDelta: 0,
+                accuracy: location.horizontalAccuracy,
+                locationSpeedKmh: speed * 3.6,
+                storedSpeedKmh: (speed > 0 ? speed : nil).map { $0 * 3.6 },
+                distanceMeters: currentDistanceMeters,
+                pointSequence: pointSequence,
+                mapNewSegment: false,
+                ignoreReason: "first_fix"
+            )
             lastRecordedLocation = location
-            appendPoint(from: location, speed: speed)
+            appendPoint(from: location, speed: speed, startsNewMapSegment: false)
         }
-    }
-
-    private func shouldAccumulateDistance(delta: CLLocationDistance, speed: Double) -> Bool {
-        guard delta >= minimumDistanceSampleMeters else { return false }
-        if speed < stationarySpeedMps, delta < stationaryDistanceMeters { return false }
-        return true
-    }
-
-    private func isPlausibleMovement(delta: CLLocationDistance, timeDelta: TimeInterval) -> Bool {
-        guard delta <= maximumPlausibleSegmentMeters else { return false }
-        let impliedSpeedMps = delta / timeDelta
-        return impliedSpeedMps <= 70
-    }
-
-    private func shouldRecordPoint(delta: CLLocationDistance, timeDelta: TimeInterval) -> Bool {
-        delta >= minimumPointSpacingMeters || timeDelta >= 20
     }
 
     private func finalizeRecordingLocation() {
@@ -295,18 +388,39 @@ final class TripRecordingService {
     private func reconcileTripDistance() {
         guard let trip = activeTrip else { return }
 
-        let locations = trip.sortedPoints.map(\.location)
-        var computed = DistanceCalculator.totalDistance(for: locations)
+        let points = trip.sortedPoints
+        var computed: Double = 0
+        for index in 1..<points.count {
+            let previous = points[index - 1].location
+            let current = points[index].location
+            let delta = current.distance(from: previous)
+            let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+            let speed = points[index].speedMps
+                ?? (current.speed >= 0 ? current.speed : 0)
+            if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
+                computed += delta
+            }
+        }
 
-        if let lastPoint = locations.last, let lastRecordedLocation {
+        if let lastPoint = points.last?.location, let lastRecordedLocation {
             let tail = lastRecordedLocation.distance(from: lastPoint)
-            if tail >= minimumDistanceSampleMeters, tail <= maximumPlausibleSegmentMeters {
+            let timeDelta = max(
+                0.01,
+                lastRecordedLocation.timestamp.timeIntervalSince(lastPoint.timestamp)
+            )
+            let speed = lastRecordedLocation.speed >= 0 ? lastRecordedLocation.speed : 0
+            if RecordingMovementPolicy.decision(delta: tail, timeDelta: timeDelta, speed: speed) == .accumulate {
                 computed += tail
             }
         }
 
         currentDistanceMeters = max(currentDistanceMeters, computed)
         trip.distanceMeters = currentDistanceMeters
+        RecordingDiagnostics.logReconcile(
+            tripID: trip.id,
+            liveMeters: currentDistanceMeters,
+            fromPointsMeters: computed
+        )
     }
 
     private func finalizeStopIfNeeded() {
@@ -316,7 +430,7 @@ final class TripRecordingService {
               let coordinate = currentStopCoordinate else { return }
 
         let duration = Date().timeIntervalSince(startedAt)
-        guard duration >= settings.tripStopMinimumDurationSeconds else {
+        guard duration >= RecordingConfiguration.minimumParkingStopDurationSeconds else {
             currentStopStartedAt = nil
             currentStopCoordinate = nil
             return
@@ -361,6 +475,7 @@ final class TripRecordingService {
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
+        liveBreadcrumbSegments = []
 
         let trip = Trip(startedAt: resolvedStartedAt)
         if let vehicle = VehicleResolver.resolveActiveVehicle(in: modelContext, settings: settings) {
@@ -381,6 +496,17 @@ final class TripRecordingService {
 
         locationService.requestPermission()
         locationService.startTracking()
+        RecordingDiagnostics.beginSession(
+            tripID: trip.id,
+            authorization: locationService.authorizationState,
+            backgroundUpdatesEnabled: locationService.canRecordInBackground
+        )
+        if !locationService.canRecordInBackground {
+            DevLog.shared.warning(
+                .recording,
+                "session \(trip.id.uuidString.prefix(8)): Always/background GPS not active — fixes may stop when screen locks"
+            )
+        }
         startElapsedTimer()
         RecordingLiveActivityService.start(startedAt: resolvedStartedAt)
         TripNotificationService.notifyTripStarted(tripID: trip.id)
@@ -399,27 +525,71 @@ final class TripRecordingService {
         case manual
     }
 
-    private func appendPoint(from location: CLLocation, speed: Double) {
+    private func appendPoint(
+        from location: CLLocation,
+        speed: Double,
+        startsNewMapSegment: Bool = false
+    ) {
         guard let trip = activeTrip, let modelContext else { return }
+
+        let recordedSpeed = RecordingMovementPolicy.isPlausibleRecordedSpeed(speed) ? speed : nil
 
         let point = TripPoint(
             timestamp: location.timestamp,
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
             sequence: pointSequence,
-            speedMps: speed > 0 ? speed : nil,
+            speedMps: recordedSpeed,
             trip: trip
         )
         pointSequence += 1
         trip.points.append(point)
         trip.distanceMeters = currentDistanceMeters
         trip.invalidatePointCaches()
-        liveBreadcrumbCoordinates.append(location.coordinate)
+        appendLiveBreadcrumb(location.coordinate, startsNewMapSegment: startsNewMapSegment)
         modelContext.insert(point)
         pointsSinceLastSave += 1
-        if pointsSinceLastSave >= saveBatchSize {
+        let willBatchSave = pointsSinceLastSave >= saveBatchSize
+        RecordingDiagnostics.logPointPersisted(
+            tripID: trip.id,
+            sequence: point.sequence,
+            batchSave: willBatchSave
+        )
+        if willBatchSave {
             flushPointsToStore()
         }
+    }
+
+    private func appendLiveBreadcrumb(
+        _ coordinate: CLLocationCoordinate2D,
+        startsNewMapSegment: Bool
+    ) {
+        liveBreadcrumbCoordinates.append(coordinate)
+        if startsNewMapSegment || liveBreadcrumbSegments.isEmpty {
+            liveBreadcrumbSegments.append([coordinate])
+        } else {
+            liveBreadcrumbSegments[liveBreadcrumbSegments.count - 1].append(coordinate)
+        }
+    }
+
+    private static func breadcrumbSegments(from points: [TripPoint]) -> [[CLLocationCoordinate2D]] {
+        guard let first = points.first else { return [] }
+        var segments: [[CLLocationCoordinate2D]] = [[first.coordinate]]
+        guard points.count > 1 else { return segments }
+
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let current = points[index]
+            let delta = current.location.distance(from: previous.location)
+            let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+            let speed = current.speedMps ?? (current.location.speed >= 0 ? current.location.speed : 0)
+            if RecordingMovementPolicy.shouldDrawMapSegment(delta: delta, timeDelta: timeDelta, speed: speed) {
+                segments[segments.count - 1].append(current.coordinate)
+            } else {
+                segments.append([current.coordinate])
+            }
+        }
+        return segments
     }
 
     private func flushPointsToStore() {
@@ -428,19 +598,42 @@ final class TripRecordingService {
             try modelContext.save()
             pointsSinceLastSave = 0
         } catch {
+            RecordingDiagnostics.logPersistFailure(tripID: activeTrip?.id, error: error.localizedDescription)
             AppErrorPresenter.shared.present(error.localizedDescription)
         }
     }
 
     private func stopRecording(saveTrip: Bool) {
         guard state.isActiveSession else { return }
-        DevLog.shared.log(
-            .recording,
-            "stopRecording: saveTrip=\(saveTrip), distance=\(Int(currentDistanceMeters))m, elapsed=\(Int(elapsedTime))s"
-        )
+        let tripID = activeTrip?.id
+        let pointCountBeforeStop = activeTrip?.points.count ?? 0
 
         finalizeRecordingLocation()
         finalizeStopIfNeeded()
+
+        let distanceBeforeIdle = currentDistanceMeters
+        let elapsed = elapsedTime
+        let maxKmh = maxSpeedMps * 3.6
+        let reconciled = activeTrip.map { trip in
+            var computed: Double = 0
+            let points = trip.sortedPoints
+            for index in 1..<points.count {
+                let previous = points[index - 1].location
+                let current = points[index].location
+                let delta = current.distance(from: previous)
+                let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+                let speed = points[index].speedMps ?? 0
+                if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
+                    computed += delta
+                }
+            }
+            return computed
+        }
+
+        DevLog.shared.log(
+            .recording,
+            "stopRecording: saveTrip=\(saveTrip), distance=\(Int(distanceBeforeIdle))m, elapsed=\(Int(elapsed))s points=\(pointCountBeforeStop)"
+        )
         state = .idle
         settings.syncRecordingState(
             isRecording: false,
@@ -459,6 +652,17 @@ final class TripRecordingService {
         RecordingSyncCoordinator.reset()
 
         guard let trip = activeTrip, let modelContext else {
+            if let tripID {
+                RecordingDiagnostics.endSession(
+                    tripID: tripID,
+                    saved: false,
+                    distanceMeters: distanceBeforeIdle,
+                    durationSeconds: elapsed,
+                    maxSpeedKmh: maxKmh,
+                    pointCount: pointCountBeforeStop,
+                    reconciledDistanceMeters: reconciled
+                )
+            }
             resetActiveSession()
             return
         }
@@ -467,14 +671,7 @@ final class TripRecordingService {
 
         let endedAt = Date()
         let duration = endedAt.timeIntervalSince(trip.startedAt)
-        let shouldSave = RecordingStopPolicy.shouldSaveTrip(
-            saveTrip: saveTrip,
-            reason: .manual,
-            duration: duration,
-            distanceMeters: currentDistanceMeters,
-            minimumDurationSeconds: settings.stopMinimumDurationSeconds,
-            minimumDistanceMeters: settings.stopMinimumDistanceMeters
-        )
+        let shouldSave = saveTrip
 
         if shouldSave {
             trip.endedAt = endedAt
@@ -528,6 +725,16 @@ final class TripRecordingService {
             try? modelContext.save()
         }
 
+        RecordingDiagnostics.endSession(
+            tripID: trip.id,
+            saved: shouldSave,
+            distanceMeters: currentDistanceMeters,
+            durationSeconds: duration,
+            maxSpeedKmh: maxKmh,
+            pointCount: trip.sortedPoints.count,
+            reconciledDistanceMeters: reconciled
+        )
+
         resetActiveSession()
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
@@ -537,7 +744,12 @@ final class TripRecordingService {
     private func ensureTripHasAnchorPointIfNeeded() {
         guard let trip = activeTrip, let modelContext else { return }
         guard trip.points.isEmpty else { return }
-        guard let location = locationService.lastLocation else { return }
+        guard let location = locationService.lastLocation else {
+            DevLog.shared.warning(.recording, "anchor point skipped \(trip.id.uuidString.prefix(8)): no lastLocation")
+            return
+        }
+
+        DevLog.shared.log(.recording, "anchor point added \(trip.id.uuidString.prefix(8)) (trip had 0 points)")
 
         let point = TripPoint(
             timestamp: Date(),
@@ -550,7 +762,7 @@ final class TripRecordingService {
         pointSequence += 1
         trip.points.append(point)
         trip.invalidatePointCaches()
-        liveBreadcrumbCoordinates.append(location.coordinate)
+        appendLiveBreadcrumb(location.coordinate, startsNewMapSegment: liveBreadcrumbSegments.isEmpty)
         modelContext.insert(point)
         pointsSinceLastSave += 1
     }
@@ -568,6 +780,7 @@ final class TripRecordingService {
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
+        liveBreadcrumbSegments = []
     }
 
     private func syncExternalState(force: Bool = false) {

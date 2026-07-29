@@ -105,10 +105,31 @@ struct TripDetailViewModel {
     }
 
     var speedSamples: [(id: Int, date: Date, speedKmh: Double)] {
-        trip.sortedPoints.enumerated().compactMap { index, point in
-            guard let speedMps = point.speedMps, speedMps > 0 else { return nil }
+        let points = trip.sortedPoints
+        guard !points.isEmpty else { return [] }
+
+        return points.enumerated().compactMap { index, point in
+            guard let speedMps = Self.effectiveSpeedMps(at: index, in: points) else { return nil }
             return (id: index, date: point.timestamp, speedKmh: speedMps * 3.6)
         }
+    }
+
+    /// Speed at a point: stored GPS speed, or implied from the previous point (fixes empty charts when speed was -1).
+    private static func effectiveSpeedMps(at index: Int, in points: [TripPoint]) -> Double? {
+        let point = points[index]
+        if let stored = point.speedMps, stored > 0,
+           RecordingMovementPolicy.isPlausibleRecordedSpeed(stored) {
+            return stored
+        }
+        guard index > 0 else { return nil }
+        let previous = points[index - 1]
+        let delta = point.location.distance(from: previous.location)
+        let timeDelta = max(0.01, point.timestamp.timeIntervalSince(previous.timestamp))
+        return RecordingMovementPolicy.effectiveSpeedMps(
+            locationSpeedMps: -1,
+            delta: delta,
+            timeDelta: timeDelta
+        )
     }
 
     var speedChartMaxKmh: Double {
@@ -199,10 +220,7 @@ struct TripDetailViewModel {
         }
 
         let points = trip.sortedPoints
-        let segments = buildSpeedColoredSegments(
-            coordinates: points.map(\.coordinate),
-            speeds: points.map(\.speedMps)
-        )
+        let segments = buildSpeedColoredSegments(points: points)
         Self.speedSegmentCache[trip.id] = (pointCount, segments)
         return segments
     }
@@ -218,22 +236,29 @@ struct TripDetailViewModel {
         let lastIndex = min(points.count - 1, Int(exact))
         let fraction = exact - Double(Int(exact))
 
-        var coordinates = Array(points.prefix(lastIndex + 1)).map(\.coordinate)
-        var speeds = Array(points.prefix(lastIndex + 1)).map(\.speedMps)
-
+        var truncatedPoints = Array(points.prefix(lastIndex + 1))
         if lastIndex < points.count - 1, fraction > 0.001 {
-            let start = points[lastIndex].coordinate
-            let end = points[lastIndex + 1].coordinate
-            coordinates.append(
-                CLLocationCoordinate2D(
-                    latitude: start.latitude + (end.latitude - start.latitude) * fraction,
-                    longitude: start.longitude + (end.longitude - start.longitude) * fraction
-                )
+            let start = points[lastIndex]
+            let end = points[lastIndex + 1]
+            guard Self.shouldDrawMapSegment(from: start, to: end) else {
+                return buildSpeedColoredSegments(points: truncatedPoints)
+            }
+            let startCoord = start.coordinate
+            let endCoord = end.coordinate
+            let interpolated = TripPoint(
+                timestamp: Date(
+                    timeIntervalSince1970: start.timestamp.timeIntervalSince1970
+                        + (end.timestamp.timeIntervalSince1970 - start.timestamp.timeIntervalSince1970) * fraction
+                ),
+                latitude: startCoord.latitude + (endCoord.latitude - startCoord.latitude) * fraction,
+                longitude: startCoord.longitude + (endCoord.longitude - startCoord.longitude) * fraction,
+                sequence: start.sequence,
+                speedMps: start.speedMps
             )
-            speeds.append(points[lastIndex].speedMps)
+            truncatedPoints.append(interpolated)
         }
 
-        return buildSpeedColoredSegments(coordinates: coordinates, speeds: speeds)
+        return buildSpeedColoredSegments(points: truncatedPoints)
     }
 
     func revealedFallbackCoordinates(progress: Double) -> [CLLocationCoordinate2D] {
@@ -325,19 +350,34 @@ struct TripDetailViewModel {
         return (degrees + 360).truncatingRemainder(dividingBy: 360)
     }
 
-    private func buildSpeedColoredSegments(
-        coordinates: [CLLocationCoordinate2D],
-        speeds: [Double?]
-    ) -> [SpeedColoredSegment] {
-        guard coordinates.count >= 2, coordinates.count == speeds.count else { return [] }
+    private func buildSpeedColoredSegments(points: [TripPoint]) -> [SpeedColoredSegment] {
+        guard points.count >= 2 else { return [] }
 
         var segments: [SpeedColoredSegment] = []
-        var currentCoordinates = [coordinates[0]]
-        var currentColor = Self.speedColor(for: speeds[0])
+        var currentCoordinates = [points[0].coordinate]
+        var currentColor = Self.speedColor(for: Self.effectiveSpeedMps(at: 0, in: points))
 
-        for index in 1..<coordinates.count {
-            let color = Self.speedColor(for: speeds[index])
-            currentCoordinates.append(coordinates[index])
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let current = points[index]
+
+            if !Self.shouldDrawMapSegment(from: previous, to: current) {
+                if currentCoordinates.count >= 2 {
+                    segments.append(
+                        SpeedColoredSegment(
+                            id: segments.count,
+                            coordinates: currentCoordinates,
+                            color: currentColor
+                        )
+                    )
+                }
+                currentCoordinates = [current.coordinate]
+                currentColor = Self.speedColor(for: Self.effectiveSpeedMps(at: index, in: points))
+                continue
+            }
+
+            let color = Self.speedColor(for: Self.effectiveSpeedMps(at: index, in: points))
+            currentCoordinates.append(current.coordinate)
 
             if color != currentColor {
                 if currentCoordinates.count >= 2 {
@@ -349,7 +389,7 @@ struct TripDetailViewModel {
                         )
                     )
                 }
-                currentCoordinates = [coordinates[index - 1], coordinates[index]]
+                currentCoordinates = [previous.coordinate, current.coordinate]
                 currentColor = color
             }
         }
@@ -365,6 +405,17 @@ struct TripDetailViewModel {
         }
 
         return segments
+    }
+
+    private static func shouldDrawMapSegment(from previous: TripPoint, to current: TripPoint) -> Bool {
+        let delta = current.location.distance(from: previous.location)
+        let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+        let speed = effectiveSpeedMps(at: 1, in: [previous, current]) ?? 0
+        return RecordingMovementPolicy.shouldDrawMapSegment(
+            delta: delta,
+            timeDelta: timeDelta,
+            speed: speed
+        )
     }
 
     func mapRegion(fit: MapFitContext = .detailWithPanel) -> MKCoordinateRegion? {

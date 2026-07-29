@@ -265,6 +265,26 @@ struct ActiveTripView: View {
                 )
             }
 
+            if !locationService.canRecordInBackground {
+                Button {
+                    locationService.requestPermission()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.circle")
+                            .font(.caption2)
+                        Text(L10n.string("recording.location.always_required"))
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.string("recording.location.always_required"))
+            }
+
             GPSQualityBadge(quality: locationService.gpsQuality)
         }
     }
@@ -371,12 +391,14 @@ struct ActiveTripView: View {
     @ViewBuilder
     private var liveBreadcrumbMap: some View {
         Map(position: $breadcrumbCamera, interactionModes: []) {
-            if breadcrumbCoordinates.count >= 2 {
-                MapPolyline(coordinates: breadcrumbCoordinates)
-                    .stroke(
-                        Color.white.opacity(0.85),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                    )
+            ForEach(Array(recordingService.liveBreadcrumbSegments.enumerated()), id: \.offset) { _, segment in
+                if segment.count >= 2 {
+                    MapPolyline(coordinates: segment)
+                        .stroke(
+                            Color.white.opacity(0.85),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+                        )
+                }
             }
 
             if let liveDotCoordinate {

@@ -38,6 +38,8 @@ final class LocationService: NSObject {
 
     private let manager = CLLocationManager()
     private var isUpdating = false
+    private var lastLoggedBackgroundUpdates: Bool?
+    private var lastLoggedTrackingFull: Bool?
 
     var canRecordInBackground: Bool {
         manager.authorizationStatus == .authorizedAlways
@@ -68,12 +70,14 @@ final class LocationService: NSObject {
         trackingMode = .full
         manager.pausesLocationUpdatesAutomatically = false
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = 5
+        manager.distanceFilter = kCLDistanceFilterNone
+        DevLog.shared.log(.location, "startTracking: bestNavigation distanceFilter=none")
         startIfNeeded()
     }
 
     func stopTracking() {
         trackingMode = .off
+        DevLog.shared.log(.location, "stopTracking")
         manager.pausesLocationUpdatesAutomatically = true
         applyBackgroundConfiguration()
         guard isUpdating else { return }
@@ -94,9 +98,19 @@ final class LocationService: NSObject {
     private func applyBackgroundConfiguration() {
         let canUseBackground = manager.authorizationStatus == .authorizedAlways
         let needsBackground = canUseBackground && trackingMode != .off
+        let trackingFull = trackingMode == .full
 
         manager.allowsBackgroundLocationUpdates = needsBackground
-        manager.showsBackgroundLocationIndicator = trackingMode == .full && needsBackground
+        manager.showsBackgroundLocationIndicator = trackingFull && needsBackground
+
+        if lastLoggedBackgroundUpdates != needsBackground || lastLoggedTrackingFull != trackingFull {
+            lastLoggedBackgroundUpdates = needsBackground
+            lastLoggedTrackingFull = trackingFull
+            DevLog.shared.log(
+                .location,
+                "background config: always=\(canUseBackground) tracking=\(trackingFull ? "full" : "off") bgUpdates=\(needsBackground)"
+            )
+        }
     }
 
     private func updateAuthorizationState(from status: CLAuthorizationStatus) {
@@ -118,8 +132,8 @@ final class LocationService: NSObject {
 
     private func isLocationUsable(_ location: CLLocation) -> Bool {
         guard location.horizontalAccuracy >= 0 else { return false }
-        if trackingMode == .full, location.horizontalAccuracy > 250 { return false }
-        if Date().timeIntervalSince(location.timestamp) > 60 { return false }
+        if trackingMode == .full, location.horizontalAccuracy > 400 { return false }
+        if Date().timeIntervalSince(location.timestamp) > 120 { return false }
         return true
     }
 }
@@ -128,18 +142,49 @@ extension LocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         updateAuthorizationState(from: manager.authorizationStatus)
         applyBackgroundConfiguration()
+        DevLog.shared.log(
+            .location,
+            "authorization -> \(authorizationState) tracking=\(trackingMode == .full ? "full" : "off")"
+        )
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        guard isLocationUsable(location) else { return }
-        lastLocation = location
-        onLocationUpdate?(location)
+        var accepted = 0
+        var lastAccepted: CLLocation?
+        for location in locations {
+            guard isLocationUsable(location) else {
+                let age = Date().timeIntervalSince(location.timestamp)
+                let accuracy = location.horizontalAccuracy
+                let trackingFull = trackingMode == .full
+                Task { @MainActor in
+                    RecordingDiagnostics.logUnusableFix(
+                        accuracy: accuracy,
+                        ageSeconds: age,
+                        trackingFull: trackingFull
+                    )
+                }
+                continue
+            }
+            accepted += 1
+            lastAccepted = location
+            lastLocation = location
+            onLocationUpdate?(location)
+        }
+        if let lastAccepted {
+            let age = Int(Date().timeIntervalSince(lastAccepted.timestamp))
+            Task { @MainActor in
+                RecordingDiagnostics.logLocationBatch(
+                    tripID: nil,
+                    batchSize: locations.count,
+                    acceptedCount: accepted,
+                    lastAccuracyMeters: Int(lastAccepted.horizontalAccuracy),
+                    lastAgeSeconds: age
+                )
+            }
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        #if DEBUG
-        print("Location error: \(error.localizedDescription)")
-        #endif
+        DevLog.shared.error(.location, "location fail: \(error.localizedDescription)")
     }
 }

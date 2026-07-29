@@ -541,7 +541,9 @@ struct TripDetailView: View {
                 SpeedChartRouteCanvas(
                     samples: viewModel.speedSamples,
                     maxKmh: viewModel.speedChartMaxKmh,
-                    progress: progress
+                    progress: progress,
+                    tripStartedAt: trip.startedAt,
+                    tripEndedAt: trip.endedAt ?? trip.startedAt
                 )
                 .frame(maxWidth: .infinity)
                 .frame(height: 120)
@@ -1042,60 +1044,68 @@ private struct SpeedChartRouteCanvas: View {
     let samples: [(id: Int, date: Date, speedKmh: Double)]
     let maxKmh: Double
     let progress: Double
+    let tripStartedAt: Date
+    let tripEndedAt: Date
+
+    private static let speedSampleGapBreakSeconds: TimeInterval = 90
 
     private var brandColor: Color { TrailhoundBrandColors.brandBottom }
 
     var body: some View {
         Canvas { context, size in
             let revealed = revealedSamples(progress: progress)
-            let points = projectedPoints(for: revealed, in: size)
-            guard points.count >= 1 else { return }
+            let pointGroups = projectedPointGroups(for: revealed, in: size)
+            guard !pointGroups.isEmpty else { return }
 
             let baselineY = size.height - 2
 
-            if points.count == 1 {
-                var dot = Path()
-                dot.addEllipse(in: CGRect(x: points[0].x - 2, y: points[0].y - 2, width: 4, height: 4))
-                context.fill(dot, with: .color(brandColor))
-                return
-            }
+            for points in pointGroups {
+                guard points.count >= 1 else { continue }
 
-            var line = Path()
-            line.move(to: points[0])
-            for point in points.dropFirst() {
-                line.addLine(to: point)
-            }
+                if points.count == 1 {
+                    var dot = Path()
+                    dot.addEllipse(in: CGRect(x: points[0].x - 2, y: points[0].y - 2, width: 4, height: 4))
+                    context.fill(dot, with: .color(brandColor))
+                    continue
+                }
 
-            var area = Path()
-            area.move(to: CGPoint(x: points[0].x, y: baselineY))
-            area.addLine(to: points[0])
-            for point in points.dropFirst() {
-                area.addLine(to: point)
-            }
-            area.addLine(to: CGPoint(x: points[points.count - 1].x, y: baselineY))
-            area.closeSubpath()
+                var line = Path()
+                line.move(to: points[0])
+                for point in points.dropFirst() {
+                    line.addLine(to: point)
+                }
 
-            context.fill(
-                area,
-                with: .linearGradient(
-                    Gradient(colors: [brandColor.opacity(0.28), brandColor.opacity(0.04)]),
-                    startPoint: CGPoint(x: 0, y: 0),
-                    endPoint: CGPoint(x: 0, y: size.height)
+                var area = Path()
+                area.move(to: CGPoint(x: points[0].x, y: baselineY))
+                area.addLine(to: points[0])
+                for point in points.dropFirst() {
+                    area.addLine(to: point)
+                }
+                area.addLine(to: CGPoint(x: points[points.count - 1].x, y: baselineY))
+                area.closeSubpath()
+
+                context.fill(
+                    area,
+                    with: .linearGradient(
+                        Gradient(colors: [brandColor.opacity(0.28), brandColor.opacity(0.04)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: 0, y: size.height)
+                    )
                 )
-            )
 
-            context.stroke(
-                line,
-                with: .color(brandColor.opacity(0.35)),
-                style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round)
-            )
-            context.stroke(
-                line,
-                with: .color(brandColor),
-                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
-            )
+                context.stroke(
+                    line,
+                    with: .color(brandColor.opacity(0.35)),
+                    style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round)
+                )
+                context.stroke(
+                    line,
+                    with: .color(brandColor),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+                )
+            }
 
-            if progress < 0.995, let tip = points.last {
+            if progress < 0.995, let tip = pointGroups.last?.last {
                 var glow = Path()
                 glow.addEllipse(in: CGRect(x: tip.x - 4.5, y: tip.y - 4.5, width: 9, height: 9))
                 context.fill(glow, with: .color(brandColor.opacity(0.28)))
@@ -1138,15 +1148,37 @@ private struct SpeedChartRouteCanvas: View {
         return result
     }
 
+    private func projectedPointGroups(
+        for samples: [(date: Date, speedKmh: Double)],
+        in size: CGSize
+    ) -> [[CGPoint]] {
+        let points = projectedPoints(for: samples, in: size)
+        guard points.count >= 2 else {
+            return points.isEmpty ? [] : [points]
+        }
+
+        var groups: [[CGPoint]] = []
+        var current = [points[0]]
+        for index in 1..<points.count {
+            let gap = samples[index].date.timeIntervalSince(samples[index - 1].date)
+            if gap > Self.speedSampleGapBreakSeconds {
+                groups.append(current)
+                current = [points[index]]
+            } else {
+                current.append(points[index])
+            }
+        }
+        groups.append(current)
+        return groups
+    }
+
     private func projectedPoints(
         for samples: [(date: Date, speedKmh: Double)],
         in size: CGSize
     ) -> [CGPoint] {
-        guard let firstDate = samples.first?.date,
-              let lastDate = samples.last?.date
-        else { return [] }
+        guard !samples.isEmpty else { return [] }
 
-        let dateSpan = max(lastDate.timeIntervalSince(firstDate), 1)
+        let dateSpan = max(tripEndedAt.timeIntervalSince(tripStartedAt), 1)
         let inset: CGFloat = 2
         let drawWidth = max(size.width - inset * 2, 1)
         let drawHeight = max(size.height - inset * 2, 1)
@@ -1154,7 +1186,7 @@ private struct SpeedChartRouteCanvas: View {
         let speedMax = max(maxKmh, 1)
 
         return samples.map { sample in
-            let xFraction = sample.date.timeIntervalSince(firstDate) / dateSpan
+            let xFraction = sample.date.timeIntervalSince(tripStartedAt) / dateSpan
             let yFraction = min(1, max(0, sample.speedKmh / speedMax))
             return CGPoint(
                 x: inset + CGFloat(xFraction) * drawWidth,

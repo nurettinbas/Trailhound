@@ -13,19 +13,6 @@ final class AppSettings {
     var monthlyDistanceGoalMeters: Double = 500_000 {
         didSet { defaults.set(monthlyDistanceGoalMeters, forKey: Key.monthlyDistanceGoalMeters) }
     }
-    var stopSpeedKmh: Double = 2 {
-        didSet { defaults.set(stopSpeedKmh, forKey: Key.stopSpeedKmh) }
-    }
-    var stopMinimumDistanceMeters: Double = 200 {
-        didSet { defaults.set(stopMinimumDistanceMeters, forKey: Key.stopMinimumDistanceMeters) }
-    }
-    var stopMinimumDurationSeconds: TimeInterval = 120 {
-        didSet { defaults.set(stopMinimumDurationSeconds, forKey: Key.stopMinimumDurationSeconds) }
-    }
-    var tripStopMinimumDurationSeconds: TimeInterval = 300 {
-        didSet { defaults.set(tripStopMinimumDurationSeconds, forKey: Key.tripStopMinimumDurationSeconds) }
-    }
-
     /// Vehicle used for new recordings and fuel estimates when none is set on the trip.
     var recordingVehicleID: UUID? {
         didSet {
@@ -51,10 +38,6 @@ final class AppSettings {
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let monthlyDistanceGoalMeters = "monthlyDistanceGoalMeters"
         static let preferredLanguageCode = "preferredLanguageCode"
-        static let stopSpeedKmh = "recording.stopSpeedKmh"
-        static let stopMinimumDistanceMeters = "recording.stopMinimumDistanceMeters"
-        static let stopMinimumDurationSeconds = "recording.stopMinimumDurationSeconds"
-        static let tripStopMinimumDurationSeconds = "recording.tripStopMinimumDurationSeconds"
         static let developerModeEnabled = "developerModeEnabled"
         static let recordingVehicleID = "recording.vehicleID"
     }
@@ -70,26 +53,7 @@ final class AppSettings {
             key: Key.monthlyDistanceGoalMeters,
             default: 500_000
         )
-        stopSpeedKmh = Self.loadedPositiveDouble(
-            from: resolvedDefaults,
-            key: Key.stopSpeedKmh,
-            default: 2
-        )
-        stopMinimumDistanceMeters = Self.loadedPositiveDouble(
-            from: resolvedDefaults,
-            key: Key.stopMinimumDistanceMeters,
-            default: 200
-        )
-        stopMinimumDurationSeconds = Self.loadedTimeInterval(
-            from: resolvedDefaults,
-            key: Key.stopMinimumDurationSeconds,
-            default: 120
-        )
-        tripStopMinimumDurationSeconds = Self.loadedTimeInterval(
-            from: resolvedDefaults,
-            key: Key.tripStopMinimumDurationSeconds,
-            default: 300
-        )
+        Self.removeLegacyRecordingSensitivityKeys(from: resolvedDefaults)
         if let raw = resolvedDefaults.string(forKey: Key.recordingVehicleID),
            let id = UUID(uuidString: raw) {
             recordingVehicleID = id
@@ -106,6 +70,18 @@ final class AppSettings {
         if !hasCompletedCarSetup {
             hasCompletedCarSetup = true
             defaults.set(true, forKey: Key.hasCompletedCarSetup)
+        }
+    }
+
+    private static func removeLegacyRecordingSensitivityKeys(from defaults: UserDefaults) {
+        let keys = [
+            "recording.stopSpeedKmh",
+            "recording.stopMinimumDistanceMeters",
+            "recording.stopMinimumDurationSeconds",
+            "recording.tripStopMinimumDurationSeconds"
+        ]
+        for key in keys {
+            defaults.removeObject(forKey: key)
         }
     }
 

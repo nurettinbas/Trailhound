@@ -135,20 +135,6 @@ final class ExternalRecordingRequestTests: XCTestCase {
     }
 }
 
-final class RecordingStopPolicyTests: XCTestCase {
-    func testManualStopAlwaysSaves() {
-        let shouldSave = RecordingStopPolicy.shouldSaveTrip(
-            saveTrip: true,
-            reason: .manual,
-            duration: 10,
-            distanceMeters: 10,
-            minimumDurationSeconds: 120,
-            minimumDistanceMeters: 200
-        )
-        XCTAssertTrue(shouldSave)
-    }
-}
-
 @MainActor
 final class TripStoreTests: XCTestCase {
     func testOrphansExcludesCompletedTrips() throws {

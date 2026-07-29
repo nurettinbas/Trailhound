@@ -1420,6 +1420,23 @@
         }
       }
     },
+    "recording.location.always_required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her Zaman"
+          }
+        }
+      }
+    },
     "Günlüğü Temizle" : {
       "extractionState" : "stale",
       "localizations" : {
