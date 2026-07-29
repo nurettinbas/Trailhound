@@ -2,12 +2,16 @@ import SwiftData
 import SwiftUI
 
 struct TripListView: View {
-    @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
+    @Query(sort: \Trip.startedAt, order: .reverse) private var allTrips: [Trip]
+
+    /// In-memory filter — `#Predicate` on `@Model` key paths is not Swift 6 `Sendable`-safe.
+    private var trips: [Trip] {
+        allTrips.filter { $0.endedAt != nil }
+    }
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TripRecordingService.self) private var recordingService
     @Bindable private var settings = AppSettings.shared
@@ -24,6 +28,7 @@ struct TripListView: View {
     @State private var orphanTrips: [TripRecoveryService.OrphanTrip] = []
     @State private var showMergeConfirm = false
     @State private var searchText = ""
+    @State private var debouncedSearchText = ""
     @Namespace private var tripMorphNamespace
     @State private var morphingTripID: UUID?
     @State private var endCredits: RecordingEndCreditsSnapshot?
@@ -31,30 +36,25 @@ struct TripListView: View {
     @State private var creditsSlideY: CGFloat = 0
     @State private var isCreditsSliding = false
     @State private var listLandingMinY: CGFloat = 0
-    @State private var creditsCardAnchor = CreditsCardAnchor()
     /// Pinned at Stop so overlay keeps the live recording card's exact frame.
-    @State private var pinnedCreditsCardAnchor = CreditsCardAnchor()
+    @State private var pinnedCreditsCardAnchor = RecordingCardAnchor()
     /// Armed before recording state flips so entrance anim can't lose the race on device.
     @State private var coldOpenArmed = false
     @State private var coldOpenTripID: UUID?
     @State private var showNotificationsList = false
     @State private var scrollToTopToken = 0
     @State private var scrollToTopRequest: TripListScrollToTopRequest?
-    @State private var topListAnchorMinY: CGFloat = .greatestFiniteMagnitude
+    @State private var isRecordingCardInViewport = true
 
     private var hasActiveFilters: Bool {
         selectedLabel != nil
             || selectedCategoryID != nil
             || selectedDateSection != nil
-            || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var allCompletedTrips: [Trip] {
-        trips.filter { $0.endedAt != nil }
+            || !debouncedSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var completedTrips: [Trip] {
-        allCompletedTrips.filter { trip in
+        trips.filter { trip in
             if let selectedLabel, trip.label != selectedLabel { return false }
             if let selectedCategoryID, trip.categoryID != selectedCategoryID { return false }
             if let selectedDateSection,
@@ -63,7 +63,7 @@ struct TripListView: View {
             }
             if !TripListViewModel.matchesSearch(
                 trip,
-                searchText: searchText,
+                searchText: debouncedSearchText,
                 places: places,
                 privacyRadius: settings.privacyRadiusMeters
             ) {
@@ -81,7 +81,7 @@ struct TripListView: View {
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
         let weekTrips = StatsViewModel.trips(
             in: DateInterval(start: weekAgo, end: Date()),
-            from: trips.filter { $0.endedAt != nil }
+            from: trips
         )
         let stats = StatsViewModel.stats(for: weekTrips)
         return L10n.weekSummary(
@@ -106,10 +106,7 @@ struct TripListView: View {
               recordingService.activeTripID != nil
         else { return false }
 
-        if creditsCardAnchor.width > 0, creditsCardAnchor.minY < 110 {
-            return true
-        }
-        return topListAnchorMinY < 110
+        return !isRecordingCardInViewport
     }
 
     var body: some View {
@@ -125,16 +122,7 @@ struct TripListView: View {
                 LocationPermissionBanner()
                     .id(TripListScrollTarget.top)
                     .background {
-                        ZStack {
-                            TripListScrollToTopInstaller(request: scrollToTopRequest)
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: TripListTopAnchorMinYKey.self,
-                                    value: geo.frame(in: .global).minY
-                                )
-                            }
-                        }
-                        .frame(width: 0, height: 0)
+                        TripListScrollToTopInstaller(request: scrollToTopRequest)
                     }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
@@ -205,31 +193,20 @@ struct TripListView: View {
                     ActiveTripView(
                         morphNamespace: tripMorphNamespace,
                         morphID: activeTripID,
-                        playEntranceReveal: coldOpenArmed,
+                        playEntranceReveal: false,
                         onEntranceFinished: finishColdOpen,
-                        onStop: beginEndCredits
+                        onStop: { anchor in beginEndCredits(cardAnchor: anchor) },
+                        isRecordingCardVisible: tabSelection.selectedTab == .trips && isRecordingCardInViewport
                     )
                     .id(activeTripID)
-                    .transition(.opacity)
-                    .background {
-                        GeometryReader { geo in
-                            let frame = geo.frame(in: .global)
-                            Color.clear.preference(
-                                key: CreditsCardAnchorKey.self,
-                                value: CreditsCardAnchor(
-                                    minX: frame.minX,
-                                    minY: frame.minY,
-                                    width: frame.width
-                                )
-                            )
-                        }
-                    }
+                    .onAppear { isRecordingCardInViewport = true }
+                    .onDisappear { isRecordingCardInViewport = false }
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             }
 
-            if !allCompletedTrips.isEmpty {
+            if !trips.isEmpty {
                 Section {
                     HStack(spacing: 12) {
                         Image(systemName: "calendar")
@@ -252,7 +229,7 @@ struct TripListView: View {
                 .glassListRow()
             }
 
-            if !allCompletedTrips.isEmpty {
+            if !trips.isEmpty {
                 Section {
                     TripListFiltersBar(
                         searchText: $searchText,
@@ -274,8 +251,8 @@ struct TripListView: View {
             }
 
             if completedTrips.isEmpty {
-                let showFilteredEmpty = hasActiveFilters && !allCompletedTrips.isEmpty
-                let showDefaultEmpty = allCompletedTrips.isEmpty
+                let showFilteredEmpty = hasActiveFilters && !trips.isEmpty
+                let showDefaultEmpty = trips.isEmpty
                     && !recordingService.state.isActiveSession
                     && endCredits == nil
                     && coldOpenTripID == nil
@@ -309,22 +286,20 @@ struct TripListView: View {
         .scrollDismissesKeyboard(.interactively)
         .listSectionSpacing(12)
         .glassListChrome()
-        .onPreferenceChange(TripListTopAnchorMinYKey.self) { topListAnchorMinY = $0 }
-        .onPreferenceChange(CreditsListLandingYKey.self) { listLandingMinY = $0 }
-        .onPreferenceChange(CreditsCardAnchorKey.self) { newValue in
-            if newValue.width > 0 {
-                creditsCardAnchor = newValue
+        .onChange(of: searchText) { _, newValue in
+            let pending = newValue
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled, searchText == pending else { return }
+                debouncedSearchText = pending
             }
         }
-        .navigationDestination(for: UUID.self) { tripID in
-            if let trip = trips.first(where: { $0.id == tripID }) {
-                TripDetailView(trip: trip)
-            } else {
-                ContentUnavailableView(L10n.tripsSearchEmpty, systemImage: "car")
-                    .onAppear {
-                        DispatchQueue.main.async { dismiss() }
-                    }
-            }
+        .onPreferenceChange(CreditsListLandingYKey.self) { newY in
+            guard endCredits != nil else { return }
+            listLandingMinY = newY
+        }
+        .navigationDestination(for: Trip.self) { trip in
+            TripDetailView(trip: trip)
         }
         .navigationDestination(isPresented: $showNotificationsList) {
             NotificationsListView()
@@ -336,6 +311,7 @@ struct TripListView: View {
             notificationStore.reload()
         }
         .onAppear {
+            debouncedSearchText = searchText
             refreshOrphans()
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
         }
@@ -353,7 +329,7 @@ struct TripListView: View {
                     endCredits = nil
                 }
             } else {
-                topListAnchorMinY = .greatestFiniteMagnitude
+                isRecordingCardInViewport = true
             }
             if !wasActive, isActive, endCredits == nil {
                 beginColdOpenIfNeeded()
@@ -472,9 +448,7 @@ struct TripListView: View {
             if let endCredits {
                 GeometryReader { geo in
                     let containerFrame = geo.frame(in: .global)
-                    let anchor = pinnedCreditsCardAnchor.width > 0
-                        ? pinnedCreditsCardAnchor
-                        : creditsCardAnchor
+                    let anchor = pinnedCreditsCardAnchor
                     let startY = anchor.minY > 0
                         ? anchor.minY - containerFrame.minY
                         : 12
@@ -533,7 +507,7 @@ struct TripListView: View {
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
             } else {
-                NavigationLink(value: trip.id) {
+                NavigationLink(value: trip) {
                     TripRowView(
                         trip: trip,
                         places: places,
@@ -614,7 +588,7 @@ struct TripListView: View {
         }
     }
 
-    private func beginEndCredits() {
+    private func beginEndCredits(cardAnchor: RecordingCardAnchor) {
         guard let tripID = recordingService.activeTripID else {
             recordingService.stopManualRecording()
             return
@@ -635,7 +609,7 @@ struct TripListView: View {
         coldOpenTripID = nil
         creditsSlideY = 0
         isCreditsSliding = false
-        pinnedCreditsCardAnchor = creditsCardAnchor
+        pinnedCreditsCardAnchor = cardAnchor
 
         if reduceMotion {
             recordingService.stopManualRecording()
@@ -716,7 +690,7 @@ struct TripListView: View {
 
         let startGlobal = pinnedCreditsCardAnchor.minY > 0
             ? pinnedCreditsCardAnchor.minY
-            : creditsCardAnchor.minY
+            : 0
         let measured = listLandingMinY - startGlobal
         let distance = measured > 40 ? measured : 140
 
@@ -735,7 +709,7 @@ struct TripListView: View {
                 endCredits = nil
                 creditsSlideY = 0
                 isCreditsSliding = false
-                pinnedCreditsCardAnchor = CreditsCardAnchor()
+                pinnedCreditsCardAnchor = RecordingCardAnchor()
             }
             TrailhoundHaptics.selection()
             clearMorphingTripSoon(delayMilliseconds: 220)
@@ -854,30 +828,6 @@ private struct TripListActiveRecordingNavIcon: View {
                 steeringTilt = -55
             }
             try? await Task.sleep(for: .milliseconds(3500))
-        }
-    }
-}
-
-private struct TripListTopAnchorMinYKey: PreferenceKey {
-    static var defaultValue: CGFloat { .greatestFiniteMagnitude }
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = min(value, nextValue())
-    }
-}
-
-private struct CreditsCardAnchor: Equatable {
-    var minX: CGFloat = 0
-    var minY: CGFloat = 0
-    var width: CGFloat = 0
-}
-
-private struct CreditsCardAnchorKey: PreferenceKey {
-    static var defaultValue: CreditsCardAnchor { CreditsCardAnchor() }
-    static func reduce(value: inout CreditsCardAnchor, nextValue: () -> CreditsCardAnchor) {
-        let next = nextValue()
-        if next.width > 0 {
-            value = next
         }
     }
 }

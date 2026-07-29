@@ -15,6 +15,11 @@ enum GlassTokens {
         scheme == .dark ? Color.white.opacity(0.10) : Color.white.opacity(0.48)
     }
 
+    /// Frosted panel look without `Material` (keyboard-friendly forms).
+    static func formPanelFill(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.55)
+    }
+
     static var solidFallback: Color {
         Color(.secondarySystemGroupedBackground)
     }
@@ -77,6 +82,13 @@ enum GlassRowPosition {
 
 /// Soft color wash behind frosted panels — visible through glass, not a flat blue screen.
 struct AtmosphericBackground: View {
+    enum Style {
+        case full
+        case lightweight
+    }
+
+    var style: Style = .full
+
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -97,23 +109,25 @@ struct AtmosphericBackground: View {
                 endPoint: .bottom
             )
 
-            Circle()
-                .fill(TrailhoundBrandColors.brandTop.opacity(colorScheme == .dark ? 0.38 : 0.42))
-                .frame(width: 320, height: 320)
-                .blur(radius: 70)
-                .offset(x: -120, y: -220)
+            if style == .full {
+                Circle()
+                    .fill(TrailhoundBrandColors.brandTop.opacity(colorScheme == .dark ? 0.38 : 0.42))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 70)
+                    .offset(x: -120, y: -220)
 
-            Circle()
-                .fill(TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.32 : 0.36))
-                .frame(width: 360, height: 360)
-                .blur(radius: 80)
-                .offset(x: 140, y: 280)
+                Circle()
+                    .fill(TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.32 : 0.36))
+                    .frame(width: 360, height: 360)
+                    .blur(radius: 80)
+                    .offset(x: 140, y: 280)
 
-            Circle()
-                .fill(Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18))
-                .frame(width: 240, height: 240)
-                .blur(radius: 55)
-                .offset(x: 60, y: 40)
+                Circle()
+                    .fill(Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18))
+                    .frame(width: 240, height: 240)
+                    .blur(radius: 55)
+                    .offset(x: 60, y: 40)
+            }
         }
         .ignoresSafeArea()
     }
@@ -170,6 +184,50 @@ struct GlassSectionRowBackground: View {
             bottomRadius: position.bottomRadius,
             density: .panel
         )
+        .padding(.horizontal, GlassTokens.panelHorizontalInset)
+    }
+}
+
+/// Solid grouped rows for keyboard-heavy forms (no per-row material blur).
+struct FormSolidSectionRowBackground: View {
+    let position: GlassRowPosition
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var shape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: position.topRadius,
+            bottomLeadingRadius: position.bottomRadius,
+            bottomTrailingRadius: position.bottomRadius,
+            topTrailingRadius: position.topRadius,
+            style: .continuous
+        )
+    }
+
+    var body: some View {
+        ZStack {
+            if reduceTransparency {
+                shape.fill(GlassTokens.solidFallback)
+            } else {
+                shape.fill(GlassTokens.formPanelFill(for: colorScheme))
+                shape.fill(
+                    TrailhoundBrandColors.brandBottom.opacity(
+                        colorScheme == .dark ? 0.14 : 0.10
+                    )
+                )
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+            }
+        }
         .padding(.horizontal, GlassTokens.panelHorizontalInset)
     }
 }
@@ -338,11 +396,32 @@ extension View {
     func glassListChrome() -> some View {
         scrollContentBackground(.hidden)
             .background {
-                AtmosphericBackground()
+                AtmosphericBackground(style: .full)
                     .ignoresSafeArea()
             }
             .listSectionSpacing(GlassTokens.sectionSpacing)
             .glassNavigationChrome()
+    }
+
+    /// Lighter shell for text-heavy forms (gradient only, solid section rows).
+    func glassFormChrome() -> some View {
+        scrollContentBackground(.hidden)
+            .background {
+                AtmosphericBackground(style: .lightweight)
+                    .ignoresSafeArea()
+            }
+            .listSectionSpacing(GlassTokens.sectionSpacing)
+            .glassNavigationChrome()
+    }
+
+    func glassFormRow(position: GlassRowPosition) -> some View {
+        listRowBackground(FormSolidSectionRowBackground(position: position))
+            .listRowInsets(rowInsets(for: position))
+            .listRowSeparator(.hidden)
+    }
+
+    func glassFormListRow() -> some View {
+        glassFormRow(position: .only)
     }
 
     /// Keeps the nav bar visually merged with the atmospheric shell (no separate grey strip).

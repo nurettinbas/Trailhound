@@ -16,35 +16,53 @@ struct RecordingCarAnimationView: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: animationInterval)) { timeline in
-            RoadSceneDriver(
-                liveTime: timeline.date.timeIntervalSinceReferenceDate,
-                shouldAnimate: shouldAnimate,
-                isPaused: !isAnimating,
-                compact: compact,
-                sceneHeight: sceneHeight,
-                driveInProgress: driveInProgress
-            )
+        Group {
+            if shouldAnimate {
+                TimelineView(.animation(minimumInterval: animationInterval)) { timeline in
+                    RoadSceneDriver(
+                        liveTime: timeline.date.timeIntervalSinceReferenceDate,
+                        shouldAnimate: true,
+                        isPaused: !isAnimating,
+                        compact: compact,
+                        sceneHeight: sceneHeight,
+                        driveInProgress: driveInProgress
+                    )
+                }
+            } else {
+                RoadSceneDriver(
+                    liveTime: nil,
+                    shouldAnimate: false,
+                    isPaused: !isAnimating,
+                    compact: compact,
+                    sceneHeight: sceneHeight,
+                    driveInProgress: driveInProgress
+                )
+            }
         }
         .frame(height: sceneHeight)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10))
+        .drawingGroup(opaque: false, colorMode: .linear)
         .accessibilityHidden(true)
     }
 }
 
 private struct RoadSceneDriver: View {
-    let liveTime: TimeInterval
+    /// Live clock while animating; `nil` uses a frozen frame (no `TimelineView` tick).
+    let liveTime: TimeInterval?
     let shouldAnimate: Bool
     let isPaused: Bool
     let compact: Bool
     let sceneHeight: CGFloat
     let driveInProgress: CGFloat
 
-    @State private var frozenRoadTime: TimeInterval = 0
+    @State private var frozenRoadTime: TimeInterval = Date.timeIntervalSinceReferenceDate
 
     private var sceneTime: TimeInterval {
-        shouldAnimate ? liveTime : frozenRoadTime
+        if shouldAnimate, let liveTime {
+            return liveTime
+        }
+        return frozenRoadTime
     }
 
     var body: some View {
@@ -56,17 +74,17 @@ private struct RoadSceneDriver: View {
         )
             .frame(height: sceneHeight)
             .onAppear {
-                frozenRoadTime = liveTime
+                if let liveTime {
+                    frozenRoadTime = liveTime
+                }
             }
             .onChange(of: shouldAnimate) { _, animating in
-                if animating {
-                    frozenRoadTime = liveTime
-                } else {
+                if animating, let liveTime {
                     frozenRoadTime = liveTime
                 }
             }
             .onChange(of: liveTime) { _, newTime in
-                if shouldAnimate {
+                if shouldAnimate, let newTime {
                     frozenRoadTime = newTime
                 }
             }

@@ -8,12 +8,16 @@ private enum TripMapStyle {
     case standard
     case dark
 
-    var mapStyle: MapStyle {
+    func mapStyle(flatElevation: Bool) -> MapStyle {
         switch self {
         case .standard:
-            return .standard(elevation: .realistic)
+            return flatElevation
+                ? .standard(elevation: .flat)
+                : .standard(elevation: .realistic)
         case .dark:
-            return .standard(elevation: .realistic, emphasis: .muted)
+            return flatElevation
+                ? .standard(elevation: .flat, emphasis: .muted)
+                : .standard(elevation: .realistic, emphasis: .muted)
         }
     }
 }
@@ -74,7 +78,16 @@ struct TripDetailView: View {
     @State private var panelRisen = false
     @State private var statCountProgress: [String: Double] = [:]
     @State private var speedChartRevealProgress: Double = 0
+    @State private var tripDetailViewModel: TripDetailViewModel?
+    @State private var revealCheapMapDuringAnimation = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var resolvedViewModel: TripDetailViewModel {
+        if let tripDetailViewModel {
+            return tripDetailViewModel
+        }
+        return TripDetailViewModel(trip: trip, places: places, privacyRadius: settings.privacyRadiusMeters)
+    }
 
     private var sortedStops: [TripStop] {
         trip.stops.sorted { $0.startedAt < $1.startedAt }
@@ -85,10 +98,6 @@ struct TripDetailView: View {
             if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
             return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
-    }
-
-    private var viewModel: TripDetailViewModel {
-        TripDetailViewModel(trip: trip, places: places, privacyRadius: settings.privacyRadiusMeters)
     }
 
     var body: some View {
@@ -179,11 +188,27 @@ struct TripDetailView: View {
             endPlaceNameText = trip.endPlaceName ?? ""
             editedStartedAt = trip.startedAt
             editedEndedAt = trip.endedAt ?? Date()
-            if reduceMotion || TripDetailRevealSession.hasCompleted(trip.id) {
+
+            if tripDetailViewModel == nil {
+                tripDetailViewModel = TripDetailViewModel(
+                    trip: trip,
+                    places: places,
+                    privacyRadius: settings.privacyRadiusMeters
+                )
+            }
+
+            let pointCount = trip.sortedPoints.count
+            let plan = TripDetailRevealPolicy.animationPlan(
+                pointCount: pointCount,
+                reduceMotion: reduceMotion
+            )
+            revealCheapMapDuringAnimation = plan.useCheapMapDuringReveal
+
+            if !plan.shouldAnimate || TripDetailRevealSession.hasCompleted(trip.id) {
                 finishDetailRevealInstant()
                 logTripDetailDiagnostics(context: "appear instant")
             } else {
-                startDetailReveal()
+                startDetailReveal(plan: plan)
                 logTripDetailDiagnostics(context: "appear animate")
             }
         }
@@ -198,7 +223,7 @@ struct TripDetailView: View {
         }
     }
 
-    private func startDetailReveal() {
+    private func startDetailReveal(plan: TripDetailRevealPolicy.AnimationPlan) {
         guard !didStartDetailReveal else { return }
         didStartDetailReveal = true
 
@@ -207,11 +232,11 @@ struct TripDetailView: View {
         startPinVisible = false
         endPinVisible = false
         statCountProgress = Dictionary(
-            uniqueKeysWithValues: viewModel.summaryMetrics.map { ($0.id, 0.0) }
+            uniqueKeysWithValues: resolvedViewModel.summaryMetrics.map { ($0.id, 0.0) }
         )
         speedChartRevealProgress = 0
 
-        if let region = viewModel.mapRegion(fit: .detailWithPanel) {
+        if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
             cameraPosition = .region(region)
         }
 
@@ -228,20 +253,24 @@ struct TripDetailView: View {
                 panelRisen = true
             }
 
-            await runContentReveal()
+            await runContentReveal(plan: plan)
         }
     }
 
-    private func runContentReveal() async {
-        let metrics = viewModel.summaryMetrics
-        let pathCount = max(viewModel.routeCoordinates.count, viewModel.coordinates.count)
-        let ticks = pathCount >= 2 ? 48 : 16
-        let stepSleep: Duration = pathCount >= 2 ? .milliseconds(32) : .milliseconds(22)
+    private func runContentReveal(plan: TripDetailRevealPolicy.AnimationPlan) async {
+        let metrics = resolvedViewModel.summaryMetrics
+        let ticks = max(plan.tickCount, 1)
+        let stepSleep = Duration.milliseconds(plan.stepSleepMilliseconds)
 
         for tick in 1...ticks {
             try? await Task.sleep(for: stepSleep)
             guard !Task.isCancelled else { return }
-            let progress = Self.smoothstep(Double(tick) / Double(ticks))
+            let raw = Self.smoothstep(Double(tick) / Double(ticks))
+            let progress = TripDetailRevealPolicy.quantizedProgress(
+                rawProgress: raw,
+                tick: tick,
+                tickCount: ticks
+            )
             routeRevealProgress = progress
             for metric in metrics {
                 statCountProgress[metric.id] = progress
@@ -276,11 +305,11 @@ struct TripDetailView: View {
         endPinVisible = true
         panelRisen = true
         statCountProgress = Dictionary(
-            uniqueKeysWithValues: viewModel.summaryMetrics.map { ($0.id, 1.0) }
+            uniqueKeysWithValues: resolvedViewModel.summaryMetrics.map { ($0.id, 1.0) }
         )
         speedChartRevealProgress = 1
         TripDetailRevealSession.markCompleted(trip.id)
-        if let region = viewModel.mapRegion(fit: .detailWithPanel) {
+        if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
             cameraPosition = .region(region)
         }
     }
@@ -299,7 +328,7 @@ struct TripDetailView: View {
 
                     statsStrip
 
-                    if !viewModel.speedSamples.isEmpty {
+                    if !resolvedViewModel.speedSamples.isEmpty {
                         speedChartCard
                     }
 
@@ -439,11 +468,11 @@ struct TripDetailView: View {
 
     private var tripHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(viewModel.routeSummary)
+            Text(resolvedViewModel.routeSummary)
                 .font(.headline)
                 .lineLimit(2)
 
-            Text(viewModel.dateText)
+            Text(resolvedViewModel.dateText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -452,7 +481,7 @@ struct TripDetailView: View {
 
     @ViewBuilder
     private var statsStrip: some View {
-        let metrics = viewModel.summaryMetrics
+        let metrics = resolvedViewModel.summaryMetrics
         let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
         let primaryRow = metrics.filter { primaryIDs.contains($0.id) }
         let secondaryRow = metrics.filter { !primaryIDs.contains($0.id) }
@@ -529,7 +558,7 @@ struct TripDetailView: View {
 
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(L10n.formatSpeedKmh(viewModel.speedChartMaxKmh))
+                    Text(L10n.formatSpeedKmh(resolvedViewModel.speedChartMaxKmh))
                         .font(.caption2)
                     Spacer(minLength: 0)
                     Text(L10n.formatSpeedKmh(0))
@@ -539,8 +568,8 @@ struct TripDetailView: View {
                 .frame(width: 34, height: 120)
 
                 SpeedChartRouteCanvas(
-                    samples: viewModel.speedSamples,
-                    maxKmh: viewModel.speedChartMaxKmh,
+                    samples: resolvedViewModel.speedSamples,
+                    maxKmh: resolvedViewModel.speedChartMaxKmh,
                     progress: progress,
                     tripStartedAt: trip.startedAt,
                     tripEndedAt: trip.endedAt ?? trip.startedAt
@@ -764,8 +793,10 @@ struct TripDetailView: View {
         revealProgress: Double? = nil
     ) -> some View {
         let progress = revealProgress ?? routeRevealProgress
-        let revealedSegments = viewModel.revealedSpeedColoredSegments(progress: progress)
-        let revealedFallback = viewModel.revealedFallbackCoordinates(progress: progress)
+        let duringReveal = progress < 0.999
+        let useCheapReveal = duringReveal && revealCheapMapDuringAnimation
+        let revealedSegments = resolvedViewModel.revealedSpeedColoredSegments(progress: progress)
+        let revealedFallback = resolvedViewModel.revealedFallbackCoordinates(progress: progress)
         let revealTick = Int((progress * 200).rounded())
         let revealedItems = revealedSegments.map { segment in
             RevealedRouteSegment(
@@ -776,52 +807,60 @@ struct TripDetailView: View {
         }
 
         Map(position: $cameraPosition, interactionModes: interactive ? .all : []) {
-            ForEach(revealedItems) { segment in
-                MapPolyline(coordinates: segment.coordinates)
-                    .stroke(
-                        segment.color.opacity(0.38),
-                        style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round)
-                    )
-                    .mapOverlayLevel(level: .aboveRoads)
+            if !useCheapReveal {
+                ForEach(revealedItems) { segment in
+                    MapPolyline(coordinates: segment.coordinates)
+                        .stroke(
+                            segment.color.opacity(0.38),
+                            style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round)
+                        )
+                        .mapOverlayLevel(level: .aboveRoads)
+                }
             }
 
             ForEach(revealedItems) { segment in
                 MapPolyline(coordinates: segment.coordinates)
                     .stroke(
                         segment.color,
-                        style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round)
+                        style: StrokeStyle(
+                            lineWidth: useCheapReveal ? 4.5 : 4.5,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
                     )
                     .mapOverlayLevel(level: .aboveRoads)
             }
 
             if revealedItems.isEmpty, revealedFallback.count >= 2 {
-                MapPolyline(coordinates: revealedFallback)
-                    .stroke(Color.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
+                if !useCheapReveal {
+                    MapPolyline(coordinates: revealedFallback)
+                        .stroke(Color.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
+                }
                 MapPolyline(coordinates: revealedFallback)
                     .stroke(.cyan, lineWidth: 4.5)
             }
 
-            if startPinVisible, let start = viewModel.routeStartCoordinate {
+            if startPinVisible, let start = resolvedViewModel.routeStartCoordinate {
                 Annotation(L10n.tripPointStart, coordinate: start) {
                     routeAnnotationMark(systemName: "flag.fill", color: .green, popped: startPinVisible)
                 }
             }
 
-            if endPinVisible, let end = viewModel.routeEndCoordinate {
+            if endPinVisible, let end = resolvedViewModel.routeEndCoordinate {
                 Annotation(L10n.tripPointEnd, coordinate: end) {
                     routeAnnotationMark(systemName: "mappin.circle.fill", color: .red, popped: endPinVisible)
                 }
             }
 
             ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { _, stop in
-                if progress >= viewModel.annotationRevealProgress(forStopAt: stop.coordinate) {
+                if progress >= resolvedViewModel.annotationRevealProgress(forStopAt: stop.coordinate) {
                     Annotation(L10n.tripPointStop, coordinate: stop.coordinate) {
                         routeAnnotationMark(systemName: "pause.circle.fill", color: .orange, popped: true)
                     }
                 }
             }
         }
-        .mapStyle(style.mapStyle)
+        .mapStyle(style.mapStyle(flatElevation: useCheapReveal))
         .preferredColorScheme(style == .dark ? .dark : nil)
     }
 
@@ -856,7 +895,7 @@ struct TripDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle(viewModel.routeSummary)
+            .navigationTitle(resolvedViewModel.routeSummary)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -866,7 +905,7 @@ struct TripDetailView: View {
                 }
             }
             .onAppear {
-                if let region = viewModel.mapRegion(fit: .fullscreen) {
+                if let region = resolvedViewModel.mapRegion(fit: .fullscreen) {
                     cameraPosition = .region(region)
                 }
             }
@@ -967,8 +1006,8 @@ struct TripDetailView: View {
     private func logTripDetailDiagnostics(context: String) {
         let points = trip.sortedPoints
         let speedPointCount = points.filter { ($0.speedMps ?? 0) > 0 }.count
-        let sampleCount = viewModel.speedSamples.count
-        let segmentCount = viewModel.speedColoredSegments.count
+        let sampleCount = resolvedViewModel.speedSamples.count
+        let segmentCount = resolvedViewModel.speedColoredSegments.count
 
         DevLog.shared.log(
             .tripDetail,

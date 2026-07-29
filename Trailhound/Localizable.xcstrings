@@ -4816,6 +4816,62 @@
         }
       }
     },
+    "vehicle.icon.car" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Car" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Otomobil" } }
+      }
+    },
+    "vehicle.icon.car_side" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Car (side)" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Araba" } }
+      }
+    },
+    "vehicle.icon.electric" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Electric" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Elektrik" } }
+      }
+    },
+    "vehicle.icon.suv" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "SUV" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "SUV" } }
+      }
+    },
+    "vehicle.icon.convertible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Convertible" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Cabrio" } }
+      }
+    },
+    "vehicle.icon.pickup" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pickup" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Pickup" } }
+      }
+    },
+    "vehicle.icon.truck" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Van / truck" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kamyonet" } }
+      }
+    },
+    "vehicle.icon.motorcycle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Motorcycle" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Motosiklet" } }
+      }
+    },
     "pairing.tab.vehicle.name" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8313,6 +8369,176 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uygulama veritabanı güncellendi. Eski kayıtlar yedeklendi; yolculuk geçmişi sıfırlandı."
+          }
+        }
+      }
+    },
+    "store.restore_no_backup" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No automatic backup was found on this device."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu cihazda otomatik yedek bulunamadı."
+          }
+        }
+      }
+    },
+    "settings.backup.restore_auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore from automatic backup"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatik yedekten geri yükle"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_confirm_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore backup?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yedek geri yüklensin mi?"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_confirm_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This replaces the current database with %@. Quit and reopen Trailhound after restoring."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mevcut veritabanı %@ ile değiştirilecek. Geri yükledikten sonra Trailhound’u kapatıp yeniden aç."
+          }
+        }
+      }
+    },
+    "settings.backup.restore_restart_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup restored"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yedek geri yüklendi"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_restart_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Force quit Trailhound and open it again to load your trips, vehicles, and places."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculukların, araçların ve yerlerin gelmesi için Trailhound’u tamamen kapatıp yeniden aç."
+          }
+        }
+      }
+    },
+    "settings.backup.restore_restart_action" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit app"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uygulamayı kapat"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_best" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore largest backup (recommended)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En büyük yedeği geri yükle (önerilen)"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_row" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "settings.backup.restore_hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No automatic backup found here. If you exported JSON/CSV before, use that file. After a successful restore you must force-quit Trailhound and reopen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Burada otomatik yedek yok. Daha önce JSON/CSV dışa aktardıysan onu kullan. Geri yükleme sonrası Trailhound’u tamamen kapatıp yeniden açman şart."
           }
         }
       }

@@ -14,11 +14,9 @@ struct PairingVehicleEditorView: View {
 
     var body: some View {
         Group {
-            
             if let vehicle {
-                PairingVehicleEditorForm(vehicle: vehicle)
+                PairingVehicleEditorForm(vehicle: vehicle, vehicles: vehicles)
             } else {
-                
                 ContentUnavailableView(L10n.pairingTabVehicleNotFound, systemImage: "car")
             }
         }
@@ -31,44 +29,45 @@ struct PairingVehicleEditorView: View {
 }
 
 private struct PairingVehicleEditorForm: View {
-    @Bindable var vehicle: VehicleProfile
+    let vehicle: VehicleProfile
+    let vehicles: [VehicleProfile]
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Bindable private var settings = AppSettings.shared
-    @Query private var vehicles: [VehicleProfile]
+
+    @State private var draft: VehicleEditorDraft?
 
     private var isOnlyVehicle: Bool { vehicles.count <= 1 }
 
-    private var selectedIcon: VehicleIconOption {
-        VehicleIconOption.resolved(vehicle.iconName)
+    private var activeDraft: VehicleEditorDraft {
+        draft ?? VehicleEditorDraft(from: vehicle)
     }
 
     var body: some View {
         Form {
             Section(L10n.pairingTabVehicleSection) {
-                TextField(L10n.pairingTabVehicleName, text: $vehicle.name)
+                TextField(L10n.pairingTabVehicleName, text: draftBinding(\.name))
                     .glassRow(position: .first)
-                Picker(L10n.pairingTabFuelType, selection: Binding(
-                    get: { vehicle.fuelType },
-                    set: { vehicle.fuelType = $0 }
-                )) {
+                Picker(L10n.pairingTabFuelType, selection: draftBinding(\.fuelType)) {
                     ForEach(VehicleFuelType.allCases, id: \.self) { type in
                         Text(type.displayName).tag(type)
                     }
                 }
                 .glassRow(position: .middle)
-                LabeledContent(vehicle.consumptionLabel) {
-                    TextField(vehicle.consumptionLabel, value: $vehicle.consumption, format: .number)
+                LabeledContent(activeDraft.consumptionLabel) {
+                    TextField(activeDraft.consumptionLabel, value: draftBinding(\.consumption), format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                 }
-                .glassRow(position: vehicle.fuelType == .electric ? .middle : .last)
-                if vehicle.fuelType == .electric {
+                .glassRow(position: activeDraft.fuelType == .electric ? .middle : .last)
+                if activeDraft.fuelType == .electric {
                     LabeledContent(L10n.pairingTabChargePrice) {
-                        TextField("TL/kWh", value: Binding(
-                            get: { vehicle.chargePricePerKWh ?? settings.evChargePricePerKWh },
-                            set: { vehicle.chargePricePerKWh = $0 }
-                        ), format: .number)
+                        TextField(
+                            "TL/kWh",
+                            value: electricChargeBinding,
+                            format: .number
+                        )
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                     }
@@ -76,70 +75,28 @@ private struct PairingVehicleEditorForm: View {
                 }
             }
 
-            Section(L10n.pairingTabVehicleIcon) {
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
-                    spacing: 8
-                ) {
-                    ForEach(VehicleIconOption.available) { option in
-                        Button {
-                            vehicle.iconName = option.rawValue
-                            TrailhoundHaptics.selection()
-                        } label: {
-                            Image(systemName: option.rawValue)
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(
-                                    selectedIcon == option
-                                        ? TrailhoundBrandColors.brandBottom
-                                        : Color.secondary
-                                )
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(
-                                            selectedIcon == option
-                                                ? TrailhoundBrandColors.brandBottom.opacity(0.14)
-                                                : Color.secondary.opacity(0.08)
-                                        )
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .strokeBorder(
-                                            selectedIcon == option
-                                                ? TrailhoundBrandColors.brandBottom
-                                                : Color.clear,
-                                            lineWidth: 2
-                                        )
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(option.rawValue)
-                        .accessibilityAddTraits(selectedIcon == option ? .isSelected : [])
-                    }
-                }
-                .padding(.vertical, 4)
+            Section {
+                VehicleIconPickerGrid(
+                    selection: draftBinding(\.iconName),
+                    icons: VehicleIconOption.pairingEditorIcons
+                )
                 .glassListRow()
+                .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
             }
 
             Section {
                 Button {
                     guard !isOnlyVehicle else { return }
-                    if vehicle.isDefault {
-                        defaultVehicleBinding.wrappedValue = false
-                    } else {
-                        defaultVehicleBinding.wrappedValue = true
-                    }
+                    updateDraft { $0.wantsDefault.toggle() }
                 } label: {
                     HStack {
                         Text(L10n.pairingTabDefaultVehicle)
                             .foregroundStyle(.primary)
                         Spacer()
-                        Image(systemName: vehicle.isDefault ? "checkmark.square.fill" : "square")
+                        Image(systemName: activeDraft.wantsDefault ? "checkmark.square.fill" : "square")
                             .font(.title3)
                             .foregroundStyle(
-                                vehicle.isDefault
+                                activeDraft.wantsDefault
                                     ? TrailhoundBrandColors.brandBottom
                                     : Color.secondary
                             )
@@ -152,12 +109,7 @@ private struct PairingVehicleEditorForm: View {
 
             Section {
                 Button(L10n.pairingTabSave) {
-                    do {
-                        try modelContext.save()
-                        dismiss()
-                    } catch {
-                        AppErrorPresenter.shared.present(L10n.pairingTabSaveFailed(error.localizedDescription))
-                    }
+                    saveVehicle()
                 }
                 .frame(maxWidth: .infinity)
                 .tint(TrailhoundBrandColors.brandBottom)
@@ -165,22 +117,121 @@ private struct PairingVehicleEditorForm: View {
             }
         }
         .glassListChrome()
-        .navigationTitle(vehicle.name)
+        .navigationTitle(L10n.pairingTabVehicleSection)
         .navigationBarTitleDisplayMode(.inline)
         .keyboardDoneToolbar()
+        .onAppear { reloadDraft() }
+        .onChange(of: vehicle.id) { _, _ in reloadDraft() }
     }
 
-    private var defaultVehicleBinding: Binding<Bool> {
+    private func reloadDraft() {
+        draft = VehicleEditorDraft(from: vehicle)
+    }
+
+    private func saveVehicle() {
+        let snapshot = activeDraft
+        do {
+            try snapshot.apply(
+                to: vehicle,
+                allVehicles: vehicles,
+                in: modelContext,
+                settings: settings
+            )
+            dismiss()
+        } catch {
+            AppErrorPresenter.shared.present(L10n.pairingTabSaveFailed(error.localizedDescription))
+        }
+    }
+
+    private func updateDraft(_ mutate: (inout VehicleEditorDraft) -> Void) {
+        var next = activeDraft
+        mutate(&next)
+        draft = next
+    }
+
+    private func draftBinding<Value>(_ keyPath: WritableKeyPath<VehicleEditorDraft, Value>) -> Binding<Value> {
         Binding(
-            get: { vehicle.isDefault },
-            set: { shouldBeDefault in
-                if shouldBeDefault {
-                    VehiclePairingService.setDefaultVehicle(vehicle, in: modelContext)
-                    settings.recordingVehicleID = vehicle.id
-                } else if vehicle.isDefault, let next = vehicles.first(where: { $0.id != vehicle.id }) {
-                    VehiclePairingService.setDefaultVehicle(next, in: modelContext)
-                }
+            get: { activeDraft[keyPath: keyPath] },
+            set: { newValue in
+                updateDraft { $0[keyPath: keyPath] = newValue }
             }
         )
+    }
+
+    private var electricChargeBinding: Binding<Double> {
+        Binding(
+            get: { activeDraft.chargePricePerKWh ?? settings.evChargePricePerKWh },
+            set: { newValue in
+                updateDraft { $0.chargePricePerKWh = newValue }
+            }
+        )
+    }
+}
+
+private struct VehicleIconPickerGrid: View {
+    @Binding var selection: String
+    let icons: [VehicleIconOption]
+
+    private let iconsPerRow = 5
+
+    private var iconRows: [[VehicleIconOption]] {
+        stride(from: 0, to: icons.count, by: iconsPerRow).map { start in
+            Array(icons[start ..< min(start + iconsPerRow, icons.count)])
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(Array(iconRows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 8) {
+                    ForEach(row) { option in
+                        iconCell(option)
+                    }
+                    if row.count < iconsPerRow {
+                        ForEach(0 ..< (iconsPerRow - row.count), id: \.self) { _ in
+                            Color.clear
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L10n.pairingTabVehicleIcon)
+    }
+
+    @ViewBuilder
+    private func iconCell(_ option: VehicleIconOption) -> some View {
+        let isSelected = selection == option.rawValue
+        Button {
+            selection = option.rawValue
+            TrailhoundHaptics.selection()
+        } label: {
+            Image(systemName: option.rawValue)
+                .font(.title3)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isSelected ? TrailhoundBrandColors.brandBottom : .secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isSelected
+                            ? TrailhoundBrandColors.brandBottom.opacity(0.14)
+                            : Color.secondary.opacity(0.08))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(
+                            isSelected ? TrailhoundBrandColors.brandBottom : .clear,
+                            lineWidth: 2
+                        )
+                }
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(option.rawValue)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

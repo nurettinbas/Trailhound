@@ -88,6 +88,25 @@ enum VehicleIconOption: String, CaseIterable, Identifiable {
         allCases.filter(\.isAvailable)
     }
 
+    /// Curated icons for add/edit vehicle (cars, motorcycles, moped/Vespa).
+    static var pairingEditorIcons: [VehicleIconOption] {
+        let candidates: [VehicleIconOption] = [
+            .car,
+            .electric,
+            .suv,
+            .convertible,
+            .pickup,
+            .truck,
+            .moped,
+            .motorcycle
+        ]
+        var seen = Set<String>()
+        return candidates.filter { option in
+            guard option.isAvailable else { return false }
+            return seen.insert(option.rawValue).inserted
+        }
+    }
+
     var isAvailable: Bool {
         switch self {
         case .convertible, .moped, .mopedOutline, .motorcycle, .motorcycleOutline:
@@ -115,6 +134,7 @@ enum VehicleIconOption: String, CaseIterable, Identifiable {
             return .default
         }
     }
+
 }
 
 enum TripLabelOption: String, CaseIterable {

@@ -731,11 +731,12 @@ struct StatsView: View {
     private func statsDonutLegendRow(
         name: String,
         durationStyle: Bool,
+        domainNames: [String],
         @ViewBuilder value: () -> some View
     ) -> some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(StatsChartSliceColors.color(for: name, durationStyle: durationStyle))
+                .fill(StatsChartSliceColors.color(for: name, durationStyle: durationStyle, domain: domainNames))
                 .frame(width: 8, height: 8)
             Text(name)
                 .font(.caption2)
@@ -771,7 +772,11 @@ struct StatsView: View {
             )
             .statsHiddenDonutLegend(height: 140)
             ForEach(vehicleChartData) { item in
-                statsDonutLegendRow(name: item.name, durationStyle: false) {
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: false,
+                    domainNames: vehicleChartData.map(\.name)
+                ) {
                     Text(DateFormatters.formatDistance(item.distanceMeters))
                 }
             }
@@ -798,7 +803,11 @@ struct StatsView: View {
             )
             .statsHiddenDonutLegend(height: 140)
             ForEach(vehicleDurationChartData) { item in
-                statsDonutLegendRow(name: item.name, durationStyle: true) {
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: true,
+                    domainNames: vehicleDurationChartData.map(\.name)
+                ) {
                     Text(DateFormatters.formatDuration(item.duration))
                 }
             }
@@ -825,7 +834,11 @@ struct StatsView: View {
             )
             .statsHiddenDonutLegend(height: 140)
             ForEach(categoryChartData) { item in
-                statsDonutLegendRow(name: item.name, durationStyle: false) {
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: false,
+                    domainNames: categoryChartData.map(\.name)
+                ) {
                     Text(DateFormatters.formatDistance(item.distanceMeters))
                 }
             }
@@ -852,7 +865,11 @@ struct StatsView: View {
             )
             .statsHiddenDonutLegend(height: 140)
             ForEach(categoryDurationChartData) { item in
-                statsDonutLegendRow(name: item.name, durationStyle: true) {
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: true,
+                    domainNames: categoryDurationChartData.map(\.name)
+                ) {
                     Text(DateFormatters.formatDuration(item.duration))
                 }
             }
@@ -860,7 +877,7 @@ struct StatsView: View {
     }
 }
 
-/// Distinct slice hues for donut charts; same label → same color index in distance & duration pairs.
+/// Distinct slice hues for donut charts; same label → same color when it appears in the same domain.
 private enum StatsChartSliceColors {
     static let distance: [Color] = [
         TrailhoundBrandColors.brandBottom,
@@ -884,21 +901,23 @@ private enum StatsChartSliceColors {
         Color(red: 0.70, green: 0.76, blue: 1.0)
     ]
 
-    static func stableIndex(for name: String) -> Int {
-        let hash = name.utf8.reduce(UInt64(5381)) { partial, byte in
-            partial &* 33 &+ UInt64(byte)
+    private static func colorMap(for domain: [String], durationStyle: Bool) -> [String: Color] {
+        let palette = durationStyle ? duration : distance
+        let ordered = Array(Set(domain)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        var map: [String: Color] = [:]
+        for (index, name) in ordered.enumerated() {
+            map[name] = palette[index % palette.count]
         }
-        let count = UInt64(distance.count)
-        return Int(hash % count)
+        return map
     }
 
-    static func color(for name: String, durationStyle: Bool) -> Color {
-        let palette = durationStyle ? duration : distance
-        return palette[stableIndex(for: name)]
+    static func color(for name: String, durationStyle: Bool, domain: [String]) -> Color {
+        colorMap(for: domain, durationStyle: durationStyle)[name] ?? (durationStyle ? duration[0] : distance[0])
     }
 
     static func scale(for names: [String], durationStyle: Bool) -> ([String], [Color]) {
-        (names, names.map { color(for: $0, durationStyle: durationStyle) })
+        let map = colorMap(for: names, durationStyle: durationStyle)
+        return (names, names.map { map[$0]! })
     }
 }
 

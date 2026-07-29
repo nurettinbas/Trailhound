@@ -55,8 +55,8 @@ final class TabSelectionTests: XCTestCase {
 }
 
 final class DeviceTestChecklistTests: XCTestCase {
-    func testChecklistHasSixItems() {
-        XCTAssertEqual(DeviceTestChecklist.items.count, 6)
+    func testChecklistHasNineItems() {
+        XCTAssertEqual(DeviceTestChecklist.items.count, 9)
     }
 }
 

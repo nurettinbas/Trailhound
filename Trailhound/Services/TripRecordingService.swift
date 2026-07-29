@@ -26,10 +26,16 @@ final class TripRecordingService {
     /// Breadcrumb polylines split at GPS gaps (no straight chords over missing data).
     private(set) var liveBreadcrumbSegments: [[CLLocationCoordinate2D]] = []
 
+    /// Throttled snapshots for on-screen recording UI (see `RecordingDisplaySampler`).
+    private(set) var displayElapsedTime: TimeInterval = 0
+    private(set) var displayDistanceMeters: Double = 0
+    private(set) var displaySpeedMps: Double = 0
+
     var activeTripID: UUID? { activeTrip?.id }
 
     private let locationService: LocationService
     private let settings: AppSettings
+    private var displaySampler = RecordingDisplaySampler()
 
     private var modelContext: ModelContext?
     private var modelContainer: ModelContainer?
@@ -206,6 +212,7 @@ final class TripRecordingService {
         lastRecordedLocation = trip.sortedPoints.last?.location
         liveBreadcrumbCoordinates = trip.coordinates
         liveBreadcrumbSegments = Self.breadcrumbSegments(from: trip.sortedPoints)
+        refreshDisplaySnapshot(force: true)
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         pointsSinceLastSave = 0
@@ -274,6 +281,7 @@ final class TripRecordingService {
         }
 
         applyDistanceSample(from: location, speed: speed)
+        refreshDisplaySnapshot()
         syncExternalState()
     }
 
@@ -480,6 +488,7 @@ final class TripRecordingService {
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
         liveBreadcrumbSegments = []
+        resetDisplaySnapshot()
 
         let trip = Trip(startedAt: resolvedStartedAt)
         if let vehicle = VehicleResolver.resolveActiveVehicle(in: modelContext, settings: settings) {
@@ -551,8 +560,6 @@ final class TripRecordingService {
         )
         pointSequence += 1
         trip.points.append(point)
-        trip.distanceMeters = currentDistanceMeters
-        trip.invalidatePointCaches()
         appendLiveBreadcrumb(location.coordinate, startsNewMapSegment: startsNewMapSegment)
         modelContext.insert(point)
         pointsSinceLastSave += 1
@@ -563,6 +570,8 @@ final class TripRecordingService {
             batchSave: willBatchSave
         )
         if willBatchSave {
+            trip.distanceMeters = currentDistanceMeters
+            trip.invalidatePointCaches()
             flushPointsToStore()
         }
     }
@@ -802,6 +811,22 @@ final class TripRecordingService {
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
         liveBreadcrumbSegments = []
+        resetDisplaySnapshot()
+    }
+
+    private func resetDisplaySnapshot() {
+        displaySampler.reset()
+        displayElapsedTime = 0
+        displayDistanceMeters = 0
+        displaySpeedMps = 0
+    }
+
+    private func refreshDisplaySnapshot(force: Bool = false) {
+        let now = Date()
+        if !force && !displaySampler.shouldPublish(now: now) { return }
+        displayElapsedTime = elapsedTime
+        displayDistanceMeters = currentDistanceMeters
+        displaySpeedMps = currentSpeedMps
     }
 
     private func syncExternalState(force: Bool = false) {
@@ -912,6 +937,7 @@ final class TripRecordingService {
 
     fileprivate func handleElapsedTimerTick() {
         updateElapsedTime()
+        refreshDisplaySnapshot()
         syncExternalState()
     }
 

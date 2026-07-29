@@ -39,7 +39,11 @@ struct ContentView: View {
                 .tag(AppTab.trips)
 
                 NavigationStack {
-                    StatsView()
+                    if tabSelection.selectedTab == .stats {
+                        StatsView()
+                    } else {
+                        Color.clear
+                    }
                 }
                 .background(Color.clear)
                 .tabItem {
@@ -48,15 +52,25 @@ struct ContentView: View {
                 }
                 .tag(AppTab.stats)
 
-                PairingTabView()
-                    .tabItem {
-                        Label(L10n.tabPairing, systemImage: "link.circle")
-                            .accessibilityIdentifier("tab.pairing")
+                Group {
+                    if tabSelection.selectedTab == .pairing {
+                        PairingTabView()
+                    } else {
+                        Color.clear
                     }
-                    .tag(AppTab.pairing)
+                }
+                .tabItem {
+                    Label(L10n.tabPairing, systemImage: "link.circle")
+                        .accessibilityIdentifier("tab.pairing")
+                }
+                .tag(AppTab.pairing)
 
                 NavigationStack {
-                    SettingsView()
+                    if tabSelection.selectedTab == .settings {
+                        SettingsView()
+                    } else {
+                        Color.clear
+                    }
                 }
                 .background(Color.clear)
                 .tabItem {
@@ -67,7 +81,11 @@ struct ContentView: View {
 
                 if !UITestSupport.isEnabled {
                     NavigationStack {
-                        DevLogView()
+                        if tabSelection.selectedTab == .devLog {
+                            DevLogView()
+                        } else {
+                            Color.clear
+                        }
                     }
                     .background(Color.clear)
                     .tabItem { Label(L10n.string("Dev Log"), systemImage: "ladybug") }

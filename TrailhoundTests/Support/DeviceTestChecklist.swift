@@ -8,6 +8,9 @@ enum DeviceTestChecklist {
         "Kısayollar: araca bağlanınca kayıt başlar",
         "Kısayollar: araçtan ayrılınca kayıt durur",
         "Uygulamayı öldür → aç → orphan banner / recovery",
-        "Detay haritada rota gerçekçi (denizden geçmiyor)"
+        "Detay haritada rota gerçekçi (denizden geçmiyor)",
+        "Pairing: araç adı yazarken klavye akıcı",
+        "Kayıt sırasında Trips dışı sekmeye geçince kasma azalır",
+        "Uzun trip detay açılışı donmadan yüklenir"
     ]
 }

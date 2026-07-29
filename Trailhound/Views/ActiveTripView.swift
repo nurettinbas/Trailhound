@@ -1,5 +1,4 @@
 import CoreLocation
-import MapKit
 import SwiftData
 import SwiftUI
 
@@ -77,7 +76,9 @@ struct ActiveTripView: View {
     /// Whole-card fade-in on trip start.
     var playEntranceReveal: Bool = false
     var onEntranceFinished: (() -> Void)?
-    var onStop: (() -> Void)?
+    var onStop: ((RecordingCardAnchor) -> Void)?
+    /// When false, pauses the road animation while another tab is selected.
+    var isRecordingCardVisible: Bool = true
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(LocationService.self) private var locationService
@@ -86,25 +87,27 @@ struct ActiveTripView: View {
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var breadcrumbCamera: MapCameraPosition = .automatic
     @State private var cardReveal: CGFloat = 1
     @State private var carDriveIn: CGFloat = 1
     @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
+    @State private var cardAnchorForStop = RecordingCardAnchor()
 
     init(
         morphNamespace: Namespace.ID? = nil,
         morphID: UUID? = nil,
         playEntranceReveal: Bool = false,
         onEntranceFinished: (() -> Void)? = nil,
-        onStop: (() -> Void)? = nil
+        onStop: ((RecordingCardAnchor) -> Void)? = nil,
+        isRecordingCardVisible: Bool = true
     ) {
         self.morphNamespace = morphNamespace
         self.morphID = morphID
         self.playEntranceReveal = playEntranceReveal
         self.onEntranceFinished = onEntranceFinished
         self.onStop = onStop
-        let settled = !playEntranceReveal
+        self.isRecordingCardVisible = isRecordingCardVisible
+        let settled = !self.playEntranceReveal
         _cardReveal = State(initialValue: settled ? 1 : 0)
         _carDriveIn = State(initialValue: settled ? 1 : 0)
         _detailsReveal = State(initialValue: settled ? 1 : 0)
@@ -118,29 +121,8 @@ struct ActiveTripView: View {
         cardReveal > 0.02
     }
 
-    private var speedText: String {
-        let kmh = Int(max(0, recordingService.currentSpeedMps) * 3.6)
-        return "\(kmh) \(L10n.speedKmh)"
-    }
-
-    private var elapsedText: String {
-        DateFormatters.formatDuration(recordingService.elapsedTime)
-    }
-
-    private var distanceText: String {
-        DateFormatters.formatDistance(recordingService.currentDistanceMeters)
-    }
-
-    private var statusText: String {
-        isPaused ? L10n.recordingPaused : L10n.recordingStarted
-    }
-
-    private var breadcrumbCoordinates: [CLLocationCoordinate2D] {
-        recordingService.liveBreadcrumbCoordinates
-    }
-
-    private var liveDotCoordinate: CLLocationCoordinate2D? {
-        locationService.lastLocation?.coordinate ?? breadcrumbCoordinates.last
+    private var shouldAnimateRoad: Bool {
+        !isPaused && cardVisible && isRecordingCardVisible
     }
 
     var body: some View {
@@ -158,44 +140,28 @@ struct ActiveTripView: View {
             HStack(alignment: .center, spacing: 10) {
                 RecordingCarAnimationView(
                     compact: true,
-                    isAnimating: !isPaused && cardVisible,
+                    isAnimating: shouldAnimateRoad,
                     driveInProgress: carDriveIn
                 )
+                .matchedGeometryEffectIfAvailable(
+                    stringID: RecordingMorphID.car,
+                    namespace: morphNamespace,
+                    isSource: true
+                )
+                .matchedGeometryEffectIfAvailable(
+                    id: morphID,
+                    namespace: morphNamespace,
+                    isSource: true
+                )
                     .frame(maxWidth: .infinity)
-                    .matchedGeometryEffectIfAvailable(
-                        stringID: RecordingMorphID.car,
-                        namespace: morphNamespace,
-                        isSource: true
-                    )
-
-                liveBreadcrumbMap
-                    .frame(width: 96, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                    }
-                    .opacity(detailsReveal)
-                    .scaleEffect(0.92 + 0.08 * detailsReveal)
-                    .matchedGeometryEffectIfAvailable(
-                        id: morphID,
-                        namespace: morphNamespace,
-                        isSource: true
-                    )
             }
             .frame(height: 72)
-
-            HStack(alignment: .top, spacing: 8) {
-                statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
-                statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
-                statPill(
-                    icon: "location.fill",
-                    label: L10n.string("label.distance"),
-                    text: distanceText
-                )
-            }
             .opacity(detailsReveal)
-            .offset(y: (1 - detailsReveal) * 10)
+            .scaleEffect(0.92 + 0.08 * detailsReveal)
+
+            ActiveTripLiveStats()
+                .opacity(detailsReveal)
+                .offset(y: (1 - detailsReveal) * 10)
 
             actionsRow
                 .opacity(detailsReveal)
@@ -215,6 +181,15 @@ struct ActiveTripView: View {
         .opacity(cardReveal)
         .offset(y: (1 - cardReveal) * 22)
         .scaleEffect(0.96 + 0.04 * cardReveal, anchor: .top)
+        .background {
+            GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { updateCardAnchor(frame) }
+                    .onChange(of: frame.origin.y) { _, _ in updateCardAnchor(frame) }
+                    .onChange(of: frame.size.width) { _, _ in updateCardAnchor(frame) }
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
         .accessibilityHidden(!cardVisible)
@@ -226,14 +201,6 @@ struct ActiveTripView: View {
             prepareEntranceReplay()
             Task { await runEntranceIfNeeded() }
         }
-        .onAppear { syncBreadcrumbCamera(animated: false) }
-        .onChange(of: breadcrumbCoordinates.count) { _, _ in
-            // Snap camera — animated Map updates during GPS ticks cause hitching.
-            syncBreadcrumbCamera(animated: false)
-        }
-        .onChange(of: locationService.lastLocation?.coordinate.latitude) { _, _ in
-            syncBreadcrumbCamera(animated: false)
-        }
     }
 
     private var statusRow: some View {
@@ -242,16 +209,18 @@ struct ActiveTripView: View {
                 Image(systemName: statusIcon)
                     .font(.subheadline)
                     .foregroundStyle(statusColor)
-                    .symbolEffect(.pulse, options: .repeating, isActive: !isPaused && !reduceMotion)
+                    .symbolEffect(
+                        .pulse,
+                        options: .repeating,
+                        isActive: !isPaused && !reduceMotion && isRecordingCardVisible
+                    )
                 Text(statusText)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
             }
-            .matchedGeometryEffectIfAvailable(
-                stringID: RecordingMorphID.statusChip,
-                namespace: morphNamespace,
-                isSource: true
-            )
+            .modifier(RecordingStatusChipMorphModifier(
+                morphNamespace: morphNamespace
+            ))
 
             Spacer(minLength: 4)
 
@@ -264,28 +233,12 @@ struct ActiveTripView: View {
                 )
             }
 
-            if !locationService.canRecordInBackground {
-                Button {
-                    locationService.requestPermission()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "location.circle")
-                            .font(.caption2)
-                        Text(L10n.string("recording.location.always_required"))
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundStyle(.orange)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.orange.opacity(0.15))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.string("recording.location.always_required"))
-            }
-
-            GPSQualityBadge(quality: locationService.gpsQuality)
+            RecordingLocationChromeRow()
         }
+    }
+
+    private var statusText: String {
+        isPaused ? L10n.recordingPaused : L10n.recordingStarted
     }
 
     private var actionsRow: some View {
@@ -307,7 +260,7 @@ struct ActiveTripView: View {
 
             Button(role: .destructive) {
                 if let onStop {
-                    onStop()
+                    onStop(cardAnchorForStop)
                 } else {
                     recordingService.stopManualRecording()
                 }
@@ -319,6 +272,22 @@ struct ActiveTripView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .tint(.red)
+        }
+    }
+
+    private func updateCardAnchor(_ frame: CGRect) {
+        let next = RecordingCardAnchor(
+            minX: frame.minX,
+            minY: frame.minY,
+            width: frame.width
+        )
+        guard next.width > 0 else { return }
+        let previous = cardAnchorForStop
+        let moved = abs(next.minY - previous.minY) > 12
+            || abs(next.minX - previous.minX) > 12
+            || abs(next.width - previous.width) > 2
+        if previous.width == 0 || moved {
+            cardAnchorForStop = next
         }
     }
 
@@ -356,11 +325,9 @@ struct ActiveTripView: View {
             return
         }
 
-        // 1) Card rises in
         withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
             cardReveal = 1
         }
-        // 2) Car drives onto the road almost immediately
         try? await Task.sleep(for: .milliseconds(30))
         guard !Task.isCancelled else {
             settleEntrance()
@@ -370,7 +337,6 @@ struct ActiveTripView: View {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
             carDriveIn = 1
         }
-        // 3) Map + stats + buttons settle in
         try? await Task.sleep(for: .milliseconds(90))
         guard !Task.isCancelled else {
             settleEntrance()
@@ -387,71 +353,6 @@ struct ActiveTripView: View {
         onEntranceFinished?()
     }
 
-    @ViewBuilder
-    private var liveBreadcrumbMap: some View {
-        Map(position: $breadcrumbCamera, interactionModes: []) {
-            ForEach(Array(recordingService.liveBreadcrumbSegments.enumerated()), id: \.offset) { _, segment in
-                if segment.count >= 2 {
-                    MapPolyline(coordinates: segment)
-                        .stroke(
-                            Color.white.opacity(0.85),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                        )
-                }
-            }
-
-            if let liveDotCoordinate {
-                Annotation("", coordinate: liveDotCoordinate) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.28))
-                            .frame(width: 16, height: 16)
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 7, height: 7)
-                            .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
-                    }
-                }
-            }
-        }
-        .mapStyle(.standard(elevation: .flat))
-        .disabled(true)
-        .accessibilityHidden(true)
-    }
-
-    private func syncBreadcrumbCamera(animated: Bool) {
-        let path = breadcrumbCoordinates
-        let center = liveDotCoordinate ?? path.last
-        guard let center else { return }
-
-        var minLat = center.latitude
-        var maxLat = center.latitude
-        var minLon = center.longitude
-        var maxLon = center.longitude
-        for coordinate in path.suffix(40) {
-            minLat = min(minLat, coordinate.latitude)
-            maxLat = max(maxLat, coordinate.latitude)
-            minLon = min(minLon, coordinate.longitude)
-            maxLon = max(maxLon, coordinate.longitude)
-        }
-
-        let region = MKCoordinateRegion(
-            center: center,
-            span: MKCoordinateSpan(
-                latitudeDelta: max(0.004, (maxLat - minLat) * 1.8),
-                longitudeDelta: max(0.004, (maxLon - minLon) * 1.8)
-            )
-        )
-
-        if animated {
-            withAnimation(TrailhoundMotion.gentle) {
-                breadcrumbCamera = .region(region)
-            }
-        } else {
-            breadcrumbCamera = .region(region)
-        }
-    }
-
     private var statusIcon: String {
         isPaused ? "pause.circle.fill" : "record.circle.fill"
     }
@@ -462,7 +363,106 @@ struct ActiveTripView: View {
 
     private var accessibilitySummary: String {
         let format = L10n.string("recording.accessibility.summary")
-        return String(format: format, statusText, elapsedText, speedText, distanceText)
+        return String(
+            format: format,
+            statusText,
+            DateFormatters.formatDuration(recordingService.displayElapsedTime),
+            "\(Int(max(0, recordingService.displaySpeedMps) * 3.6)) \(L10n.speedKmh)",
+            DateFormatters.formatDistance(recordingService.displayDistanceMeters)
+        )
+    }
+}
+
+// MARK: - Subviews (isolate observation)
+
+private struct RecordingStatusChipMorphModifier: ViewModifier {
+    var morphNamespace: Namespace.ID?
+
+    func body(content: Content) -> some View {
+        content.matchedGeometryEffectIfAvailable(
+            stringID: RecordingMorphID.statusChip,
+            namespace: morphNamespace,
+            isSource: true
+        )
+    }
+}
+
+/// GPS / permission chrome — throttled so location fixes don't rebuild the whole card.
+private struct RecordingLocationChromeRow: View {
+    @Environment(LocationService.self) private var locationService
+    @State private var displayedGPSQuality: LocationService.GPSQuality = .lost
+    @State private var showsAlwaysLocationHint = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if showsAlwaysLocationHint {
+                Button {
+                    locationService.requestPermission()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.circle")
+                            .font(.caption2)
+                        Text(L10n.string("recording.location.always_required"))
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.string("recording.location.always_required"))
+            }
+
+            GPSQualityBadge(quality: displayedGPSQuality)
+        }
+        .onAppear {
+            refreshFromLocationService()
+        }
+        .task {
+            while !Task.isCancelled {
+                refreshFromLocationService()
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    private func refreshFromLocationService() {
+        let quality = locationService.gpsQuality
+        if quality != displayedGPSQuality {
+            displayedGPSQuality = quality
+        }
+        let needsHint = !locationService.canRecordInBackground
+        if needsHint != showsAlwaysLocationHint {
+            showsAlwaysLocationHint = needsHint
+        }
+    }
+}
+
+/// Live duration / speed / distance — only this subtree tracks display sampler (~4 Hz).
+private struct ActiveTripLiveStats: View {
+    @Environment(TripRecordingService.self) private var recordingService
+
+    private var speedText: String {
+        let kmh = Int(max(0, recordingService.displaySpeedMps) * 3.6)
+        return "\(kmh) \(L10n.speedKmh)"
+    }
+
+    private var elapsedText: String {
+        DateFormatters.formatDuration(recordingService.displayElapsedTime)
+    }
+
+    private var distanceText: String {
+        DateFormatters.formatDistance(recordingService.displayDistanceMeters)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
+            statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
+            statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+        }
     }
 
     private func statPill(icon: String, label: String, text: String) -> some View {

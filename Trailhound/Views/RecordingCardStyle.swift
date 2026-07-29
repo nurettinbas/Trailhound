@@ -14,6 +14,13 @@ enum RecordingCardStyle {
     static func glassSurface(isPaused: Bool) -> some View {
         RecordingGlassSurface(isPaused: isPaused)
     }
+
+    /// Scroll-friendly surface for the trips list (no live material blur).
+    @ViewBuilder
+    static func listSurface(isPaused: Bool) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(background(isPaused: isPaused))
+    }
 }
 
 private struct RecordingGlassSurface: View {

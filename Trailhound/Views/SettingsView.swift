@@ -20,6 +20,11 @@ struct SettingsView: View {
     @State private var showAppLockUnavailableAlert = false
     @State private var showShortcutsAutomationGuide = false
     @State private var versionTapCount = 0
+    @State private var showRestoreBackupConfirm = false
+    @State private var pendingRestoreBackupName = ""
+    @State private var showRestoreRestartAlert = false
+    @State private var storeBackups: [StoreBackupItem] = []
+    @State private var pendingRestoreBackupURL: URL?
 
     @FocusState private var focusedField: SettingsFocusedField?
 
@@ -182,7 +187,37 @@ struct SettingsView: View {
                     .glassRow(position: .middle)
                 Button(L10n.settingsExportKML) { export(format: .kml) }
                     .disabled(isExporting)
-                    .glassRow(position: .last)
+                    .glassRow(position: .middle)
+                Button(L10n.settingsRestoreBestBackup) {
+                    promptRestoreBestBackup()
+                }
+                .disabled(storeBackups.isEmpty)
+                .glassRow(position: storeBackups.isEmpty ? .last : .middle)
+
+                if !storeBackups.isEmpty {
+                    ForEach(Array(storeBackups.enumerated()), id: \.element.id) { index, item in
+                        Button {
+                            promptRestore(backup: item)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.displayName)
+                                    .font(.subheadline)
+                                Text(item.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .glassRow(position: GlassRowPosition.index(index, in: storeBackups.count))
+                    }
+                }
+
+                if storeBackups.isEmpty {
+                    Text(L10n.settingsBackupRestoreHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .glassListRow()
+                }
             }
 
             Section(L10n.settingsAboutSection) {
@@ -213,6 +248,7 @@ struct SettingsView: View {
         .keyboardDoneToolbar()
         .onAppear {
             runCleanupIfNeeded()
+            refreshStoreBackups()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }
         }
         .sheet(isPresented: $showExportSheet) {
@@ -227,6 +263,23 @@ struct SettingsView: View {
             Button(L10n.ok, role: .cancel) {}
         } message: {
             Text(L10n.appLockUnavailable)
+        }
+        .alert(L10n.settingsRestoreConfirmTitle, isPresented: $showRestoreBackupConfirm) {
+            Button(L10n.cancel, role: .cancel) {}
+            Button(L10n.settingsRestoreAutoBackup, role: .destructive) {
+                if let url = pendingRestoreBackupURL {
+                    performRestore(backup: url)
+                }
+            }
+        } message: {
+            Text(L10n.settingsRestoreConfirmMessage(pendingRestoreBackupName))
+        }
+        .alert(L10n.settingsRestoreRestartTitle, isPresented: $showRestoreRestartAlert) {
+            Button(L10n.settingsRestoreRestartAction) {
+                exit(0)
+            }
+        } message: {
+            Text(L10n.settingsRestoreRestartMessage)
         }
         .overlay {
             if isExporting {
@@ -294,6 +347,34 @@ struct SettingsView: View {
         }
     }
 
+    private func refreshStoreBackups() {
+        storeBackups = StoreBackupRecovery.listBackups()
+    }
+
+    private func promptRestoreBestBackup() {
+        guard let item = StoreBackupRecovery.bestBackup() else {
+            AppErrorPresenter.shared.present(L10n.storeRestoreNoBackup)
+            return
+        }
+        promptRestore(backup: item)
+    }
+
+    private func promptRestore(backup: StoreBackupItem) {
+        pendingRestoreBackupName = "\(backup.displayName) (\(backup.sizeText))"
+        pendingRestoreBackupURL = backup.url
+        showRestoreBackupConfirm = true
+    }
+
+    private func performRestore(backup: URL) {
+        do {
+            _ = try StoreBackupRecovery.restore(backup: backup)
+            pendingRestoreBackupURL = nil
+            showRestoreRestartAlert = true
+        } catch {
+            AppErrorPresenter.shared.present(error.localizedDescription)
+        }
+    }
+
     private func export(format: ExportFormat) {
         guard !isExporting else { return }
 
@@ -353,6 +434,84 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+}
+
+private struct StoreBackupItem: Identifiable {
+    let url: URL
+    let byteCount: Int64
+    let modifiedAt: Date?
+
+    var id: String { url.path }
+    var displayName: String { url.lastPathComponent }
+
+    var sizeText: String {
+        ByteCountFormatter.string(fromByteCount: byteCount, countStyle: .file)
+    }
+
+    var dateText: String {
+        guard let modifiedAt else { return "—" }
+        return modifiedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var subtitle: String {
+        L10n.settingsBackupRestoreRow(size: sizeText, date: dateText)
+    }
+}
+
+private enum StoreBackupRecovery {
+    private static let minimumMeaningfulBytes: Int64 = 8_192
+
+    enum RecoveryError: LocalizedError {
+        case noBackupFound
+
+        var errorDescription: String? {
+            switch self {
+            case .noBackupFound:
+                return L10n.storeRestoreNoBackup
+            }
+        }
+    }
+
+    static func listBackups() -> [StoreBackupItem] {
+        let directory = ModelContainerFactory.storeURL.deletingLastPathComponent()
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
+        ) else {
+            return []
+        }
+
+        return entries
+            .filter { $0.lastPathComponent.hasPrefix("Trailhound.store.backup-") }
+            .compactMap { url -> StoreBackupItem? in
+                let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                let bytes = Int64(values?.fileSize ?? 0)
+                return StoreBackupItem(url: url, byteCount: bytes, modifiedAt: values?.contentModificationDate)
+            }
+            .filter { $0.byteCount >= minimumMeaningfulBytes }
+            .sorted { lhs, rhs in
+                if lhs.byteCount != rhs.byteCount { return lhs.byteCount > rhs.byteCount }
+                return (lhs.modifiedAt ?? .distantPast) > (rhs.modifiedAt ?? .distantPast)
+            }
+    }
+
+    static func bestBackup() -> StoreBackupItem? {
+        listBackups().first
+    }
+
+    static func restore(backup: URL) throws -> URL {
+        let liveStore = ModelContainerFactory.storeURL
+        for suffix in ["-shm", "-wal"] {
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: liveStore.path + suffix))
+        }
+        if FileManager.default.fileExists(atPath: liveStore.path) {
+            try FileManager.default.removeItem(at: liveStore)
+        }
+        try FileManager.default.copyItem(at: backup, to: liveStore)
+
+        UserDefaults.standard.set(false, forKey: "store.recovery.notice.shown")
+        return backup
     }
 }
 
