@@ -93,10 +93,7 @@ final class ExternalRecordingRequestTests: XCTestCase {
         settings.confirmExternalRecordingStart = true
         settings.pendingStartRecordingRequest = true
 
-        let container = try ModelContainer(
-            for: Trip.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+        let container = try ModelContainerFactory.makeInMemory()
         let recordingService = TripRecordingService(
             locationService: LocationService(),
             settings: settings
@@ -116,10 +113,7 @@ final class ExternalRecordingRequestTests: XCTestCase {
         settings.confirmExternalRecordingStart = false
         settings.pendingStartRecordingRequest = true
 
-        let container = try ModelContainer(
-            for: Trip.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+        let container = try ModelContainerFactory.makeInMemory()
         let recordingService = TripRecordingService(
             locationService: LocationService(),
             settings: settings

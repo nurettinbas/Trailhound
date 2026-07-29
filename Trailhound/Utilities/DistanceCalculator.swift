@@ -32,6 +32,9 @@ enum DistanceCalculator {
         }
 
         if maxDistance > epsilon {
+            guard index > 0, index < end else {
+                return [points[0], points[end]]
+            }
             let left = douglasPeucker(Array(points[0...index]), epsilon: epsilon)
             let right = douglasPeucker(Array(points[index...end]), epsilon: epsilon)
             return Array(left.dropLast()) + right

@@ -392,15 +392,17 @@ final class TripRecordingService {
 
         let points = trip.sortedPoints
         var computed: Double = 0
-        for index in 1..<points.count {
-            let previous = points[index - 1].location
-            let current = points[index].location
-            let delta = current.distance(from: previous)
-            let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
-            let speed = points[index].speedMps
-                ?? (current.speed >= 0 ? current.speed : 0)
-            if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
-                computed += delta
+        if points.count > 1 {
+            for index in 1..<points.count {
+                let previous = points[index - 1].location
+                let current = points[index].location
+                let delta = current.distance(from: previous)
+                let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+                let speed = points[index].speedMps
+                    ?? (current.speed >= 0 ? current.speed : 0)
+                if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
+                    computed += delta
+                }
             }
         }
 
@@ -520,7 +522,8 @@ final class TripRecordingService {
             TrailhoundSounds.recordingStarted()
         }
 
-        if processInitialLocation, let location = locationService.lastLocation {
+        if processInitialLocation, !UITestSupport.isUnitTesting,
+           let location = locationService.lastLocation {
             processRecordingLocationUpdate(location)
         }
     }
@@ -621,14 +624,16 @@ final class TripRecordingService {
         let reconciled = activeTrip.map { trip in
             var computed: Double = 0
             let points = trip.sortedPoints
-            for index in 1..<points.count {
-                let previous = points[index - 1].location
-                let current = points[index].location
-                let delta = current.distance(from: previous)
-                let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
-                let speed = points[index].speedMps ?? 0
-                if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
-                    computed += delta
+            if points.count > 1 {
+                for index in 1..<points.count {
+                    let previous = points[index - 1].location
+                    let current = points[index].location
+                    let delta = current.distance(from: previous)
+                    let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
+                    let speed = points[index].speedMps ?? 0
+                    if RecordingMovementPolicy.decision(delta: delta, timeDelta: timeDelta, speed: speed) == .accumulate {
+                        computed += delta
+                    }
                 }
             }
             return computed
@@ -722,12 +727,14 @@ final class TripRecordingService {
 
             let tripUUID = trip.id
             let container = modelContainer
-            Task { @MainActor in
-                guard let container else { return }
-                await TripPostProcessor.process(
-                    tripUUID: tripUUID,
-                    container: container
-                )
+            if !UITestSupport.isUnitTesting {
+                Task { @MainActor in
+                    guard let container else { return }
+                    await TripPostProcessor.process(
+                        tripUUID: tripUUID,
+                        container: container
+                    )
+                }
             }
         } else {
             if saveTrip, !UITestSupport.isUnitTesting {
@@ -750,7 +757,9 @@ final class TripRecordingService {
         resetActiveSession()
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
-        WidgetCenter.shared.reloadAllTimelines()
+        if !UITestSupport.isUnitTesting {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 
     private func ensureTripHasAnchorPointIfNeeded() {
