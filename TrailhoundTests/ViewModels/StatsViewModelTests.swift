@@ -41,6 +41,43 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(stats.maxSpeedKmh, 33.33 * 3.6, accuracy: 0.1)
     }
 
+    /// A trip recorded before speeds were vetted can carry a maximum no car reached. Statistics
+    /// cannot afford to load its points to check, so the value is hidden rather than headlined.
+    func testStatsHidesAnImplausibleStoredMaximum() {
+        let phantom = Trip(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600),
+            distanceMeters: 36_000,
+            maxSpeedMps: 56.4 // 203 km/h
+        )
+        let real = Trip(
+            startedAt: Date().addingTimeInterval(-1800),
+            endedAt: Date(),
+            distanceMeters: 9_000,
+            maxSpeedMps: 22.22
+        )
+
+        let stats = StatsViewModel.stats(for: [phantom, real])
+
+        XCTAssertEqual(stats.maxSpeedKmh, 22.22 * 3.6, accuracy: 0.1)
+    }
+
+    func testDailyMaxSpeedsHideAnImplausibleStoredMaximum() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let interval = DateInterval(start: today, end: Date())
+        let phantom = Trip(
+            startedAt: today.addingTimeInterval(3600),
+            endedAt: today.addingTimeInterval(7200),
+            distanceMeters: 36_000,
+            maxSpeedMps: 56.4
+        )
+
+        let daily = StatsViewModel.dailyMaxSpeeds(in: interval, from: [phantom])
+
+        XCTAssertEqual(daily.first?.speedKmh ?? -1, 0, accuracy: 0.001)
+    }
+
     func testDailyAverageAndMaxSpeedsBucketByDay() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())

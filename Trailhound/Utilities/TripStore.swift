@@ -43,7 +43,7 @@ enum TripStore {
             in: DateInterval(start: weekAgo, end: Date()),
             from: completedSince(weekAgo, from: context)
         )
-        let stats = StatsViewModel.stats(for: weekTrips)
+        let stats = StatsViewModel.stats(for: weekTrips, includeNightRatio: false)
         let defaults = UserDefaults(suiteName: "group.com.trailhound.app")
         defaults?.set(stats.totalDistanceMeters, forKey: "stats.weekDistance")
 
@@ -52,7 +52,10 @@ enum TripStore {
             in: DateInterval(start: monthAgo, end: Date()),
             from: completedSince(monthAgo, from: context)
         )
-        defaults?.set(StatsViewModel.stats(for: monthTrips).totalDistanceMeters, forKey: "stats.monthDistance")
+        defaults?.set(
+            StatsViewModel.stats(for: monthTrips, includeNightRatio: false).totalDistanceMeters,
+            forKey: "stats.monthDistance"
+        )
 
         let startOfDay = Calendar.current.startOfDay(for: Date())
         let todayTrips = completedSince(startOfDay, from: context)

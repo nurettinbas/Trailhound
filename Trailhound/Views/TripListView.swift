@@ -2,12 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct TripListView: View {
-    @Query(sort: \Trip.startedAt, order: .reverse) private var allTrips: [Trip]
-
-    /// In-memory filter — `#Predicate` on `@Model` key paths is not Swift 6 `Sendable`-safe.
-    private var trips: [Trip] {
-        allTrips.filter { $0.endedAt != nil }
-    }
+    // Deliberately no `@Query` for trips: the list pages through the store instead of holding
+    // every trip in memory. `ModelContext.didSave` stands in for the change tracking.
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
@@ -46,48 +42,92 @@ struct TripListView: View {
     @State private var scrollToTopRequest: TripListScrollToTopRequest?
     @State private var isRecordingCardInViewport = true
 
+    /// The pages fetched so far, newest first.
+    @State private var loadedTrips: [Trip] = []
+    /// Grouped alongside the fetch so the sort does not rerun on every body pass.
+    @State private var tripGroups: [(section: TripDateSection, trips: [Trip])] = []
+    @State private var pageLimit = TripListPage.pageSize
+    @State private var hasMorePages = false
+    @State private var hasAnyTrips = false
+    @State private var weekSummaryText = ""
+
     private var hasActiveFilters: Bool {
-        selectedLabel != nil
-            || selectedCategoryID != nil
-            || selectedDateSection != nil
-            || !debouncedSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        pageFilters.isActive
+    }
+
+    private var pageFilters: TripListPage.Filters {
+        TripListPage.Filters(
+            searchText: debouncedSearchText,
+            categoryID: selectedCategoryID,
+            dateSection: selectedDateSection,
+            label: selectedLabel
+        )
     }
 
     private var completedTrips: [Trip] {
-        trips.filter { trip in
-            if let selectedLabel, trip.label != selectedLabel { return false }
-            if let selectedCategoryID, trip.categoryID != selectedCategoryID { return false }
-            if let selectedDateSection,
-               TripDateGrouping.section(for: trip.startedAt) != selectedDateSection {
-                return false
-            }
-            if !TripListViewModel.matchesSearch(
+        loadedTrips
+    }
+
+    private func reloadTrips() {
+        let filters = pageFilters
+        let fetched = (try? modelContext.fetch(
+            TripListPage.descriptor(filters: filters, limit: pageLimit)
+        )) ?? []
+
+        hasMorePages = fetched.count > pageLimit
+        let visible = Array(fetched.prefix(pageLimit)).filter { matchesInMemoryFilters($0, filters) }
+        loadedTrips = visible
+        tripGroups = TripDateGrouping.groupedSections(from: visible)
+    }
+
+    /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
+    /// the wall clock, labels are free text, and trips still awaiting a search index need the
+    /// legacy field scan.
+    private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
+        if let label = filters.label, trip.label != label { return false }
+        if let section = filters.dateSection,
+           TripDateGrouping.section(for: trip.startedAt) != section {
+            return false
+        }
+        if trip.searchIndex == nil {
+            return TripListViewModel.matchesSearch(
                 trip,
-                searchText: debouncedSearchText,
+                searchText: filters.searchText,
                 places: places,
                 privacyRadius: settings.privacyRadiusMeters
-            ) {
-                return false
-            }
-            return true
+            )
         }
+        return true
     }
 
-    private var groupedTrips: [(section: TripDateSection, trips: [Trip])] {
-        TripDateGrouping.groupedSections(from: completedTrips)
+    private func loadNextPage() {
+        guard hasMorePages else { return }
+        pageLimit += TripListPage.pageSize
+        reloadTrips()
     }
 
-    private var weekSummaryText: String {
+    private func resetPagingAndReload() {
+        pageLimit = TripListPage.pageSize
+        reloadTrips()
+    }
+
+    private func refreshListAggregates() {
+        hasAnyTrips = (try? modelContext.fetchCount(TripListPage.completedCountDescriptor())).map { $0 > 0 }
+            ?? false
+
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let weekTrips = StatsViewModel.trips(
-            in: DateInterval(start: weekAgo, end: Date()),
-            from: trips
-        )
-        let stats = StatsViewModel.stats(for: weekTrips)
-        return L10n.weekSummary(
+        let weekTrips = (try? modelContext.fetch(
+            TripListPage.completedInDescriptor(from: weekAgo)
+        )) ?? []
+        let stats = StatsViewModel.stats(for: weekTrips, includeNightRatio: false)
+        weekSummaryText = L10n.weekSummary(
             distance: stats.totalDistanceText,
             duration: stats.totalDurationText
         )
+    }
+
+    private func newestCompletedTrip() -> Trip? {
+        (try? modelContext.fetch(TripListPage.newestCompletedDescriptor()))?.first
     }
 
     private var showsVehicleSetupPrompt: Bool {
@@ -115,9 +155,16 @@ struct TripListView: View {
         }
     }
 
-    @ViewBuilder
     private func tripList(scrollProxy: ScrollViewProxy) -> some View {
-        List {
+        // Computed once per body pass. `completedTrips` used to be re-evaluated inside every
+        // row, which made rendering the list quadratic in trip count.
+        let visibleTrips = completedTrips
+        let groups = tripGroups
+        let firstTripID = visibleTrips.first?.id
+        let hasAnyTrips = self.hasAnyTrips
+        let weekSummary = hasAnyTrips ? weekSummaryText : ""
+
+        return List {
             Section {
                 LocationPermissionBanner()
                     .id(TripListScrollTarget.top)
@@ -206,7 +253,7 @@ struct TripListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            if !trips.isEmpty {
+            if hasAnyTrips {
                 Section {
                     HStack(spacing: 12) {
                         Image(systemName: "calendar")
@@ -215,21 +262,21 @@ struct TripListView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L10n.sectionThisWeek)
                                 .font(.subheadline.weight(.semibold))
-                            Text(weekSummaryText)
+                            Text(weekSummary)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .numericTextAnimation(value: weekSummaryText)
+                                .numericTextAnimation(value: weekSummary)
                         }
                         Spacer(minLength: 0)
                     }
                     .padding(.vertical, 4)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummaryText)")
+                    .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummary)")
                 }
                 .glassListRow()
             }
 
-            if !trips.isEmpty {
+            if hasAnyTrips {
                 Section {
                     TripListFiltersBar(
                         searchText: $searchText,
@@ -237,11 +284,15 @@ struct TripListView: View {
                         selectedCategoryID: $selectedCategoryID
                     )
                     .background {
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: CreditsListLandingYKey.self,
-                                value: geo.frame(in: .global).maxY + 6
-                            )
+                        // Only the stop-credits slide needs this, and a `.global` frame
+                        // changes every scroll frame — so don't install it otherwise.
+                        if endCredits != nil {
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: CreditsListLandingYKey.self,
+                                    value: geo.frame(in: .global).maxY + 6
+                                )
+                            }
                         }
                     }
                 }
@@ -250,9 +301,9 @@ struct TripListView: View {
                 .listRowSeparator(.hidden)
             }
 
-            if completedTrips.isEmpty {
-                let showFilteredEmpty = hasActiveFilters && !trips.isEmpty
-                let showDefaultEmpty = trips.isEmpty
+            if visibleTrips.isEmpty {
+                let showFilteredEmpty = hasActiveFilters && hasAnyTrips
+                let showDefaultEmpty = !hasAnyTrips
                     && !recordingService.state.isActiveSession
                     && endCredits == nil
                     && coldOpenTripID == nil
@@ -269,18 +320,32 @@ struct TripListView: View {
                     .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
                 }
             } else {
-                ForEach(groupedTrips, id: \.section) { group in
+                ForEach(groups, id: \.section) { group in
                     Section(group.section.title) {
                         ForEach(Array(group.trips.enumerated()), id: \.element.id) { index, trip in
                             // Keep the new trip hidden until the blue bar finishes sliding onto it.
                             if endCredits?.tripID != trip.id {
-                                tripRow(for: trip)
+                                tripRow(for: trip, isFirst: trip.id == firstTripID)
                                     .glassRow(position: GlassRowPosition.index(index, in: group.trips.count))
                             }
                         }
                     }
                 }
-                .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: completedTrips.count)
+                .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: visibleTrips.count)
+            }
+
+            if hasMorePages {
+                // Sits below the last section rather than on the last row, so a page whose rows
+                // were all filtered out in memory still pulls the next one instead of dead-ending.
+                Section {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .accessibilityLabel(L10n.string("trips.loading_more"))
+                        .onAppear(perform: loadNextPage)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -313,7 +378,16 @@ struct TripListView: View {
         .onAppear {
             debouncedSearchText = searchText
             refreshOrphans()
+            refreshListAggregates()
+            reloadTrips()
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
+        }
+        .onStoreSave {
+            refreshListAggregates()
+            reloadTrips()
+        }
+        .onChange(of: pageFilters) { _, _ in
+            resetPagingAndReload()
         }
         .onChange(of: recordingService.state) { _, newState in
             if !newState.isActiveSession {
@@ -338,7 +412,7 @@ struct TripListView: View {
             // Vehicle auto-stop (and other external stops) still get a light morph —
             // full credits play only for manual Stop.
             if wasActive, !isActive, endCredits == nil, morphingTripID == nil,
-               let newest = completedTrips.first,
+               let newest = newestCompletedTrip(),
                let endedAt = newest.endedAt,
                Date().timeIntervalSince(endedAt) < 2.5 {
                 morphingTripID = newest.id
@@ -384,7 +458,7 @@ struct TripListView: View {
                         if !vehicles.isEmpty {
                             RecordingVehiclePicker(
                                 vehicles: vehicles,
-                                selectedVehicleID: recordingService.activeRecordingVehicleID(in: modelContext),
+                                selectedVehicleID: recordingService.activeRecordingVehicleID(from: vehicles),
                                 onSelect: { recordingService.setRecordingVehicle($0) }
                             )
                         }
@@ -484,7 +558,7 @@ struct TripListView: View {
     }
 
     @ViewBuilder
-    private func tripRow(for trip: Trip) -> some View {
+    private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
         Group {
             if isMergeMode {
@@ -518,7 +592,7 @@ struct TripListView: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .accessibilityIdentifier(completedTrips.first?.id == trip.id ? "trips.row.first" : "trips.row.\(trip.id.uuidString)")
+                .accessibilityIdentifier(isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)")
                 .buttonStyle(.plain)
             }
         }
@@ -755,6 +829,7 @@ struct TripListView: View {
     private func deleteTrip(_ trip: Trip) {
         TrailhoundHaptics.destructive()
         TripMapSnapshotCache.shared.remove(for: trip.id)
+        TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
         mergeSelection.remove(trip.id)
         try? modelContext.save()
@@ -762,7 +837,11 @@ struct TripListView: View {
 
     private func performMerge() {
         TrailhoundHaptics.selection()
-        let selected = completedTrips.filter { mergeSelection.contains($0.id) }
+        // Fetched by ID rather than filtered from the loaded pages: a selection made before
+        // scrolling could otherwise include trips that are no longer resident.
+        let selected = (try? modelContext.fetch(
+            TripListPage.descriptor(forIDs: mergeSelection)
+        )) ?? []
         do {
             if let merged = try TripMergeService.merge(trips: selected, into: modelContext) {
                 let tripUUID = merged.id
@@ -793,16 +872,22 @@ private struct TripListActiveRecordingNavIcon: View {
     }
 
     private let badgeSize: CGFloat = 30
-    /// SF Symbol steering wheel sits left of its layout box — nudge right for optical center.
-    private let glyphOpticalOffset = CGSize(width: 3, height: 0.35)
+    /// Tightens the optical gap to the title next to it; the glyph itself is already centered
+    /// in its layout box.
+    private let glyphNudge = CGSize(width: 3, height: 0.35)
+    private let maxTilt: Double = 55
+    private let swingDuration: Double = 2.4
 
     var body: some View {
         Image(systemName: "steeringwheel")
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(accent)
+            // Must stay inside the frame and nudge below. Applied outside them, the anchor is
+            // the badge center while the glyph has been moved away from it, so the wheel
+            // orbits that point instead of spinning in place.
+            .rotationEffect(.degrees(steeringTilt))
             .frame(width: badgeSize, height: badgeSize)
-            .offset(glyphOpticalOffset)
-            .rotationEffect(.degrees(steeringTilt), anchor: .center)
+            .offset(glyphNudge)
             .accessibilityHidden(true)
             .task(id: wobbleTaskID) {
                 await runSteeringWobble()
@@ -815,19 +900,24 @@ private struct TripListActiveRecordingNavIcon: View {
 
     @MainActor
     private func runSteeringWobble() async {
-        steeringTilt = 0
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) { steeringTilt = 0 }
+
         guard !isPaused, !reduceMotion else { return }
 
-        while !Task.isCancelled {
-            withAnimation(.easeInOut(duration: 3.5)) {
-                steeringTilt = 55
-            }
-            try? await Task.sleep(for: .milliseconds(3500))
-            guard !Task.isCancelled else { break }
-            withAnimation(.easeInOut(duration: 3.5)) {
-                steeringTilt = -55
-            }
-            try? await Task.sleep(for: .milliseconds(3500))
+        // Half-length intro: leaving neutral covers half the travel of a full swing, so at the
+        // same duration the very first swing read slower than every one after it.
+        withAnimation(.easeOut(duration: swingDuration / 2)) {
+            steeringTilt = maxTilt
+        }
+        try? await Task.sleep(for: .seconds(swingDuration / 2))
+        guard !Task.isCancelled else { return }
+
+        // One repeating animation instead of a sleep loop: no periodic main-actor wake-ups and
+        // no drift between the sleep and the animation clock.
+        withAnimation(.easeInOut(duration: swingDuration).repeatForever(autoreverses: true)) {
+            steeringTilt = -maxTilt
         }
     }
 }

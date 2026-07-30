@@ -73,4 +73,97 @@ final class RecordingMovementPolicyTests: XCTestCase {
         )
         XCTAssertEqual(implied ?? 0, 20, accuracy: 0.01)
     }
+
+    // MARK: - Speed trust
+
+    /// A clean fix on the motorway: every gate passes and the reading is used as reported.
+    func testTrustedSpeedAcceptsAGoodFix() {
+        XCTAssertEqual(
+            trusted(reported: 33, speedAccuracy: 0.6, horizontalAccuracy: 8, age: 0.4) ?? 0,
+            33,
+            accuracy: 0.001
+        )
+    }
+
+    /// Core Location signals an unusable speed with a negative accuracy, which the old code never
+    /// looked at.
+    func testTrustedSpeedRejectsInvalidSpeedAccuracy() {
+        XCTAssertNil(trusted(reported: 30, speedAccuracy: -1, horizontalAccuracy: 8, age: 0.4))
+        XCTAssertEqual(
+            RecordingMovementPolicy.speedRejectionReason(
+                reportedMps: 30,
+                speedAccuracyMps: -1,
+                horizontalAccuracyMeters: 8,
+                fixAgeSeconds: 0.4
+            ),
+            "speed_invalid"
+        )
+    }
+
+    func testTrustedSpeedRejectsUncertainSpeed() {
+        XCTAssertNil(trusted(reported: 30, speedAccuracy: 9, horizontalAccuracy: 8, age: 0.4))
+    }
+
+    /// The position is still stored elsewhere; only the speed of a vague fix is thrown away.
+    func testTrustedSpeedRejectsUncertainPosition() {
+        XCTAssertNil(trusted(reported: 30, speedAccuracy: 0.5, horizontalAccuracy: 180, age: 0.4))
+    }
+
+    /// Recording start replays the last cached fix, which may still carry an earlier drive's speed.
+    func testTrustedSpeedRejectsStaleFix() {
+        XCTAssertNil(trusted(reported: 30, speedAccuracy: 0.5, horizontalAccuracy: 8, age: 90))
+        XCTAssertEqual(
+            RecordingMovementPolicy.speedRejectionReason(
+                reportedMps: 30,
+                speedAccuracyMps: 0.5,
+                horizontalAccuracyMeters: 8,
+                fixAgeSeconds: 90
+            ),
+            "fix_stale"
+        )
+    }
+
+    /// 203 km/h passes the teleport check (70 m/s) but is not a speed a car in this app reaches.
+    func testTrustedSpeedRejectsTheReportedPhantom() {
+        XCTAssertTrue(RecordingMovementPolicy.isPlausibleRecordedSpeed(56.4))
+        XCTAssertFalse(RecordingMovementPolicy.isRecordableSpeed(56.4))
+        XCTAssertNil(trusted(reported: 56.4, speedAccuracy: 0.5, horizontalAccuracy: 8, age: 0.4))
+    }
+
+    func testAccelerationLimitRejectsAnImpossibleJump() {
+        XCTAssertFalse(
+            RecordingMovementPolicy.isPlausibleAcceleration(from: 10, to: 45, timeDelta: 1)
+        )
+        XCTAssertTrue(
+            RecordingMovementPolicy.isPlausibleAcceleration(from: 10, to: 14, timeDelta: 1)
+        )
+    }
+
+    /// A long wait loosens the limit on its own, so pulling away from a light after two minutes
+    /// parked is never mistaken for noise.
+    func testAccelerationLimitAllowsPullingAwayAfterALongStop() {
+        XCTAssertTrue(
+            RecordingMovementPolicy.isPlausibleAcceleration(from: 0, to: 14, timeDelta: 120)
+        )
+    }
+
+    func testAccelerationLimitAllowsTheFirstSampleOfATrip() {
+        XCTAssertTrue(
+            RecordingMovementPolicy.isPlausibleAcceleration(from: nil, to: 40, timeDelta: 1)
+        )
+    }
+
+    private func trusted(
+        reported: Double,
+        speedAccuracy: Double,
+        horizontalAccuracy: Double,
+        age: TimeInterval
+    ) -> Double? {
+        RecordingMovementPolicy.trustedGPSSpeedMps(
+            reportedMps: reported,
+            speedAccuracyMps: speedAccuracy,
+            horizontalAccuracyMeters: horizontalAccuracy,
+            fixAgeSeconds: age
+        )
+    }
 }

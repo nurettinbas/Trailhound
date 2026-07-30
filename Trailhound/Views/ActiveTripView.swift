@@ -91,7 +91,7 @@ struct ActiveTripView: View {
     @State private var carDriveIn: CGFloat = 1
     @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
-    @State private var cardAnchorForStop = RecordingCardAnchor()
+    @State private var anchorBox = RecordingCardAnchorBox()
 
     init(
         morphNamespace: Namespace.ID? = nil,
@@ -191,7 +191,7 @@ struct ActiveTripView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
+        .modifier(RecordingCardAccessibilityLabel(statusText: statusText))
         .accessibilityHidden(!cardVisible)
         .task(id: morphID) {
             await runEntranceIfNeeded()
@@ -227,7 +227,7 @@ struct ActiveTripView: View {
             if !vehicles.isEmpty {
                 RecordingVehiclePicker(
                     vehicles: vehicles,
-                    selectedVehicleID: recordingService.activeRecordingVehicleID(in: modelContext),
+                    selectedVehicleID: recordingService.activeRecordingVehicleID(from: vehicles),
                     onSelect: { recordingService.setRecordingVehicle($0) },
                     compact: true
                 )
@@ -260,7 +260,7 @@ struct ActiveTripView: View {
 
             Button(role: .destructive) {
                 if let onStop {
-                    onStop(cardAnchorForStop)
+                    onStop(anchorBox.value)
                 } else {
                     recordingService.stopManualRecording()
                 }
@@ -275,20 +275,15 @@ struct ActiveTripView: View {
         }
     }
 
+    /// Writing to the box costs nothing and never invalidates the view, so no threshold is
+    /// needed — Stop now sees the card's exact current frame.
     private func updateCardAnchor(_ frame: CGRect) {
-        let next = RecordingCardAnchor(
+        guard frame.width > 0 else { return }
+        anchorBox.value = RecordingCardAnchor(
             minX: frame.minX,
             minY: frame.minY,
             width: frame.width
         )
-        guard next.width > 0 else { return }
-        let previous = cardAnchorForStop
-        let moved = abs(next.minY - previous.minY) > 12
-            || abs(next.minX - previous.minX) > 12
-            || abs(next.width - previous.width) > 2
-        if previous.width == 0 || moved {
-            cardAnchorForStop = next
-        }
     }
 
     @MainActor
@@ -360,20 +355,29 @@ struct ActiveTripView: View {
     private var statusColor: Color {
         isPaused ? .yellow : .red
     }
-
-    private var accessibilitySummary: String {
-        let format = L10n.string("recording.accessibility.summary")
-        return String(
-            format: format,
-            statusText,
-            DateFormatters.formatDuration(recordingService.displayElapsedTime),
-            "\(Int(max(0, recordingService.displaySpeedMps) * 3.6)) \(L10n.speedKmh)",
-            DateFormatters.formatDistance(recordingService.displayDistanceMeters)
-        )
-    }
 }
 
 // MARK: - Subviews (isolate observation)
+
+/// The combined label needs the live counters, but reading them in the card's body made the
+/// entire card track the display sampler. A modifier has its own body, so the dependency
+/// stays here.
+private struct RecordingCardAccessibilityLabel: ViewModifier {
+    let statusText: String
+
+    @Environment(TripRecordingService.self) private var recordingService
+
+    func body(content: Content) -> some View {
+        content.accessibilityLabel(
+            RecordingAccessibility.summary(
+                status: statusText,
+                elapsed: recordingService.displayElapsedTime,
+                speedMps: recordingService.displaySpeedMps,
+                distanceMeters: recordingService.displayDistanceMeters
+            )
+        )
+    }
+}
 
 private struct RecordingStatusChipMorphModifier: ViewModifier {
     var morphNamespace: Namespace.ID?
@@ -445,8 +449,7 @@ private struct ActiveTripLiveStats: View {
     @Environment(TripRecordingService.self) private var recordingService
 
     private var speedText: String {
-        let kmh = Int(max(0, recordingService.displaySpeedMps) * 3.6)
-        return "\(kmh) \(L10n.speedKmh)"
+        RecordingAccessibility.speedText(speedMps: recordingService.displaySpeedMps)
     }
 
     private var elapsedText: String {

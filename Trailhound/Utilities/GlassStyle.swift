@@ -92,44 +92,67 @@ struct AtmosphericBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [
-                        Color(red: 0.03, green: 0.07, blue: 0.14),
-                        Color(red: 0.07, green: 0.13, blue: 0.24),
-                        Color(red: 0.04, green: 0.10, blue: 0.20)
-                    ]
-                    : [
-                        Color(red: 0.70, green: 0.88, blue: 0.99),
-                        Color(red: 0.82, green: 0.93, blue: 1.00),
-                        Color(red: 0.76, green: 0.90, blue: 0.99)
-                    ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.03, green: 0.07, blue: 0.14),
+                    Color(red: 0.07, green: 0.13, blue: 0.24),
+                    Color(red: 0.04, green: 0.10, blue: 0.20)
+                ]
+                : [
+                    Color(red: 0.70, green: 0.88, blue: 0.99),
+                    Color(red: 0.82, green: 0.93, blue: 1.00),
+                    Color(red: 0.76, green: 0.90, blue: 0.99)
+                ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        // Overlay, not a ZStack sibling: the glows are wider than the screen and as siblings
+        // they would stretch every container that puts this behind its content.
+        .overlay {
             if style == .full {
-                Circle()
-                    .fill(TrailhoundBrandColors.brandTop.opacity(colorScheme == .dark ? 0.38 : 0.42))
-                    .frame(width: 320, height: 320)
-                    .blur(radius: 70)
-                    .offset(x: -120, y: -220)
+                ZStack {
+                    glow(
+                        TrailhoundBrandColors.brandTop.opacity(colorScheme == .dark ? 0.38 : 0.42),
+                        diameter: 520,
+                        offset: CGSize(width: -120, height: -220)
+                    )
 
-                Circle()
-                    .fill(TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.32 : 0.36))
-                    .frame(width: 360, height: 360)
-                    .blur(radius: 80)
-                    .offset(x: 140, y: 280)
+                    glow(
+                        TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.32 : 0.36),
+                        diameter: 580,
+                        offset: CGSize(width: 140, height: 280)
+                    )
 
-                Circle()
-                    .fill(Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18))
-                    .frame(width: 240, height: 240)
-                    .blur(radius: 55)
-                    .offset(x: 60, y: 40)
+                    glow(
+                        Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18),
+                        diameter: 380,
+                        offset: CGSize(width: 60, height: 40)
+                    )
+                }
+                .allowsHitTesting(false)
             }
         }
+        .clipped()
         .ignoresSafeArea()
+    }
+
+    /// A soft radial falloff instead of `Circle().blur(...)`. These sit underneath every
+    /// frosted row, so each blur pass was being resampled by every material above it.
+    private func glow(_ color: Color, diameter: CGFloat, offset: CGSize) -> some View {
+        RadialGradient(
+            stops: [
+                .init(color: color, location: 0),
+                .init(color: color.opacity(0.55), location: 0.42),
+                .init(color: color.opacity(0.16), location: 0.72),
+                .init(color: .clear, location: 1)
+            ],
+            center: .center,
+            startRadius: 0,
+            endRadius: diameter / 2
+        )
+        .frame(width: diameter, height: diameter)
+        .offset(x: offset.width, y: offset.height)
     }
 }
 

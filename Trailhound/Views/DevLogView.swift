@@ -43,18 +43,26 @@ struct DevLogView: View {
         .listStyle(.plain)
         .navigationTitle(L10n.string("Geliştirici Günlüğü"))
         .toolbar {
+            // Its own toolbar item, not a Menu row: a ShareLink nested in a Menu presents an
+            // empty sheet on some iOS versions, which is why one device could export the log and
+            // another showed a black screen.
+            ToolbarItem(placement: .navigationBarTrailing) {
+                ShareLink(
+                    item: DevLogExportItem(),
+                    preview: SharePreview(
+                        DevLogExportItem.fileName,
+                        image: Image(systemName: "doc.text")
+                    )
+                ) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    // ShareLink avoids Menu→.sheet races that leave a blank
-                    // UIActivityViewController sheet on screen.
-                    ShareLink(
-                        item: DevLogExportItem(),
-                        preview: SharePreview(
-                            "trailhound-debug.log",
-                            image: Image(systemName: "doc.text")
-                        )
-                    ) {
-                        Label(L10n.string("Dışa Aktar (.log)"), systemImage: "square.and.arrow.up")
+                    Button {
+                        copyLogToClipboard()
+                    } label: {
+                        Label(L10n.string("Panoya Kopyala"), systemImage: "doc.on.clipboard")
                     }
                     Button {
                         reload()
@@ -126,6 +134,14 @@ struct DevLogView: View {
         lines = DevLog.shared.recentLines(maxCount: 500)
     }
 
+    /// The escape hatch for when the share sheet will not cooperate: paste the log straight into
+    /// a message. Nothing to present, nothing to go wrong.
+    private func copyLogToClipboard() {
+        let text = DevLog.shared.readAllText()
+        UIPasteboard.general.string = text
+        DevLog.shared.log(.general, "log copied to clipboard bytes=\(text.utf8.count)")
+    }
+
     private func startAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = Task {
@@ -144,15 +160,26 @@ struct DevLogView: View {
     }
 }
 
-/// Writes a fresh `trailhound-debug.log` only when the system actually requests
-/// the share payload — keeps the Menu action snappy and avoids stale files.
+/// Writes the file only when the system actually requests the share payload, so opening the
+/// screen stays cheap and the export is never stale.
 private struct DevLogExportItem: Transferable {
+    /// `.txt`, not `.log`: the payload is declared as `.plainText`, whose extension is `txt`, and
+    /// some share targets refuse to build a preview when the two disagree.
+    static let fileName = "trailhound-debug.txt"
+
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .plainText) { _ in
             let text = DevLog.shared.readAllText()
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("trailhound-debug.log")
-            try text.write(to: url, atomically: true, encoding: .utf8)
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            do {
+                try text.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                // A throwing representation shows an empty sheet with no explanation, so leave a
+                // trail in the log the user can still copy out by hand.
+                DevLog.shared.error(.general, "log export failed: \(error.localizedDescription)")
+                throw error
+            }
+            DevLog.shared.log(.general, "log exported bytes=\(text.utf8.count)")
             return SentTransferredFile(url)
         }
     }

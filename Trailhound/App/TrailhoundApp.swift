@@ -123,6 +123,13 @@ final class AppRuntime {
                 olderThanDays: AppSettings.shared.autoDeleteDays
             )
         }
+
+        Task(priority: .utility) { @MainActor in
+            // Order matters: rollups read the derived night-distance split, so they are built
+            // only after every trip has one.
+            await TripDerivedBackfillService.backfillIfNeeded(container: container)
+            await TripRollupService.rebuildIfNeeded(container: container)
+        }
     }
 
     var shouldKeepLocationServicesActive: Bool {

@@ -7,7 +7,16 @@ enum VehicleResolver {
         in context: ModelContext,
         settings: AppSettings = .shared
     ) -> VehicleProfile? {
-        let vehicles = fetchVehicles(in: context)
+        resolveActiveVehicle(from: fetchVehicles(in: context), settings: settings)
+    }
+
+    /// Fetch-free variant for views that already hold a `@Query` result. Fetching inside a
+    /// view body made scrolling hit the store on every frame.
+    @MainActor
+    static func resolveActiveVehicle(
+        from vehicles: [VehicleProfile],
+        settings: AppSettings = .shared
+    ) -> VehicleProfile? {
         guard !vehicles.isEmpty else { return nil }
 
         if let preferredID = settings.recordingVehicleID,

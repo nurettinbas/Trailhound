@@ -55,8 +55,14 @@ struct TripListViewModel {
         return FuelCostCalculator.formatCost(cost)
     }
 
+    /// Reads the stored maximum rather than deriving one from the points: a row must never touch
+    /// `trip.sortedPoints`, which would load every point of every visible trip while scrolling.
+    /// The stored value is only vetted for plausibility, so a trip recorded before speeds were
+    /// checked shows no chip instead of a number the car never reached.
     static func maxSpeedText(for trip: Trip) -> String? {
-        guard let maxSpeed = trip.maxSpeedMps, maxSpeed > 0 else { return nil }
+        guard let maxSpeed = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) else {
+            return nil
+        }
         return L10n.formatSpeedKmh(maxSpeed * 3.6)
     }
 
@@ -87,6 +93,12 @@ struct TripListViewModel {
         guard !query.isEmpty else { return true }
 
         let lowercasedQuery = query.lowercased()
+
+        // Precomputed by `TripDerivedMetrics`, which keeps filtering off the GPS relationship.
+        if let searchIndex = trip.searchIndex {
+            return searchIndex.contains(lowercasedQuery)
+        }
+
         let candidates = [
             routeSummary(for: trip, places: places, privacyRadius: privacyRadius),
             trip.label,

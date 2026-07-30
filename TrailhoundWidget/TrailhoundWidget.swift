@@ -517,6 +517,26 @@ private struct LiveActivityCarIcon: View {
     }
 }
 
+/// Compact circular control for the expanded Dynamic Island — avoids bulky bordered buttons.
+private struct LiveActivityIslandButton<Intent: AppIntent>: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let intent: Intent
+
+    var body: some View {
+        Button(intent: intent) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(tint.gradient, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+}
+
 struct TrailhoundLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TripRecordingAttributes.self) { context in
@@ -543,19 +563,30 @@ struct TrailhoundLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     LiveActivityCarIcon(isPaused: context.state.isPaused, font: .title3)
+                        .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
                             .font(.caption)
                             .foregroundStyle(context.state.isPaused ? .orange : .primary)
-                        Text("\(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds))) · \(context.state.currentSpeedKmh) km/s")
-                            .font(.headline)
+                        Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
+                            .font(.title3.weight(.semibold))
                             .monospacedDigit()
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
-                DynamicIslandExpandedRegion(.trailing) {
-                    liveActivityControls(isPaused: context.state.isPaused)
+                DynamicIslandExpandedRegion(.bottom) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(liveActivityIslandSecondaryStats(context.state))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        liveActivityIslandControls(isPaused: context.state.isPaused)
+                    }
                 }
             } compactLeading: {
                 LiveActivityCarIcon(isPaused: context.state.isPaused, font: .caption)
@@ -601,6 +632,42 @@ struct TrailhoundLiveActivity: Widget {
                 intent: WidgetStopRecordingIntent()
             )
         }
+    }
+
+    @ViewBuilder
+    private func liveActivityIslandControls(isPaused: Bool) -> some View {
+        HStack(spacing: 10) {
+            if isPaused {
+                LiveActivityIslandButton(
+                    title: WidgetL10n.resume,
+                    systemImage: "play.fill",
+                    tint: WidgetPalette.resume,
+                    intent: WidgetResumeRecordingIntent()
+                )
+            } else {
+                LiveActivityIslandButton(
+                    title: WidgetL10n.pause,
+                    systemImage: "pause.fill",
+                    tint: WidgetPalette.paused,
+                    intent: WidgetPauseRecordingIntent()
+                )
+            }
+
+            LiveActivityIslandButton(
+                title: WidgetL10n.stop,
+                systemImage: "stop.fill",
+                tint: WidgetPalette.stop,
+                intent: WidgetStopRecordingIntent()
+            )
+        }
+    }
+
+    private func liveActivityIslandSecondaryStats(_ state: TripRecordingAttributes.ContentState) -> String {
+        let distance = DateFormatters.formatDistance(state.distanceMeters)
+        if state.isPaused {
+            return distance
+        }
+        return "\(distance) · \(state.currentSpeedKmh) km/s"
     }
 
     private func liveActivityStats(_ state: TripRecordingAttributes.ContentState) -> String {

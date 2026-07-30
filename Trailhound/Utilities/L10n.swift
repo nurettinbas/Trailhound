@@ -355,20 +355,6 @@ enum L10n {
     }
 
     static var storeRecoveredAfterReset: String { string("store.recovered_after_reset") }
-    static var settingsRestoreAutoBackup: String { string("settings.backup.restore_auto") }
-    static var settingsRestoreBestBackup: String { string("settings.backup.restore_best") }
-    static func settingsBackupRestoreRow(size: String, date: String) -> String {
-        String(format: string("settings.backup.restore_row"), size, date)
-    }
-    static var settingsBackupRestoreHint: String { string("settings.backup.restore_hint") }
-    static var settingsRestoreConfirmTitle: String { string("settings.backup.restore_confirm_title") }
-    static func settingsRestoreConfirmMessage(_ backupFileName: String) -> String {
-        String(format: string("settings.backup.restore_confirm_message"), backupFileName)
-    }
-    static var settingsRestoreRestartTitle: String { string("settings.backup.restore_restart_title") }
-    static var settingsRestoreRestartMessage: String { string("settings.backup.restore_restart_message") }
-    static var settingsRestoreRestartAction: String { string("settings.backup.restore_restart_action") }
-    static var storeRestoreNoBackup: String { string("store.restore_no_backup") }
     static var storeOpenFailedInMemory: String { string("store.open_failed_in_memory") }
     static var errorTitle: String { string("alert.error.title") }
     static var infoTitle: String { string("alert.info.title") }

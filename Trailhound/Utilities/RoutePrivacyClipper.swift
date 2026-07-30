@@ -7,35 +7,44 @@ enum RoutePrivacyClipper {
         privacyRadiusMeters: Double,
         places: [SavedPlace] = []
     ) -> [CLLocationCoordinate2D] {
-        guard coordinates.count >= 2 else { return coordinates }
-        guard let routeStart = coordinates.first, let routeEnd = coordinates.last else { return coordinates }
+        let range = clippedRange(coordinates, privacyRadiusMeters: privacyRadiusMeters, places: places)
+        return Array(coordinates[range])
+    }
+
+    /// The surviving index range, so callers holding per-point metadata (timestamps, speed)
+    /// can trim the same way without dropping that metadata.
+    static func clippedRange(
+        _ coordinates: [CLLocationCoordinate2D],
+        privacyRadiusMeters: Double,
+        places: [SavedPlace] = []
+    ) -> Range<Int> {
+        let full = coordinates.startIndex..<coordinates.endIndex
+        guard coordinates.count >= 2 else { return full }
+        guard let routeStart = coordinates.first, let routeEnd = coordinates.last else { return full }
 
         let startRadius = effectiveRadius(for: routeStart, places: places, defaultRadius: privacyRadiusMeters)
         let endRadius = effectiveRadius(for: routeEnd, places: places, defaultRadius: privacyRadiusMeters)
+        let startLocation = CLLocation(latitude: routeStart.latitude, longitude: routeStart.longitude)
+        let endLocation = CLLocation(latitude: routeEnd.latitude, longitude: routeEnd.longitude)
 
-        var trimmed = coordinates
+        var lower = 0
+        var upper = coordinates.count
 
-        while trimmed.count > 2, let first = trimmed.first {
+        while upper - lower > 2 {
+            let first = coordinates[lower]
             let distance = CLLocation(latitude: first.latitude, longitude: first.longitude)
-                .distance(from: CLLocation(latitude: routeStart.latitude, longitude: routeStart.longitude))
-            if distance <= startRadius {
-                trimmed.removeFirst()
-            } else {
-                break
-            }
+                .distance(from: startLocation)
+            if distance <= startRadius { lower += 1 } else { break }
         }
 
-        while trimmed.count > 2, let last = trimmed.last {
+        while upper - lower > 2 {
+            let last = coordinates[upper - 1]
             let distance = CLLocation(latitude: last.latitude, longitude: last.longitude)
-                .distance(from: CLLocation(latitude: routeEnd.latitude, longitude: routeEnd.longitude))
-            if distance <= endRadius {
-                trimmed.removeLast()
-            } else {
-                break
-            }
+                .distance(from: endLocation)
+            if distance <= endRadius { upper -= 1 } else { break }
         }
 
-        return trimmed.count >= 2 ? trimmed : coordinates
+        return upper - lower >= 2 ? lower..<upper : full
     }
 
     private static func effectiveRadius(

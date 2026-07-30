@@ -59,10 +59,26 @@ struct TripDetailViewModel {
     let places: [SavedPlace]
     let privacyRadius: Double
 
-    private static var speedSegmentCache: [UUID: (pointCount: Int, segments: [SpeedColoredSegment])] = [:]
+    private struct SpeedSegmentCacheEntry {
+        let pointCount: Int
+        let displayPointCount: Int
+        let segments: [SpeedColoredSegment]
+    }
+
+    private static var speedSegmentCache: [UUID: SpeedSegmentCacheEntry] = [:]
+
+    private struct ChartSeriesCacheEntry {
+        let pointCount: Int
+        let series: SpeedChartSeries.Series
+    }
+
+    /// The chart series is read several times per body pass — samples, median interval, axis
+    /// scale — and building it walks every point, so it is built once per trip.
+    private static var chartSeriesCache: [UUID: ChartSeriesCacheEntry] = [:]
 
     static func invalidateSpeedSegmentCache(for tripID: UUID) {
         speedSegmentCache.removeValue(forKey: tripID)
+        chartSeriesCache.removeValue(forKey: tripID)
     }
 
     var durationText: String {
@@ -105,41 +121,45 @@ struct TripDetailViewModel {
     }
 
     var speedSamples: [(id: Int, date: Date, speedKmh: Double)] {
-        let points = trip.sortedPoints
-        guard !points.isEmpty else { return [] }
-
-        return points.enumerated().compactMap { index, point in
-            guard let speedMps = Self.effectiveSpeedMps(at: index, in: points) else { return nil }
-            return (id: index, date: point.timestamp, speedKmh: speedMps * 3.6)
+        speedChartSeries.samples.enumerated().map { index, sample in
+            (id: index, date: sample.date, speedKmh: sample.speedKmh)
         }
     }
 
-    /// Speed at a point: stored GPS speed, or implied from the previous point (fixes empty charts when speed was -1).
-    private static func effectiveSpeedMps(at index: Int, in points: [TripPoint]) -> Double? {
-        let point = points[index]
-        if let stored = point.speedMps, stored > 0,
-           RecordingMovementPolicy.isPlausibleRecordedSpeed(stored) {
-            return stored
+    /// Median gap between the samples the chart actually plots — the chart uses this to decide
+    /// where a real recording gap is, instead of a fixed threshold that breaks sparse trips.
+    var speedSampleMedianIntervalSeconds: TimeInterval {
+        speedChartSeries.medianIntervalSeconds
+    }
+
+    private var speedChartSeries: SpeedChartSeries.Series {
+        if let cached = Self.chartSeriesCache[trip.id], cached.pointCount == trip.sortedPoints.count {
+            return cached.series
         }
-        guard index > 0 else { return nil }
-        let previous = points[index - 1]
-        let delta = point.location.distance(from: previous.location)
-        let timeDelta = max(0.01, point.timestamp.timeIntervalSince(previous.timestamp))
-        return RecordingMovementPolicy.effectiveSpeedMps(
-            locationSpeedMps: -1,
-            delta: delta,
-            timeDelta: timeDelta
+        let series = SpeedChartSeries.build(samples: routeSamples)
+        Self.chartSeriesCache[trip.id] = ChartSeriesCacheEntry(
+            pointCount: trip.sortedPoints.count,
+            series: series
         )
+        return series
     }
 
+    /// The fastest speed the route actually sustained, derived from the points rather than read
+    /// from `trip.maxSpeedMps`. Trips recorded before speeds were vetted carry maxima no point
+    /// ever reached, and detail is the one screen where the points are loaded anyway.
+    var derivedMaxSpeedMps: Double? {
+        TripSpeedSummary.maxSpeedMps(samples: routeSamples)
+    }
+
+    /// Scaled from the plotted data alone. Blending in the stored maximum pinned the axis at
+    /// 200 km/h for a trip whose real peak was 84, squashing the whole line into the bottom third.
     var speedChartMaxKmh: Double {
         let peak = speedSamples.map(\.speedKmh).max() ?? 0
-        let reference = max(peak, (trip.maxSpeedMps ?? 0) * 3.6, 60)
-        return min(max(reference * 1.15, 80), 200)
+        return min(max(peak * 1.15, 80), 200)
     }
 
     var maxSpeedText: String? {
-        guard let maxSpeed = trip.maxSpeedMps, maxSpeed > 0 else { return nil }
+        guard let maxSpeed = derivedMaxSpeedMps else { return nil }
         return L10n.formatSpeedKmh(maxSpeed * 3.6)
     }
 
@@ -174,7 +194,7 @@ struct TripDetailViewModel {
                 kind: .distance(trip.distanceMeters)
             )
         ]
-        if let maxSpeed = trip.maxSpeedMps, maxSpeed > 0 {
+        if let maxSpeed = derivedMaxSpeedMps {
             items.append(
                 TripSummaryMetric(
                     id: "maxSpeed",
@@ -213,52 +233,101 @@ struct TripDetailViewModel {
         trip.coordinates
     }
 
+    /// Recorded points reduced to plain values — stored points are never modified.
+    var routeSamples: [RouteSample] {
+        RouteDisplayPath.samples(from: trip.sortedPoints)
+    }
+
+    /// Drawable pieces: decimated for cost, broken only where the route genuinely stops.
+    var displayPieces: [[RouteSample]] {
+        RouteDisplayPath.displaySegments(samples: routeSamples)
+    }
+
+    /// How many points actually reach the renderer. Reveal animation thresholds use this
+    /// rather than the raw recorded count, which is now unbounded.
+    var displayPointCount: Int {
+        if let cached = Self.speedSegmentCache[trip.id], cached.pointCount == trip.sortedPoints.count {
+            return cached.displayPointCount
+        }
+        return displayPieces.reduce(0) { $0 + $1.count }
+    }
+
     var speedColoredSegments: [SpeedColoredSegment] {
         let pointCount = trip.sortedPoints.count
         if let cached = Self.speedSegmentCache[trip.id], cached.pointCount == pointCount {
             return cached.segments
         }
 
-        let points = trip.sortedPoints
-        let segments = buildSpeedColoredSegments(points: points)
-        Self.speedSegmentCache[trip.id] = (pointCount, segments)
+        let pieces = displayPieces
+        let segments = buildSpeedColoredSegments(pieces: pieces)
+        Self.speedSegmentCache[trip.id] = SpeedSegmentCacheEntry(
+            pointCount: pointCount,
+            displayPointCount: pieces.reduce(0) { $0 + $1.count },
+            segments: segments
+        )
         return segments
     }
 
     /// Speed-colored segments truncated to `progress` (0...1) for route draw-on.
     func revealedSpeedColoredSegments(progress: Double) -> [SpeedColoredSegment] {
-        let points = trip.sortedPoints
-        guard points.count >= 2 else { return [] }
         let clamped = min(1, max(0, progress))
         if clamped >= 1 { return speedColoredSegments }
+        let pieces = displayPieces
+        guard pieces.contains(where: { $0.count >= 2 }) else { return [] }
+        return buildSpeedColoredSegments(pieces: Self.truncated(pieces: pieces, progress: clamped))
+    }
 
-        let exact = Double(points.count - 1) * clamped
-        let lastIndex = min(points.count - 1, Int(exact))
+    /// Keeps whole pieces up to the reveal tip, then interpolates a partial chord so the head
+    /// of the line moves smoothly instead of snapping between recorded points.
+    private static func truncated(pieces: [[RouteSample]], progress: Double) -> [[RouteSample]] {
+        let total = pieces.reduce(0) { $0 + $1.count }
+        guard total >= 2 else { return [] }
+
+        let exact = Double(total - 1) * progress
+        let lastIndex = min(total - 1, Int(exact))
         let fraction = exact - Double(Int(exact))
 
-        var truncatedPoints = Array(points.prefix(lastIndex + 1))
-        if lastIndex < points.count - 1, fraction > 0.001 {
-            let start = points[lastIndex]
-            let end = points[lastIndex + 1]
-            guard Self.shouldDrawMapSegment(from: start, to: end) else {
-                return buildSpeedColoredSegments(points: truncatedPoints)
+        var result: [[RouteSample]] = []
+        var consumed = 0
+
+        for piece in pieces {
+            if consumed + piece.count <= lastIndex + 1 {
+                result.append(piece)
+                consumed += piece.count
+                continue
             }
-            let startCoord = start.coordinate
-            let endCoord = end.coordinate
-            let interpolated = TripPoint(
-                timestamp: Date(
-                    timeIntervalSince1970: start.timestamp.timeIntervalSince1970
-                        + (end.timestamp.timeIntervalSince1970 - start.timestamp.timeIntervalSince1970) * fraction
-                ),
-                latitude: startCoord.latitude + (endCoord.latitude - startCoord.latitude) * fraction,
-                longitude: startCoord.longitude + (endCoord.longitude - startCoord.longitude) * fraction,
-                sequence: start.sequence,
-                speedMps: start.speedMps
-            )
-            truncatedPoints.append(interpolated)
+
+            let take = lastIndex + 1 - consumed
+            guard take > 0 else { break }
+            var partial = Array(piece.prefix(take))
+            if fraction > 0.001, take < piece.count {
+                partial.append(interpolate(piece[take - 1], piece[take], fraction: fraction))
+            }
+            if partial.count >= 2 { result.append(partial) }
+            break
         }
 
-        return buildSpeedColoredSegments(points: truncatedPoints)
+        return result
+    }
+
+    private static func interpolate(
+        _ start: RouteSample,
+        _ end: RouteSample,
+        fraction: Double
+    ) -> RouteSample {
+        RouteSample(
+            coordinate: CLLocationCoordinate2D(
+                latitude: start.coordinate.latitude
+                    + (end.coordinate.latitude - start.coordinate.latitude) * fraction,
+                longitude: start.coordinate.longitude
+                    + (end.coordinate.longitude - start.coordinate.longitude) * fraction
+            ),
+            timestamp: Date(
+                timeIntervalSince1970: start.timestamp.timeIntervalSince1970
+                    + (end.timestamp.timeIntervalSince1970 - start.timestamp.timeIntervalSince1970) * fraction
+            ),
+            speedMps: start.speedMps
+        )
     }
 
     func revealedFallbackCoordinates(progress: Double) -> [CLLocationCoordinate2D] {
@@ -350,18 +419,20 @@ struct TripDetailViewModel {
         return (degrees + 360).truncatingRemainder(dividingBy: 360)
     }
 
-    private func buildSpeedColoredSegments(points: [TripPoint]) -> [SpeedColoredSegment] {
-        guard points.count >= 2 else { return [] }
-
+    /// Applies speed coloring inside each drawable piece. Piece boundaries are already the
+    /// real route gaps, so this only ever adds color splits.
+    private func buildSpeedColoredSegments(pieces: [[RouteSample]]) -> [SpeedColoredSegment] {
         var segments: [SpeedColoredSegment] = []
-        var currentCoordinates = [points[0].coordinate]
-        var currentColor = Self.speedColor(for: Self.effectiveSpeedMps(at: 0, in: points))
 
-        for index in 1..<points.count {
-            let previous = points[index - 1]
-            let current = points[index]
+        for piece in pieces where piece.count >= 2 {
+            var currentCoordinates = [piece[0].coordinate]
+            var currentColor = Self.speedColor(for: TripSpeedSummary.effectiveSpeedMps(at: 0, in: piece))
 
-            if !Self.shouldDrawMapSegment(from: previous, to: current) {
+            for index in 1..<piece.count {
+                let color = Self.speedColor(for: TripSpeedSummary.effectiveSpeedMps(at: index, in: piece))
+                currentCoordinates.append(piece[index].coordinate)
+
+                guard color != currentColor else { continue }
                 if currentCoordinates.count >= 2 {
                     segments.append(
                         SpeedColoredSegment(
@@ -371,51 +442,22 @@ struct TripDetailViewModel {
                         )
                     )
                 }
-                currentCoordinates = [current.coordinate]
-                currentColor = Self.speedColor(for: Self.effectiveSpeedMps(at: index, in: points))
-                continue
-            }
-
-            let color = Self.speedColor(for: Self.effectiveSpeedMps(at: index, in: points))
-            currentCoordinates.append(current.coordinate)
-
-            if color != currentColor {
-                if currentCoordinates.count >= 2 {
-                    segments.append(
-                        SpeedColoredSegment(
-                            id: segments.count,
-                            coordinates: currentCoordinates,
-                            color: currentColor
-                        )
-                    )
-                }
-                currentCoordinates = [previous.coordinate, current.coordinate]
+                currentCoordinates = [piece[index - 1].coordinate, piece[index].coordinate]
                 currentColor = color
             }
-        }
 
-        if currentCoordinates.count >= 2 {
-            segments.append(
-                SpeedColoredSegment(
-                    id: segments.count,
-                    coordinates: currentCoordinates,
-                    color: currentColor
+            if currentCoordinates.count >= 2 {
+                segments.append(
+                    SpeedColoredSegment(
+                        id: segments.count,
+                        coordinates: currentCoordinates,
+                        color: currentColor
+                    )
                 )
-            )
+            }
         }
 
         return segments
-    }
-
-    private static func shouldDrawMapSegment(from previous: TripPoint, to current: TripPoint) -> Bool {
-        let delta = current.location.distance(from: previous.location)
-        let timeDelta = max(0.01, current.timestamp.timeIntervalSince(previous.timestamp))
-        let speed = effectiveSpeedMps(at: 1, in: [previous, current]) ?? 0
-        return RecordingMovementPolicy.shouldDrawMapSegment(
-            delta: delta,
-            timeDelta: timeDelta,
-            speed: speed
-        )
     }
 
     func mapRegion(fit: MapFitContext = .detailWithPanel) -> MKCoordinateRegion? {

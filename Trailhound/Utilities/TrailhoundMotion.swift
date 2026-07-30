@@ -148,7 +148,6 @@ private struct ShimmerModifier: ViewModifier {
                             }
                         }
                     }
-                    .mask(content)
                 }
             }
     }

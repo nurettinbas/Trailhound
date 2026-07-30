@@ -10,11 +10,12 @@ enum TripShareCardRenderer {
         privacyRadius: Double,
         size: CGSize = CGSize(width: 600, height: 400)
     ) async -> UIImage? {
-        let coordinates = RoutePrivacyClipper.clip(
-            trip.coordinates,
+        let routePieces = RouteDisplayPath.displaySegmentCoordinates(
+            trip: trip,
             privacyRadiusMeters: privacyRadius,
             places: places
         )
+        let coordinates = routePieces.flatMap { $0 }
         guard !coordinates.isEmpty else { return renderStatsOnly(trip: trip, places: places, privacyRadius: privacyRadius, size: size) }
 
         let region = regionFor(coordinates: coordinates)
@@ -31,7 +32,7 @@ enum TripShareCardRenderer {
             return renderStatsOnly(trip: trip, places: places, privacyRadius: privacyRadius, size: size)
         }
 
-        let mapImage = drawRoute(on: snapshot, coordinates: coordinates)
+        let mapImage = drawRoute(on: snapshot, pieces: routePieces)
         return composeCard(
             mapImage: mapImage,
             trip: trip,
@@ -41,22 +42,30 @@ enum TripShareCardRenderer {
         )
     }
 
-    private static func drawRoute(on snapshot: MKMapSnapshotter.Snapshot, coordinates: [CLLocationCoordinate2D]) -> UIImage {
+    /// Each piece gets its own sub-path, so a real GPS gap stays a gap instead of being
+    /// bridged by a straight line through unrecorded ground.
+    private static func drawRoute(
+        on snapshot: MKMapSnapshotter.Snapshot,
+        pieces: [[CLLocationCoordinate2D]]
+    ) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: snapshot.image.size)
         return renderer.image { _ in
             snapshot.image.draw(at: .zero)
-            guard coordinates.count >= 2 else { return }
 
             let path = UIBezierPath()
             path.lineWidth = 4
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
             UIColor.systemBlue.setStroke()
 
-            for (index, coordinate) in coordinates.enumerated() {
-                let point = snapshot.point(for: coordinate)
-                if index == 0 {
-                    path.move(to: point)
-                } else {
-                    path.addLine(to: point)
+            for piece in pieces where piece.count >= 2 {
+                for (index, coordinate) in piece.enumerated() {
+                    let point = snapshot.point(for: coordinate)
+                    if index == 0 {
+                        path.move(to: point)
+                    } else {
+                        path.addLine(to: point)
+                    }
                 }
             }
             path.stroke()

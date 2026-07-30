@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import SwiftData
 
@@ -15,6 +16,9 @@ enum TripMergeService {
             endedAt: last.endedAt
         )
         merged.categoryID = first.categoryID
+        // Hand-picked by the driver, so unlike the route match the merged trip regenerates,
+        // nothing can bring it back once the legs are deleted.
+        merged.vehicleID = completed.compactMap(\.vehicleID).first
 
         merged.startAddress = first.startAddress
         merged.startPlaceName = first.startPlaceName
@@ -27,7 +31,7 @@ enum TripMergeService {
         var totalDistance = 0.0
         var maxSpeed: Double = 0
 
-        for trip in completed {
+        for (index, trip) in completed.enumerated() {
             for point in trip.sortedPoints {
                 let newPoint = TripPoint(
                     timestamp: point.timestamp,
@@ -43,6 +47,8 @@ enum TripMergeService {
                 if let speed = point.speedMps { maxSpeed = max(maxSpeed, speed) }
             }
             totalDistance += trip.distanceMeters
+
+            var copiedStops: [TripStop] = []
             for stop in trip.stops {
                 let newStop = TripStop(
                     latitude: stop.latitude,
@@ -51,9 +57,16 @@ enum TripMergeService {
                     durationSeconds: stop.durationSeconds,
                     trip: merged
                 )
+                copiedStops.append(newStop)
                 merged.stops.append(newStop)
                 context.insert(newStop)
             }
+
+            let next = index + 1 < completed.count ? completed[index + 1] : nil
+            junction(from: trip, to: next)?
+                .apply(to: merged, candidates: copiedStops, context: context)
+
+            TripRollupService.remove(trip, in: context)
             context.delete(trip)
         }
 
@@ -62,6 +75,14 @@ enum TripMergeService {
         merged.estimatedFuelCost = FuelCostCalculator.estimateCost(distanceMeters: totalDistance)
         merged.geocodeStatus = .pending
         context.insert(merged)
+
+        let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        TripDerivedMetrics.recompute(
+            for: merged,
+            places: places,
+            privacyRadius: AppSettings.shared.privacyRadiusMeters
+        )
+        TripRollupService.add(merged, in: context)
         try context.save()
 
         let mergedUUID = merged.id
@@ -74,6 +95,22 @@ enum TripMergeService {
         }
 
         return merged
+    }
+
+    /// The standstill between two merged legs. Merging used to join them with nothing but a
+    /// break in the polyline, which hid the fact that the car had been parked there.
+    private static func junction(from leg: Trip, to next: Trip?) -> TripStandstill? {
+        guard let next, let legEnd = leg.endedAt else { return nil }
+
+        let waited = next.startedAt.timeIntervalSince(legEnd)
+        guard waited >= RecordingConfiguration.minimumMergeJunctionStopSeconds else { return nil }
+
+        // Where the driver actually stood: the last fix of the leg that ended, falling back to
+        // the first fix of the leg that resumes.
+        guard let coordinate = leg.sortedPoints.last?.coordinate
+            ?? next.sortedPoints.first?.coordinate else { return nil }
+
+        return TripStandstill(coordinate: coordinate, startedAt: legEnd, endedAt: next.startedAt)
     }
 
     private static func mergedNotes(from trips: [Trip]) -> String? {

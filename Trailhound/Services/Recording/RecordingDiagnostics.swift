@@ -13,6 +13,7 @@ enum RecordingDiagnostics {
     private static var distanceAccumulatedMeters: Double = 0
     private static var lastHeartbeat = Date.distantPast
     private static let heartbeatInterval: TimeInterval = 45
+    private static var speedRejections: [String: Int] = [:]
 
     static func beginSession(
         tripID: UUID,
@@ -158,6 +159,26 @@ enum RecordingDiagnostics {
         }
     }
 
+    /// A fix whose position was kept but whose speed was not believed. Logged once per reason and
+    /// then every 20th time, because a long tunnel would otherwise fill the log with one line.
+    static func logSpeedRejected(
+        tripID: UUID?,
+        reason: String,
+        reportedKmh: Double,
+        speedAccuracyMps: Double,
+        accuracyMeters: CLLocationAccuracy,
+        ageSeconds: TimeInterval
+    ) {
+        let count = (speedRejections[reason] ?? 0) + 1
+        speedRejections[reason] = count
+        guard count == 1 || count.isMultiple(of: 20) else { return }
+
+        DevLog.shared.log(
+            .recording,
+            "speed rejected \(tripLabel(tripID)) why=\(reason) gps=\(String(format: "%.0f", reportedKmh))km/h spdAcc=\(String(format: "%.1f", speedAccuracyMps)) acc=\(Int(accuracyMeters))m age=\(String(format: "%.1f", ageSeconds))s n=\(count)"
+        )
+    }
+
     static func logUnusableFix(
         accuracy: CLLocationAccuracy,
         ageSeconds: TimeInterval,
@@ -206,6 +227,7 @@ enum RecordingDiagnostics {
         pointsPersisted = 0
         distanceAccumulatedMeters = 0
         lastHeartbeat = Date.distantPast
+        speedRejections = [:]
     }
 }
 

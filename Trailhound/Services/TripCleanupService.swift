@@ -8,6 +8,7 @@ enum TripCleanupService {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         let trips = TripStore.completedBefore(cutoff, from: context)
         for trip in trips {
+            TripRollupService.remove(trip, in: context)
             context.delete(trip)
         }
         try context.save()

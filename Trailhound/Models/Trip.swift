@@ -21,6 +21,15 @@ final class Trip {
     var startPlaceName: String?
     var endPlaceName: String?
     var vehicleID: UUID?
+    /// Derived once per trip by `TripDerivedMetrics` so read paths never fault the `points`
+    /// relationship. `nil` means "not computed yet" — callers must fall back to walking points.
+    var nightDistanceMeters: Double?
+    var trackedDistanceMeters: Double?
+    var startLatitude: Double?
+    var startLongitude: Double?
+    var endLatitude: Double?
+    var endLongitude: Double?
+    var searchIndex: String?
     @Relationship(deleteRule: .nullify)
     var vehicle: VehicleProfile?
     @Relationship(deleteRule: .cascade, inverse: \TripPoint.trip)
@@ -130,12 +139,20 @@ final class Trip {
         sortedPoints.map(\.coordinate)
     }
 
+    /// Prefers the denormalised endpoint so callers never fault the whole `points` relationship
+    /// just to read where the trip began. Falls back to the points until the trip is backfilled.
     var startCoordinate: CLLocationCoordinate2D? {
-        sortedPoints.first?.coordinate
+        if let startLatitude, let startLongitude {
+            return CLLocationCoordinate2D(latitude: startLatitude, longitude: startLongitude)
+        }
+        return sortedPoints.first?.coordinate
     }
 
     var endCoordinate: CLLocationCoordinate2D? {
-        sortedPoints.last?.coordinate
+        if let endLatitude, let endLongitude {
+            return CLLocationCoordinate2D(latitude: endLatitude, longitude: endLongitude)
+        }
+        return sortedPoints.last?.coordinate
     }
 
     var displayStartName: String {

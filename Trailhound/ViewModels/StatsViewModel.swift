@@ -1,4 +1,3 @@
-import CoreLocation
 import Foundation
 import SwiftData
 
@@ -83,7 +82,14 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
 }
 
 struct StatsViewModel {
-    static func stats(for trips: [Trip], categoryID: String? = nil, vehicleID: UUID? = nil) -> TripStats {
+    /// - Parameter includeNightRatio: Walking every GPS point is orders of magnitude more expensive
+    ///   than the other aggregations. Callers that only read distance/duration must pass `false`.
+    static func stats<T: TripStatsAggregable>(
+        for trips: [T],
+        categoryID: String? = nil,
+        vehicleID: UUID? = nil,
+        includeNightRatio: Bool = true
+    ) -> TripStats {
         let completed = trips.filter { trip in
             guard trip.endedAt != nil else { return false }
             if let categoryID, trip.categoryID != categoryID { return false }
@@ -94,13 +100,18 @@ struct StatsViewModel {
         let totalDistance = completed.reduce(0) { $0 + $1.distanceMeters }
         let totalDuration = completed.compactMap(\.duration).reduce(0, +)
         let totalFuel = completed.reduce(0) { partial, trip in
-            partial + fuelCost(for: trip)
+            partial + trip.resolvedFuelCost
         }
-        let count = completed.count
+        let count = completed.reduce(0) { $0 + $1.tripCount }
         let averageDuration = count > 0 ? totalDuration / Double(count) : 0
         let averageSpeedKmh = averageSpeedKmh(distanceMeters: totalDistance, duration: totalDuration)
-        let maxSpeedKmh = completed.compactMap(\.maxSpeedMps).filter { $0 > 0 }.map { $0 * 3.6 }.max() ?? 0
-        let nightRatio = nightDrivingRatio(for: completed)
+        // Vetted rather than derived from points: statistics span thousands of trips, and a
+        // single phantom reading would otherwise become the headline figure for the period.
+        let maxSpeedKmh = completed
+            .compactMap { TripSpeedSummary.believableStoredMaxSpeedMps($0.maxSpeedMps) }
+            .map { $0 * 3.6 }
+            .max() ?? 0
+        let nightRatio = includeNightRatio ? nightDrivingRatio(for: completed) : 0
 
         return TripStats(
             tripCount: count,
@@ -128,7 +139,7 @@ struct StatsViewModel {
         return FuelCostCalculator.estimateCost(for: trip)
     }
 
-    static func trips(in interval: DateInterval, from trips: [Trip]) -> [Trip] {
+    static func trips<T: TripStatsAggregable>(in interval: DateInterval, from trips: [T]) -> [T] {
         trips.filter { trip in
             guard let endedAt = trip.endedAt else { return false }
             return interval.contains(trip.startedAt) || interval.contains(endedAt)
@@ -239,7 +250,10 @@ struct StatsViewModel {
         return String(format: format, sign, Int(percent.rounded()))
     }
 
-    static func dailyDistances(in interval: DateInterval, from trips: [Trip]) -> [DailyDistance] {
+    static func dailyDistances<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyDistance] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
         var buckets: [Date: Double] = [:]
@@ -262,7 +276,10 @@ struct StatsViewModel {
         }
     }
 
-    static func dailyDurations(in interval: DateInterval, from trips: [Trip]) -> [DailyDuration] {
+    static func dailyDurations<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyDuration] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
         var buckets: [Date: TimeInterval] = [:]
@@ -286,7 +303,10 @@ struct StatsViewModel {
         }
     }
 
-    static func dailyAverageSpeeds(in interval: DateInterval, from trips: [Trip]) -> [DailyAverageSpeed] {
+    static func dailyAverageSpeeds<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyAverageSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
         var distanceBuckets: [Date: Double] = [:]
@@ -318,7 +338,10 @@ struct StatsViewModel {
         }
     }
 
-    static func dailyMaxSpeeds(in interval: DateInterval, from trips: [Trip]) -> [DailyMaxSpeed] {
+    static func dailyMaxSpeeds<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyMaxSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
         var buckets: [Date: Double] = [:]
@@ -332,7 +355,9 @@ struct StatsViewModel {
         }
 
         for trip in filtered {
-            guard let maxSpeedMps = trip.maxSpeedMps, maxSpeedMps > 0 else { continue }
+            guard let maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) else {
+                continue
+            }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
             buckets[tripDay, default: 0] = max(buckets[tripDay, default: 0], maxSpeedMps * 3.6)
         }
@@ -342,7 +367,32 @@ struct StatsViewModel {
         }
     }
 
-    static func categoryBreakdown(for trips: [Trip], categories: [UserCategory]) -> [CategoryDistance] {
+    /// Display names for every category key, resolved up front so the breakdowns can run away
+    /// from the main actor without touching `UserCategory` models.
+    static func categoryNameMap(for categories: [UserCategory]) -> StatsNameMap {
+        var names: [String: String] = [:]
+        for category in categories {
+            names[category.storageKey] = category.name
+        }
+        for legacy in TripCategory.allCases {
+            names[legacy.rawValue] = names[legacy.rawValue] ?? legacy.displayName
+        }
+        return StatsNameMap(names: names, fallback: L10n.string("label.other"))
+    }
+
+    static func vehicleNameMap(for vehicles: [VehicleProfile]) -> StatsNameMap {
+        var names: [String: String] = [:]
+        for vehicle in vehicles {
+            names[vehicle.id.uuidString] = vehicle.name
+        }
+        names[VehicleDistance.unassignedID] = L10n.string("stats.vehicle.unassigned")
+        return StatsNameMap(names: names, fallback: L10n.string("stats.vehicle.unknown"))
+    }
+
+    static func categoryBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categoryNames: StatsNameMap
+    ) -> [CategoryDistance] {
         let filtered = trips.filter { $0.endedAt != nil }
         var totals: [String: Double] = [:]
 
@@ -351,15 +401,15 @@ struct StatsViewModel {
         }
 
         return totals.map { key, distance in
-            let name = categories.first(where: { $0.storageKey == key })?.name
-                ?? TripCategory(rawValue: key)?.displayName
-                ?? L10n.string("label.other")
-            return CategoryDistance(id: key, name: name, distanceMeters: distance)
+            CategoryDistance(id: key, name: categoryNames.name(for: key), distanceMeters: distance)
         }
         .sorted { $0.distanceMeters > $1.distanceMeters }
     }
 
-    static func categoryDurationBreakdown(for trips: [Trip], categories: [UserCategory]) -> [CategoryDuration] {
+    static func categoryDurationBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categoryNames: StatsNameMap
+    ) -> [CategoryDuration] {
         let filtered = trips.filter { $0.endedAt != nil }
         var totals: [String: TimeInterval] = [:]
 
@@ -369,15 +419,15 @@ struct StatsViewModel {
         }
 
         return totals.map { key, duration in
-            let name = categories.first(where: { $0.storageKey == key })?.name
-                ?? TripCategory(rawValue: key)?.displayName
-                ?? L10n.string("label.other")
-            return CategoryDuration(id: key, name: name, duration: duration)
+            CategoryDuration(id: key, name: categoryNames.name(for: key), duration: duration)
         }
         .sorted { $0.duration > $1.duration }
     }
 
-    static func vehicleBreakdown(for trips: [Trip], vehicles: [VehicleProfile]) -> [VehicleDistance] {
+    static func vehicleBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicleNames: StatsNameMap
+    ) -> [VehicleDistance] {
         let filtered = trips.filter { $0.endedAt != nil }
         var totals: [String: Double] = [:]
 
@@ -387,21 +437,15 @@ struct StatsViewModel {
         }
 
         return totals.map { key, distance in
-            let name: String
-            if key == VehicleDistance.unassignedID {
-                name = L10n.string("stats.vehicle.unassigned")
-            } else if let id = UUID(uuidString: key),
-                      let vehicle = vehicles.first(where: { $0.id == id }) {
-                name = vehicle.name
-            } else {
-                name = L10n.string("stats.vehicle.unknown")
-            }
-            return VehicleDistance(id: key, name: name, distanceMeters: distance)
+            VehicleDistance(id: key, name: vehicleNames.name(for: key), distanceMeters: distance)
         }
         .sorted { $0.distanceMeters > $1.distanceMeters }
     }
 
-    static func vehicleDurationBreakdown(for trips: [Trip], vehicles: [VehicleProfile]) -> [VehicleDuration] {
+    static func vehicleDurationBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicleNames: StatsNameMap
+    ) -> [VehicleDuration] {
         let filtered = trips.filter { $0.endedAt != nil }
         var totals: [String: TimeInterval] = [:]
 
@@ -412,47 +456,104 @@ struct StatsViewModel {
         }
 
         return totals.map { key, duration in
-            let name: String
-            if key == VehicleDuration.unassignedID {
-                name = L10n.string("stats.vehicle.unassigned")
-            } else if let id = UUID(uuidString: key),
-                      let vehicle = vehicles.first(where: { $0.id == id }) {
-                name = vehicle.name
-            } else {
-                name = L10n.string("stats.vehicle.unknown")
-            }
-            return VehicleDuration(id: key, name: name, duration: duration)
+            VehicleDuration(id: key, name: vehicleNames.name(for: key), duration: duration)
         }
         .sorted { $0.duration > $1.duration }
     }
 
-    static func nightDrivingRatio(for trips: [Trip]) -> Double {
+    static func categoryBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categories: [UserCategory]
+    ) -> [CategoryDistance] {
+        categoryBreakdown(for: trips, categoryNames: categoryNameMap(for: categories))
+    }
+
+    static func categoryDurationBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categories: [UserCategory]
+    ) -> [CategoryDuration] {
+        categoryDurationBreakdown(for: trips, categoryNames: categoryNameMap(for: categories))
+    }
+
+    static func vehicleBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicles: [VehicleProfile]
+    ) -> [VehicleDistance] {
+        vehicleBreakdown(for: trips, vehicleNames: vehicleNameMap(for: vehicles))
+    }
+
+    static func vehicleDurationBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicles: [VehicleProfile]
+    ) -> [VehicleDuration] {
+        vehicleDurationBreakdown(for: trips, vehicleNames: vehicleNameMap(for: vehicles))
+    }
+
+    static func nightDrivingRatio<T: TripStatsAggregable>(for trips: [T]) -> Double {
         var nightMeters = 0.0
         var totalMeters = 0.0
-        let calendar = Calendar.current
 
         for trip in trips {
-            let points = trip.sortedPoints
-            guard points.count >= 2 else { continue }
-
-            for index in 1..<points.count {
-                let previous = points[index - 1]
-                let current = points[index]
-                let segment = previous.location.distance(from: current.location)
-                guard segment > 0 else { continue }
-
-                let midpoint = previous.timestamp.addingTimeInterval(
-                    current.timestamp.timeIntervalSince(previous.timestamp) / 2
-                )
-                totalMeters += segment
-                if isNightHour(midpoint, calendar: calendar) {
-                    nightMeters += segment
-                }
-            }
+            guard let share = trip.nightDistanceShare else { continue }
+            nightMeters += share.nightMeters
+            totalMeters += share.trackedMeters
         }
 
         guard totalMeters > 0 else { return 0 }
         return nightMeters / totalMeters
+    }
+
+    /// Fallback for trips whose derived split has not been backfilled yet. Walks every GPS
+    /// segment, so it is the one path that still scales with recorded point count.
+    static func walkNightDistanceShare(for trip: Trip) -> NightDistanceShare? {
+        PerformanceSignposts.measure("NightDistanceWalk") {
+            let points = trip.sortedPoints
+            guard points.count >= 2 else { return nil }
+
+            // Resolving the UTC offset once per trip keeps DST correctness without paying
+            // `Calendar.component(.hour:)` on every GPS segment.
+            let utcOffset = Double(TimeZone.current.secondsFromGMT(for: trip.startedAt))
+            var nightMeters = 0.0
+            var totalMeters = 0.0
+
+            for index in 1..<points.count {
+                let previous = points[index - 1]
+                let current = points[index]
+                let segment = approximateDistanceMeters(
+                    fromLatitude: previous.latitude,
+                    fromLongitude: previous.longitude,
+                    toLatitude: current.latitude,
+                    toLongitude: current.longitude
+                )
+                guard segment > 0 else { continue }
+
+                let previousTime = previous.timestamp.timeIntervalSince1970
+                let midpoint = previousTime
+                    + (current.timestamp.timeIntervalSince1970 - previousTime) / 2
+                totalMeters += segment
+                if isNightTimestamp(midpoint, utcOffset: utcOffset) {
+                    nightMeters += segment
+                }
+            }
+
+            return NightDistanceShare(nightMeters: nightMeters, trackedMeters: totalMeters)
+        }
+    }
+
+    /// Equirectangular approximation. Consecutive GPS samples are metres apart, so the error
+    /// against the geodesic stays far below the noise floor of the samples themselves — and it
+    /// avoids allocating two `CLLocation` objects per segment.
+    static func approximateDistanceMeters(
+        fromLatitude latitude1: Double,
+        fromLongitude longitude1: Double,
+        toLatitude latitude2: Double,
+        toLongitude longitude2: Double
+    ) -> Double {
+        let metersPerDegree = 111_320.0
+        let meanLatitudeRadians = ((latitude1 + latitude2) / 2) * .pi / 180
+        let deltaLatitude = (latitude2 - latitude1) * metersPerDegree
+        let deltaLongitude = (longitude2 - longitude1) * metersPerDegree * cos(meanLatitudeRadians)
+        return (deltaLatitude * deltaLatitude + deltaLongitude * deltaLongitude).squareRoot()
     }
 
     static func nightDrivingPercentText(for ratio: Double) -> String {
@@ -461,8 +562,12 @@ struct StatsViewModel {
         return String(format: format, percent)
     }
 
-    private static func isNightHour(_ date: Date, calendar: Calendar) -> Bool {
-        let hour = calendar.component(.hour, from: date)
+    /// Night is 22:00–06:00 local time. `utcOffset` is resolved once per trip rather than per
+    /// segment, which keeps DST correctness without paying `Calendar.component(.hour:)` per point.
+    static func isNightTimestamp(_ timeIntervalSince1970: Double, utcOffset: Double) -> Bool {
+        let secondsInDay = (timeIntervalSince1970 + utcOffset).truncatingRemainder(dividingBy: 86_400)
+        let normalized = secondsInDay < 0 ? secondsInDay + 86_400 : secondsInDay
+        let hour = Int(normalized / 3_600)
         return hour >= 22 || hour < 6
     }
 }

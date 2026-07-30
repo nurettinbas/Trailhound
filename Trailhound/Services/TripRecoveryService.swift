@@ -59,6 +59,13 @@ enum TripRecoveryService {
         trip.endedAt = trip.sortedPoints.last?.timestamp ?? Date()
         if saveTrip {
             trip.geocodeStatus = .pending
+            let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
+            TripDerivedMetrics.recompute(
+                for: trip,
+                places: places,
+                privacyRadius: AppSettings.shared.privacyRadiusMeters
+            )
+            TripRollupService.add(trip, in: context)
         } else {
             context.delete(trip)
         }

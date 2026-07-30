@@ -13,6 +13,9 @@ struct StatsDisplaySnapshot {
     let vehicleDistance: [VehicleDistance]
     let vehicleDuration: [VehicleDuration]
     let showsVehicleBreakdownCharts: Bool
+    /// Drives the monthly goal ring. Lives on the snapshot so the goal section never recomputes
+    /// aggregations during a body pass.
+    let monthDistanceMeters: Double
 
     var hasAnyDailyChart: Bool {
         !dailyDistance.isEmpty || !dailyDuration.isEmpty
@@ -46,7 +49,8 @@ struct StatsDisplaySnapshot {
         categoryDuration: [],
         vehicleDistance: [],
         vehicleDuration: [],
-        showsVehicleBreakdownCharts: false
+        showsVehicleBreakdownCharts: false,
+        monthDistanceMeters: 0
     )
 
     func distanceTrendText() -> String? {
@@ -98,6 +102,61 @@ enum StatsDisplaySnapshotBuilder {
         selectedCategoryID: String?,
         selectedVehicleID: UUID?
     ) -> StatsDisplaySnapshot {
+        build(
+            completedTrips: completedTrips.map(TripStatsRow.init(trip:)),
+            categoryNames: StatsViewModel.categoryNameMap(for: categories),
+            vehicleNames: StatsViewModel.vehicleNameMap(for: vehicles),
+            vehicleCount: vehicles.count,
+            selectedPeriod: selectedPeriod,
+            customStart: customStart,
+            customEnd: customEnd,
+            selectedMonth: selectedMonth,
+            selectedCategoryID: selectedCategoryID,
+            selectedVehicleID: selectedVehicleID
+        )
+    }
+
+    /// Runs off the main actor: every input is a plain value, so nothing here touches SwiftData.
+    nonisolated static func build(
+        completedTrips: [TripStatsRow],
+        categoryNames: StatsNameMap,
+        vehicleNames: StatsNameMap,
+        vehicleCount: Int,
+        selectedPeriod: StatsPeriod,
+        customStart: Date,
+        customEnd: Date,
+        selectedMonth: Date,
+        selectedCategoryID: String?,
+        selectedVehicleID: UUID?
+    ) -> StatsDisplaySnapshot {
+        PerformanceSignposts.measure("StatsSnapshotBuild") {
+            buildUnmeasured(
+                completedTrips: completedTrips,
+                categoryNames: categoryNames,
+                vehicleNames: vehicleNames,
+                vehicleCount: vehicleCount,
+                selectedPeriod: selectedPeriod,
+                customStart: customStart,
+                customEnd: customEnd,
+                selectedMonth: selectedMonth,
+                selectedCategoryID: selectedCategoryID,
+                selectedVehicleID: selectedVehicleID
+            )
+        }
+    }
+
+    nonisolated private static func buildUnmeasured(
+        completedTrips: [TripStatsRow],
+        categoryNames: StatsNameMap,
+        vehicleNames: StatsNameMap,
+        vehicleCount: Int,
+        selectedPeriod: StatsPeriod,
+        customStart: Date,
+        customEnd: Date,
+        selectedMonth: Date,
+        selectedCategoryID: String?,
+        selectedVehicleID: UUID?
+    ) -> StatsDisplaySnapshot {
         let selectedInterval = StatsViewModel.interval(
             for: selectedPeriod,
             customStart: customStart,
@@ -125,9 +184,15 @@ enum StatsDisplaySnapshotBuilder {
             vehicleID: selectedVehicleID
         )
 
-        let vehicleDistance = StatsViewModel.vehicleBreakdown(for: periodTrips, vehicles: vehicles)
-        let vehicleDuration = StatsViewModel.vehicleDurationBreakdown(for: periodTrips, vehicles: vehicles)
-        let showsVehicle = !vehicleDistance.isEmpty && (vehicles.count > 1 || vehicleDistance.count > 1)
+        let vehicleDistance = StatsViewModel.vehicleBreakdown(for: periodTrips, vehicleNames: vehicleNames)
+        let vehicleDuration = StatsViewModel.vehicleDurationBreakdown(for: periodTrips, vehicleNames: vehicleNames)
+        let showsVehicle = !vehicleDistance.isEmpty && (vehicleCount > 1 || vehicleDistance.count > 1)
+
+        let monthInterval = StatsViewModel.calendarMonthInterval(containing: Date())
+        let monthDistance = StatsViewModel.stats(
+            for: StatsViewModel.trips(in: monthInterval, from: completedTrips),
+            includeNightRatio: false
+        ).totalDistanceMeters
 
         return StatsDisplaySnapshot(
             stats: stats,
@@ -136,11 +201,12 @@ enum StatsDisplaySnapshotBuilder {
             dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: completedTrips),
             dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: completedTrips),
             dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: completedTrips),
-            categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categories: categories),
-            categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categories: categories),
+            categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categoryNames: categoryNames),
+            categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categoryNames: categoryNames),
             vehicleDistance: vehicleDistance,
             vehicleDuration: vehicleDuration,
-            showsVehicleBreakdownCharts: showsVehicle
+            showsVehicleBreakdownCharts: showsVehicle,
+            monthDistanceMeters: monthDistance
         )
     }
 }

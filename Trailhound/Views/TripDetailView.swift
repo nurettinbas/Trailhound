@@ -197,9 +197,10 @@ struct TripDetailView: View {
                 )
             }
 
-            let pointCount = trip.sortedPoints.count
+            // Reveal cost scales with what is drawn, not with what is stored — raw point
+            // counts are unbounded now that recordings are kept at full resolution.
             let plan = TripDetailRevealPolicy.animationPlan(
-                pointCount: pointCount,
+                pointCount: resolvedViewModel.displayPointCount,
                 reduceMotion: reduceMotion
             )
             revealCheapMapDuringAnimation = plan.useCheapMapDuringReveal
@@ -220,6 +221,9 @@ struct TripDetailView: View {
             detailRevealTask?.cancel()
             detailRevealTask = nil
             didStartDetailReveal = false
+            // The detail map is the only screen that needs every GPS point; holding them past
+            // dismissal is how browsing a long library grows memory without bound.
+            trip.invalidatePointCaches()
         }
     }
 
@@ -572,7 +576,8 @@ struct TripDetailView: View {
                     maxKmh: resolvedViewModel.speedChartMaxKmh,
                     progress: progress,
                     tripStartedAt: trip.startedAt,
-                    tripEndedAt: trip.endedAt ?? trip.startedAt
+                    tripEndedAt: trip.endedAt ?? trip.startedAt,
+                    sampleMedianIntervalSeconds: resolvedViewModel.speedSampleMedianIntervalSeconds
                 )
                 .frame(maxWidth: .infinity)
                 .frame(height: 120)
@@ -934,6 +939,10 @@ struct TripDetailView: View {
     }
 
     private func saveEdits() {
+        // Captured before the edit lands: date, category and vehicle all decide which rollup
+        // bucket this trip counted toward, and any of them may be about to change.
+        let previousRollup = TripRollupService.snapshot(of: trip)
+
         trip.note = noteText.isEmpty ? nil : noteText
         trip.label = selectedLabel.isEmpty ? nil : selectedLabel
         trip.categoryID = selectedCategoryID
@@ -952,6 +961,13 @@ struct TripDetailView: View {
             trip.endedAt = max(editedEndedAt, editedStartedAt)
         }
         applyGPSTrimIfNeeded()
+        // Covers both edits that moved the trip's dates and trims that replaced its points.
+        TripDerivedMetrics.recompute(
+            for: trip,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
+        TripRollupService.update(trip, from: previousRollup, in: modelContext)
         originalNoteText = noteText
         try? modelContext.save()
     }
@@ -1011,7 +1027,7 @@ struct TripDetailView: View {
 
         DevLog.shared.log(
             .tripDetail,
-            "\(context) trip=\(trip.id.uuidString.prefix(8)) points=\(points.count) speedPts=\(speedPointCount) chartSamples=\(sampleCount) mapSegments=\(segmentCount) reveal=\(Int(routeRevealProgress * 100))% chartReveal=\(Int(speedChartRevealProgress * 100))%"
+            "\(context) trip=\(trip.id.uuidString.prefix(8)) points=\(points.count) displayPts=\(resolvedViewModel.displayPointCount) speedPts=\(speedPointCount) chartSamples=\(sampleCount) mapSegments=\(segmentCount) reveal=\(Int(routeRevealProgress * 100))% chartReveal=\(Int(speedChartRevealProgress * 100))%"
         )
 
         if points.count >= 2, sampleCount == 0 {
@@ -1085,8 +1101,16 @@ private struct SpeedChartRouteCanvas: View {
     let progress: Double
     let tripStartedAt: Date
     let tripEndedAt: Date
+    /// Typical spacing between plotted samples; the gap threshold scales off it.
+    let sampleMedianIntervalSeconds: TimeInterval
 
-    private static let speedSampleGapBreakSeconds: TimeInterval = 90
+    private static let minimumGapBreakSeconds: TimeInterval = 90
+
+    /// A fixed threshold breaks the line on sparsely sampled trips, where six times the normal
+    /// spacing is what actually signals a recording gap.
+    private var gapBreakSeconds: TimeInterval {
+        max(Self.minimumGapBreakSeconds, sampleMedianIntervalSeconds * 6)
+    }
 
     private var brandColor: Color { TrailhoundBrandColors.brandBottom }
 
@@ -1200,7 +1224,7 @@ private struct SpeedChartRouteCanvas: View {
         var current = [points[0]]
         for index in 1..<points.count {
             let gap = samples[index].date.timeIntervalSince(samples[index - 1].date)
-            if gap > Self.speedSampleGapBreakSeconds {
+            if gap > gapBreakSeconds {
                 groups.append(current)
                 current = [points[index]]
             } else {

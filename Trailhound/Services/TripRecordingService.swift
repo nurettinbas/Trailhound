@@ -47,6 +47,9 @@ final class TripRecordingService {
     private var elapsedTimer: Timer?
     @ObservationIgnored nonisolated(unsafe) private var elapsedTimerTarget: ElapsedTimerTarget?
     private var maxSpeedMps: Double = 0
+    /// Last speed that passed every trust gate, so the next one can be checked for a physically
+    /// impossible jump.
+    private var lastTrustedSpeedMps: Double?
     private var currentStopStartedAt: Date?
     private var currentStopCoordinate: CLLocationCoordinate2D?
 
@@ -94,6 +97,14 @@ final class TripRecordingService {
             return id
         }
         return VehicleResolver.resolveActiveVehicle(in: context, settings: settings)?.id
+    }
+
+    /// For views that already hold a `@Query` vehicle list — avoids a store fetch per body pass.
+    func activeRecordingVehicleID(from vehicles: [VehicleProfile]) -> UUID? {
+        if let trip = activeTrip, let id = trip.vehicleID {
+            return id
+        }
+        return VehicleResolver.resolveActiveVehicle(from: vehicles, settings: settings)?.id
     }
 
     func stopIdleServices() {
@@ -208,7 +219,12 @@ final class TripRecordingService {
         pointSequence = (trip.sortedPoints.last?.sequence ?? -1) + 1
         currentSpeedMps = 0
         elapsedTime = Date().timeIntervalSince(trip.startedAt)
-        maxSpeedMps = trip.maxSpeedMps ?? 0
+        // A trip saved before speeds were vetted may carry a phantom maximum, so do not let
+        // resuming it write that value back.
+        maxSpeedMps = trip.maxSpeedMps.flatMap {
+            RecordingMovementPolicy.isRecordableSpeed($0) ? $0 : nil
+        } ?? 0
+        lastTrustedSpeedMps = trip.sortedPoints.last?.speedMps
         lastRecordedLocation = trip.sortedPoints.last?.location
         liveBreadcrumbCoordinates = trip.coordinates
         liveBreadcrumbSegments = Self.breadcrumbSegments(from: trip.sortedPoints)
@@ -257,19 +273,6 @@ final class TripRecordingService {
 
         let speed = location.speed >= 0 ? location.speed : 0
         currentSpeedMps = speed
-        if RecordingMovementPolicy.isPlausibleRecordedSpeed(speed), speed > maxSpeedMps {
-            maxSpeedMps = speed
-        } else if let previous = lastRecordedLocation {
-            let delta = location.distance(from: previous)
-            let timeDelta = max(0.01, location.timestamp.timeIntervalSince(previous.timestamp))
-            if let implied = RecordingMovementPolicy.effectiveSpeedMps(
-                locationSpeedMps: speed,
-                delta: delta,
-                timeDelta: timeDelta
-            ), implied > maxSpeedMps {
-                maxSpeedMps = implied
-            }
-        }
 
         if speed < stopSpeedMps {
             if currentStopStartedAt == nil {
@@ -283,6 +286,73 @@ final class TripRecordingService {
         applyDistanceSample(from: location, speed: speed)
         refreshDisplaySnapshot()
         syncExternalState()
+    }
+
+    /// Core Location's speed for this fix, or nil when the fix is too uncertain, too old or too
+    /// fast to be believed. The position is kept either way — dropping points is what makes routes
+    /// look broken, and only the speedometer is at stake here.
+    private func trustedGPSSpeed(for location: CLLocation) -> Double? {
+        let age = Date().timeIntervalSince(location.timestamp)
+        let trusted = RecordingMovementPolicy.trustedGPSSpeedMps(
+            reportedMps: location.speed,
+            speedAccuracyMps: location.speedAccuracy,
+            horizontalAccuracyMeters: location.horizontalAccuracy,
+            fixAgeSeconds: age
+        )
+
+        // A speed of -1 just means Core Location has no reading yet; that is normal and not
+        // worth a log line.
+        if trusted == nil, location.speed >= 0,
+           let reason = RecordingMovementPolicy.speedRejectionReason(
+               reportedMps: location.speed,
+               speedAccuracyMps: location.speedAccuracy,
+               horizontalAccuracyMeters: location.horizontalAccuracy,
+               fixAgeSeconds: age
+           ) {
+            RecordingDiagnostics.logSpeedRejected(
+                tripID: activeTrip?.id,
+                reason: reason,
+                reportedKmh: location.speed * 3.6,
+                speedAccuracyMps: location.speedAccuracy,
+                accuracyMeters: location.horizontalAccuracy,
+                ageSeconds: age
+            )
+        }
+        return trusted
+    }
+
+    /// What to write on a point: Core Location's speed when it passed every gate, otherwise the
+    /// speed the covered distance implies. Nil when neither survives.
+    private func speedToStore(
+        for location: CLLocation,
+        delta: CLLocationDistance,
+        timeDelta: TimeInterval
+    ) -> Double? {
+        if let trusted = trustedGPSSpeed(for: location),
+           RecordingMovementPolicy.isPlausibleAcceleration(
+               from: lastTrustedSpeedMps,
+               to: trusted,
+               timeDelta: timeDelta
+           ) {
+            return trusted
+        }
+
+        let implied = delta / max(0.01, timeDelta)
+        guard RecordingMovementPolicy.isRecordableSpeed(implied),
+              RecordingMovementPolicy.isPlausibleAcceleration(
+                  from: lastTrustedSpeedMps,
+                  to: implied,
+                  timeDelta: timeDelta
+              ) else { return nil }
+        return implied
+    }
+
+    /// The trip's maximum is now always one of its point speeds, so it can never exceed what the
+    /// route itself shows — the 203 km/h phantom came from a value no point ever carried.
+    private func noteStoredSpeed(_ speedMps: Double?) {
+        guard let speedMps, RecordingMovementPolicy.isRecordableSpeed(speedMps) else { return }
+        lastTrustedSpeedMps = speedMps
+        maxSpeedMps = max(maxSpeedMps, speedMps)
     }
 
     private func applyDistanceSample(from location: CLLocation, speed: Double, forcePoint: Bool = false) {
@@ -319,11 +389,8 @@ final class TripRecordingService {
                 currentDistanceMeters += delta
                 lastRecordedLocation = location
                 activeTrip?.distanceMeters = currentDistanceMeters
-                let storedSpeed = RecordingMovementPolicy.effectiveSpeedMps(
-                    locationSpeedMps: speed,
-                    delta: delta,
-                    timeDelta: timeDelta
-                ) ?? speed
+                let storedSpeed = speedToStore(for: location, delta: delta, timeDelta: timeDelta)
+                noteStoredSpeed(storedSpeed)
                 RecordingDiagnostics.logMovement(
                     tripID: activeTrip?.id,
                     decision: .accumulate,
@@ -331,7 +398,7 @@ final class TripRecordingService {
                     timeDelta: timeDelta,
                     accuracy: location.horizontalAccuracy,
                     locationSpeedKmh: speed * 3.6,
-                    storedSpeedKmh: storedSpeed * 3.6,
+                    storedSpeedKmh: storedSpeed.map { $0 * 3.6 },
                     distanceMeters: currentDistanceMeters,
                     pointSequence: pointSequence,
                     mapNewSegment: false
@@ -344,11 +411,10 @@ final class TripRecordingService {
             case .gapResume:
                 lastRecordedLocation = location
                 activeTrip?.distanceMeters = currentDistanceMeters
-                let storedSpeed = RecordingMovementPolicy.effectiveSpeedMps(
-                    locationSpeedMps: speed,
-                    delta: delta,
-                    timeDelta: timeDelta
-                ) ?? speed
+                // The jump itself is signal loss, so nothing about it can imply a speed. Only
+                // Core Location's own reading, if it passes the gates, applies here.
+                let storedSpeed = trustedGPSSpeed(for: location)
+                noteStoredSpeed(storedSpeed)
                 RecordingDiagnostics.logMovement(
                     tripID: activeTrip?.id,
                     decision: .gapResume,
@@ -356,7 +422,7 @@ final class TripRecordingService {
                     timeDelta: timeDelta,
                     accuracy: location.horizontalAccuracy,
                     locationSpeedKmh: speed * 3.6,
-                    storedSpeedKmh: storedSpeed * 3.6,
+                    storedSpeedKmh: storedSpeed.map { $0 * 3.6 },
                     distanceMeters: currentDistanceMeters,
                     pointSequence: pointSequence,
                     mapNewSegment: true
@@ -368,6 +434,11 @@ final class TripRecordingService {
                 )
             }
         } else {
+            // No previous fix, so nothing to cross-check against: Core Location's own reading is
+            // the only candidate, and on a cold start that is exactly the one that used to hand
+            // the trip a 203 km/h record it never reached.
+            let storedSpeed = trustedGPSSpeed(for: location)
+            noteStoredSpeed(storedSpeed)
             RecordingDiagnostics.logMovement(
                 tripID: activeTrip?.id,
                 decision: .accumulate,
@@ -375,14 +446,14 @@ final class TripRecordingService {
                 timeDelta: 0,
                 accuracy: location.horizontalAccuracy,
                 locationSpeedKmh: speed * 3.6,
-                storedSpeedKmh: (speed > 0 ? speed : nil).map { $0 * 3.6 },
+                storedSpeedKmh: storedSpeed.map { $0 * 3.6 },
                 distanceMeters: currentDistanceMeters,
                 pointSequence: pointSequence,
                 mapNewSegment: false,
                 ignoreReason: "first_fix"
             )
             lastRecordedLocation = location
-            appendPoint(from: location, speed: speed, startsNewMapSegment: false)
+            appendPoint(from: location, speed: storedSpeed, startsNewMapSegment: false)
         }
     }
 
@@ -484,6 +555,7 @@ final class TripRecordingService {
         recordingStartedAt = resolvedStartedAt
         elapsedTime = Date().timeIntervalSince(resolvedStartedAt)
         maxSpeedMps = 0
+        lastTrustedSpeedMps = nil
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
@@ -543,12 +615,14 @@ final class TripRecordingService {
 
     private func appendPoint(
         from location: CLLocation,
-        speed: Double,
+        speed: Double?,
         startsNewMapSegment: Bool = false
     ) {
         guard let trip = activeTrip, let modelContext else { return }
 
-        let recordedSpeed = RecordingMovementPolicy.isPlausibleRecordedSpeed(speed) ? speed : nil
+        let recordedSpeed = speed.flatMap {
+            RecordingMovementPolicy.isRecordableSpeed($0) ? $0 : nil
+        }
 
         let point = TripPoint(
             timestamp: location.timestamp,
@@ -709,6 +783,7 @@ final class TripRecordingService {
             )
             trip.geocodeStatus = .pending
 
+            TripDerivedMetrics.recomputeEndpoints(for: trip)
             let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
             PlaceMatchingService.matchPlaces(for: trip, places: places)
             let routeSummary = TripListViewModel.routeSummary(
@@ -716,6 +791,13 @@ final class TripRecordingService {
                 places: places,
                 privacyRadius: settings.privacyRadiusMeters
             )
+            TripDerivedMetrics.recomputeNightDistance(for: trip)
+            TripDerivedMetrics.refreshSearchIndex(
+                for: trip,
+                places: places,
+                privacyRadius: settings.privacyRadiusMeters
+            )
+            TripRollupService.add(trip, in: modelContext)
 
             do {
                 try modelContext.save()
@@ -807,6 +889,7 @@ final class TripRecordingService {
         recordingStartedAt = nil
         elapsedTime = 0
         maxSpeedMps = 0
+        lastTrustedSpeedMps = nil
         currentStopStartedAt = nil
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
@@ -967,64 +1050,25 @@ enum TripPostProcessor {
         let context = ModelContext(container)
         let trips = (try? context.fetch(FetchDescriptor<Trip>())) ?? []
         guard let trip = trips.first(where: { $0.id == tripUUID }) else { return }
-        let geocodingService = GeocodingService()
 
-        await enrichTripWithAddresses(trip, context: context, geocodingService: geocodingService)
-        simplifyStoredPointsIfNeeded(for: trip, context: context)
+        // Recorded points are never reduced on disk — display decimation happens in
+        // `RouteDisplayPath`. Deleting them here previously destroyed long trips.
+        if !UITestSupport.isUnitTesting {
+            await enrichTripWithAddresses(
+                trip,
+                context: context,
+                geocodingService: GeocodingService()
+            )
+        }
 
         let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
         PlaceMatchingService.matchPlaces(for: trip, places: places)
-        try? context.save()
-    }
-
-    private static func simplifyStoredPointsIfNeeded(for trip: Trip, context: ModelContext) {
-        guard trip.points.count > 1000 else { return }
-
-        let sorted = trip.sortedPoints
-        let simplified = DistanceCalculator.simplify(coordinates: sorted.map(\.coordinate))
-        guard simplified.count < sorted.count else { return }
-
-        for point in trip.points { context.delete(point) }
-        trip.points.removeAll()
-
-        for (index, coordinate) in simplified.enumerated() {
-            let source = nearestSourcePoint(to: coordinate, in: sorted)
-            let point = TripPoint(
-                timestamp: source?.timestamp ?? trip.startedAt.addingTimeInterval(TimeInterval(index)),
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                sequence: index,
-                speedMps: source?.speedMps,
-                trip: trip
-            )
-            trip.points.append(point)
-            context.insert(point)
-        }
-        trip.invalidatePointCaches()
-        TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
-
-        let preservedSpeedCount = trip.sortedPoints.filter { ($0.speedMps ?? 0) > 0 }.count
-        DevLog.shared.log(
-            .tripDetail,
-            "simplify trip=\(trip.id.uuidString.prefix(8)) points \(sorted.count)→\(simplified.count), speedMps on \(preservedSpeedCount)/\(simplified.count) points"
+        TripDerivedMetrics.recompute(
+            for: trip,
+            places: places,
+            privacyRadius: AppSettings.shared.privacyRadiusMeters
         )
-        if preservedSpeedCount == 0, simplified.count >= 2 {
-            DevLog.shared.warning(
-                .tripDetail,
-                "simplify left no speed data — trip detail speed chart will be hidden and map colors may be uniform"
-            )
-        }
-    }
-
-    private static func nearestSourcePoint(
-        to coordinate: CLLocationCoordinate2D,
-        in source: [TripPoint]
-    ) -> TripPoint? {
-        guard !source.isEmpty else { return nil }
-        let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        return source.min { lhs, rhs in
-            lhs.location.distance(from: target) < rhs.location.distance(from: target)
-        }
+        try? context.save()
     }
 
     private static func enrichTripWithAddresses(

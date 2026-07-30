@@ -3,9 +3,11 @@ import SwiftData
 import SwiftUI
 
 struct StatsView: View {
-    @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
+    // Deliberately no `@Query` for trips: the stats tab only ever aggregates the selected period,
+    // so it fetches that window instead of pulling the whole library into memory.
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
+    @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -20,21 +22,19 @@ struct StatsView: View {
     @State private var animatedProgress: Double = 0
     @State private var snapshot: StatsDisplaySnapshot?
     @State private var snapshotRefreshTask: Task<Void, Never>?
+    @State private var earliestTripStart: Date?
+    /// Bumped whenever the store reports a save, standing in for the change tracking a `@Query`
+    /// would have given us.
+    @State private var storeVersion = 0
     @Namespace private var periodChipNamespace
 
     private var snap: StatsDisplaySnapshot {
         snapshot ?? .empty
     }
 
-    private var completedTrips: [Trip] {
-        trips.filter { $0.endedAt != nil }
-    }
-
     private var snapshotInputs: StatsSnapshotInputs {
         StatsSnapshotInputs(
-            completedCount: completedTrips.count,
-            latestEndedAt: completedTrips.compactMap(\.endedAt).max(),
-            liveTripsCount: trips.count,
+            storeVersion: storeVersion,
             categoryCount: categories.count,
             vehicleCount: vehicles.count,
             period: selectedPeriod,
@@ -46,14 +46,8 @@ struct StatsView: View {
         )
     }
 
-    private var monthInterval: DateInterval {
-        StatsViewModel.calendarMonthInterval(containing: Date())
-    }
-
     private var monthDistanceMeters: Double {
-        StatsViewModel.stats(
-            for: StatsViewModel.trips(in: monthInterval, from: completedTrips)
-        ).totalDistanceMeters
+        snap.monthDistanceMeters
     }
 
     private var goalProgress: Double {
@@ -220,9 +214,14 @@ struct StatsView: View {
         .glassListChrome()
         .navigationTitle(L10n.string("stats.title"))
         .onAppear {
+            refreshEarliestTripStart()
             normalizeSelectedMonth()
             updateAnimatedProgress(animated: false)
             scheduleSnapshotRefresh()
+        }
+        .onStoreSave {
+            refreshEarliestTripStart()
+            storeVersion &+= 1
         }
         .onChange(of: snapshotInputs) { _, _ in
             scheduleSnapshotRefresh()
@@ -243,11 +242,33 @@ struct StatsView: View {
         }
     }
 
+    /// The window the snapshot needs: the selected period, the period it is compared against, and
+    /// the current month behind the goal ring.
+    private var requiredInterval: DateInterval {
+        let selected = StatsViewModel.interval(
+            for: selectedPeriod,
+            customStart: customStart,
+            customEnd: customEnd,
+            selectedMonth: selectedMonth
+        )
+        let previous = selectedPeriod == .month
+            ? StatsViewModel.previousMonthInterval(containing: selectedMonth)
+            : StatsViewModel.previousInterval(for: selected)
+        let month = StatsViewModel.calendarMonthInterval(containing: Date())
+
+        let start = min(selected.start, previous.start, month.start)
+        let end = max(selected.end, previous.end, month.end)
+        return DateInterval(start: start, end: end)
+    }
+
     private func scheduleSnapshotRefresh() {
         snapshotRefreshTask?.cancel()
-        let completed = completedTrips
-        let categoriesCopy = categories
-        let vehiclesCopy = vehicles
+
+        let interval = requiredInterval
+        let rows = fetchStatsRows(in: interval)
+        let categoryNames = StatsViewModel.categoryNameMap(for: categories)
+        let vehicleNames = StatsViewModel.vehicleNameMap(for: vehicles)
+        let vehicleTotal = vehicles.count
         let period = selectedPeriod
         let start = customStart
         let end = customEnd
@@ -255,13 +276,14 @@ struct StatsView: View {
         let categoryID = selectedCategoryID
         let vehicleID = selectedVehicleID
 
-        snapshotRefreshTask = Task { @MainActor in
-            await Task.yield()
+        snapshotRefreshTask = Task {
             guard !Task.isCancelled else { return }
+            // Everything below is plain values, so the aggregation runs off the main actor.
             let built = StatsDisplaySnapshotBuilder.build(
-                completedTrips: completed,
-                categories: categoriesCopy,
-                vehicles: vehiclesCopy,
+                completedTrips: rows,
+                categoryNames: categoryNames,
+                vehicleNames: vehicleNames,
+                vehicleCount: vehicleTotal,
                 selectedPeriod: period,
                 customStart: start,
                 customEnd: end,
@@ -270,8 +292,59 @@ struct StatsView: View {
                 selectedVehicleID: vehicleID
             )
             guard !Task.isCancelled else { return }
-            snapshot = built
+            await MainActor.run { snapshot = built }
         }
+    }
+
+    /// Past this width, loading the period's trips one by one is the bottleneck and the
+    /// pre-aggregated daily rollups answer the same questions in time proportional to days.
+    private static let rollupThreshold: TimeInterval = 92 * 86_400
+
+    private func fetchStatsRows(in interval: DateInterval) -> [TripStatsRow] {
+        if interval.duration > Self.rollupThreshold {
+            let rollupRows = fetchRollupRows(in: interval)
+            if !rollupRows.isEmpty { return rollupRows }
+        }
+        return fetchTripRows(in: interval)
+    }
+
+    private func fetchRollupRows(in interval: DateInterval) -> [TripStatsRow] {
+        let calendar = Calendar.current
+        let lowerBound = calendar.startOfDay(for: interval.start)
+        let upperBound = interval.end
+        let descriptor = FetchDescriptor<TripDailyRollup>(
+            predicate: #Predicate { $0.dayStart >= lowerBound && $0.dayStart <= upperBound },
+            sortBy: [SortDescriptor(\.dayStart, order: .reverse)]
+        )
+        let rollups = (try? modelContext.fetch(descriptor)) ?? []
+        return rollups.map(TripStatsRow.init(rollup:))
+    }
+
+    private func fetchTripRows(in interval: DateInterval) -> [TripStatsRow] {
+        let lowerBound = interval.start
+        let upperBound = interval.end
+        // A trip counts when either end falls inside the window, so widen the fetch by the
+        // longest plausible trip rather than filtering the whole table in memory.
+        let fetchLowerBound = lowerBound.addingTimeInterval(-Self.maximumTripDuration)
+        let descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { trip in
+                trip.endedAt != nil && trip.startedAt >= fetchLowerBound && trip.startedAt <= upperBound
+            },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+        )
+        let trips = (try? modelContext.fetch(descriptor)) ?? []
+        return trips.map(TripStatsRow.init(trip:))
+    }
+
+    private static let maximumTripDuration: TimeInterval = 48 * 3_600
+
+    private func refreshEarliestTripStart() {
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.endedAt != nil },
+            sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+        )
+        descriptor.fetchLimit = 1
+        earliestTripStart = (try? modelContext.fetch(descriptor))?.first?.startedAt
     }
 
     private func normalizeSelectedMonth() {
@@ -387,10 +460,6 @@ struct StatsView: View {
         }
         .padding(.vertical, 6)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
-    }
-
-    private var earliestTripStart: Date? {
-        completedTrips.map(\.startedAt).min()
     }
 
     private var selectableMonths: [Date] {
@@ -842,9 +911,7 @@ struct StatsView: View {
 }
 
 private struct StatsSnapshotInputs: Equatable {
-    let completedCount: Int
-    let latestEndedAt: Date?
-    let liveTripsCount: Int
+    let storeVersion: Int
     let categoryCount: Int
     let vehicleCount: Int
     let period: StatsPeriod

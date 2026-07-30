@@ -85,4 +85,63 @@ final class VehicleResolverTests: XCTestCase {
         let resolved = VehicleResolver.resolveActiveVehicle(in: context, settings: settings)
         XCTAssertEqual(resolved?.id, other.id)
     }
+
+    /// The fetch-free variant is what views use, so it must match the context-backed one.
+    func testResolveFromArrayPrefersRecordingVehicleID() {
+        let settings = makeSettings()
+        let defaultVehicle = VehicleProfile(name: "Default", isDefault: true)
+        let other = VehicleProfile(name: "Other")
+        settings.recordingVehicleID = other.id
+
+        let resolved = VehicleResolver.resolveActiveVehicle(
+            from: [defaultVehicle, other],
+            settings: settings
+        )
+        XCTAssertEqual(resolved?.id, other.id)
+    }
+
+    func testResolveFromArrayFallsBackToDefaultVehicle() {
+        let settings = makeSettings()
+        let first = VehicleProfile(name: "First")
+        let defaultVehicle = VehicleProfile(name: "Default", isDefault: true)
+
+        let resolved = VehicleResolver.resolveActiveVehicle(
+            from: [first, defaultVehicle],
+            settings: settings
+        )
+        XCTAssertEqual(resolved?.id, defaultVehicle.id)
+    }
+
+    func testResolveFromArrayFallsBackToFirstWhenNoDefault() {
+        let settings = makeSettings()
+        let first = VehicleProfile(name: "First")
+        let second = VehicleProfile(name: "Second")
+
+        let resolved = VehicleResolver.resolveActiveVehicle(
+            from: [first, second],
+            settings: settings
+        )
+        XCTAssertEqual(resolved?.id, first.id)
+    }
+
+    func testResolveFromArrayIgnoresStalePreferredID() {
+        let settings = makeSettings()
+        let defaultVehicle = VehicleProfile(name: "Default", isDefault: true)
+        settings.recordingVehicleID = UUID()
+
+        let resolved = VehicleResolver.resolveActiveVehicle(
+            from: [defaultVehicle],
+            settings: settings
+        )
+        XCTAssertEqual(resolved?.id, defaultVehicle.id)
+    }
+
+    func testResolveFromEmptyArrayReturnsNil() {
+        XCTAssertNil(VehicleResolver.resolveActiveVehicle(from: [], settings: makeSettings()))
+    }
+
+    private func makeSettings() -> AppSettings {
+        let defaults = UserDefaults(suiteName: "test.trailhound.vehicle.\(UUID().uuidString)")!
+        return AppSettings(userDefaults: defaults)
+    }
 }
