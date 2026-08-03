@@ -28,6 +28,30 @@ private struct RevealedRouteSegment: Identifiable {
     let color: Color
 }
 
+private struct FavoritePlaceSheetItem: Identifiable {
+    enum Endpoint {
+        case start
+        case end
+    }
+
+    enum Mode {
+        case create(PlaceDraft)
+        case edit(UUID)
+    }
+
+    let mode: Mode
+    let endpoint: Endpoint
+
+    var id: String {
+        switch mode {
+        case .create(let draft):
+            return "create-\(endpoint)-\(draft.id.uuidString)"
+        case .edit(let placeID):
+            return "edit-\(endpoint)-\(placeID.uuidString)"
+        }
+    }
+}
+
 @MainActor
 private enum TripDetailRevealSession {
     static var completedTripIDs: Set<UUID> = []
@@ -60,6 +84,7 @@ struct TripDetailView: View {
     @State private var startPlaceNameText: String = ""
     @State private var endPlaceNameText: String = ""
     @State private var shareImage: UIImage?
+    @State private var shareCaption: String?
     @State private var showShareSheet = false
     @State private var isRenderingShareCard = false
     @FocusState private var noteFocused: Bool
@@ -80,6 +105,7 @@ struct TripDetailView: View {
     @State private var speedChartRevealProgress: Double = 0
     @State private var tripDetailViewModel: TripDetailViewModel?
     @State private var revealCheapMapDuringAnimation = false
+    @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var resolvedViewModel: TripDetailViewModel {
@@ -170,10 +196,19 @@ struct TripDetailView: View {
         .sheet(isPresented: $showFullscreenMap) {
             fullscreenMapSheet
         }
-        .sheet(isPresented: $showShareSheet, onDismiss: { shareImage = nil }) {
+        .sheet(isPresented: $showShareSheet, onDismiss: {
+            shareImage = nil
+            shareCaption = nil
+        }) {
             if let shareImage {
-                ActivityShareSheet(items: [shareImage])
+                let items: [Any] = shareCaption.map { [shareImage, $0] } ?? [shareImage]
+                ActivityShareSheet(items: items)
                     .ignoresSafeArea()
+            }
+        }
+        .sheet(item: $favoritePlaceSheet) { item in
+            NavigationStack {
+                favoritePlacePicker(for: item)
             }
         }
         .onAppear {
@@ -384,7 +419,17 @@ struct TripDetailView: View {
 
                     detailSection(title: L10n.tripLocationOverrides) {
                         compactTextField(L10n.tripStartPlaceName, text: $startPlaceNameText)
+                        favoritePlaceAction(
+                            endpoint: .start,
+                            coordinate: trip.startCoordinate,
+                            accessibilityLabel: L10n.tripAddStartToFavorites
+                        )
                         compactTextField(L10n.tripEndPlaceName, text: $endPlaceNameText)
+                        favoritePlaceAction(
+                            endpoint: .end,
+                            coordinate: trip.endCoordinate,
+                            accessibilityLabel: L10n.tripAddEndToFavorites
+                        )
                         compactTextField(L10n.tripStartAddress, text: $startAddressText)
                         compactTextField(L10n.tripEndAddress, text: $endAddressText)
                     }
@@ -485,6 +530,7 @@ struct TripDetailView: View {
 
     @ViewBuilder
     private var statsStrip: some View {
+        let fuelCurrencyCode = settings.fuelCurrency.rawValue
         let metrics = resolvedViewModel.summaryMetrics
         let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
         let primaryRow = metrics.filter { primaryIDs.contains($0.id) }
@@ -498,6 +544,7 @@ struct TripDetailView: View {
                 statsCenteredMetricRow(metrics: secondaryRow)
             }
         }
+        .id(fuelCurrencyCode)
     }
 
     private func statsMetricRow(metrics: [TripSummaryMetric]) -> some View {
@@ -762,6 +809,117 @@ struct TripDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func favoritePlaceAction(
+        endpoint: FavoritePlaceSheetItem.Endpoint,
+        coordinate: CLLocationCoordinate2D?,
+        accessibilityLabel: String
+    ) -> some View {
+        if let coordinate {
+            let existing = places.first(where: { $0.contains(coordinate) })
+            Button {
+                dismissNoteKeyboard()
+                if let existing {
+                    favoritePlaceSheet = FavoritePlaceSheetItem(
+                        mode: .edit(existing.id),
+                        endpoint: endpoint
+                    )
+                } else {
+                    favoritePlaceSheet = FavoritePlaceSheetItem(
+                        mode: .create(draft(for: endpoint, coordinate: coordinate)),
+                        endpoint: endpoint
+                    )
+                }
+            } label: {
+                Label(
+                    existing == nil ? L10n.tripAddToFavorites : L10n.placeAlreadySaved,
+                    systemImage: existing == nil ? "star" : "star.fill"
+                )
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(existing == nil ? accessibilityLabel : L10n.tripEditFavoritePlace)
+        }
+    }
+
+    private func draft(
+        for endpoint: FavoritePlaceSheetItem.Endpoint,
+        coordinate: CLLocationCoordinate2D
+    ) -> PlaceDraft {
+        let placeName: String
+        let address: String?
+        switch endpoint {
+        case .start:
+            placeName = startPlaceNameText.trimmingCharacters(in: .whitespacesAndNewlines)
+            address = startAddressText.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .end:
+            placeName = endPlaceNameText.trimmingCharacters(in: .whitespacesAndNewlines)
+            address = endAddressText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let resolvedName: String
+        if !placeName.isEmpty {
+            resolvedName = placeName
+        } else if let address, !address.isEmpty {
+            resolvedName = address
+        } else {
+            resolvedName = ""
+        }
+
+        return PlaceDraft(
+            name: resolvedName,
+            coordinate: coordinate,
+            address: (address?.isEmpty == false) ? address : nil,
+            kind: .other
+        )
+    }
+
+    @ViewBuilder
+    private func favoritePlacePicker(for item: FavoritePlaceSheetItem) -> some View {
+        switch item.mode {
+        case .create(let draft):
+            PlacePickerView(draft: draft) { savedName in
+                applyFavoritePlaceName(savedName, to: item.endpoint)
+            }
+        case .edit(let placeID):
+            if let place = places.first(where: { $0.id == placeID }) {
+                PlacePickerView(editingPlace: place) { savedName in
+                    applyFavoritePlaceName(savedName, to: item.endpoint)
+                }
+            } else {
+                Text(L10n.placeAlreadySaved)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func applyFavoritePlaceName(_ name: String, to endpoint: FavoritePlaceSheetItem.Endpoint) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        switch endpoint {
+        case .start:
+            startPlaceNameText = trimmed
+            trip.startPlaceName = trimmed
+        case .end:
+            endPlaceNameText = trimmed
+            trip.endPlaceName = trimmed
+        }
+
+        TripDerivedMetrics.refreshSearchIndex(
+            for: trip,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
+        tripDetailViewModel = TripDetailViewModel(
+            trip: trip,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
+        try? modelContext.save()
+    }
+
     private var compactSpeedLegend: some View {
         HStack(spacing: 8) {
             legendChip(color: .green, text: L10n.speedLegendSlow)
@@ -921,15 +1079,21 @@ struct TripDetailView: View {
         isRenderingShareCard = true
         defer { isRenderingShareCard = false }
 
+        let privacyRadius = settings.privacyRadiusMeters
         guard let image = await TripShareCardRenderer.render(
             trip: trip,
             places: places,
-            privacyRadius: settings.privacyRadiusMeters
+            privacyRadius: privacyRadius
         ) else {
             AppErrorPresenter.shared.present(L10n.string("share.card.error"))
             return
         }
         shareImage = image
+        shareCaption = TripShareCaption.build(
+            trip: trip,
+            places: places,
+            privacyRadius: privacyRadius
+        )
         showShareSheet = true
     }
 
@@ -1023,11 +1187,14 @@ struct TripDetailView: View {
         let points = trip.sortedPoints
         let speedPointCount = points.filter { ($0.speedMps ?? 0) > 0 }.count
         let sampleCount = resolvedViewModel.speedSamples.count
-        let segmentCount = resolvedViewModel.speedColoredSegments.count
+        // colorSegs = speed-band polylines; routePieces = real gap splits from RouteDisplayPath.
+        let colorSegCount = resolvedViewModel.speedColoredSegments.count
+        let routePieceCount = resolvedViewModel.displayPieces.count
+        let routeGapCount = max(0, routePieceCount - 1)
 
         DevLog.shared.log(
             .tripDetail,
-            "\(context) trip=\(trip.id.uuidString.prefix(8)) points=\(points.count) displayPts=\(resolvedViewModel.displayPointCount) speedPts=\(speedPointCount) chartSamples=\(sampleCount) mapSegments=\(segmentCount) reveal=\(Int(routeRevealProgress * 100))% chartReveal=\(Int(speedChartRevealProgress * 100))%"
+            "\(context) trip=\(trip.id.uuidString.prefix(8)) points=\(points.count) displayPts=\(resolvedViewModel.displayPointCount) speedPts=\(speedPointCount) chartSamples=\(sampleCount) routePieces=\(routePieceCount) routeGaps=\(routeGapCount) colorSegs=\(colorSegCount) reveal=\(Int(routeRevealProgress * 100))% chartReveal=\(Int(speedChartRevealProgress * 100))%"
         )
 
         if points.count >= 2, sampleCount == 0 {

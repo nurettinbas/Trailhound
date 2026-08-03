@@ -157,6 +157,105 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(buckets.last?.distanceMeters ?? 0, 4000, accuracy: 0.1)
     }
 
+    func testDailyFuelCostsBucketByDay() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let interval = DateInterval(start: yesterday, end: Date())
+
+        let todayTrip = Trip(
+            startedAt: today.addingTimeInterval(3600),
+            endedAt: today.addingTimeInterval(7200),
+            distanceMeters: 4000,
+            estimatedFuelCost: 80
+        )
+        let yesterdayTrip = Trip(
+            startedAt: yesterday.addingTimeInterval(3600),
+            endedAt: yesterday.addingTimeInterval(7200),
+            distanceMeters: 2500,
+            estimatedFuelCost: 50
+        )
+        let secondToday = Trip(
+            startedAt: today.addingTimeInterval(8000),
+            endedAt: today.addingTimeInterval(9000),
+            distanceMeters: 1000,
+            estimatedFuelCost: 20
+        )
+
+        let daily = StatsViewModel.dailyFuelCosts(
+            in: interval,
+            from: [todayTrip, yesterdayTrip, secondToday]
+        )
+
+        XCTAssertEqual(daily.count, 2)
+        XCTAssertEqual(daily.first?.cost ?? 0, 50, accuracy: 0.1)
+        XCTAssertEqual(daily.last?.cost ?? 0, 100, accuracy: 0.1)
+    }
+
+    func testCategoryAndVehicleFuelBreakdown() {
+        let vehicleA = UUID()
+        let vehicleB = UUID()
+        let business = Trip(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600),
+            distanceMeters: 3000,
+            category: .business,
+            estimatedFuelCost: 60,
+            vehicleID: vehicleA
+        )
+        let personal = Trip(
+            startedAt: Date().addingTimeInterval(-1800),
+            endedAt: Date(),
+            distanceMeters: 2000,
+            category: .personal,
+            estimatedFuelCost: 40,
+            vehicleID: vehicleB
+        )
+        let categories = [
+            UserCategory(id: BuiltInCategory.businessID, name: "Business", sortOrder: 0),
+            UserCategory(id: BuiltInCategory.personalID, name: "Personal", sortOrder: 1)
+        ]
+        let vehicles = [
+            VehicleProfile(id: vehicleA, name: "Car A"),
+            VehicleProfile(id: vehicleB, name: "Car B")
+        ]
+
+        let categoryFuel = StatsViewModel.categoryFuelBreakdown(for: [business, personal], categories: categories)
+        let vehicleFuel = StatsViewModel.vehicleFuelBreakdown(for: [business, personal], vehicles: vehicles)
+
+        XCTAssertEqual(categoryFuel.count, 2)
+        XCTAssertEqual(categoryFuel[0].cost, 60, accuracy: 0.1)
+        XCTAssertEqual(categoryFuel[1].cost, 40, accuracy: 0.1)
+        XCTAssertEqual(vehicleFuel.count, 2)
+        XCTAssertEqual(vehicleFuel[0].cost, 60, accuracy: 0.1)
+        XCTAssertEqual(vehicleFuel[1].cost, 40, accuracy: 0.1)
+    }
+
+    func testCostPerKmAndAverageCostPerTrip() {
+        let stats = TripStats(
+            tripCount: 2,
+            totalDistanceMeters: 10_000,
+            totalDuration: 3600,
+            averageDuration: 1800,
+            estimatedFuelCost: 100
+        )
+
+        XCTAssertEqual(stats.costPerKm, 10, accuracy: 0.01)
+        XCTAssertEqual(stats.averageCostPerTrip, 50, accuracy: 0.01)
+
+        let empty = TripStats(
+            tripCount: 0,
+            totalDistanceMeters: 0,
+            totalDuration: 0,
+            averageDuration: 0,
+            estimatedFuelCost: 0
+        )
+        XCTAssertEqual(empty.costPerKm, 0, accuracy: 0.001)
+        XCTAssertEqual(empty.averageCostPerTrip, 0, accuracy: 0.001)
+        XCTAssertEqual(empty.costPerKmText, "—")
+        XCTAssertEqual(empty.averageCostPerTripText, "—")
+    }
+
     func testCategoryBreakdownSortsByDistance() {
         let business = Trip(
             startedAt: Date().addingTimeInterval(-7200),

@@ -9,16 +9,25 @@ import SwiftData
 enum TripListPage {
     static let pageSize = 50
 
+    /// Trip-list vehicle chip selection. `nil` on `Filters` means All; `.unassigned` matches
+    /// trips with no `vehicleID` (same bucket as Stats "No vehicle").
+    enum VehicleFilter: Equatable, Hashable {
+        case unassigned
+        case vehicle(UUID)
+    }
+
     struct Filters: Equatable {
         var searchText: String = ""
         var categoryID: String?
         var dateSection: TripDateSection?
         var label: String?
+        var vehicleFilter: VehicleFilter?
 
         var isActive: Bool {
             categoryID != nil
                 || dateSection != nil
                 || label != nil
+                || vehicleFilter != nil
                 || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
@@ -65,20 +74,95 @@ enum TripListPage {
         let categoryRawValues = filters.categoryID.map(acceptableCategoryRawValues(for:))
 
         var descriptor = FetchDescriptor<Trip>(
-            predicate: #Predicate { trip in
-                trip.endedAt != nil
-                    && trip.startedAt >= lowerBound
-                    && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
-                    // A trip with no search index has not been backfilled yet, so let it through
-                    // and let the in-memory pass decide.
-                    && (needle.isEmpty
-                        || trip.searchIndex == nil
-                        || trip.searchIndex!.localizedStandardContains(needle))
-            },
+            predicate: listPredicate(
+                lowerBound: lowerBound,
+                needle: needle,
+                categoryRawValues: categoryRawValues,
+                vehicleFilter: filters.vehicleFilter
+            ),
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
         descriptor.fetchLimit = limit + 1
         return descriptor
+    }
+
+    private static func listPredicate(
+        lowerBound: Date,
+        needle: String,
+        categoryRawValues: [String]?,
+        vehicleFilter: VehicleFilter?
+    ) -> Predicate<Trip> {
+        switch vehicleFilter {
+        case .unassigned:
+            return unassignedVehiclePredicate(
+                lowerBound: lowerBound,
+                needle: needle,
+                categoryRawValues: categoryRawValues
+            )
+        case .vehicle(let vehicleID):
+            return specificVehiclePredicate(
+                lowerBound: lowerBound,
+                needle: needle,
+                categoryRawValues: categoryRawValues,
+                vehicleID: vehicleID
+            )
+        case nil:
+            return anyVehiclePredicate(
+                lowerBound: lowerBound,
+                needle: needle,
+                categoryRawValues: categoryRawValues
+            )
+        }
+    }
+
+    private static func anyVehiclePredicate(
+        lowerBound: Date,
+        needle: String,
+        categoryRawValues: [String]?
+    ) -> Predicate<Trip> {
+        #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (needle.isEmpty
+                    || trip.searchIndex == nil
+                    || trip.searchIndex!.localizedStandardContains(needle))
+        }
+    }
+
+    private static func specificVehiclePredicate(
+        lowerBound: Date,
+        needle: String,
+        categoryRawValues: [String]?,
+        vehicleID: UUID
+    ) -> Predicate<Trip> {
+        #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && trip.vehicleID == vehicleID
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (needle.isEmpty
+                    || trip.searchIndex == nil
+                    || trip.searchIndex!.localizedStandardContains(needle))
+        }
+    }
+
+    private static func unassignedVehiclePredicate(
+        lowerBound: Date,
+        needle: String,
+        categoryRawValues: [String]?
+    ) -> Predicate<Trip> {
+        // Capture an explicit nil so the type-checker can resolve optional UUID equality.
+        let unsetVehicleID: UUID? = nil
+        return #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && trip.vehicleID == unsetVehicleID
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (needle.isEmpty
+                    || trip.searchIndex == nil
+                    || trip.searchIndex!.localizedStandardContains(needle))
+        }
     }
 
     static func newestCompletedDescriptor() -> FetchDescriptor<Trip> {

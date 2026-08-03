@@ -1,5 +1,23 @@
 import Foundation
 
+enum FuelCurrency: String, CaseIterable, Identifiable, Sendable {
+    case tryCurrency = "TRY"
+    case eur = "EUR"
+    case usd = "USD"
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .tryCurrency: "₺"
+        case .eur: "€"
+        case .usd: "$"
+        }
+    }
+
+    static let `default` = FuelCurrency.tryCurrency
+}
+
 @MainActor
 @Observable
 final class AppSettings {
@@ -10,9 +28,12 @@ final class AppSettings {
 
     var hasCompletedOnboarding = false
     var hasCompletedCarSetup = false
+    /// Live target for the calendar month currently in progress. Widgets and fuel-agnostic surfaces read this.
     var monthlyDistanceGoalMeters: Double = 500_000 {
         didSet { defaults.set(monthlyDistanceGoalMeters, forKey: Key.monthlyDistanceGoalMeters) }
     }
+    /// Frozen monthly targets keyed by `"yyyy-MM"`. Past months stay locked at the value last written while that month was current.
+    private(set) var monthlyGoalsByMonth: [String: Double] = [:]
     /// Vehicle used for new recordings and fuel estimates when none is set on the trip.
     var recordingVehicleID: UUID? {
         didSet {
@@ -28,6 +49,7 @@ final class AppSettings {
         static let recordingSounds = "recordingSoundsEnabled"
         static let fuelLitersPer100km = "fuelLitersPer100km"
         static let fuelPricePerLiter = "fuelPricePerLiter"
+        static let fuelCurrency = "fuelCurrency"
         static let evChargePricePerKWh = "evChargePricePerKWh"
         static let appLockEnabled = "appLockEnabled"
         static let confirmExternalRecordingStart = RecordingControlBridge.Keys.confirmExternalRecordingStart
@@ -37,6 +59,7 @@ final class AppSettings {
         static let hasCompletedCarSetup = "hasCompletedCarSetup"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let monthlyDistanceGoalMeters = "monthlyDistanceGoalMeters"
+        static let monthlyGoalsByMonth = "monthlyGoalsByMonth"
         static let preferredLanguageCode = "preferredLanguageCode"
         static let developerModeEnabled = "developerModeEnabled"
         static let recordingVehicleID = "recording.vehicleID"
@@ -53,11 +76,77 @@ final class AppSettings {
             key: Key.monthlyDistanceGoalMeters,
             default: 500_000
         )
+        monthlyGoalsByMonth = Self.loadedMonthlyGoals(from: resolvedDefaults)
+        seedCurrentMonthGoalIfNeeded()
         Self.removeLegacyRecordingSensitivityKeys(from: resolvedDefaults)
         if let raw = resolvedDefaults.string(forKey: Key.recordingVehicleID),
            let id = UUID(uuidString: raw) {
             recordingVehicleID = id
         }
+    }
+
+    /// Stable `"yyyy-MM"` key for a calendar month.
+    func goalMonthKey(for date: Date, calendar: Calendar = .current) -> String {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        let year = components.year ?? 0
+        let month = components.month ?? 0
+        return String(format: "%04d-%02d", year, month)
+    }
+
+    /// Stored goal for that month, or the live `monthlyDistanceGoalMeters` when no history exists.
+    func goalMeters(forMonthContaining date: Date) -> Double {
+        let key = goalMonthKey(for: date)
+        if let stored = monthlyGoalsByMonth[key], stored > 0 {
+            return stored
+        }
+        return monthlyDistanceGoalMeters
+    }
+
+    /// Only the calendar month currently in progress can be edited.
+    func isGoalEditable(forMonthContaining date: Date, now: Date = Date()) -> Bool {
+        goalMonthKey(for: date) == goalMonthKey(for: now)
+    }
+
+    /// Writes the live monthly target and freezes it under the current month's key. No-op when
+    /// `date` is not the calendar month of `now` (past months stay locked).
+    func setMonthlyGoalMeters(
+        _ meters: Double,
+        forMonthContaining date: Date = Date(),
+        now: Date = Date()
+    ) {
+        guard isGoalEditable(forMonthContaining: date, now: now) else { return }
+        let value = max(meters, 0)
+        monthlyDistanceGoalMeters = value
+        var goals = monthlyGoalsByMonth
+        goals[goalMonthKey(for: now)] = value
+        monthlyGoalsByMonth = goals
+        persistMonthlyGoals()
+    }
+
+    private func seedCurrentMonthGoalIfNeeded(now: Date = Date()) {
+        let key = goalMonthKey(for: now)
+        guard monthlyGoalsByMonth[key] == nil else { return }
+        var goals = monthlyGoalsByMonth
+        goals[key] = monthlyDistanceGoalMeters
+        monthlyGoalsByMonth = goals
+        persistMonthlyGoals()
+    }
+
+    private func persistMonthlyGoals() {
+        defaults.set(monthlyGoalsByMonth, forKey: Key.monthlyGoalsByMonth)
+    }
+
+    private static func loadedMonthlyGoals(from defaults: UserDefaults) -> [String: Double] {
+        guard let raw = defaults.dictionary(forKey: Key.monthlyGoalsByMonth) else { return [:] }
+        var parsed: [String: Double] = [:]
+        for (key, value) in raw {
+            if let number = value as? Double, number > 0 {
+                parsed[key] = number
+            } else if let number = value as? NSNumber, number.doubleValue > 0 {
+                parsed[key] = number.doubleValue
+            }
+        }
+        return parsed
     }
 
     func completeOnboarding() {
@@ -121,6 +210,18 @@ final class AppSettings {
             return value > 0 ? value : 65.0
         }
         set { defaults.set(newValue, forKey: Key.fuelPricePerLiter) }
+    }
+
+    /// Currency the liter / kWh price is denominated in. Drives every fuel cost label in the app.
+    var fuelCurrency: FuelCurrency {
+        get {
+            guard let raw = defaults.string(forKey: Key.fuelCurrency),
+                  let currency = FuelCurrency(rawValue: raw) else {
+                return .default
+            }
+            return currency
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.fuelCurrency) }
     }
 
     var evChargePricePerKWh: Double {

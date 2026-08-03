@@ -1048,8 +1048,11 @@ enum TripPostProcessor {
         container: ModelContainer
     ) async {
         let context = ModelContext(container)
-        let trips = (try? context.fetch(FetchDescriptor<Trip>())) ?? []
-        guard let trip = trips.first(where: { $0.id == tripUUID }) else { return }
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.id == tripUUID }
+        )
+        descriptor.fetchLimit = 1
+        guard let trip = (try? context.fetch(descriptor))?.first else { return }
 
         // Recorded points are never reduced on disk — display decimation happens in
         // `RouteDisplayPath`. Deleting them here previously destroyed long trips.

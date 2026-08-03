@@ -36,7 +36,6 @@ struct TripStandstill {
     }
 
     /// Returns false when `candidates` already cover this period and nothing was written.
-    @MainActor
     @discardableResult
     func apply(to trip: Trip, candidates: [TripStop], context: ModelContext) -> Bool {
         guard !candidates.contains(where: isAlreadyMarked) else { return false }

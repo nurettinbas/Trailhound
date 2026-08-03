@@ -168,6 +168,55 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrips.count, 1)
         XCTAssertEqual(recentTrips.first?.id, recent.id)
     }
+
+    func testSyncWidgetWeekDistanceUsesCalendarMonthNotRollingMonth() throws {
+        let defaults = UserDefaults(suiteName: "group.com.trailhound.app")
+        let previousMonthDistance = defaults?.object(forKey: "stats.monthDistance")
+        let previousWeekDistance = defaults?.object(forKey: "stats.weekDistance")
+        defer {
+            if let previousMonthDistance {
+                defaults?.set(previousMonthDistance, forKey: "stats.monthDistance")
+            } else {
+                defaults?.removeObject(forKey: "stats.monthDistance")
+            }
+            if let previousWeekDistance {
+                defaults?.set(previousWeekDistance, forKey: "stats.weekDistance")
+            } else {
+                defaults?.removeObject(forKey: "stats.weekDistance")
+            }
+        }
+
+        let container = try ModelContainer(
+            for: Trip.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let currentMonthStart = StatsViewModel.calendarMonthInterval(containing: Date(), calendar: calendar).start
+        let previousMonthMid = calendar.date(byAdding: .day, value: 15, to:
+            StatsViewModel.shiftMonth(currentMonthStart, by: -1, calendar: calendar)
+        )!
+        let currentMonthMid = calendar.date(byAdding: .day, value: 10, to: currentMonthStart)
+            ?? currentMonthStart.addingTimeInterval(864_000)
+
+        let previous = Trip(
+            startedAt: previousMonthMid,
+            endedAt: previousMonthMid.addingTimeInterval(3_600),
+            distanceMeters: 50_000
+        )
+        let current = Trip(
+            startedAt: min(currentMonthMid, Date()),
+            endedAt: Date(),
+            distanceMeters: 12_000
+        )
+        context.insert(previous)
+        context.insert(current)
+        try context.save()
+
+        TripStore.syncWidgetWeekDistance(in: context)
+
+        XCTAssertEqual(defaults?.double(forKey: "stats.monthDistance"), 12_000)
+    }
 }
 
 @MainActor

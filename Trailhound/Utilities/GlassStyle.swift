@@ -310,11 +310,22 @@ struct GlassListRowBackground: View {
 
 /// Filter chip — selected = brand blue pill, unselected = frosted white (matches Trips filters).
 struct GlassFilterChip: View {
+    enum Size {
+        case regular
+        /// Slightly tighter padding/type for stacked trip-list filter rows.
+        case compact
+
+        var font: Font { self == .compact ? .caption2 : .caption }
+        var horizontalPadding: CGFloat { self == .compact ? 10 : 12 }
+        var verticalPadding: CGFloat { self == .compact ? 5 : 7 }
+    }
+
     let title: String
     let isSelected: Bool
     let namespace: Namespace.ID
     var highlightID: String = "glassFilterChipHighlight"
     var expands: Bool = false
+    var size: Size = .regular
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -322,11 +333,11 @@ struct GlassFilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.caption.weight(isSelected ? .semibold : .regular))
+                .font(size.font.weight(isSelected ? .semibold : .regular))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, size.horizontalPadding)
+                .padding(.vertical, size.verticalPadding)
                 .frame(maxWidth: expands ? .infinity : nil)
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .background {

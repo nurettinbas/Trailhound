@@ -17,8 +17,11 @@ struct TripListView: View {
     @State private var selectedLabel: String?
     @State private var selectedCategoryID: String?
     @State private var selectedDateSection: TripDateSection?
+    @State private var selectedVehicleFilter: TripListPage.VehicleFilter?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
+    @State private var isMerging = false
+    @State private var aggregatesRefreshTask: Task<Void, Never>?
     @Bindable private var tabSelection = TabSelection.shared
 
     @State private var orphanTrips: [TripRecoveryService.OrphanTrip] = []
@@ -60,12 +63,18 @@ struct TripListView: View {
             searchText: debouncedSearchText,
             categoryID: selectedCategoryID,
             dateSection: selectedDateSection,
-            label: selectedLabel
+            label: selectedLabel,
+            vehicleFilter: selectedVehicleFilter
         )
     }
 
     private var completedTrips: [Trip] {
         loadedTrips
+    }
+
+    /// Selection may include unfinished/orphan rows; only completed legs can merge.
+    private var completedMergeSelectionCount: Int {
+        loadedTrips.filter { mergeSelection.contains($0.id) && $0.endedAt != nil }.count
     }
 
     private func reloadTrips() {
@@ -86,7 +95,7 @@ struct TripListView: View {
     private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
         if let label = filters.label, trip.label != label { return false }
         if let section = filters.dateSection,
-           TripDateGrouping.section(for: trip.startedAt) != section {
+           !TripDateGrouping.matches(section, date: trip.startedAt) {
             return false
         }
         if trip.searchIndex == nil {
@@ -281,7 +290,9 @@ struct TripListView: View {
                     TripListFiltersBar(
                         searchText: $searchText,
                         selectedDateSection: $selectedDateSection,
-                        selectedCategoryID: $selectedCategoryID
+                        selectedCategoryID: $selectedCategoryID,
+                        selectedVehicleFilter: $selectedVehicleFilter,
+                        vehicles: vehicles
                     )
                     .background {
                         // Only the stop-credits slide needs this, and a `.global` frame
@@ -383,8 +394,15 @@ struct TripListView: View {
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
         }
         .onStoreSave {
-            refreshListAggregates()
+            // Row identity must refresh before the next body pass or a deleted model crashes.
             reloadTrips()
+            // Week summary is display-only — coalesce rapid saves (merge + post-process).
+            aggregatesRefreshTask?.cancel()
+            aggregatesRefreshTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                refreshListAggregates()
+            }
         }
         .onChange(of: pageFilters) { _, _ in
             resetPagingAndReload()
@@ -423,7 +441,9 @@ struct TripListView: View {
             performScrollToTop(scrollProxy: scrollProxy)
         }
         .alert(L10n.tripsMergeTitle, isPresented: $showMergeConfirm) {
-            Button(L10n.actionMerge) { performMerge() }
+            Button(L10n.actionMerge) {
+                Task { await performMerge() }
+            }
             Button(L10n.cancel, role: .cancel) {}
         } message: {
             Text(L10n.tripsMergeMessage(mergeSelection.count))
@@ -434,7 +454,7 @@ struct TripListView: View {
                     Button(L10n.actionMerge) {
                         showMergeConfirm = true
                     }
-                    .disabled(mergeSelection.count < 2)
+                    .disabled(completedMergeSelectionCount < 2 || isMerging)
                 } else if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
                     Button {
                         TrailhoundHaptics.selection()
@@ -488,6 +508,7 @@ struct TripListView: View {
                         isMergeMode = false
                         mergeSelection.removeAll()
                     }
+                    .disabled(isMerging)
                 } else {
                     HStack(spacing: 16) {
                         Button { isMergeMode = true } label: {
@@ -518,6 +539,26 @@ struct TripListView: View {
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)
+        .overlay {
+            if isMerging {
+                ZStack {
+                    Color.black.opacity(0.25)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(L10n.tripsMergeProgress)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .allowsHitTesting(true)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(L10n.tripsMergeProgress)
+                .zIndex(100)
+            }
+        }
         .overlay {
             if let endCredits {
                 GeometryReader { geo in
@@ -705,13 +746,15 @@ struct TripListView: View {
     }
 
     private func resetTripFiltersToAll() {
-        guard selectedCategoryID != nil else { return }
+        guard selectedCategoryID != nil || selectedVehicleFilter != nil else { return }
 
         if reduceMotion {
             selectedCategoryID = nil
+            selectedVehicleFilter = nil
         } else {
             withAnimation(TrailhoundMotion.recordingMorph) {
                 selectedCategoryID = nil
+                selectedVehicleFilter = nil
             }
         }
     }
@@ -835,27 +878,41 @@ struct TripListView: View {
         try? modelContext.save()
     }
 
-    private func performMerge() {
+    private func performMerge() async {
+        guard !isMerging else { return }
         TrailhoundHaptics.selection()
+        isMerging = true
+        defer { isMerging = false }
+
         // Fetched by ID rather than filtered from the loaded pages: a selection made before
         // scrolling could otherwise include trips that are no longer resident.
-        let selected = (try? modelContext.fetch(
-            TripListPage.descriptor(forIDs: mergeSelection)
-        )) ?? []
+        let selectedIDs = Array(mergeSelection)
+        let container = modelContext.container
         do {
-            if let merged = try TripMergeService.merge(trips: selected, into: modelContext) {
-                let tripUUID = merged.id
-                let container = modelContext.container
-                Task { @MainActor in
-                    await TripPostProcessor.process(
-                        tripUUID: tripUUID,
-                        container: container
-                    )
-                }
-            }
+            let mergedUUID = try await TripMergeService.merge(
+                tripIDs: selectedIDs,
+                container: container
+            )
+            let legCount = selectedIDs.count
             isMergeMode = false
             mergeSelection.removeAll()
+            if !UITestSupport.isUnitTesting {
+                TripNotificationService.notifyTripsMerged(
+                    tripID: mergedUUID,
+                    legCount: legCount
+                )
+            }
+            Task { @MainActor in
+                await TripPostProcessor.process(
+                    tripUUID: mergedUUID,
+                    container: container
+                )
+            }
+        } catch let error as TripMergeError {
+            modelContext.rollback()
+            AppErrorPresenter.shared.presentInfo(error.localizedDescription)
         } catch {
+            modelContext.rollback()
             AppErrorPresenter.shared.present(error.localizedDescription)
         }
     }

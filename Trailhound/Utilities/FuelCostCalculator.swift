@@ -2,6 +2,7 @@ import Foundation
 
 enum FuelCostCalculator {
     private static let suiteName = "group.com.trailhound.app"
+    private static let fuelCurrencyKey = "fuelCurrency"
 
     static func estimateCost(distanceMeters: Double, vehicle: VehicleProfile? = nil) -> Double {
         let kilometers = distanceMeters / 1000
@@ -45,11 +46,23 @@ enum FuelCostCalculator {
         }
     }
 
-    static func formatCost(_ amount: Double) -> String {
+    /// ISO currency code from App Group settings (`TRY` when unset).
+    static func resolvedCurrencyCode(
+        defaults: UserDefaults? = nil
+    ) -> String {
+        let store = defaults ?? UserDefaults(suiteName: suiteName) ?? .standard
+        if let raw = store.string(forKey: fuelCurrencyKey),
+           let currency = FuelCurrency(rawValue: raw) {
+            return currency.rawValue
+        }
+        return FuelCurrency.default.rawValue
+    }
+
+    static func formatCost(_ amount: Double, currencyCode: String? = nil) -> String {
         let formatter = NumberFormatter()
         formatter.locale = DateFormatters.currentLocale
         formatter.numberStyle = .currency
-        formatter.currencyCode = DateFormatters.currentLocale.currency?.identifier ?? "TRY"
+        formatter.currencyCode = currencyCode ?? resolvedCurrencyCode()
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: amount)) ?? "\(Int(amount))"
     }

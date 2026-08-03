@@ -190,6 +190,48 @@ final class TripRollupServiceTests: XCTestCase {
         XCTAssertEqual(fromRollups.maxSpeedKmh, fromTrips.maxSpeedKmh, accuracy: 0.1)
     }
 
+    /// Windows past the stats tab's 92-day rollup threshold must still produce the same totals
+    /// whether they are answered from trips or from daily rollups.
+    func testLongWindowRollupPathMatchesTripPath() throws {
+        let calendar = Calendar.current
+        let end = Date()
+        let start = calendar.date(byAdding: .day, value: -100, to: end) ?? end
+        let interval = DateInterval(start: start, end: end)
+
+        var trips: [Trip] = []
+        for index in 0..<20 {
+            let trip = insertTrip(
+                startedAt: end.addingTimeInterval(-Double(index) * 5 * 86_400),
+                distanceMeters: Double(1_000 * (index + 1)),
+                durationSeconds: 2_000,
+                nightMeters: 200,
+                trackedMeters: Double(1_000 * (index + 1))
+            )
+            trips.append(trip)
+            TripRollupService.add(trip, in: context)
+        }
+        try context.save()
+
+        let periodTrips = StatsViewModel.trips(in: interval, from: trips.map(TripStatsRow.init(trip:)))
+        let fromTrips = StatsViewModel.stats(for: periodTrips)
+
+        let lowerBound = calendar.startOfDay(for: interval.start)
+        let upperBound = interval.end
+        let rollupsInWindow = try context.fetch(
+            FetchDescriptor<TripDailyRollup>(
+                predicate: #Predicate { $0.dayStart >= lowerBound && $0.dayStart <= upperBound }
+            )
+        )
+        let fromRollups = StatsViewModel.stats(for: rollupsInWindow.map(TripStatsRow.init(rollup:)))
+
+        XCTAssertGreaterThan(interval.duration, 92 * 86_400)
+        XCTAssertEqual(fromRollups.tripCount, fromTrips.tripCount)
+        XCTAssertEqual(fromRollups.totalDistanceMeters, fromTrips.totalDistanceMeters, accuracy: 0.1)
+        XCTAssertEqual(fromRollups.totalDuration, fromTrips.totalDuration, accuracy: 0.1)
+        XCTAssertEqual(fromRollups.estimatedFuelCost, fromTrips.estimatedFuelCost, accuracy: 0.1)
+        XCTAssertEqual(fromRollups.nightDrivingRatio, fromTrips.nightDrivingRatio, accuracy: 0.0001)
+    }
+
     /// A rollup keeps the highest value it ever saw and never lowers it, so one phantom maximum
     /// would poison a whole day's statistics permanently. The contribution must refuse it.
     func testRollupIgnoresAnImplausibleStoredMaximum() throws {

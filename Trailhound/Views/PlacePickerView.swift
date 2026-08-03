@@ -5,6 +5,8 @@ import SwiftUI
 
 struct PlacePickerView: View {
   var editingPlace: SavedPlace?
+  var draft: PlaceDraft?
+  var onSaved: ((String) -> Void)?
 
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
@@ -27,15 +29,30 @@ struct PlacePickerView: View {
   @State private var searchQuery = ""
   @State private var searchResults: [NearbyPlaceOption] = []
   @State private var isSearchingPlaces = false
+  @State private var coordinateText = ""
+  @State private var coordinateError: String?
+  @State private var didLoadInitialValues = false
   @State private var geocodeTask: Task<Void, Never>?
   @State private var nearbyTask: Task<Void, Never>?
   @State private var searchTask: Task<Void, Never>?
   @FocusState private var isNameFocused: Bool
   @FocusState private var isSearchFocused: Bool
+  @FocusState private var isCoordinateFocused: Bool
 
   private let geocodingService = GeocodingService()
 
   private var isEditing: Bool { editingPlace != nil }
+  private var isSeededFromDraft: Bool { draft != nil }
+
+  init(
+    editingPlace: SavedPlace? = nil,
+    draft: PlaceDraft? = nil,
+    onSaved: ((String) -> Void)? = nil
+  ) {
+    self.editingPlace = editingPlace
+    self.draft = draft
+    self.onSaved = onSaved
+  }
 
   private var selectedCoordinate: CLLocationCoordinate2D {
     CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -61,6 +78,7 @@ struct PlacePickerView: View {
     var rows: [LocationSectionRowKind] = [.search]
     rows.append(.map)
     rows.append(.selected)
+    rows.append(.coordinates)
     if let suggestedName, name != suggestedName {
       rows.append(.useAddressAsName)
     }
@@ -72,6 +90,7 @@ struct PlacePickerView: View {
     case search
     case map
     case selected
+    case coordinates
     case useAddressAsName
     case useCurrentLocation
   }
@@ -83,7 +102,9 @@ struct PlacePickerView: View {
   }
 
   private var suggestions: [(name: String, coordinate: CLLocationCoordinate2D, visits: Int)] {
-    FrequentRoutesService.placeSuggestions(
+    // Skip expensive frequent-route scan when opening from a trip seed.
+    guard !isSeededFromDraft, !isEditing else { return [] }
+    return FrequentRoutesService.placeSuggestions(
       from: trips,
       places: places,
       privacyRadius: settings.privacyRadiusMeters
@@ -92,7 +113,7 @@ struct PlacePickerView: View {
 
   var body: some View {
     Form {
-      if !suggestions.isEmpty && !isEditing {
+      if !suggestions.isEmpty && !isEditing && !isSeededFromDraft {
         Section(L10n.placeSuggestionSection) {
           ForEach(Array(suggestions.enumerated()), id: \.element.name) { index, suggestion in
             Button {
@@ -154,6 +175,9 @@ struct PlacePickerView: View {
         selectedLocationCard
           .glassRow(position: locationSectionPosition(.selected))
 
+        coordinateEntryRow
+          .glassRow(position: locationSectionPosition(.coordinates))
+
         if let suggestedName, name != suggestedName {
           Button(L10n.placePickerUseAddressAsName) {
             name = suggestedName
@@ -209,7 +233,12 @@ struct PlacePickerView: View {
     .dismissKeyboardOnScroll()
     .keyboardDoneToolbar()
     .onAppear {
-      loadEditingPlaceIfNeeded()
+      if !didLoadInitialValues {
+        loadEditingPlaceIfNeeded()
+        loadDraftIfNeeded()
+        didLoadInitialValues = true
+      }
+      syncCoordinateTextFromSelection()
       moveCamera(to: selectedCoordinate, animated: false)
       refreshLocationDetails()
     }
@@ -221,6 +250,47 @@ struct PlacePickerView: View {
     .onChange(of: searchQuery) { _, _ in
       schedulePlaceSearch()
     }
+    .onChange(of: latitude) { _, _ in
+      guard !isCoordinateFocused else { return }
+      syncCoordinateTextFromSelection()
+    }
+    .onChange(of: longitude) { _, _ in
+      guard !isCoordinateFocused else { return }
+      syncCoordinateTextFromSelection()
+    }
+  }
+
+  private var coordinateEntryRow: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(L10n.placeCoordinatesField)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      HStack(spacing: 10) {
+        TextField(L10n.placeCoordinatesPlaceholder, text: $coordinateText)
+          .font(.subheadline.monospacedDigit())
+          .keyboardType(.numbersAndPunctuation)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .focused($isCoordinateFocused)
+          .submitLabel(.go)
+          .onSubmit { applyCoordinateText() }
+
+        Button(L10n.placeCoordinatesApply) {
+          applyCoordinateText()
+        }
+        .buttonStyle(.bordered)
+        .disabled(coordinateText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      }
+
+      if let coordinateError {
+        Text(coordinateError)
+          .font(.caption)
+          .foregroundStyle(.red)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.vertical, 4)
   }
 
   private var locationSearchField: some View {
@@ -452,6 +522,36 @@ struct PlacePickerView: View {
     longitude = editingPlace.longitude
   }
 
+  private func loadDraftIfNeeded() {
+    guard editingPlace == nil, let draft else { return }
+    name = draft.name
+    kind = draft.kind
+    isPrivacyZone = draft.kind == .home
+    latitude = draft.latitude
+    longitude = draft.longitude
+    selectedAddress = draft.address
+    if !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      suggestedName = draft.name
+    }
+  }
+
+  private func syncCoordinateTextFromSelection() {
+    coordinateText = CoordinateParsing.format(selectedCoordinate)
+    coordinateError = nil
+  }
+
+  private func applyCoordinateText() {
+    dismissNameKeyboard()
+    guard let coordinate = CoordinateParsing.parse(coordinateText) else {
+      coordinateError = L10n.placeCoordinatesInvalid
+      return
+    }
+    coordinateError = nil
+    moveCamera(to: coordinate)
+    refreshLocationDetails()
+    syncCoordinateTextFromSelection()
+  }
+
   private func updateSelection(from coordinate: CLLocationCoordinate2D) {
     latitude = coordinate.latitude
     longitude = coordinate.longitude
@@ -596,6 +696,7 @@ struct PlacePickerView: View {
   private func dismissNameKeyboard() {
     isNameFocused = false
     isSearchFocused = false
+    isCoordinateFocused = false
     KeyboardDismiss.dismiss()
   }
 
@@ -621,6 +722,7 @@ struct PlacePickerView: View {
     }
 
     try? modelContext.save()
+    onSaved?(trimmedName)
     dismiss()
   }
 }

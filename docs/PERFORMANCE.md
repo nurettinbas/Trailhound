@@ -151,18 +151,23 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 - Chart aggregations build into a `StatsDisplaySnapshot` on filter/store changes, not on every scroll frame.
 - Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable).
-- **Nothing in the body computes an aggregation.** `monthDistanceMeters` used to call the full
-  `StatsViewModel.stats()` — night-driving GPS walk included — from a computed property read 3–5
-  times per body pass, while `snapshot = built` triggered another pass. It is a snapshot field now.
+- **Nothing in the body computes an aggregation.** Goal distance lives on the snapshot as
+  `goalDistanceMeters` and is always the **goal calendar month's** total (not the week/custom
+  window). Week → current month; month filter → selected month; custom → month of the range end.
+- The goal ring is monthly only. `AppSettings` stores a live `monthlyDistanceGoalMeters` plus a
+  `"yyyy-MM"` dictionary of frozen targets. The stepper edits only the in-progress month; past
+  months show the locked value (or the live fallback when no history exists) and hide the stepper.
 - `StatsViewModel.stats(includeNightRatio:)` lets callers that only need distance and duration skip
   the expensive part. The trip list's week summary and the widget sync in `TripStore` both pass `false`.
-- **The tab has no `@Query` for trips either.** `scheduleSnapshotRefresh` fetches only the window it
-  needs (selected period ∪ previous period ∪ current month), widened by one maximum trip duration
-  so trips that started just before the window still match.
-- **Aggregation runs off the main actor.** `TripStatsRow` is a `Sendable` flattening of a trip, and
-  `StatsNameMap` resolves category and vehicle display names up front. The aggregations themselves
-  are generic over `TripStatsAggregable`, which both `Trip` and `TripStatsRow` conform to, so there
-  is one implementation rather than a main-actor copy and a background copy.
+- **The tab has no `@Query` for trips either.** Fetching happens inside `StatsSnapshotLoader`, which
+  loads `selected ∪ previous ∪ goalMonth` so a week view still has the full current month for the ring
+  without pulling the whole library.
+- **Aggregation runs on a `@ModelActor`.** `StatsSnapshotLoader` owns its own `ModelContext`, maps
+  trips/rollups to `TripStatsRow`, and builds the snapshot there. `StatsView` only `await`s the
+  result onto the main actor. A plain `Task { }` inside the view is *not* enough — SwiftUI views are
+  `@MainActor`, so that task would inherit the main actor and still block the UI.
+- Filter changes are debounced (~120 ms) after the first load, and the loader keeps an 8-entry
+  request cache cleared whenever `storeVersion` bumps, so week ↔ month ↔ back is instant.
 
 ## Reacting to saves
 
@@ -198,8 +203,9 @@ six-figure library viable.
   has to visit every trip and must not do that on the main thread.
 - Reads go through the **same** aggregation as trips: `TripStatsRow.init(rollup:)` turns a bucket
   into one synthetic row carrying `tripCount`, which `StatsViewModel.stats` sums instead of counting
-  rows. `StatsView` switches to rollups only when the required window exceeds 92 days, since a week
-  or a month holds few enough trips to read directly.
+  rows. `StatsSnapshotLoader` switches to rollups only when the required window exceeds 92 days, since a week
+  or a month holds few enough trips to read directly. The fetch window is
+  `selected ∪ previous ∪ goalMonth`; a single calendar month still stays under the threshold.
 
 ## Memory
 

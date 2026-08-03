@@ -54,6 +54,16 @@ enum TripNotificationService {
         )
     }
 
+    static func notifyTripsMerged(tripID: UUID, legCount: Int) {
+        deliver(
+            identifier: "trailhound.trip.merged.\(tripID.uuidString)",
+            kind: .tripsMerged,
+            title: L10n.tripsMergedTitle,
+            body: L10n.tripsMergedBody(legCount),
+            tripID: tripID
+        )
+    }
+
     static func scheduleOrphanStaleNotification(tripID: UUID, lastActivity: Date) {
         let identifier = orphanNotificationID(tripID: tripID)
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])

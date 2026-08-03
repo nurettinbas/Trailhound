@@ -57,9 +57,9 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
 }
 
 extension TripStatsRow {
-    /// Must run where the model is safe to touch; the resulting value is free to cross actors.
-    @MainActor
-    init(trip: Trip) {
+    /// Call only from the actor that owns `trip` (main actor or a `@ModelActor`). The resulting
+    /// value is free to cross actors.
+    nonisolated init(trip: Trip) {
         self.init(
             id: trip.id,
             startedAt: trip.startedAt,
@@ -79,8 +79,8 @@ extension TripStatsRow {
 
     /// One day's worth of trips collapsed into a single row, so the same aggregations can run
     /// over pre-summarised data when a period covers too many trips to load individually.
-    @MainActor
-    init(rollup: TripDailyRollup) {
+    /// Call only from the actor that owns `rollup`.
+    nonisolated init(rollup: TripDailyRollup) {
         self.init(
             id: UUID(),
             startedAt: rollup.dayStart,

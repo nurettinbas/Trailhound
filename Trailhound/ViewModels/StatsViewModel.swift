@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-struct DailyDistance: Identifiable {
+struct DailyDistance: Identifiable, Sendable {
     let id: Date
     let day: Date
     let distanceMeters: Double
@@ -9,7 +9,7 @@ struct DailyDistance: Identifiable {
     var distanceKilometers: Double { distanceMeters / 1000 }
 }
 
-struct DailyDuration: Identifiable {
+struct DailyDuration: Identifiable, Sendable {
     let id: Date
     let day: Date
     let duration: TimeInterval
@@ -17,19 +17,25 @@ struct DailyDuration: Identifiable {
     var durationHours: Double { duration / 3600 }
 }
 
-struct DailyAverageSpeed: Identifiable {
+struct DailyAverageSpeed: Identifiable, Sendable {
     let id: Date
     let day: Date
     let speedKmh: Double
 }
 
-struct DailyMaxSpeed: Identifiable {
+struct DailyMaxSpeed: Identifiable, Sendable {
     let id: Date
     let day: Date
     let speedKmh: Double
 }
 
-struct CategoryDistance: Identifiable {
+struct DailyFuelCost: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let cost: Double
+}
+
+struct CategoryDistance: Identifiable, Sendable {
     let id: String
     let name: String
     let distanceMeters: Double
@@ -37,7 +43,7 @@ struct CategoryDistance: Identifiable {
     var distanceKilometers: Double { distanceMeters / 1000 }
 }
 
-struct CategoryDuration: Identifiable {
+struct CategoryDuration: Identifiable, Sendable {
     let id: String
     let name: String
     let duration: TimeInterval
@@ -45,7 +51,13 @@ struct CategoryDuration: Identifiable {
     var durationHours: Double { duration / 3600 }
 }
 
-struct VehicleDistance: Identifiable {
+struct CategoryFuelCost: Identifiable, Sendable {
+    let id: String
+    let name: String
+    let cost: Double
+}
+
+struct VehicleDistance: Identifiable, Sendable {
     let id: String
     let name: String
     let distanceMeters: Double
@@ -55,7 +67,7 @@ struct VehicleDistance: Identifiable {
     var distanceKilometers: Double { distanceMeters / 1000 }
 }
 
-struct VehicleDuration: Identifiable {
+struct VehicleDuration: Identifiable, Sendable {
     let id: String
     let name: String
     let duration: TimeInterval
@@ -65,7 +77,15 @@ struct VehicleDuration: Identifiable {
     var durationHours: Double { duration / 3600 }
 }
 
-enum StatsPeriod: String, CaseIterable, Identifiable {
+struct VehicleFuelCost: Identifiable, Sendable {
+    let id: String
+    let name: String
+    let cost: Double
+
+    static let unassignedID = VehicleDistance.unassignedID
+}
+
+enum StatsPeriod: String, CaseIterable, Identifiable, Sendable {
     case week
     case month
     case custom
@@ -178,9 +198,48 @@ struct StatsViewModel {
         return DateInterval(start: start, end: end)
     }
 
+    /// Calendar midnights crossed by `interval`, not `duration / 86400` (DST-safe).
+    static func calendarDayCount(
+        in interval: DateInterval,
+        calendar: Calendar = .current
+    ) -> Int {
+        let start = calendar.startOfDay(for: interval.start)
+        let end = calendar.startOfDay(for: interval.end)
+        let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
+        return max(days, 1)
+    }
+
+    static func calendarDaysInMonth(
+        containing date: Date,
+        calendar: Calendar = .current
+    ) -> Int {
+        calendarDayCount(in: calendarMonthInterval(containing: date, calendar: calendar), calendar: calendar)
+    }
+
     static func shiftMonth(_ date: Date, by value: Int, calendar: Calendar = .current) -> Date {
         calendar.date(byAdding: .month, value: value, to: calendarMonthInterval(containing: date, calendar: calendar).start)
             ?? date
+    }
+
+    /// Calendar month the goal ring tracks for the active filter.
+    /// Week → current month; month → selected month; custom → month of the range end.
+    static func goalMonth(
+        for period: StatsPeriod,
+        selectedMonth: Date,
+        customStart: Date,
+        customEnd: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        switch period {
+        case .week:
+            return calendarMonthInterval(containing: now, calendar: calendar).start
+        case .month:
+            return calendarMonthInterval(containing: selectedMonth, calendar: calendar).start
+        case .custom:
+            let end = max(customStart, customEnd)
+            return calendarMonthInterval(containing: end, calendar: calendar).start
+        }
     }
 
     /// Months from the first trip's month through the current month, newest first.
@@ -367,6 +426,32 @@ struct StatsViewModel {
         }
     }
 
+    static func dailyFuelCosts<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyFuelCost] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets: [Date: Double] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            buckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            buckets[tripDay, default: 0] += trip.resolvedFuelCost
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyFuelCost(id: day, day: day, cost: buckets[day] ?? 0)
+        }
+    }
+
     /// Display names for every category key, resolved up front so the breakdowns can run away
     /// from the main actor without touching `UserCategory` models.
     static func categoryNameMap(for categories: [UserCategory]) -> StatsNameMap {
@@ -461,6 +546,41 @@ struct StatsViewModel {
         .sorted { $0.duration > $1.duration }
     }
 
+    static func categoryFuelBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categoryNames: StatsNameMap
+    ) -> [CategoryFuelCost] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var totals: [String: Double] = [:]
+
+        for trip in filtered {
+            totals[trip.categoryID, default: 0] += trip.resolvedFuelCost
+        }
+
+        return totals.map { key, cost in
+            CategoryFuelCost(id: key, name: categoryNames.name(for: key), cost: cost)
+        }
+        .sorted { $0.cost > $1.cost }
+    }
+
+    static func vehicleFuelBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicleNames: StatsNameMap
+    ) -> [VehicleFuelCost] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var totals: [String: Double] = [:]
+
+        for trip in filtered {
+            let key = trip.vehicleID?.uuidString ?? VehicleFuelCost.unassignedID
+            totals[key, default: 0] += trip.resolvedFuelCost
+        }
+
+        return totals.map { key, cost in
+            VehicleFuelCost(id: key, name: vehicleNames.name(for: key), cost: cost)
+        }
+        .sorted { $0.cost > $1.cost }
+    }
+
     static func categoryBreakdown<T: TripStatsAggregable>(
         for trips: [T],
         categories: [UserCategory]
@@ -475,6 +595,13 @@ struct StatsViewModel {
         categoryDurationBreakdown(for: trips, categoryNames: categoryNameMap(for: categories))
     }
 
+    static func categoryFuelBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        categories: [UserCategory]
+    ) -> [CategoryFuelCost] {
+        categoryFuelBreakdown(for: trips, categoryNames: categoryNameMap(for: categories))
+    }
+
     static func vehicleBreakdown<T: TripStatsAggregable>(
         for trips: [T],
         vehicles: [VehicleProfile]
@@ -487,6 +614,13 @@ struct StatsViewModel {
         vehicles: [VehicleProfile]
     ) -> [VehicleDuration] {
         vehicleDurationBreakdown(for: trips, vehicleNames: vehicleNameMap(for: vehicles))
+    }
+
+    static func vehicleFuelBreakdown<T: TripStatsAggregable>(
+        for trips: [T],
+        vehicles: [VehicleProfile]
+    ) -> [VehicleFuelCost] {
+        vehicleFuelBreakdown(for: trips, vehicleNames: vehicleNameMap(for: vehicles))
     }
 
     static func nightDrivingRatio<T: TripStatsAggregable>(for trips: [T]) -> Double {
@@ -572,7 +706,7 @@ struct StatsViewModel {
     }
 }
 
-struct TripStats {
+struct TripStats: Sendable {
     let tripCount: Int
     let totalDistanceMeters: Double
     let totalDuration: TimeInterval
@@ -613,4 +747,23 @@ struct TripStats {
     }
     var fuelCostText: String { FuelCostCalculator.formatCost(estimatedFuelCost) }
     var nightDrivingText: String { StatsViewModel.nightDrivingPercentText(for: nightDrivingRatio) }
+
+    var costPerKm: Double {
+        let kilometers = totalDistanceMeters / 1000
+        guard kilometers > 0, estimatedFuelCost > 0 else { return 0 }
+        return estimatedFuelCost / kilometers
+    }
+
+    var averageCostPerTrip: Double {
+        guard tripCount > 0, estimatedFuelCost > 0 else { return 0 }
+        return estimatedFuelCost / Double(tripCount)
+    }
+
+    var costPerKmText: String {
+        costPerKm > 0 ? FuelCostCalculator.formatCost(costPerKm) : "—"
+    }
+
+    var averageCostPerTripText: String {
+        averageCostPerTrip > 0 ? FuelCostCalculator.formatCost(averageCostPerTrip) : "—"
+    }
 }

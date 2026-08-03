@@ -280,6 +280,7 @@ struct NotificationsListView: View {
         case .tripStarted: .green
         case .tripEnded: .blue
         case .tripDiscarded: .gray
+        case .tripsMerged: .blue
         case .orphanStale: .orange
         case .recordingStopped: .red
         case .pairingSuggestion: .blue

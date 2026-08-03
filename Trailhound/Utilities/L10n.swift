@@ -18,6 +18,14 @@ enum L10n {
     static var delete: String { string("action.delete") }
     static var share: String { string("action.share") }
 
+    static func shareCaptionWhenRange(date: String, start: String, end: String) -> String {
+        String(format: string("share.caption.when_range"), date, start, end)
+    }
+
+    static func shareCaptionWhenStart(date: String, start: String) -> String {
+        String(format: string("share.caption.when_start"), date, start)
+    }
+
     static var notificationsTitle: String { string("notifications.title") }
     static var notificationsEmptyTitle: String { string("notifications.empty.title") }
     static var notificationsEmptyMessage: String { string("notifications.empty.message") }
@@ -53,6 +61,9 @@ enum L10n {
     static var orphanStaleNotificationTitle: String { string("orphan.stale.title") }
     static var orphanStaleNotificationBody: String { string("orphan.stale.body") }
     static var all: String { string("filter.all") }
+    static var filterDate: String { string("filter.date") }
+    static var filterCategory: String { string("filter.category") }
+    static var filterVehicle: String { string("filter.vehicle") }
     static var duration: String { string("label.duration") }
     static var currentSpeed: String { string("label.current_speed") }
     static var maxAbbr: String { string("label.max_abbr") }
@@ -74,6 +85,12 @@ enum L10n {
     static var tripsMergeTitle: String { string("trips.merge.title") }
     static func tripsMergeMessage(_ count: Int) -> String {
         String(format: string("trips.merge.message"), count)
+    }
+    static var tripsMergeNeedsTwo: String { string("trips.merge.error.needs_two") }
+    static var tripsMergeProgress: String { string("trips.merge.progress") }
+    static var tripsMergedTitle: String { string("trips.merged.title") }
+    static func tripsMergedBody(_ count: Int) -> String {
+        String(format: string("trips.merged.body"), count)
     }
     static var a11ySelected: String { string("a11y.selected") }
     static var a11yNotSelected: String { string("a11y.not_selected") }
@@ -107,6 +124,7 @@ enum L10n {
     static var sectionOlder: String { string("section.older") }
     static var searchTrips: String { string("search.trips") }
     static var tripsFilters: String { string("trips.filters") }
+    static var tripsFiltersClear: String { string("trips.filters.clear") }
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
     static var mapFullscreen: String { string("map.fullscreen") }
@@ -129,6 +147,15 @@ enum L10n {
     static var tripEndPlaceName: String { string("trip.end_place_name") }
     static var tripStartAddress: String { string("trip.start_address") }
     static var tripEndAddress: String { string("trip.end_address") }
+    static var tripAddToFavorites: String { string("trip.add_to_favorites") }
+    static var tripAddStartToFavorites: String { string("trip.add_start_to_favorites") }
+    static var tripAddEndToFavorites: String { string("trip.add_end_to_favorites") }
+    static var tripEditFavoritePlace: String { string("trip.edit_favorite_place") }
+    static var placeAlreadySaved: String { string("place.already_saved") }
+    static var placeCoordinatesField: String { string("place.coordinates.field") }
+    static var placeCoordinatesPlaceholder: String { string("place.coordinates.placeholder") }
+    static var placeCoordinatesApply: String { string("place.coordinates.apply") }
+    static var placeCoordinatesInvalid: String { string("place.coordinates.invalid") }
     static var placeSuggestionSection: String { string("place.suggestion.section") }
     static var placePickerSelectedLocation: String { string("place.picker.selected_location") }
     static var placePickerMoveMapHint: String { string("place.picker.move_map_hint") }
@@ -168,6 +195,7 @@ enum L10n {
     static var settingsFuelSection: String { string("settings.fuel.section") }
     static var settingsFuelConsumption: String { string("settings.fuel.consumption") }
     static var settingsFuelPrice: String { string("settings.fuel.price") }
+    static var settingsFuelCurrency: String { string("settings.fuel.currency") }
     static var settingsFuelHint: String { string("settings.fuel.hint") }
     static var settingsPrivacySection: String { string("settings.privacy.section") }
     static var settingsAppLock: String { string("settings.privacy.app_lock") }

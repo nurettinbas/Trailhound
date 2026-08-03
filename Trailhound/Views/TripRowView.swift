@@ -9,6 +9,7 @@ struct TripRowView: View {
     /// Soft-lands the map thumbnail after stop→row morph.
     var emphasizeLanding: Bool = false
 
+    @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: UIImage?
     @State private var thumbnailLoaded = false
@@ -18,6 +19,7 @@ struct TripRowView: View {
     }
 
     var body: some View {
+        let fuelCurrencyCode = settings.fuelCurrency.rawValue
         HStack(alignment: .center, spacing: 12) {
             thumbnailView
 
@@ -64,6 +66,7 @@ struct TripRowView: View {
 
                     if let fuel = TripListViewModel.fuelText(for: trip) {
                         metricChip(icon: "fuelpump", text: fuel)
+                            .id(fuelCurrencyCode)
                     }
 
                     if let maxLabel = TripListViewModel.maxSpeedLabel(for: trip) {

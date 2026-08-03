@@ -110,10 +110,22 @@ struct SettingsView: View {
 
             Section(L10n.settingsFuelSection) {
                 LabeledContent(L10n.settingsFuelPrice) {
-                    TextField("TL", value: $settings.fuelPricePerLiter, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .focused($focusedField, equals: .fuelPrice)
+                    HStack(spacing: 8) {
+                        TextField(settings.fuelCurrency.symbol, value: $settings.fuelPricePerLiter, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .focused($focusedField, equals: .fuelPrice)
+                        Picker(selection: $settings.fuelCurrency) {
+                            ForEach(FuelCurrency.allCases) { currency in
+                                Text(currency.symbol).tag(currency)
+                            }
+                        } label: {
+                            Text(L10n.settingsFuelCurrency)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .accessibilityLabel(L10n.settingsFuelCurrency)
+                    }
                 }
                 .glassRow(position: .first)
                 Text(L10n.settingsFuelHint)

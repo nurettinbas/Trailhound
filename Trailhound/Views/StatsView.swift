@@ -26,6 +26,7 @@ struct StatsView: View {
     /// Bumped whenever the store reports a save, standing in for the change tracking a `@Query`
     /// would have given us.
     @State private var storeVersion = 0
+    @State private var snapshotLoader: StatsSnapshotLoader?
     @Namespace private var periodChipNamespace
 
     private var snap: StatsDisplaySnapshot {
@@ -46,20 +47,68 @@ struct StatsView: View {
         )
     }
 
-    private var monthDistanceMeters: Double {
-        snap.monthDistanceMeters
+    private var goalMonth: Date {
+        StatsViewModel.goalMonth(
+            for: selectedPeriod,
+            selectedMonth: selectedMonth,
+            customStart: customStart,
+            customEnd: customEnd
+        )
+    }
+
+    private var goalTargetMeters: Double {
+        settings.goalMeters(forMonthContaining: goalMonth)
+    }
+
+    private var isGoalEditable: Bool {
+        settings.isGoalEditable(forMonthContaining: goalMonth)
     }
 
     private var goalProgress: Double {
-        guard settings.monthlyDistanceGoalMeters > 0 else { return 0 }
-        return min(1, monthDistanceMeters / settings.monthlyDistanceGoalMeters)
+        guard goalTargetMeters > 0 else { return 0 }
+        return min(1, snap.goalDistanceMeters / goalTargetMeters)
     }
 
     private var goalPercentText: String {
         "\(Int(goalProgress * 100))%"
     }
 
+    private var goalRangeLabel: String {
+        DateFormatters.monthYear.string(from: goalMonth)
+    }
+
+    /// Date window the summary and charts aggregate over (not the goal month).
+    private var statsPeriodScopeLabel: String {
+        switch selectedPeriod {
+        case .week:
+            return selectedPeriod.title
+        case .month:
+            return DateFormatters.monthYear.string(from: selectedMonth)
+        case .custom:
+            let start = DateFormatters.chartDay.string(from: min(customStart, customEnd))
+            let end = DateFormatters.chartDay.string(from: max(customStart, customEnd))
+            return "\(start) – \(end)"
+        }
+    }
+
+    /// Period plus any active category/vehicle filters — used where those filters apply (summary).
+    private var statsSummaryScopeLabel: String {
+        var parts = [statsPeriodScopeLabel]
+        if selectedCategoryID != nil {
+            parts.append(selectedCategoryName)
+        }
+        if selectedVehicleID != nil {
+            parts.append(selectedVehicleName)
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func titledWithScope(_ baseKey: StaticString, scope: String) -> String {
+        String(format: L10n.string("stats.title.with_scope"), L10n.string(baseKey), scope)
+    }
+
     var body: some View {
+        let fuelCurrencyCode = settings.fuelCurrency.rawValue
         List {
             statsFilterCard
                 .glassListRow()
@@ -70,22 +119,31 @@ struct StatsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(L10n.string("stats.goal.monthly"))
                             .font(.subheadline.weight(.semibold))
-                        Text("\(DateFormatters.formatDistance(monthDistanceMeters)) / \(DateFormatters.formatDistance(settings.monthlyDistanceGoalMeters))")
+                        Text(goalRangeLabel)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text("\(DateFormatters.formatDistance(snap.goalDistanceMeters)) / \(DateFormatters.formatDistance(goalTargetMeters))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Stepper(
-                            value: Binding(
-                                get: { Int(settings.monthlyDistanceGoalMeters / 1000) },
-                                set: { newValue in
-                                    settings.monthlyDistanceGoalMeters = Double(newValue) * 1000
-                                    TrailhoundHaptics.selection()
-                                }
-                            ),
-                            in: 50...2000,
-                            step: 50
-                        ) {
-                            Text(L10n.string("stats.goal.target_km"))
+                        if isGoalEditable {
+                            Stepper(
+                                value: Binding(
+                                    get: { Int(goalTargetMeters / 1000) },
+                                    set: { newValue in
+                                        settings.setMonthlyGoalMeters(Double(newValue) * 1000)
+                                        TrailhoundHaptics.selection()
+                                    }
+                                ),
+                                in: 50...2000,
+                                step: 50
+                            ) {
+                                Text(L10n.string("stats.goal.target_km"))
+                                    .font(.caption)
+                            }
+                        } else {
+                            Text("\(L10n.string("stats.goal.target_km")): \(DateFormatters.formatDistance(goalTargetMeters))")
                                 .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 }
@@ -93,7 +151,7 @@ struct StatsView: View {
                 .glassListRow()
             }
 
-            Section(L10n.string("stats.summary.section")) {
+            Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
                 trendRow(L10n.string("stats.trips"), value: "\(snap.stats.tripCount)", trend: snap.tripCountTrendText())
                     .glassRow(position: .first)
                 trendRow(L10n.string("stats.total_distance"), value: snap.stats.totalDistanceText, trend: snap.distanceTrendText())
@@ -106,18 +164,37 @@ struct StatsView: View {
                     .glassRow(position: .middle)
                 trendRow(L10n.string("stats.max_speed"), value: snap.stats.maxSpeedText, trend: snap.maxSpeedTrendText())
                     .glassRow(position: .middle)
-                statRow(L10n.estimatedFuel, value: snap.stats.fuelCostText)
+                trendRow(
+                    L10n.estimatedFuel,
+                    value: FuelCostCalculator.formatCost(snap.stats.estimatedFuelCost, currencyCode: fuelCurrencyCode),
+                    trend: snap.fuelCostTrendText()
+                )
+                    .glassRow(position: .middle)
+                statRow(
+                    L10n.string("stats.cost_per_km"),
+                    value: snap.stats.costPerKm > 0
+                        ? FuelCostCalculator.formatCost(snap.stats.costPerKm, currencyCode: fuelCurrencyCode)
+                        : "—"
+                )
+                    .glassRow(position: .middle)
+                statRow(
+                    L10n.string("stats.average_cost_per_trip"),
+                    value: snap.stats.averageCostPerTrip > 0
+                        ? FuelCostCalculator.formatCost(snap.stats.averageCostPerTrip, currencyCode: fuelCurrencyCode)
+                        : "—"
+                )
                     .glassRow(position: .middle)
                 statRow(L10n.string("stats.night_driving"), value: snap.stats.nightDrivingText)
                     .glassRow(position: .last)
             }
             .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
+            .id(fuelCurrencyCode)
 
             if snap.hasAnyDailyChart {
-                Section(L10n.string("stats.chart.daily_section")) {
+                Section(titledWithScope("stats.chart.daily_section", scope: statsPeriodScopeLabel)) {
                     if !snap.dailyDistance.isEmpty {
                         StatsDeferredChart(
-                            title: L10n.string("stats.chart.weekly_distance"),
+                            title: titledWithScope("stats.chart.weekly_distance", scope: statsPeriodScopeLabel),
                             chartHeight: 200,
                             reduceMotion: reduceMotion
                         ) {
@@ -129,7 +206,7 @@ struct StatsView: View {
                     }
                     if !snap.dailyDuration.isEmpty {
                         StatsDeferredChart(
-                            title: L10n.string("stats.chart.weekly_duration"),
+                            title: titledWithScope("stats.chart.weekly_duration", scope: statsPeriodScopeLabel),
                             chartHeight: 200,
                             reduceMotion: reduceMotion
                         ) {
@@ -141,7 +218,7 @@ struct StatsView: View {
                     }
                     if !snap.dailyAverageSpeed.isEmpty {
                         StatsDeferredChart(
-                            title: L10n.string("stats.chart.daily_average_speed"),
+                            title: titledWithScope("stats.chart.daily_average_speed", scope: statsPeriodScopeLabel),
                             chartHeight: 200,
                             reduceMotion: reduceMotion
                         ) {
@@ -153,11 +230,23 @@ struct StatsView: View {
                     }
                     if !snap.dailyMaxSpeed.isEmpty {
                         StatsDeferredChart(
-                            title: L10n.string("stats.chart.daily_max_speed"),
+                            title: titledWithScope("stats.chart.daily_max_speed", scope: statsPeriodScopeLabel),
                             chartHeight: 200,
                             reduceMotion: reduceMotion
                         ) {
                             dailyMaxSpeedChartBody(snap.dailyMaxSpeed)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
+                    if !snap.dailyFuelCost.isEmpty {
+                        StatsDeferredChart(
+                            title: titledWithScope("stats.chart.daily_fuel", scope: statsPeriodScopeLabel),
+                            chartHeight: 200,
+                            reduceMotion: reduceMotion
+                        ) {
+                            dailyFuelCostChartBody(snap.dailyFuelCost)
                         }
                         .frame(maxWidth: .infinity)
                         .statsPairedChartCard()
@@ -168,7 +257,7 @@ struct StatsView: View {
             }
 
             if snap.showsVehicleBreakdownCharts {
-                Section(L10n.string("stats.chart.vehicles_section")) {
+                Section(titledWithScope("stats.chart.vehicles_section", scope: statsPeriodScopeLabel)) {
                     StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
                         vehicleDistanceDonut(data: snap.vehicleDistance)
                     }
@@ -184,11 +273,20 @@ struct StatsView: View {
                         .statsPairedChartCard()
                         .statsPairedChartsListRow()
                     }
+
+                    if !snap.vehicleFuelCost.isEmpty {
+                        StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                            vehicleFuelDonut(data: snap.vehicleFuelCost)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
                 }
             }
 
             if snap.hasCategoryCharts {
-                Section(L10n.string("stats.chart.categories_section")) {
+                Section(titledWithScope("stats.chart.categories_section", scope: statsPeriodScopeLabel)) {
                     if !snap.categoryDistance.isEmpty {
                         StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
                             categoryDistanceDonut(data: snap.categoryDistance)
@@ -205,6 +303,14 @@ struct StatsView: View {
                         .statsPairedChartCard()
                         .statsPairedChartsListRow()
                     }
+                    if !snap.categoryFuelCost.isEmpty {
+                        StatsDeferredContent(placeholderHeight: 220, reduceMotion: reduceMotion) {
+                            categoryFuelDonut(data: snap.categoryFuelCost)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .statsPairedChartCard()
+                        .statsPairedChartsListRow()
+                    }
                 }
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             }
@@ -214,6 +320,9 @@ struct StatsView: View {
         .glassListChrome()
         .navigationTitle(L10n.string("stats.title"))
         .onAppear {
+            if snapshotLoader == nil {
+                snapshotLoader = StatsSnapshotLoader(modelContainer: modelContext.container)
+            }
             refreshEarliestTripStart()
             normalizeSelectedMonth()
             updateAnimatedProgress(animated: false)
@@ -234,7 +343,10 @@ struct StatsView: View {
         .onChange(of: goalProgress) { _, _ in
             updateAnimatedProgress(animated: true)
         }
-        .onChange(of: monthDistanceMeters) { _, _ in
+        .onChange(of: snap.goalDistanceMeters) { _, _ in
+            updateAnimatedProgress(animated: true)
+        }
+        .onChange(of: goalTargetMeters) { _, _ in
             updateAnimatedProgress(animated: true)
         }
         .onDisappear {
@@ -242,101 +354,39 @@ struct StatsView: View {
         }
     }
 
-    /// The window the snapshot needs: the selected period, the period it is compared against, and
-    /// the current month behind the goal ring.
-    private var requiredInterval: DateInterval {
-        let selected = StatsViewModel.interval(
-            for: selectedPeriod,
-            customStart: customStart,
-            customEnd: customEnd,
-            selectedMonth: selectedMonth
-        )
-        let previous = selectedPeriod == .month
-            ? StatsViewModel.previousMonthInterval(containing: selectedMonth)
-            : StatsViewModel.previousInterval(for: selected)
-        let month = StatsViewModel.calendarMonthInterval(containing: Date())
-
-        let start = min(selected.start, previous.start, month.start)
-        let end = max(selected.end, previous.end, month.end)
-        return DateInterval(start: start, end: end)
-    }
-
     private func scheduleSnapshotRefresh() {
         snapshotRefreshTask?.cancel()
 
-        let interval = requiredInterval
-        let rows = fetchStatsRows(in: interval)
-        let categoryNames = StatsViewModel.categoryNameMap(for: categories)
-        let vehicleNames = StatsViewModel.vehicleNameMap(for: vehicles)
-        let vehicleTotal = vehicles.count
-        let period = selectedPeriod
-        let start = customStart
-        let end = customEnd
-        let month = selectedMonth
-        let categoryID = selectedCategoryID
-        let vehicleID = selectedVehicleID
+        let isFirstLoad = snapshot == nil
+        let loader = snapshotLoader ?? StatsSnapshotLoader(modelContainer: modelContext.container)
+        if snapshotLoader == nil {
+            snapshotLoader = loader
+        }
+
+        let request = StatsSnapshotRequest(
+            storeVersion: storeVersion,
+            selectedPeriod: selectedPeriod,
+            customStart: customStart,
+            customEnd: customEnd,
+            selectedMonth: selectedMonth,
+            goalMonth: goalMonth,
+            selectedCategoryID: selectedCategoryID,
+            selectedVehicleID: selectedVehicleID,
+            categoryNames: StatsViewModel.categoryNameMap(for: categories),
+            vehicleNames: StatsViewModel.vehicleNameMap(for: vehicles),
+            vehicleCount: vehicles.count
+        )
 
         snapshotRefreshTask = Task {
+            if !isFirstLoad {
+                try? await Task.sleep(for: .milliseconds(120))
+            }
             guard !Task.isCancelled else { return }
-            // Everything below is plain values, so the aggregation runs off the main actor.
-            let built = StatsDisplaySnapshotBuilder.build(
-                completedTrips: rows,
-                categoryNames: categoryNames,
-                vehicleNames: vehicleNames,
-                vehicleCount: vehicleTotal,
-                selectedPeriod: period,
-                customStart: start,
-                customEnd: end,
-                selectedMonth: month,
-                selectedCategoryID: categoryID,
-                selectedVehicleID: vehicleID
-            )
+            let built = await loader.snapshot(for: request)
             guard !Task.isCancelled else { return }
             await MainActor.run { snapshot = built }
         }
     }
-
-    /// Past this width, loading the period's trips one by one is the bottleneck and the
-    /// pre-aggregated daily rollups answer the same questions in time proportional to days.
-    private static let rollupThreshold: TimeInterval = 92 * 86_400
-
-    private func fetchStatsRows(in interval: DateInterval) -> [TripStatsRow] {
-        if interval.duration > Self.rollupThreshold {
-            let rollupRows = fetchRollupRows(in: interval)
-            if !rollupRows.isEmpty { return rollupRows }
-        }
-        return fetchTripRows(in: interval)
-    }
-
-    private func fetchRollupRows(in interval: DateInterval) -> [TripStatsRow] {
-        let calendar = Calendar.current
-        let lowerBound = calendar.startOfDay(for: interval.start)
-        let upperBound = interval.end
-        let descriptor = FetchDescriptor<TripDailyRollup>(
-            predicate: #Predicate { $0.dayStart >= lowerBound && $0.dayStart <= upperBound },
-            sortBy: [SortDescriptor(\.dayStart, order: .reverse)]
-        )
-        let rollups = (try? modelContext.fetch(descriptor)) ?? []
-        return rollups.map(TripStatsRow.init(rollup:))
-    }
-
-    private func fetchTripRows(in interval: DateInterval) -> [TripStatsRow] {
-        let lowerBound = interval.start
-        let upperBound = interval.end
-        // A trip counts when either end falls inside the window, so widen the fetch by the
-        // longest plausible trip rather than filtering the whole table in memory.
-        let fetchLowerBound = lowerBound.addingTimeInterval(-Self.maximumTripDuration)
-        let descriptor = FetchDescriptor<Trip>(
-            predicate: #Predicate { trip in
-                trip.endedAt != nil && trip.startedAt >= fetchLowerBound && trip.startedAt <= upperBound
-            },
-            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
-        )
-        let trips = (try? modelContext.fetch(descriptor)) ?? []
-        return trips.map(TripStatsRow.init(trip:))
-    }
-
-    private static let maximumTripDuration: TimeInterval = 48 * 3_600
 
     private func refreshEarliestTripStart() {
         var descriptor = FetchDescriptor<Trip>(
@@ -581,7 +631,7 @@ struct StatsView: View {
         }
         .frame(width: 72, height: 72)
         .accessibilityLabel(L10n.string("stats.goal.progress_accessibility"))
-        .accessibilityValue(goalPercentText)
+        .accessibilityValue("\(goalPercentText), \(goalRangeLabel)")
     }
 
     private func updateAnimatedProgress(animated: Bool) {
@@ -628,6 +678,7 @@ struct StatsView: View {
             snap.dailyDuration.count,
             snap.dailyAverageSpeed.count,
             snap.dailyMaxSpeed.count,
+            snap.dailyFuelCost.count,
             1
         )
     }
@@ -731,6 +782,20 @@ struct StatsView: View {
         .frame(height: 200)
     }
 
+    private func dailyFuelCostChartBody(_ dailyFuelCostChartData: [DailyFuelCost]) -> some View {
+        let days = dailyFuelCostChartData.map(\.day)
+        return Chart(dailyFuelCostChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.fuel_cost"), item.cost)
+            )
+            .foregroundStyle(statsFuelCostBarFill)
+        }
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.fuel_cost"))
+        .frame(height: 200)
+    }
+
     private var statsDurationBarFill: LinearGradient {
         LinearGradient(
             colors: [TrailhoundBrandColors.brandTop, TrailhoundBrandColors.atmosphereMid],
@@ -755,6 +820,17 @@ struct StatsView: View {
             colors: [
                 Color(red: 0.95, green: 0.40, blue: 0.52),
                 Color(red: 0.98, green: 0.58, blue: 0.24)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var statsFuelCostBarFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.34, green: 0.82, blue: 0.58),
+                Color(red: 0.28, green: 0.78, blue: 0.86)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -787,7 +863,7 @@ struct StatsView: View {
 
     private func vehicleDistanceDonut(data vehicleChartData: [VehicleDistance]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.vehicles"))
+            Text(titledWithScope("stats.chart.vehicles", scope: statsPeriodScopeLabel))
                 .font(.caption.weight(.semibold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
@@ -818,7 +894,7 @@ struct StatsView: View {
 
     private func vehicleDurationDonut(data vehicleDurationChartData: [VehicleDuration]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.vehicles_duration"))
+            Text(titledWithScope("stats.chart.vehicles_duration", scope: statsPeriodScopeLabel))
                 .font(.caption.weight(.semibold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
@@ -849,7 +925,7 @@ struct StatsView: View {
 
     private func categoryDistanceDonut(data categoryChartData: [CategoryDistance]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.categories"))
+            Text(titledWithScope("stats.chart.categories", scope: statsPeriodScopeLabel))
                 .font(.caption.weight(.semibold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
@@ -880,7 +956,7 @@ struct StatsView: View {
 
     private func categoryDurationDonut(data categoryDurationChartData: [CategoryDuration]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.string("stats.chart.categories_duration"))
+            Text(titledWithScope("stats.chart.categories_duration", scope: statsPeriodScopeLabel))
                 .font(.caption.weight(.semibold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
@@ -904,6 +980,68 @@ struct StatsView: View {
                     domainNames: categoryDurationChartData.map(\.name)
                 ) {
                     Text(DateFormatters.formatDuration(item.duration))
+                }
+            }
+        }
+    }
+
+    private func vehicleFuelDonut(data vehicleFuelChartData: [VehicleFuelCost]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(titledWithScope("stats.chart.vehicles_fuel", scope: statsPeriodScopeLabel))
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            Chart(vehicleFuelChartData) { item in
+                SectorMark(
+                    angle: .value(L10n.string("stats.chart.fuel_cost"), item.cost),
+                    innerRadius: .ratio(0.55),
+                    angularInset: 1.5
+                )
+                .foregroundStyle(by: .value(L10n.string("filter.vehicle"), item.name))
+            }
+            .chartForegroundStyleScale(
+                domain: chartSlicePalette(for: vehicleFuelChartData.map(\.name), durationStyle: false).0,
+                range: chartSlicePalette(for: vehicleFuelChartData.map(\.name), durationStyle: false).1
+            )
+            .statsHiddenDonutLegend(height: 140)
+            ForEach(vehicleFuelChartData) { item in
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: false,
+                    domainNames: vehicleFuelChartData.map(\.name)
+                ) {
+                    Text(FuelCostCalculator.formatCost(item.cost, currencyCode: AppSettings.shared.fuelCurrency.rawValue))
+                }
+            }
+        }
+    }
+
+    private func categoryFuelDonut(data categoryFuelChartData: [CategoryFuelCost]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(titledWithScope("stats.chart.categories_fuel", scope: statsPeriodScopeLabel))
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            Chart(categoryFuelChartData) { item in
+                SectorMark(
+                    angle: .value(L10n.string("stats.chart.fuel_cost"), item.cost),
+                    innerRadius: .ratio(0.55),
+                    angularInset: 1.5
+                )
+                .foregroundStyle(by: .value(L10n.string("filter.category"), item.name))
+            }
+            .chartForegroundStyleScale(
+                domain: chartSlicePalette(for: categoryFuelChartData.map(\.name), durationStyle: false).0,
+                range: chartSlicePalette(for: categoryFuelChartData.map(\.name), durationStyle: false).1
+            )
+            .statsHiddenDonutLegend(height: 140)
+            ForEach(categoryFuelChartData) { item in
+                statsDonutLegendRow(
+                    name: item.name,
+                    durationStyle: false,
+                    domainNames: categoryFuelChartData.map(\.name)
+                ) {
+                    Text(FuelCostCalculator.formatCost(item.cost, currencyCode: AppSettings.shared.fuelCurrency.rawValue))
                 }
             }
         }

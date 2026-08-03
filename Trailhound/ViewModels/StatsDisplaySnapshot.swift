@@ -1,29 +1,32 @@
 import Foundation
 import SwiftData
 
-struct StatsDisplaySnapshot {
+struct StatsDisplaySnapshot: Sendable {
     let stats: TripStats
     let previousStats: TripStats
     let dailyDistance: [DailyDistance]
     let dailyDuration: [DailyDuration]
     let dailyAverageSpeed: [DailyAverageSpeed]
     let dailyMaxSpeed: [DailyMaxSpeed]
+    let dailyFuelCost: [DailyFuelCost]
     let categoryDistance: [CategoryDistance]
     let categoryDuration: [CategoryDuration]
+    let categoryFuelCost: [CategoryFuelCost]
     let vehicleDistance: [VehicleDistance]
     let vehicleDuration: [VehicleDuration]
+    let vehicleFuelCost: [VehicleFuelCost]
     let showsVehicleBreakdownCharts: Bool
-    /// Drives the monthly goal ring. Lives on the snapshot so the goal section never recomputes
-    /// aggregations during a body pass.
-    let monthDistanceMeters: Double
+    /// Distance driven in the goal calendar month (no category/vehicle filter). Drives the goal ring.
+    let goalDistanceMeters: Double
 
     var hasAnyDailyChart: Bool {
         !dailyDistance.isEmpty || !dailyDuration.isEmpty
             || !dailyAverageSpeed.isEmpty || !dailyMaxSpeed.isEmpty
+            || !dailyFuelCost.isEmpty
     }
 
     var hasCategoryCharts: Bool {
-        !categoryDistance.isEmpty || !categoryDuration.isEmpty
+        !categoryDistance.isEmpty || !categoryDuration.isEmpty || !categoryFuelCost.isEmpty
     }
 
     static let empty = StatsDisplaySnapshot(
@@ -45,12 +48,15 @@ struct StatsDisplaySnapshot {
         dailyDuration: [],
         dailyAverageSpeed: [],
         dailyMaxSpeed: [],
+        dailyFuelCost: [],
         categoryDistance: [],
         categoryDuration: [],
+        categoryFuelCost: [],
         vehicleDistance: [],
         vehicleDuration: [],
+        vehicleFuelCost: [],
         showsVehicleBreakdownCharts: false,
-        monthDistanceMeters: 0
+        goalDistanceMeters: 0
     )
 
     func distanceTrendText() -> String? {
@@ -87,6 +93,13 @@ struct StatsDisplaySnapshot {
             previous: previousStats.maxSpeedKmh
         )
     }
+
+    func fuelCostTrendText() -> String? {
+        StatsViewModel.trendText(
+            current: stats.estimatedFuelCost,
+            previous: previousStats.estimatedFuelCost
+        )
+    }
 }
 
 enum StatsDisplaySnapshotBuilder {
@@ -100,7 +113,8 @@ enum StatsDisplaySnapshotBuilder {
         customEnd: Date,
         selectedMonth: Date,
         selectedCategoryID: String?,
-        selectedVehicleID: UUID?
+        selectedVehicleID: UUID?,
+        goalMonth: Date
     ) -> StatsDisplaySnapshot {
         build(
             completedTrips: completedTrips.map(TripStatsRow.init(trip:)),
@@ -112,7 +126,8 @@ enum StatsDisplaySnapshotBuilder {
             customEnd: customEnd,
             selectedMonth: selectedMonth,
             selectedCategoryID: selectedCategoryID,
-            selectedVehicleID: selectedVehicleID
+            selectedVehicleID: selectedVehicleID,
+            goalMonth: goalMonth
         )
     }
 
@@ -127,7 +142,8 @@ enum StatsDisplaySnapshotBuilder {
         customEnd: Date,
         selectedMonth: Date,
         selectedCategoryID: String?,
-        selectedVehicleID: UUID?
+        selectedVehicleID: UUID?,
+        goalMonth: Date
     ) -> StatsDisplaySnapshot {
         PerformanceSignposts.measure("StatsSnapshotBuild") {
             buildUnmeasured(
@@ -140,7 +156,8 @@ enum StatsDisplaySnapshotBuilder {
                 customEnd: customEnd,
                 selectedMonth: selectedMonth,
                 selectedCategoryID: selectedCategoryID,
-                selectedVehicleID: selectedVehicleID
+                selectedVehicleID: selectedVehicleID,
+                goalMonth: goalMonth
             )
         }
     }
@@ -155,7 +172,8 @@ enum StatsDisplaySnapshotBuilder {
         customEnd: Date,
         selectedMonth: Date,
         selectedCategoryID: String?,
-        selectedVehicleID: UUID?
+        selectedVehicleID: UUID?,
+        goalMonth: Date
     ) -> StatsDisplaySnapshot {
         let selectedInterval = StatsViewModel.interval(
             for: selectedPeriod,
@@ -186,11 +204,13 @@ enum StatsDisplaySnapshotBuilder {
 
         let vehicleDistance = StatsViewModel.vehicleBreakdown(for: periodTrips, vehicleNames: vehicleNames)
         let vehicleDuration = StatsViewModel.vehicleDurationBreakdown(for: periodTrips, vehicleNames: vehicleNames)
+        let vehicleFuelCost = StatsViewModel.vehicleFuelBreakdown(for: periodTrips, vehicleNames: vehicleNames)
         let showsVehicle = !vehicleDistance.isEmpty && (vehicleCount > 1 || vehicleDistance.count > 1)
 
-        let monthInterval = StatsViewModel.calendarMonthInterval(containing: Date())
-        let monthDistance = StatsViewModel.stats(
-            for: StatsViewModel.trips(in: monthInterval, from: completedTrips),
+        // Goal ring always tracks a full calendar month — never the week/custom window.
+        let goalMonthInterval = StatsViewModel.calendarMonthInterval(containing: goalMonth)
+        let goalDistance = StatsViewModel.stats(
+            for: StatsViewModel.trips(in: goalMonthInterval, from: completedTrips),
             includeNightRatio: false
         ).totalDistanceMeters
 
@@ -201,12 +221,15 @@ enum StatsDisplaySnapshotBuilder {
             dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: completedTrips),
             dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: completedTrips),
             dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: completedTrips),
+            dailyFuelCost: StatsViewModel.dailyFuelCosts(in: selectedInterval, from: completedTrips),
             categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categoryNames: categoryNames),
+            categoryFuelCost: StatsViewModel.categoryFuelBreakdown(for: periodTrips, categoryNames: categoryNames),
             vehicleDistance: vehicleDistance,
             vehicleDuration: vehicleDuration,
+            vehicleFuelCost: vehicleFuelCost,
             showsVehicleBreakdownCharts: showsVehicle,
-            monthDistanceMeters: monthDistance
+            goalDistanceMeters: goalDistance
         )
     }
 }

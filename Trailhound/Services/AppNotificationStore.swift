@@ -5,6 +5,7 @@ enum AppNotificationKind: String {
     case tripStarted
     case tripEnded
     case tripDiscarded
+    case tripsMerged
     case orphanStale
     case recordingStopped
     case pairingSuggestion
@@ -14,6 +15,7 @@ enum AppNotificationKind: String {
         case .tripStarted: "play.circle.fill"
         case .tripEnded: "flag.checkered"
         case .tripDiscarded: "trash.circle.fill"
+        case .tripsMerged: "arrow.triangle.merge"
         case .orphanStale: "exclamationmark.triangle.fill"
         case .recordingStopped: "stop.circle.fill"
         case .pairingSuggestion: "link.circle.fill"
@@ -25,6 +27,7 @@ enum AppNotificationKind: String {
         case .tripStarted: "green"
         case .tripEnded: "blue"
         case .tripDiscarded: "gray"
+        case .tripsMerged: "blue"
         case .orphanStale: "orange"
         case .recordingStopped: "red"
         case .pairingSuggestion: "blue"
@@ -175,6 +178,7 @@ final class AppNotificationStore {
         if identifier.contains("started") { return .tripStarted }
         if identifier.contains("ended") { return .tripEnded }
         if identifier.contains("discarded") { return .tripDiscarded }
+        if identifier.contains("merged") { return .tripsMerged }
         if identifier.contains("orphan") { return .orphanStale }
         if identifier.contains("stopped") { return .recordingStopped }
         if identifier.contains("pairing") { return .pairingSuggestion }

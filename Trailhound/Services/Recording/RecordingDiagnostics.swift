@@ -125,7 +125,8 @@ enum RecordingDiagnostics {
         let speedStored = storedSpeedKmh.map { String(format: "%.0f", $0) } ?? "—"
         let implied = timeDelta > 0 ? delta / timeDelta * 3.6 : 0
         var line = "move \(tripLabel(tripID)) \(decision) d=\(Int(delta))m dt=\(String(format: "%.1f", timeDelta))s acc=\(Int(accuracy))m gps=\(speedGPS) impl=\(String(format: "%.0f", implied)) stored=\(speedStored) dist=\(Int(distanceMeters))m pt=\(pointSequence)"
-        if mapNewSegment { line += " mapSeg+" }
+        // routeBreak+ = recorder starts a new map polyline piece (not a speed-color band).
+        if mapNewSegment { line += " routeBreak+" }
         if let ignoreReason { line += " why=\(ignoreReason)" }
         if decision == .gapResume {
             DevLog.shared.warning(.recording, line)

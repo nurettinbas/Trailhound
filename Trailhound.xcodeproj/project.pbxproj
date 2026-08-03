@@ -28,8 +28,13 @@
 		D93FB4A6D16B4B49AC53AD11 /* DeviceTestChecklist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D22184A0CE416397270986 /* DeviceTestChecklist.swift */; };
 		BD36183D6B5E4B739B6849C3 /* RouteDisplayPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3222A3A9DB54430F85C8C85D /* RouteDisplayPathTests.swift */; };
 		43AE81A211E64BEDB4BBC9B3 /* TripSpeedSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */; };
+		A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */; };
+		A1COORDPARSE00000000001 /* CoordinateParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2COORDPARSE00000000001 /* CoordinateParsing.swift */; };
+		A1PLACEDRAFT00000000001 /* PlaceDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PLACEDRAFT00000000001 /* PlaceDraft.swift */; };
+		A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */; };
 		8EE124A3BEEB447299237EDD /* SpeedChartSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C2A011B0E248E8B77BA691 /* SpeedChartSeriesTests.swift */; };
 		80CB6A46FDA6490B804E250C /* StatsDisplaySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77155D86D74469AA74CA7B9 /* StatsDisplaySnapshotTests.swift */; };
+		A1STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift */; };
 		979FF46CCB2247BB8C580DBB /* StatsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F634826B514B26A20A8473 /* StatsViewModelTests.swift */; };
 		F2981320F3DD41979D1BD272 /* TripDetailRevealPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116237F503BF4707BB66E0E9 /* TripDetailRevealPolicyTests.swift */; };
 		759682B2B584470085496A29 /* TripDetailViewModelRevealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848376E3B54145A189F322CA /* TripDetailViewModelRevealTests.swift */; };
@@ -75,6 +80,7 @@
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
 		A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */; };
+		A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */; };
 		A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */; };
 		A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSTATSROW000000001 /* TripStatsRow.swift */; };
 		A1TRIPLISTPAGE000000001 /* TripListPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPLISTPAGE000000001 /* TripListPage.swift */; };
@@ -227,8 +233,13 @@
 		63D22184A0CE416397270986 /* DeviceTestChecklist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Support/DeviceTestChecklist.swift; sourceTree = SOURCE_ROOT; };
 		3222A3A9DB54430F85C8C85D /* RouteDisplayPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/RouteDisplayPathTests.swift; sourceTree = SOURCE_ROOT; };
 		212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripSpeedSummaryTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripShareCaptionTests.swift; sourceTree = SOURCE_ROOT; };
+		A2COORDPARSE00000000001 /* CoordinateParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateParsing.swift; sourceTree = "<group>"; };
+		A2PLACEDRAFT00000000001 /* PlaceDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceDraft.swift; sourceTree = "<group>"; };
+		A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/CoordinateParsingTests.swift; sourceTree = SOURCE_ROOT; };
 		B4C2A011B0E248E8B77BA691 /* SpeedChartSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedChartSeriesTests.swift; sourceTree = SOURCE_ROOT; };
 		D77155D86D74469AA74CA7B9 /* StatsDisplaySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsDisplaySnapshotTests.swift; sourceTree = SOURCE_ROOT; };
+		A2STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsSnapshotLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		D9F634826B514B26A20A8473 /* StatsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		116237F503BF4707BB66E0E9 /* TripDetailRevealPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripDetailRevealPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		848376E3B54145A189F322CA /* TripDetailViewModelRevealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripDetailViewModelRevealTests.swift; sourceTree = SOURCE_ROOT; };
@@ -279,6 +290,7 @@
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
 		A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDisplaySnapshot.swift; sourceTree = "<group>"; };
+		A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSnapshotLoader.swift; sourceTree = "<group>"; };
 		A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedChartSeries.swift; sourceTree = "<group>"; };
 		A2TRIPSTATSROW000000001 /* TripStatsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStatsRow.swift; sourceTree = "<group>"; };
 		A2TRIPLISTPAGE000000001 /* TripListPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripListPage.swift; sourceTree = "<group>"; };
@@ -467,6 +479,7 @@
 			children = (
 				65E131E71820446C9E390421 /* TripEnums.swift */,
 				C22C35A8C7504120981649DC /* SavedPlace.swift */,
+				A2PLACEDRAFT00000000001 /* PlaceDraft.swift */,
 				AF0E09B4CEDD485E9B744E57 /* TripStop.swift */,
 				A20000000000000000000003 /* Trip.swift */,
 				A20000000000000000000004 /* TripPoint.swift */,
@@ -524,6 +537,7 @@
 			children = (
 				D171349C59CE45DEA7298678 /* StatsViewModel.swift */,
 				A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */,
+				A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
 				A2TRIPSTATSROW000000001 /* TripStatsRow.swift */,
 				A2TRIPLISTPAGE000000001 /* TripListPage.swift */,
@@ -604,6 +618,7 @@
 				A2L10N00000000000000001 /* L10n.swift */,
 				A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */,
 				A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */,
+				A2COORDPARSE00000000001 /* CoordinateParsing.swift */,
 				A2TODAYKMPROV00000001 /* TodayKmProvider.swift */,
 			);
 			path = Utilities;
@@ -669,8 +684,11 @@
 				63D22184A0CE416397270986 /* DeviceTestChecklist.swift */,
 				3222A3A9DB54430F85C8C85D /* RouteDisplayPathTests.swift */,
 				212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */,
+				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
+				A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */,
 				B4C2A011B0E248E8B77BA691 /* SpeedChartSeriesTests.swift */,
 				D77155D86D74469AA74CA7B9 /* StatsDisplaySnapshotTests.swift */,
+				A2STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift */,
 				D9F634826B514B26A20A8473 /* StatsViewModelTests.swift */,
 				116237F503BF4707BB66E0E9 /* TripDetailRevealPolicyTests.swift */,
 				848376E3B54145A189F322CA /* TripDetailViewModelRevealTests.swift */,
@@ -849,8 +867,11 @@
 				D93FB4A6D16B4B49AC53AD11 /* DeviceTestChecklist.swift in Sources */,
 				BD36183D6B5E4B739B6849C3 /* RouteDisplayPathTests.swift in Sources */,
 				43AE81A211E64BEDB4BBC9B3 /* TripSpeedSummaryTests.swift in Sources */,
+				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
+				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,
 				8EE124A3BEEB447299237EDD /* SpeedChartSeriesTests.swift in Sources */,
 				80CB6A46FDA6490B804E250C /* StatsDisplaySnapshotTests.swift in Sources */,
+				A1STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift in Sources */,
 				979FF46CCB2247BB8C580DBB /* StatsViewModelTests.swift in Sources */,
 				F2981320F3DD41979D1BD272 /* TripDetailRevealPolicyTests.swift in Sources */,
 				759682B2B584470085496A29 /* TripDetailViewModelRevealTests.swift in Sources */,
@@ -900,6 +921,7 @@
 				A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
 				A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */,
+				A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */,
 				A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */,
 				A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */,
 				A1TRIPLISTPAGE000000001 /* TripListPage.swift in Sources */,
@@ -916,6 +938,7 @@
 				A2TRIPMAPSNAP00000000002 /* TripMapSnapshotCache.swift in Sources */,
 				F7584F1172694F06905495CC /* TripEnums.swift in Sources */,
 				D571EE3610834ECBBB0727B6 /* SavedPlace.swift in Sources */,
+				A1PLACEDRAFT00000000001 /* PlaceDraft.swift in Sources */,
 				1498DD740E004FB9AC44D2F3 /* TripStop.swift in Sources */,
 				C8C052893E0441E8AC928742 /* NetworkMonitor.swift in Sources */,
 				F2E1D0C9B8A7465091E2F3A4 /* KeyboardDismiss.swift in Sources */,
@@ -955,6 +978,7 @@
 				A1DEVLOGVIEW000000001 /* DevLogView.swift in Sources */,
 				A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */,
 				A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */,
+				A1COORDPARSE00000000001 /* CoordinateParsing.swift in Sources */,
 				A1TODAYKMPROV00000001 /* TodayKmProvider.swift in Sources */,
 				A1VEHICLERESOLV000001 /* VehicleResolver.swift in Sources */,
 				9DEF992CAAFE49179A961E87 /* TripRecordingIntents.swift in Sources */,

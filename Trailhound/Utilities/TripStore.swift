@@ -47,10 +47,10 @@ enum TripStore {
         let defaults = UserDefaults(suiteName: "group.com.trailhound.app")
         defaults?.set(stats.totalDistanceMeters, forKey: "stats.weekDistance")
 
-        let monthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        let monthInterval = StatsViewModel.calendarMonthInterval(containing: Date())
         let monthTrips = StatsViewModel.trips(
-            in: DateInterval(start: monthAgo, end: Date()),
-            from: completedSince(monthAgo, from: context)
+            in: monthInterval,
+            from: completedSince(monthInterval.start, from: context)
         )
         defaults?.set(
             StatsViewModel.stats(for: monthTrips, includeNightRatio: false).totalDistanceMeters,

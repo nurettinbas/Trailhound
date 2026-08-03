@@ -1,16 +1,8 @@
 import Foundation
 import SwiftData
 
-/// Keeps `TripDailyRollup` in step with the trips it summarises.
-///
-/// Rollups are maintained as deltas at the same write sites that compute derived metrics, so a
-/// finished, edited, merged or deleted trip adjusts its day's totals rather than triggering a
-/// rescan. Because deltas can drift if a write is ever missed, `rebuildAll` can regenerate the
-/// whole table from `Trip`, which remains the only source of truth.
-@MainActor
-enum TripRollupService {
-    // MARK: - Delta maintenance
-
+/// Nonisolated rollup deltas so `@ModelActor` workers can maintain daily totals off the main thread.
+enum TripRollupDelta {
     static func add(_ trip: Trip, in context: ModelContext) {
         applyDelta(for: trip, sign: 1, in: context)
     }
@@ -19,14 +11,6 @@ enum TripRollupService {
         applyDelta(for: trip, sign: -1, in: context)
     }
 
-    /// Everything a trip contributed before an edit, so the edit can be applied as a delta.
-    static func snapshot(of trip: Trip) -> TripRollupEntry? {
-        guard trip.endedAt != nil else { return nil }
-        return TripRollupEntry(key: TripRollupKey(trip: trip), contribution: Contribution(trip: trip))
-    }
-
-    /// Re-points a trip's contribution after an edit that may have moved it to another day,
-    /// category or vehicle, or changed its distance.
     static func update(_ trip: Trip, from previous: TripRollupEntry?, in context: ModelContext) {
         if let previous {
             applyDelta(key: previous.key, contribution: previous.contribution, sign: -1, in: context)
@@ -100,6 +84,37 @@ enum TripRollupService {
         )
         context.insert(rollup)
         return rollup
+    }
+}
+
+/// Keeps `TripDailyRollup` in step with the trips it summarises.
+///
+/// Rollups are maintained as deltas at the same write sites that compute derived metrics, so a
+/// finished, edited, merged or deleted trip adjusts its day's totals rather than triggering a
+/// rescan. Because deltas can drift if a write is ever missed, `rebuildAll` can regenerate the
+/// whole table from `Trip`, which remains the only source of truth.
+@MainActor
+enum TripRollupService {
+    // MARK: - Delta maintenance
+
+    static func add(_ trip: Trip, in context: ModelContext) {
+        TripRollupDelta.add(trip, in: context)
+    }
+
+    static func remove(_ trip: Trip, in context: ModelContext) {
+        TripRollupDelta.remove(trip, in: context)
+    }
+
+    /// Everything a trip contributed before an edit, so the edit can be applied as a delta.
+    static func snapshot(of trip: Trip) -> TripRollupEntry? {
+        guard trip.endedAt != nil else { return nil }
+        return TripRollupEntry(key: TripRollupKey(trip: trip), contribution: Contribution(trip: trip))
+    }
+
+    /// Re-points a trip's contribution after an edit that may have moved it to another day,
+    /// category or vehicle, or changed its distance.
+    static func update(_ trip: Trip, from previous: TripRollupEntry?, in context: ModelContext) {
+        TripRollupDelta.update(trip, from: previous, in: context)
     }
 
     // MARK: - Rebuild

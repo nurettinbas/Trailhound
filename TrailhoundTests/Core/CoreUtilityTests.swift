@@ -84,11 +84,45 @@ final class RoutePrivacyClipperTests: XCTestCase {
 }
 
 final class TripDateGroupingTests: XCTestCase {
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.firstWeekday = 2 // Monday
+        return calendar
+    }
+
     func testGroupsTodayTrip() {
         let trip = Trip(startedAt: Date(), endedAt: Date())
         let sections = TripDateGrouping.groupedSections(from: [trip])
         XCTAssertEqual(sections.count, 1)
         XCTAssertEqual(sections.first?.section, .today)
+    }
+
+    func testThisWeekFilterIncludesToday() {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 8, day: 5, hour: 15))!
+        XCTAssertEqual(TripDateGrouping.section(for: now, calendar: calendar, now: now), .today)
+        XCTAssertTrue(TripDateGrouping.matches(.today, date: now, calendar: calendar, now: now))
+        XCTAssertTrue(TripDateGrouping.matches(.thisWeek, date: now, calendar: calendar, now: now))
+        XCTAssertTrue(TripDateGrouping.matches(.thisMonth, date: now, calendar: calendar, now: now))
+        XCTAssertFalse(TripDateGrouping.matches(.yesterday, date: now, calendar: calendar, now: now))
+        XCTAssertFalse(TripDateGrouping.matches(.older, date: now, calendar: calendar, now: now))
+    }
+
+    func testThisWeekFilterIncludesEarlierDayInSameWeek() {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 8, day: 5, hour: 15))! // Wed
+        let monday = calendar.date(from: DateComponents(year: 2026, month: 8, day: 3, hour: 9))!
+        XCTAssertEqual(TripDateGrouping.section(for: monday, calendar: calendar, now: now), .thisWeek)
+        XCTAssertTrue(TripDateGrouping.matches(.thisWeek, date: monday, calendar: calendar, now: now))
+        XCTAssertTrue(TripDateGrouping.matches(.thisMonth, date: monday, calendar: calendar, now: now))
+        XCTAssertFalse(TripDateGrouping.matches(.today, date: monday, calendar: calendar, now: now))
+    }
+
+    func testThisMonthFilterIncludesEarlierWeekInSameMonth() {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 8, day: 12, hour: 12))! // Wed
+        let earlyAugust = calendar.date(from: DateComponents(year: 2026, month: 8, day: 2, hour: 10))!
+        XCTAssertEqual(TripDateGrouping.section(for: earlyAugust, calendar: calendar, now: now), .thisMonth)
+        XCTAssertTrue(TripDateGrouping.matches(.thisMonth, date: earlyAugust, calendar: calendar, now: now))
+        XCTAssertFalse(TripDateGrouping.matches(.thisWeek, date: earlyAugust, calendar: calendar, now: now))
     }
 }
 
@@ -109,8 +143,20 @@ final class DeviceTestChecklistTests: XCTestCase {
 }
 
 final class FuelCostCalculatorTests: XCTestCase {
+    private var defaults: UserDefaults!
+
+    override func setUp() {
+        super.setUp()
+        defaults = UserDefaults(suiteName: "group.com.trailhound.app") ?? .standard
+        defaults.removeObject(forKey: "fuelCurrency")
+    }
+
+    override func tearDown() {
+        defaults.removeObject(forKey: "fuelCurrency")
+        super.tearDown()
+    }
+
     func testEstimateCostPositive() {
-        let defaults = UserDefaults(suiteName: "group.com.trailhound.app") ?? .standard
         defaults.set(10.0, forKey: "fuelLitersPer100km")
         defaults.set(40.0, forKey: "fuelPricePerLiter")
         let cost = FuelCostCalculator.estimateCost(distanceMeters: 100_000)
@@ -121,5 +167,92 @@ final class FuelCostCalculatorTests: XCTestCase {
         let vehicle = VehicleProfile(name: "EV", fuelType: .electric, consumption: 20, chargePricePerKWh: 10)
         let cost = FuelCostCalculator.estimateCost(distanceMeters: 100_000, vehicle: vehicle)
         XCTAssertEqual(cost, 200, accuracy: 0.1)
+    }
+
+    func testResolvedCurrencyCodeDefaultsToTRY() {
+        XCTAssertEqual(FuelCostCalculator.resolvedCurrencyCode(defaults: defaults), "TRY")
+    }
+
+    func testFormatCostUsesExplicitCurrencyCode() {
+        let tryText = FuelCostCalculator.formatCost(100, currencyCode: "TRY")
+        let eurText = FuelCostCalculator.formatCost(100, currencyCode: "EUR")
+        let usdText = FuelCostCalculator.formatCost(100, currencyCode: "USD")
+
+        XCTAssertTrue(tryText.contains("₺") || tryText.contains("TRY") || tryText.contains("TL"))
+        XCTAssertTrue(eurText.contains("€") || eurText.contains("EUR"))
+        XCTAssertTrue(usdText.contains("$") || usdText.contains("USD"))
+        XCTAssertNotEqual(tryText, eurText)
+        XCTAssertNotEqual(eurText, usdText)
+    }
+
+    func testFormatCostReadsStoredFuelCurrency() {
+        defaults.set("EUR", forKey: "fuelCurrency")
+        let text = FuelCostCalculator.formatCost(42)
+        XCTAssertTrue(text.contains("€") || text.contains("EUR"))
+    }
+}
+
+@MainActor
+final class AppSettingsFuelCurrencyTests: XCTestCase {
+    func testFuelCurrencyDefaultsToTRYAndRoundTrips() {
+        let suiteName = "group.com.trailhound.app.tests.fuelCurrency.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create test defaults")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let settings = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(settings.fuelCurrency, .tryCurrency)
+
+        settings.fuelCurrency = .eur
+        XCTAssertEqual(settings.fuelCurrency, .eur)
+        XCTAssertEqual(defaults.string(forKey: "fuelCurrency"), "EUR")
+
+        settings.fuelCurrency = .usd
+        XCTAssertEqual(settings.fuelCurrency, .usd)
+
+        settings.fuelCurrency = .tryCurrency
+        XCTAssertEqual(settings.fuelCurrency, .tryCurrency)
+    }
+
+    func testMonthlyGoalLocksPerCalendarMonth() {
+        let suiteName = "test.trailhound.monthlyGoal.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create test defaults")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AppSettings(userDefaults: defaults)
+        let now = Date()
+        let previousMonth = StatsViewModel.shiftMonth(now, by: -1)
+        let currentKey = settings.goalMonthKey(for: now)
+
+        XCTAssertTrue(settings.isGoalEditable(forMonthContaining: now))
+        XCTAssertFalse(settings.isGoalEditable(forMonthContaining: previousMonth))
+        XCTAssertEqual(settings.monthlyGoalsByMonth[currentKey] ?? -1, settings.monthlyDistanceGoalMeters, accuracy: 0.1)
+
+        settings.setMonthlyGoalMeters(750_000, forMonthContaining: now, now: now)
+        XCTAssertEqual(settings.monthlyDistanceGoalMeters, 750_000, accuracy: 0.1)
+        XCTAssertEqual(settings.goalMeters(forMonthContaining: now), 750_000, accuracy: 0.1)
+        XCTAssertEqual(settings.monthlyGoalsByMonth[currentKey] ?? -1, 750_000, accuracy: 0.1)
+
+        // Past months refuse writes; fallback to live value when no history exists.
+        settings.setMonthlyGoalMeters(100_000, forMonthContaining: previousMonth, now: now)
+        XCTAssertEqual(settings.monthlyDistanceGoalMeters, 750_000, accuracy: 0.1)
+        XCTAssertEqual(settings.goalMeters(forMonthContaining: previousMonth), 750_000, accuracy: 0.1)
+
+        // A frozen past entry wins over the live target.
+        defaults.set(
+            [settings.goalMonthKey(for: previousMonth): 400_000.0, currentKey: 750_000.0],
+            forKey: "monthlyGoalsByMonth"
+        )
+        let reloaded = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(reloaded.goalMeters(forMonthContaining: previousMonth), 400_000, accuracy: 0.1)
+        XCTAssertEqual(reloaded.goalMeters(forMonthContaining: now), 750_000, accuracy: 0.1)
+        XCTAssertFalse(reloaded.isGoalEditable(forMonthContaining: previousMonth))
     }
 }
