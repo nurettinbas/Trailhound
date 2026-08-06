@@ -1043,23 +1043,42 @@ struct TripDetailView: View {
                     .stroke(.cyan, lineWidth: 4.5)
             }
 
+            // All stops stay visible. MapKit's SwiftUI Map has no real z-index for point
+            // annotations — `mapOverlayLevel` only affects overlays like polylines/polygons.
+            // The actual lever is declaration order inside this builder: later annotations draw
+            // on top. Stops must come first, start next, end last (topmost).
+            ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { _, stop in
+                if progress >= resolvedViewModel.annotationRevealProgress(forStopAt: stop.coordinate) {
+                    Annotation(L10n.tripPointStop, coordinate: stop.coordinate) {
+                        routeAnnotationMark(
+                            systemName: "pause.circle.fill",
+                            color: .orange,
+                            popped: true,
+                            prominence: .stop
+                        )
+                    }
+                }
+            }
+
             if startPinVisible, let start = resolvedViewModel.routeStartCoordinate {
-                Annotation(L10n.tripPointStart, coordinate: start) {
-                    routeAnnotationMark(systemName: "flag.fill", color: .green, popped: startPinVisible)
+                Annotation(L10n.tripPointStart, coordinate: start, anchor: .bottom) {
+                    routeAnnotationMark(
+                        systemName: "flag.fill",
+                        color: .green,
+                        popped: startPinVisible,
+                        prominence: .endpoint
+                    )
                 }
             }
 
             if endPinVisible, let end = resolvedViewModel.routeEndCoordinate {
-                Annotation(L10n.tripPointEnd, coordinate: end) {
-                    routeAnnotationMark(systemName: "mappin.circle.fill", color: .red, popped: endPinVisible)
-                }
-            }
-
-            ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { _, stop in
-                if progress >= resolvedViewModel.annotationRevealProgress(forStopAt: stop.coordinate) {
-                    Annotation(L10n.tripPointStop, coordinate: stop.coordinate) {
-                        routeAnnotationMark(systemName: "pause.circle.fill", color: .orange, popped: true)
-                    }
+                Annotation(L10n.tripPointEnd, coordinate: end, anchor: .bottom) {
+                    routeAnnotationMark(
+                        systemName: "mappin.circle.fill",
+                        color: .red,
+                        popped: endPinVisible,
+                        prominence: .endpoint
+                    )
                 }
             }
         }
@@ -1067,14 +1086,34 @@ struct TripDetailView: View {
         .preferredColorScheme(style == .dark ? .dark : nil)
     }
 
-    private func routeAnnotationMark(systemName: String, color: Color, popped: Bool) -> some View {
-        Image(systemName: systemName)
-            .padding(6)
+    private enum AnnotationProminence {
+        case stop
+        case endpoint
+    }
+
+    private func routeAnnotationMark(
+        systemName: String,
+        color: Color,
+        popped: Bool,
+        prominence: AnnotationProminence
+    ) -> some View {
+        let padding: CGFloat = prominence == .endpoint ? 8 : 6
+        // Stops ~36% smaller than original base; endpoints 20% smaller — keeps start/end readable when clustered.
+        let visibleScale: CGFloat = prominence == .stop ? 0.6375 : 0.8
+        return Image(systemName: systemName)
+            .font(prominence == .endpoint ? .body.weight(.semibold) : .body)
+            .padding(padding)
             .background(color, in: Circle())
             .foregroundStyle(.white)
-            .scaleEffect(popped ? 1 : 0.35)
+            .overlay {
+                if prominence == .endpoint {
+                    Circle()
+                        .strokeBorder(.white, lineWidth: 2)
+                }
+            }
+            .scaleEffect(popped ? visibleScale : 0.35)
             .opacity(popped ? 1 : 0)
-            .shadow(color: color.opacity(0.4), radius: popped ? 4 : 0, y: 1)
+            .shadow(color: color.opacity(0.45), radius: popped ? 5 : 0, y: 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.pinPop, value: popped)
     }
 

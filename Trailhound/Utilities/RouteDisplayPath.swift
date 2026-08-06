@@ -58,7 +58,7 @@ enum RouteDisplayPath {
     static let densityWindowRadius = 12
 
     /// Test seam: increments every time `displaySegments` runs. Reveal must not bump this.
-    static var testDisplaySegmentsInvocations = 0
+    nonisolated(unsafe) static var testDisplaySegmentsInvocations = 0
 
     static func samples(from points: [TripPoint]) -> [RouteSample] {
         points.map {
