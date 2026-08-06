@@ -49,6 +49,12 @@
 		A2TRIPSTORE000000000002 /* TripStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSTORE000000000001 /* TripStore.swift */; };
 		A2TRIPDATEGROUP000000002 /* TripDateGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDATEGROUP000000001 /* TripDateGrouping.swift */; };
 		A2TRIPMAPSNAP00000000002 /* TripMapSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPMAPSNAP00000000001 /* TripMapSnapshotCache.swift */; };
+		A1TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift */; };
+		A1TRIPROUTEPATHWORK0001 /* TripRoutePathWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPROUTEPATHWORK0001 /* TripRoutePathWorker.swift */; };
+		A1SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift */; };
+		A1TRIPROUTEPATHCACHETST1 /* TripRoutePathCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPROUTEPATHCACHETST1 /* TripRoutePathCacheTests.swift */; };
+		A1SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift */; };
+		A1TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift */; };
 		6FD1FB9C54054D94B99EEDBC /* TripMergeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B6254BADAB2452485AC086C /* TripMergeService.swift */; };
 		A1STANDSTILLMARK00001 /* TripStandstill.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STANDSTILLMARK00001 /* TripStandstill.swift */; };
 		9DEF992CAAFE49179A961E87 /* TripRecordingIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F138262CDC1E4889B99374A4 /* TripRecordingIntents.swift */; };
@@ -355,6 +361,12 @@
 		A2TRIPSTORE000000000001 /* TripStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStore.swift; sourceTree = "<group>"; };
 		A2TRIPDATEGROUP000000001 /* TripDateGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDateGrouping.swift; sourceTree = "<group>"; };
 		A2TRIPMAPSNAP00000000001 /* TripMapSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripMapSnapshotCache.swift; sourceTree = "<group>"; };
+		A2TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRoutePathCache.swift; sourceTree = "<group>"; };
+		A2TRIPROUTEPATHWORK0001 /* TripRoutePathWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRoutePathWorker.swift; sourceTree = "<group>"; };
+		A2SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedColoredSegmentBuilder.swift; sourceTree = "<group>"; };
+		A2TRIPROUTEPATHCACHETST1 /* TripRoutePathCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripRoutePathCacheTests.swift; sourceTree = SOURCE_ROOT; };
+		A2SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedColoredSegmentTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TripDetailPathPerformanceTests.swift; sourceTree = SOURCE_ROOT; };
 		F138262CDC1E4889B99374A4 /* TripRecordingIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecordingIntents.swift; sourceTree = "<group>"; };
 		FA15226A5E0A4E42AD2285A2 /* TripCleanupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCleanupService.swift; sourceTree = "<group>"; };
 		A2USERCATEGORY00000000001 /* UserCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserCategory.swift; sourceTree = "<group>"; };
@@ -614,6 +626,9 @@
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
 				A2TRIPDATEGROUP000000001 /* TripDateGrouping.swift */,
 				A2TRIPMAPSNAP00000000001 /* TripMapSnapshotCache.swift */,
+				A2TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift */,
+				A2TRIPROUTEPATHWORK0001 /* TripRoutePathWorker.swift */,
+				A2SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift */,
 				A2CATEGORYSEEDER00000001 /* CategorySeeder.swift */,
 				A2L10N00000000000000001 /* L10n.swift */,
 				A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */,
@@ -683,6 +698,9 @@
 				7C36B11A34274557A8C7B70D /* AsyncTestHelpers.swift */,
 				63D22184A0CE416397270986 /* DeviceTestChecklist.swift */,
 				3222A3A9DB54430F85C8C85D /* RouteDisplayPathTests.swift */,
+				A2TRIPROUTEPATHCACHETST1 /* TripRoutePathCacheTests.swift */,
+				A2SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift */,
+				A2TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift */,
 				212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */,
@@ -866,6 +884,9 @@
 				811FC18E761F4FE584B619BF /* AsyncTestHelpers.swift in Sources */,
 				D93FB4A6D16B4B49AC53AD11 /* DeviceTestChecklist.swift in Sources */,
 				BD36183D6B5E4B739B6849C3 /* RouteDisplayPathTests.swift in Sources */,
+				A1TRIPROUTEPATHCACHETST1 /* TripRoutePathCacheTests.swift in Sources */,
+				A1SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift in Sources */,
+				A1TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift in Sources */,
 				43AE81A211E64BEDB4BBC9B3 /* TripSpeedSummaryTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,
@@ -936,6 +957,9 @@
 				A2TRIPSTORE000000000002 /* TripStore.swift in Sources */,
 				A2TRIPDATEGROUP000000002 /* TripDateGrouping.swift in Sources */,
 				A2TRIPMAPSNAP00000000002 /* TripMapSnapshotCache.swift in Sources */,
+				A1TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift in Sources */,
+				A1TRIPROUTEPATHWORK0001 /* TripRoutePathWorker.swift in Sources */,
+				A1SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift in Sources */,
 				F7584F1172694F06905495CC /* TripEnums.swift in Sources */,
 				D571EE3610834ECBBB0727B6 /* SavedPlace.swift in Sources */,
 				A1PLACEDRAFT00000000001 /* PlaceDraft.swift in Sources */,

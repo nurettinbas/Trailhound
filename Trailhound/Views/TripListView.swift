@@ -872,6 +872,7 @@ struct TripListView: View {
     private func deleteTrip(_ trip: Trip) {
         TrailhoundHaptics.destructive()
         TripMapSnapshotCache.shared.remove(for: trip.id)
+        TripRoutePathCache.shared.remove(for: trip.id)
         TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
         mergeSelection.remove(trip.id)

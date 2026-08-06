@@ -114,4 +114,100 @@ final class RouteDisplayPathTests: XCTestCase {
         XCTAssertTrue(RouteDisplayPath.spacingsMeters(samples: []).isEmpty)
         XCTAssertEqual(RouteDisplayPath.decimate(samples: []).count, 0)
     }
+
+    /// Sinusoidal route — every original point must stay within the decimation tolerance of the
+    /// surviving polyline. This is the regression for "does thinning straighten curves?".
+    func testDecimatePreservesShapeOnCurvyRoute() {
+        let samples = curvyRoute(count: 4_000, wavelengthMeters: 80, amplitudeMeters: 25)
+        let decimated = RouteDisplayPath.decimate(samples: samples)
+        let tolerance = RouteDisplayPath.scaleToleranceMeters(samples: samples)
+        let deviation = RouteDisplayPath.maxDeviationMeters(original: samples, decimated: decimated)
+        XCTAssertLessThanOrEqual(deviation, tolerance + 0.5)
+    }
+
+    func testDecimateStaysWithinBudgetOnCurvyRoute() {
+        let samples = curvyRoute(count: 8_000, wavelengthMeters: 60, amplitudeMeters: 20)
+        let decimated = RouteDisplayPath.decimate(samples: samples)
+        XCTAssertLessThanOrEqual(decimated.count, RouteDisplayPath.maxDisplayPoints)
+        XCTAssertEqual(decimated.first, samples.first)
+        XCTAssertEqual(decimated.last, samples.last)
+    }
+
+    /// A tight roundabout must keep enough vertices that the simplified ring still encloses
+    /// most of the original area — not collapse to a chord across the circle.
+    func testRoundaboutSurvivesDecimation() {
+        let samples = roundabout(radiusMeters: 18, pointCount: 120)
+        let decimated = RouteDisplayPath.decimate(
+            samples: samples,
+            maxCount: 40,
+            chordCapMeters: RouteDisplayPath.baseChordLimitMeters
+        )
+        XCTAssertGreaterThan(decimated.count, 8)
+        let originalSpan = boundingSpanMeters(samples)
+        let simplifiedSpan = boundingSpanMeters(decimated)
+        XCTAssertGreaterThan(simplifiedSpan, originalSpan * 0.7)
+    }
+
+    private func curvyRoute(
+        count: Int,
+        wavelengthMeters: Double,
+        amplitudeMeters: Double,
+        startingAt start: Date = Date(timeIntervalSince1970: 1_700_000_000)
+    ) -> [RouteSample] {
+        let metersPerDegreeLatitude = 111_132.0
+        let metersPerDegreeLongitude = 111_320.0 * cos(origin.latitude * .pi / 180)
+        let stepMeters = 8.0
+        let speedMps = 14.0
+        return (0..<count).map { index in
+            let along = Double(index) * stepMeters
+            let lateral = sin(along / wavelengthMeters * 2 * .pi) * amplitudeMeters
+            return RouteSample(
+                coordinate: CLLocationCoordinate2D(
+                    latitude: origin.latitude + lateral / metersPerDegreeLatitude,
+                    longitude: origin.longitude + along / metersPerDegreeLongitude
+                ),
+                timestamp: start.addingTimeInterval(along / speedMps),
+                speedMps: speedMps
+            )
+        }
+    }
+
+    private func roundabout(
+        radiusMeters: Double,
+        pointCount: Int,
+        startingAt start: Date = Date(timeIntervalSince1970: 1_700_000_000)
+    ) -> [RouteSample] {
+        let metersPerDegreeLatitude = 111_132.0
+        let metersPerDegreeLongitude = 111_320.0 * cos(origin.latitude * .pi / 180)
+        return (0..<pointCount).map { index in
+            let angle = Double(index) / Double(pointCount) * 2 * .pi
+            return RouteSample(
+                coordinate: CLLocationCoordinate2D(
+                    latitude: origin.latitude + (sin(angle) * radiusMeters) / metersPerDegreeLatitude,
+                    longitude: origin.longitude + (cos(angle) * radiusMeters) / metersPerDegreeLongitude
+                ),
+                timestamp: start.addingTimeInterval(Double(index)),
+                speedMps: 8
+            )
+        }
+    }
+
+    private func boundingSpanMeters(_ samples: [RouteSample]) -> Double {
+        guard let first = samples.first else { return 0 }
+        var minLat = first.coordinate.latitude
+        var maxLat = minLat
+        var minLon = first.coordinate.longitude
+        var maxLon = minLon
+        for sample in samples.dropFirst() {
+            minLat = min(minLat, sample.coordinate.latitude)
+            maxLat = max(maxLat, sample.coordinate.latitude)
+            minLon = min(minLon, sample.coordinate.longitude)
+            maxLon = max(maxLon, sample.coordinate.longitude)
+        }
+        let midLat = (minLat + maxLat) / 2
+        return hypot(
+            (maxLat - minLat) * 111_132,
+            (maxLon - minLon) * 111_320 * cos(midLat * .pi / 180)
+        )
+    }
 }

@@ -41,6 +41,9 @@ enum RouteDisplayPath {
     /// Deviation budget when decimating; well below map pixel size at trip-fitting zoom.
     static let decimationToleranceMeters: Double = 3
 
+    /// Assumed on-screen width of a trip-fitting map when deriving scale-based tolerance.
+    static let overviewTargetPixels: Double = 400
+
     /// Longest chord drawn for a densely recorded route. Beyond this the actual path is
     /// unknown (tunnel, signal loss) so the route breaks instead of inventing a straight line.
     static let baseChordLimitMeters: CLLocationDistance = 450
@@ -54,6 +57,9 @@ enum RouteDisplayPath {
     /// the route was recorded.
     static let densityWindowRadius = 12
 
+    /// Test seam: increments every time `displaySegments` runs. Reveal must not bump this.
+    static var testDisplaySegmentsInvocations = 0
+
     static func samples(from points: [TripPoint]) -> [RouteSample] {
         points.map {
             RouteSample(coordinate: $0.coordinate, timestamp: $0.timestamp, speedMps: $0.speedMps)
@@ -62,6 +68,7 @@ enum RouteDisplayPath {
 
     /// Drawable pieces for a stored route, decimated for cost and split only on real gaps.
     static func displaySegments(samples: [RouteSample]) -> [[RouteSample]] {
+        testDisplaySegmentsInvocations += 1
         guard samples.count >= 2 else {
             return samples.isEmpty ? [] : [samples]
         }
@@ -127,6 +134,10 @@ enum RouteDisplayPath {
 
     /// Douglas-Peucker reduction that then re-inserts points wherever the surviving chord
     /// would exceed `chordCapMeters`, so decimation can never manufacture a false gap.
+    ///
+    /// Tolerance starts at `decimationToleranceMeters` and rises toward one on-screen pixel
+    /// (derived from the route bounding box) when the result still exceeds `maxCount`. Chord
+    /// re-insertion is never skipped — a false long gap is worse than a few extra points.
     static func decimate(
         samples: [RouteSample],
         maxCount: Int = maxDisplayPoints,
@@ -134,18 +145,148 @@ enum RouteDisplayPath {
     ) -> [RouteSample] {
         guard samples.count > maxCount, samples.count > 2 else { return samples }
 
+        let pixelTolerance = scaleToleranceMeters(samples: samples, pixels: overviewTargetPixels)
+        var tolerance = max(decimationToleranceMeters, pixelTolerance / 2)
+
+        var result = decimateOnce(
+            samples: samples,
+            toleranceMeters: tolerance,
+            chordCapMeters: chordCapMeters
+        )
+
+        while result.count > maxCount && tolerance < pixelTolerance - 0.01 {
+            tolerance = min(pixelTolerance, tolerance * 1.5)
+            result = decimateOnce(
+                samples: samples,
+                toleranceMeters: tolerance,
+                chordCapMeters: chordCapMeters
+            )
+        }
+
+        if result.count > maxCount {
+            result = enforceBudget(
+                samples: result,
+                maxCount: maxCount,
+                chordCapMeters: chordCapMeters
+            )
+        }
+
+        guard result.count < samples.count else { return samples }
+        return result
+    }
+
+    /// Half-pixel / full-pixel tolerance from the route's geographic span.
+    /// Always at least `decimationToleranceMeters` so short trips stay crisp.
+    static func scaleToleranceMeters(
+        samples: [RouteSample],
+        pixels: Double = overviewTargetPixels
+    ) -> Double {
+        guard samples.count >= 2, pixels > 0 else { return decimationToleranceMeters }
+        var minLat = samples[0].coordinate.latitude
+        var maxLat = minLat
+        var minLon = samples[0].coordinate.longitude
+        var maxLon = minLon
+        for sample in samples.dropFirst() {
+            minLat = min(minLat, sample.coordinate.latitude)
+            maxLat = max(maxLat, sample.coordinate.latitude)
+            minLon = min(minLon, sample.coordinate.longitude)
+            maxLon = max(maxLon, sample.coordinate.longitude)
+        }
+        let midLat = (minLat + maxLat) / 2
+        let metersPerDegreeLatitude = 111_132.0
+        let metersPerDegreeLongitude = 111_320.0 * cos(midLat * .pi / 180)
+        let diagonal = hypot(
+            (maxLat - minLat) * metersPerDegreeLatitude,
+            (maxLon - minLon) * metersPerDegreeLongitude
+        )
+        return max(decimationToleranceMeters, diagonal / pixels)
+    }
+
+    /// Maximum perpendicular distance from every original sample to the decimated polyline.
+    static func maxDeviationMeters(
+        original: [RouteSample],
+        decimated: [RouteSample]
+    ) -> Double {
+        guard original.count >= 2, decimated.count >= 2 else { return 0 }
+        let referenceLatitude = original[original.count / 2].coordinate.latitude
+        let metersPerDegreeLatitude = 111_132.0
+        let metersPerDegreeLongitude = 111_320.0 * cos(referenceLatitude * .pi / 180)
+
+        func project(_ coordinate: CLLocationCoordinate2D) -> (x: Double, y: Double) {
+            (
+                coordinate.longitude * metersPerDegreeLongitude,
+                coordinate.latitude * metersPerDegreeLatitude
+            )
+        }
+
+        let poly = decimated.map { project($0.coordinate) }
+        var maxDistance = 0.0
+        for sample in original {
+            let point = project(sample.coordinate)
+            var best = Double.greatestFiniteMagnitude
+            for index in 1..<poly.count {
+                let start = poly[index - 1]
+                let end = poly[index]
+                let dx = end.x - start.x
+                let dy = end.y - start.y
+                if dx == 0 && dy == 0 {
+                    best = min(best, hypot(point.x - start.x, point.y - start.y))
+                    continue
+                }
+                let t = max(0, min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)))
+                best = min(best, hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy)))
+            }
+            maxDistance = max(maxDistance, best)
+        }
+        return maxDistance
+    }
+
+    private static func decimateOnce(
+        samples: [RouteSample],
+        toleranceMeters: Double,
+        chordCapMeters: CLLocationDistance
+    ) -> [RouteSample] {
         let kept = DistanceCalculator.simplifiedIndices(
             coordinates: samples.map(\.coordinate),
-            toleranceMeters: decimationToleranceMeters
+            toleranceMeters: toleranceMeters
         )
         guard kept.count >= 2 else { return samples }
+        let restored = reinsertIndices(
+            keeping: kept,
+            in: samples,
+            chordCapMeters: chordCapMeters
+        )
+        return restored.map { samples[$0] }
+    }
+
+    /// Evenly thins an already-decimated path while still re-inserting for the chord cap.
+    /// May still exceed `maxCount` when the chord cap forces denser sampling — that is intentional.
+    private static func enforceBudget(
+        samples: [RouteSample],
+        maxCount: Int,
+        chordCapMeters: CLLocationDistance
+    ) -> [RouteSample] {
+        guard samples.count > maxCount, maxCount >= 2 else { return samples }
+
+        var kept: [Int] = [0]
+        let inner = maxCount - 2
+        if inner > 0 {
+            for step in 1...inner {
+                let index = Int((Double(step) * Double(samples.count - 1) / Double(maxCount - 1)).rounded())
+                if index > kept[kept.count - 1], index < samples.count - 1 {
+                    kept.append(index)
+                }
+            }
+        }
+        if kept[kept.count - 1] != samples.count - 1 {
+            kept.append(samples.count - 1)
+        }
 
         let restored = reinsertIndices(
             keeping: kept,
             in: samples,
             chordCapMeters: chordCapMeters
         )
-        guard restored.count < samples.count else { return samples }
         return restored.map { samples[$0] }
     }
 

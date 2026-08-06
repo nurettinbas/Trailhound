@@ -1,6 +1,52 @@
+import CoreLocation
 import SwiftData
 import XCTest
 @testable import Trailhound
+
+@MainActor
+final class TripRoutePathDataSafetyTests: XCTestCase {
+    func testDisplayPathBuildDoesNotMutateStoredPoints() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let startedAt = Date()
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(1_200),
+            distanceMeters: 8_000
+        )
+        context.insert(trip)
+        for index in 0..<80 {
+            context.insert(
+                TripPoint(
+                    timestamp: startedAt.addingTimeInterval(Double(index) * 10),
+                    latitude: 41.0 + Double(index) * 0.0002,
+                    longitude: 29.0 + Double(index) * 0.0002,
+                    sequence: index,
+                    speedMps: 14,
+                    trip: trip
+                )
+            )
+        }
+        try context.save()
+
+        let pointCountBefore = trip.points.count
+        let pieces = await TripRoutePathCache.shared.path(for: trip, container: container)
+        XCTAssertFalse(pieces.isEmpty)
+        trip.invalidatePointCaches()
+
+        XCTAssertEqual(trip.points.count, pointCountBefore)
+
+        TripRoutePathCache.shared.remove(for: trip.id)
+        TripRoutePathCache.shared.clearMemory()
+        try await Task.sleep(for: .milliseconds(50))
+
+        let rebuilt = await TripRoutePathCache.shared.path(for: trip, container: container)
+        XCTAssertEqual(rebuilt.count, pieces.count)
+        XCTAssertEqual(rebuilt.first?.count, pieces.first?.count)
+
+        TripRoutePathCache.shared.remove(for: trip.id)
+    }
+}
 
 @MainActor
 final class FrequentRoutesServiceTests: XCTestCase {

@@ -29,7 +29,9 @@ enum TripMergeService {
             .mergeAsync(tripIDs: tripIDs, privacyRadius: privacyRadius)
         for id in tripIDs {
             TripMapSnapshotCache.shared.remove(for: id)
+            TripRoutePathCache.shared.remove(for: id)
         }
+        TripRoutePathCache.shared.prewarm(tripID: mergedID, container: container)
         return mergedID
     }
 
@@ -49,7 +51,9 @@ enum TripMergeService {
         try context.save()
         for id in deletedIDs {
             TripMapSnapshotCache.shared.remove(for: id)
+            TripRoutePathCache.shared.remove(for: id)
         }
+        TripRoutePathCache.shared.prewarm(tripID: merged.id, container: context.container)
         return merged
     }
 }

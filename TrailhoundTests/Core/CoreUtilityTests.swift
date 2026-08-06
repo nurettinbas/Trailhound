@@ -137,8 +137,10 @@ final class TabSelectionTests: XCTestCase {
 }
 
 final class DeviceTestChecklistTests: XCTestCase {
-    func testChecklistHasNineItems() {
-        XCTAssertEqual(DeviceTestChecklist.items.count, 9)
+    func testChecklistCoversLongTripDetailPerformance() {
+        XCTAssertGreaterThanOrEqual(DeviceTestChecklist.items.count, 9)
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("colorSegs") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("disk cache") }))
     }
 }
 

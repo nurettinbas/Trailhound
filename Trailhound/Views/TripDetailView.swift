@@ -106,13 +106,19 @@ struct TripDetailView: View {
     @State private var tripDetailViewModel: TripDetailViewModel?
     @State private var revealCheapMapDuringAnimation = false
     @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
+    @State private var routeLoadTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var resolvedViewModel: TripDetailViewModel {
         if let tripDetailViewModel {
             return tripDetailViewModel
         }
-        return TripDetailViewModel(trip: trip, places: places, privacyRadius: settings.privacyRadiusMeters)
+        return TripDetailViewModel(
+            trip: trip,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters,
+            displayPieces: nil
+        )
     }
 
     private var sortedStops: [TripStop] {
@@ -228,24 +234,21 @@ struct TripDetailView: View {
                 tripDetailViewModel = TripDetailViewModel(
                     trip: trip,
                     places: places,
-                    privacyRadius: settings.privacyRadiusMeters
+                    privacyRadius: settings.privacyRadiusMeters,
+                    displayPieces: nil
                 )
             }
 
-            // Reveal cost scales with what is drawn, not with what is stored — raw point
-            // counts are unbounded now that recordings are kept at full resolution.
-            let plan = TripDetailRevealPolicy.animationPlan(
-                pointCount: resolvedViewModel.displayPointCount,
-                reduceMotion: reduceMotion
-            )
-            revealCheapMapDuringAnimation = plan.useCheapMapDuringReveal
+            // Show the panel immediately from stored trip fields; the route fills in async.
+            if !panelRisen {
+                withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
+                    panelRisen = true
+                }
+            }
 
-            if !plan.shouldAnimate || TripDetailRevealSession.hasCompleted(trip.id) {
-                finishDetailRevealInstant()
-                logTripDetailDiagnostics(context: "appear instant")
-            } else {
-                startDetailReveal(plan: plan)
-                logTripDetailDiagnostics(context: "appear animate")
+            routeLoadTask?.cancel()
+            routeLoadTask = Task { @MainActor in
+                await loadDisplayPathAndReveal()
             }
         }
         .onDisappear {
@@ -255,6 +258,8 @@ struct TripDetailView: View {
             }
             detailRevealTask?.cancel()
             detailRevealTask = nil
+            routeLoadTask?.cancel()
+            routeLoadTask = nil
             didStartDetailReveal = false
             // The detail map is the only screen that needs every GPS point; holding them past
             // dismissal is how browsing a long library grows memory without bound.
@@ -262,11 +267,40 @@ struct TripDetailView: View {
         }
     }
 
+    private func loadDisplayPathAndReveal() async {
+        let pieces = await TripRoutePathCache.shared.path(
+            for: trip,
+            container: modelContext.container
+        )
+        guard !Task.isCancelled else { return }
+
+        tripDetailViewModel = TripDetailViewModel(
+            trip: trip,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters,
+            displayPieces: pieces
+        )
+
+        // Reveal cost scales with what is drawn, not with what is stored.
+        let plan = TripDetailRevealPolicy.animationPlan(
+            pointCount: resolvedViewModel.displayPointCount,
+            reduceMotion: reduceMotion
+        )
+        revealCheapMapDuringAnimation = plan.useCheapMapDuringReveal
+
+        if !plan.shouldAnimate || TripDetailRevealSession.hasCompleted(trip.id) {
+            finishDetailRevealInstant()
+            logTripDetailDiagnostics(context: "appear instant")
+        } else {
+            startDetailReveal(plan: plan)
+            logTripDetailDiagnostics(context: "appear animate")
+        }
+    }
+
     private func startDetailReveal(plan: TripDetailRevealPolicy.AnimationPlan) {
         guard !didStartDetailReveal else { return }
         didStartDetailReveal = true
 
-        panelRisen = false
         routeRevealProgress = 0
         startPinVisible = false
         endPinVisible = false
@@ -288,8 +322,10 @@ struct TripDetailView: View {
                 startPinVisible = true
             }
 
-            withAnimation(TrailhoundMotion.sheetRise) {
-                panelRisen = true
+            if !panelRisen {
+                withAnimation(TrailhoundMotion.sheetRise) {
+                    panelRisen = true
+                }
             }
 
             await runContentReveal(plan: plan)
@@ -915,7 +951,8 @@ struct TripDetailView: View {
         tripDetailViewModel = TripDetailViewModel(
             trip: trip,
             places: places,
-            privacyRadius: settings.privacyRadiusMeters
+            privacyRadius: settings.privacyRadiusMeters,
+            displayPieces: tripDetailViewModel?.displayPieces
         )
         try? modelContext.save()
     }
@@ -960,17 +997,20 @@ struct TripDetailView: View {
         let useCheapReveal = duringReveal && revealCheapMapDuringAnimation
         let revealedSegments = resolvedViewModel.revealedSpeedColoredSegments(progress: progress)
         let revealedFallback = resolvedViewModel.revealedFallbackCoordinates(progress: progress)
-        let revealTick = Int((progress * 200).rounded())
+        // Stable ids — progress only changes the tip segment's coordinates, not every overlay identity.
         let revealedItems = revealedSegments.map { segment in
             RevealedRouteSegment(
-                id: "\(segment.id)-\(segment.coordinates.count)-\(revealTick)",
+                id: "\(segment.id)",
                 coordinates: segment.coordinates,
                 color: segment.color
             )
         }
+        // Glow doubles overlay count; skip it once we are at the segment budget.
+        let useGlow = !useCheapReveal
+            && revealedItems.count < SpeedColoredSegmentBuilder.maxColorSegments
 
         Map(position: $cameraPosition, interactionModes: interactive ? .all : []) {
-            if !useCheapReveal {
+            if useGlow {
                 ForEach(revealedItems) { segment in
                     MapPolyline(coordinates: segment.coordinates)
                         .stroke(
@@ -986,7 +1026,7 @@ struct TripDetailView: View {
                     .stroke(
                         segment.color,
                         style: StrokeStyle(
-                            lineWidth: useCheapReveal ? 4.5 : 4.5,
+                            lineWidth: 4.5,
                             lineCap: .round,
                             lineJoin: .round
                         )
@@ -995,7 +1035,7 @@ struct TripDetailView: View {
             }
 
             if revealedItems.isEmpty, revealedFallback.count >= 2 {
-                if !useCheapReveal {
+                if useGlow {
                     MapPolyline(coordinates: revealedFallback)
                         .stroke(Color.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
                 }
@@ -1178,9 +1218,14 @@ struct TripDetailView: View {
         trip.distanceMeters = distance
         trip.invalidatePointCaches()
         TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
+        TripRoutePathCache.shared.remove(for: trip.id)
         DevLog.shared.log(.tripDetail, "gps trim trip=\(trip.id.uuidString.prefix(8)) head=\(trimHeadCount) tail=\(trimTailCount)")
         trimHeadCount = 0
         trimTailCount = 0
+        routeLoadTask?.cancel()
+        routeLoadTask = Task { @MainActor in
+            await loadDisplayPathAndReveal()
+        }
     }
 
     private func logTripDetailDiagnostics(context: String) {
@@ -1189,7 +1234,7 @@ struct TripDetailView: View {
         let sampleCount = resolvedViewModel.speedSamples.count
         // colorSegs = speed-band polylines; routePieces = real gap splits from RouteDisplayPath.
         let colorSegCount = resolvedViewModel.speedColoredSegments.count
-        let routePieceCount = resolvedViewModel.displayPieces.count
+        let routePieceCount = resolvedViewModel.displayPieces?.count ?? 0
         let routeGapCount = max(0, routePieceCount - 1)
 
         DevLog.shared.log(

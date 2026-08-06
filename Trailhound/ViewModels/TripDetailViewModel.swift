@@ -58,9 +58,12 @@ struct TripDetailViewModel {
     let trip: Trip
     let places: [SavedPlace]
     let privacyRadius: Double
+    /// Decimated drawable pieces from `TripRoutePathCache`. `nil` until the async load finishes.
+    let displayPieces: [[RouteSample]]?
+    let routeFingerprint: TripRoutePathFingerprint
 
     private struct SpeedSegmentCacheEntry {
-        let pointCount: Int
+        let fingerprint: TripRoutePathFingerprint
         let displayPointCount: Int
         let segments: [SpeedColoredSegment]
     }
@@ -68,7 +71,7 @@ struct TripDetailViewModel {
     private static var speedSegmentCache: [UUID: SpeedSegmentCacheEntry] = [:]
 
     private struct ChartSeriesCacheEntry {
-        let pointCount: Int
+        let fingerprint: TripRoutePathFingerprint
         let series: SpeedChartSeries.Series
     }
 
@@ -79,6 +82,19 @@ struct TripDetailViewModel {
     static func invalidateSpeedSegmentCache(for tripID: UUID) {
         speedSegmentCache.removeValue(forKey: tripID)
         chartSeriesCache.removeValue(forKey: tripID)
+    }
+
+    init(
+        trip: Trip,
+        places: [SavedPlace],
+        privacyRadius: Double,
+        displayPieces: [[RouteSample]]? = nil
+    ) {
+        self.trip = trip
+        self.places = places
+        self.privacyRadius = privacyRadius
+        self.displayPieces = displayPieces
+        self.routeFingerprint = TripRoutePathFingerprint.make(from: trip)
     }
 
     var durationText: String {
@@ -98,26 +114,29 @@ struct TripDetailViewModel {
         TripListViewModel.routeSummary(for: trip, places: places, privacyRadius: privacyRadius)
     }
 
-    var coordinates: [CLLocationCoordinate2D] {
-        RoutePrivacyClipper.clip(
-            trip.coordinates,
-            privacyRadiusMeters: privacyRadius,
-            places: places
-        )
+    var hasDisplayPath: Bool {
+        displayPieces != nil
     }
 
-    /// Start/end markers must sit at the ends of the drawn route (which uses the
-    /// full recorded points), not the privacy-clipped coordinates — otherwise the
-    /// pins appear pushed inward from where the route actually begins/ends.
+    /// Flattened coordinates of the prepared display path (empty while loading).
+    var displayCoordinates: [CLLocationCoordinate2D] {
+        (displayPieces ?? []).flatMap { $0.map(\.coordinate) }
+    }
+
+    /// Start/end markers sit at the ends of the drawn route. Prefer denormalised endpoints so
+    /// opening detail never faults every GPS point just to place two pins.
     var routeStartCoordinate: CLLocationCoordinate2D? {
-        trip.sortedPoints.first?.coordinate ?? coordinates.first
+        if let first = displayPieces?.first?.first?.coordinate {
+            return first
+        }
+        return trip.startCoordinate
     }
 
     var routeEndCoordinate: CLLocationCoordinate2D? {
-        if trip.sortedPoints.count > 1 {
-            return trip.sortedPoints.last?.coordinate
+        if let last = displayPieces?.last?.last?.coordinate {
+            return last
         }
-        return coordinates.count > 1 ? coordinates.last : nil
+        return trip.endCoordinate
     }
 
     var speedSamples: [(id: Int, date: Date, speedKmh: Double)] {
@@ -133,22 +152,28 @@ struct TripDetailViewModel {
     }
 
     private var speedChartSeries: SpeedChartSeries.Series {
-        if let cached = Self.chartSeriesCache[trip.id], cached.pointCount == trip.sortedPoints.count {
+        if let cached = Self.chartSeriesCache[trip.id], cached.fingerprint == routeFingerprint {
             return cached.series
         }
-        let series = SpeedChartSeries.build(samples: routeSamples)
+        // Chart walks the full recording once and buckets to ~600 samples. Map drawing never
+        // uses this path — it stays on the prepared display pieces.
+        let series = SpeedChartSeries.build(
+            samples: RouteDisplayPath.samples(from: trip.sortedPoints)
+        )
         Self.chartSeriesCache[trip.id] = ChartSeriesCacheEntry(
-            pointCount: trip.sortedPoints.count,
+            fingerprint: routeFingerprint,
             series: series
         )
         return series
     }
 
-    /// The fastest speed the route actually sustained, derived from the points rather than read
-    /// from `trip.maxSpeedMps`. Trips recorded before speeds were vetted carry maxima no point
-    /// ever reached, and detail is the one screen where the points are loaded anyway.
+    /// Prefers speeds from the prepared display path so the summary strip never faults points
+    /// on first paint. Falls back to the stored vetted maximum while the path is still loading.
     var derivedMaxSpeedMps: Double? {
-        TripSpeedSummary.maxSpeedMps(samples: routeSamples)
+        if let pieces = displayPieces, !pieces.isEmpty {
+            return TripSpeedSummary.maxSpeedMps(samples: pieces.flatMap { $0 })
+        }
+        return TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps)
     }
 
     /// Scaled from the plotted data alone. Blending in the stored maximum pinned the axis at
@@ -228,40 +253,29 @@ struct TripDetailViewModel {
         return items
     }
 
-    /// Full recorded path used for draw-on reveal (not privacy-clipped).
-    var routeCoordinates: [CLLocationCoordinate2D] {
-        trip.coordinates
-    }
-
-    /// Recorded points reduced to plain values — stored points are never modified.
+    /// Prepared display samples when available; empty while the async path is still loading.
     var routeSamples: [RouteSample] {
-        RouteDisplayPath.samples(from: trip.sortedPoints)
-    }
-
-    /// Drawable pieces: decimated for cost, broken only where the route genuinely stops.
-    var displayPieces: [[RouteSample]] {
-        RouteDisplayPath.displaySegments(samples: routeSamples)
+        (displayPieces ?? []).flatMap { $0 }
     }
 
     /// How many points actually reach the renderer. Reveal animation thresholds use this
     /// rather than the raw recorded count, which is now unbounded.
     var displayPointCount: Int {
-        if let cached = Self.speedSegmentCache[trip.id], cached.pointCount == trip.sortedPoints.count {
+        if let cached = Self.speedSegmentCache[trip.id], cached.fingerprint == routeFingerprint {
             return cached.displayPointCount
         }
-        return displayPieces.reduce(0) { $0 + $1.count }
+        return (displayPieces ?? []).reduce(0) { $0 + $1.count }
     }
 
     var speedColoredSegments: [SpeedColoredSegment] {
-        let pointCount = trip.sortedPoints.count
-        if let cached = Self.speedSegmentCache[trip.id], cached.pointCount == pointCount {
+        guard let pieces = displayPieces else { return [] }
+        if let cached = Self.speedSegmentCache[trip.id], cached.fingerprint == routeFingerprint {
             return cached.segments
         }
 
-        let pieces = displayPieces
-        let segments = buildSpeedColoredSegments(pieces: pieces)
+        let segments = SpeedColoredSegmentBuilder.build(pieces: pieces)
         Self.speedSegmentCache[trip.id] = SpeedSegmentCacheEntry(
-            pointCount: pointCount,
+            fingerprint: routeFingerprint,
             displayPointCount: pieces.reduce(0) { $0 + $1.count },
             segments: segments
         )
@@ -269,80 +283,28 @@ struct TripDetailViewModel {
     }
 
     /// Speed-colored segments truncated to `progress` (0...1) for route draw-on.
+    /// Uses the prepared segments — never re-runs decimation or recoloring.
     func revealedSpeedColoredSegments(progress: Double) -> [SpeedColoredSegment] {
-        let clamped = min(1, max(0, progress))
-        if clamped >= 1 { return speedColoredSegments }
-        let pieces = displayPieces
-        guard pieces.contains(where: { $0.count >= 2 }) else { return [] }
-        return buildSpeedColoredSegments(pieces: Self.truncated(pieces: pieces, progress: clamped))
-    }
-
-    /// Keeps whole pieces up to the reveal tip, then interpolates a partial chord so the head
-    /// of the line moves smoothly instead of snapping between recorded points.
-    private static func truncated(pieces: [[RouteSample]], progress: Double) -> [[RouteSample]] {
-        let total = pieces.reduce(0) { $0 + $1.count }
-        guard total >= 2 else { return [] }
-
-        let exact = Double(total - 1) * progress
-        let lastIndex = min(total - 1, Int(exact))
-        let fraction = exact - Double(Int(exact))
-
-        var result: [[RouteSample]] = []
-        var consumed = 0
-
-        for piece in pieces {
-            if consumed + piece.count <= lastIndex + 1 {
-                result.append(piece)
-                consumed += piece.count
-                continue
-            }
-
-            let take = lastIndex + 1 - consumed
-            guard take > 0 else { break }
-            var partial = Array(piece.prefix(take))
-            if fraction > 0.001, take < piece.count {
-                partial.append(interpolate(piece[take - 1], piece[take], fraction: fraction))
-            }
-            if partial.count >= 2 { result.append(partial) }
-            break
-        }
-
-        return result
-    }
-
-    private static func interpolate(
-        _ start: RouteSample,
-        _ end: RouteSample,
-        fraction: Double
-    ) -> RouteSample {
-        RouteSample(
-            coordinate: CLLocationCoordinate2D(
-                latitude: start.coordinate.latitude
-                    + (end.coordinate.latitude - start.coordinate.latitude) * fraction,
-                longitude: start.coordinate.longitude
-                    + (end.coordinate.longitude - start.coordinate.longitude) * fraction
-            ),
-            timestamp: Date(
-                timeIntervalSince1970: start.timestamp.timeIntervalSince1970
-                    + (end.timestamp.timeIntervalSince1970 - start.timestamp.timeIntervalSince1970) * fraction
-            ),
-            speedMps: start.speedMps
-        )
+        SpeedColoredSegmentBuilder.revealed(segments: speedColoredSegments, progress: progress)
     }
 
     func revealedFallbackCoordinates(progress: Double) -> [CLLocationCoordinate2D] {
-        RoutePathReveal.prefix(coordinates, progress: progress)
+        let path = displayCoordinates
+        guard path.count >= 2 else { return [] }
+        return RoutePathReveal.prefix(path, progress: progress)
     }
 
     func annotationRevealProgress(forStopAt coordinate: CLLocationCoordinate2D) -> Double {
-        RoutePathReveal.progress(nearestTo: coordinate, in: routeCoordinates)
+        let path = displayCoordinates
+        guard path.count >= 2 else { return 1 }
+        return RoutePathReveal.progress(nearestTo: coordinate, in: path)
     }
 
     func followRegion(
         progress: Double,
         fit: MapFitContext = .cinematicReveal
     ) -> MKCoordinateRegion? {
-        let path = routeCoordinates.isEmpty ? coordinates : routeCoordinates
+        let path = displayCoordinates
         guard let tip = RoutePathReveal.tip(of: path, progress: progress) else { return nil }
         guard let settled = mapRegion(fit: fit) else { return nil }
 
@@ -361,7 +323,7 @@ struct TripDetailViewModel {
     /// High-altitude opening look — route as a small silhouette below.
     func cinematicOpeningCamera(fit: MapFitContext = .cinematicReveal) -> MapCamera? {
         guard let settled = mapRegion(fit: fit) else { return nil }
-        let path = routeCoordinates.isEmpty ? coordinates : routeCoordinates
+        let path = displayCoordinates
         let center = path.first ?? settled.center
         return MapCamera(
             centerCoordinate: center,
@@ -376,7 +338,7 @@ struct TripDetailViewModel {
         routeProgress: Double,
         fit: MapFitContext = .cinematicReveal
     ) -> MapCamera? {
-        let path = routeCoordinates.isEmpty ? coordinates : routeCoordinates
+        let path = displayCoordinates
         guard let tip = RoutePathReveal.tip(of: path, progress: routeProgress) else { return nil }
         guard let settled = mapRegion(fit: fit) else { return nil }
 
@@ -419,51 +381,15 @@ struct TripDetailViewModel {
         return (degrees + 360).truncatingRemainder(dividingBy: 360)
     }
 
-    /// Applies speed coloring inside each drawable piece. Piece boundaries are already the
-    /// real route gaps, so this only ever adds color splits.
-    private func buildSpeedColoredSegments(pieces: [[RouteSample]]) -> [SpeedColoredSegment] {
-        var segments: [SpeedColoredSegment] = []
-
-        for piece in pieces where piece.count >= 2 {
-            var currentCoordinates = [piece[0].coordinate]
-            var currentColor = Self.speedColor(for: TripSpeedSummary.effectiveSpeedMps(at: 0, in: piece))
-
-            for index in 1..<piece.count {
-                let color = Self.speedColor(for: TripSpeedSummary.effectiveSpeedMps(at: index, in: piece))
-                currentCoordinates.append(piece[index].coordinate)
-
-                guard color != currentColor else { continue }
-                if currentCoordinates.count >= 2 {
-                    segments.append(
-                        SpeedColoredSegment(
-                            id: segments.count,
-                            coordinates: currentCoordinates,
-                            color: currentColor
-                        )
-                    )
-                }
-                currentCoordinates = [piece[index - 1].coordinate, piece[index].coordinate]
-                currentColor = color
-            }
-
-            if currentCoordinates.count >= 2 {
-                segments.append(
-                    SpeedColoredSegment(
-                        id: segments.count,
-                        coordinates: currentCoordinates,
-                        color: currentColor
-                    )
-                )
-            }
-        }
-
-        return segments
-    }
-
     func mapRegion(fit: MapFitContext = .detailWithPanel) -> MKCoordinateRegion? {
-        let path = routeCoordinates.isEmpty ? coordinates : routeCoordinates
-        guard !path.isEmpty else { return nil }
-        return Self.regionFitting(coordinates: path, fit: fit)
+        let path = displayCoordinates
+        if path.count >= 2 {
+            return Self.regionFitting(coordinates: path, fit: fit)
+        }
+        // While the path loads, frame the denormalised endpoints without faulting points.
+        let endpoints = [trip.startCoordinate, trip.endCoordinate].compactMap { $0 }
+        guard !endpoints.isEmpty else { return nil }
+        return Self.regionFitting(coordinates: endpoints, fit: fit)
     }
 
     /// Fits the camera to the drawn route inside the visible map area.
@@ -530,9 +456,6 @@ struct TripDetailViewModel {
     }
 
     static func speedColor(for speedMps: Double?) -> Color {
-        let kmh = (speedMps ?? 0) * 3.6
-        if kmh < 50 { return .green }
-        if kmh < 90 { return .yellow }
-        return .red
+        SpeedBand.initial(kmh: (speedMps ?? 0) * 3.6).color
     }
 }

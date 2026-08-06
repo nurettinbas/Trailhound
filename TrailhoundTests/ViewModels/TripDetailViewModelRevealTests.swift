@@ -14,7 +14,7 @@ final class TripDetailViewModelRevealTests: XCTestCase {
 
     func testRevealProgressZeroIsEmptyOrMinimal() throws {
         let trip = try insertTrip(pointCount: 5)
-        let viewModel = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+        let viewModel = makeViewModel(for: trip)
 
         let segments = viewModel.revealedSpeedColoredSegments(progress: 0)
         XCTAssertTrue(segments.isEmpty || segments.allSatisfy { $0.coordinates.count <= 2 })
@@ -22,7 +22,7 @@ final class TripDetailViewModelRevealTests: XCTestCase {
 
     func testRevealProgressOneMatchesFullSegments() throws {
         let trip = try insertTrip(pointCount: 5)
-        let viewModel = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+        let viewModel = makeViewModel(for: trip)
 
         let revealed = viewModel.revealedSpeedColoredSegments(progress: 1)
         let full = viewModel.speedColoredSegments
@@ -31,7 +31,7 @@ final class TripDetailViewModelRevealTests: XCTestCase {
 
     func testRevealProgressIncreasesCoordinateCoverage() throws {
         let trip = try insertTrip(pointCount: 8)
-        let viewModel = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+        let viewModel = makeViewModel(for: trip)
 
         let early = viewModel.revealedSpeedColoredSegments(progress: 0.25)
         let later = viewModel.revealedSpeedColoredSegments(progress: 0.75)
@@ -39,6 +39,30 @@ final class TripDetailViewModelRevealTests: XCTestCase {
         let earlyPoints = early.reduce(0) { $0 + $1.coordinates.count }
         let laterPoints = later.reduce(0) { $0 + $1.coordinates.count }
         XCTAssertLessThanOrEqual(earlyPoints, laterPoints)
+    }
+
+    func testNilDisplayPathDoesNotCrash() throws {
+        let trip = try insertTrip(pointCount: 5)
+        let viewModel = TripDetailViewModel(
+            trip: trip,
+            places: [],
+            privacyRadius: 500,
+            displayPieces: nil
+        )
+        XCTAssertTrue(viewModel.revealedSpeedColoredSegments(progress: 1).isEmpty)
+        XCTAssertEqual(viewModel.displayPointCount, 0)
+    }
+
+    private func makeViewModel(for trip: Trip) -> TripDetailViewModel {
+        let pieces = RouteDisplayPath.displaySegments(
+            samples: RouteDisplayPath.samples(from: trip.sortedPoints)
+        )
+        return TripDetailViewModel(
+            trip: trip,
+            places: [],
+            privacyRadius: 500,
+            displayPieces: pieces
+        )
     }
 
     @discardableResult

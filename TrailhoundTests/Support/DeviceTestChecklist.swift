@@ -11,6 +11,13 @@ enum DeviceTestChecklist {
         "Detay haritada rota gerçekçi (denizden geçmiyor)",
         "Pairing: araç adı yazarken klavye akıcı",
         "Kayıt sırasında Trips dışı sekmeye geçince kasma azalır",
-        "Uzun trip detay açılışı donmadan yüklenir"
+        "Uzun trip detay açılışı donmadan yüklenir",
+        "50 km trip detay: DevLog points/displayPts/colorSegs; colorSegs ≤ 60",
+        "500 km trip detay (varsa): açılış akıcı, virajlar düzleşmemiş",
+        "Aynı uzun trip'e ikinci giriş anında (memory cache)",
+        "App kill → aç → uzun trip detay hâlâ hızlı (disk cache)",
+        "GPS trim sonrası harita güncellenir (cache invalidation)",
+        "Merge sonrası birleşik rota doğru çizilir",
+        "Tünel/sinyal kaybı olan trip'te rota kırık kalır (kuş uçuşu yok)"
     ]
 }

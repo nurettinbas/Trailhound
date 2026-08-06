@@ -1072,6 +1072,7 @@ enum TripPostProcessor {
             privacyRadius: AppSettings.shared.privacyRadiusMeters
         )
         try? context.save()
+        TripRoutePathCache.shared.prewarm(tripID: tripUUID, container: container)
     }
 
     private static func enrichTripWithAddresses(
