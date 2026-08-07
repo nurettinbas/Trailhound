@@ -4,14 +4,32 @@ import SwiftData
 
 enum PlaceMatchingService {
     static func matchPlaces(for trip: Trip, places: [SavedPlace]) {
-        guard let start = trip.startCoordinate else { return }
-        guard let end = trip.endCoordinate else { return }
-
-        if let startPlace = places.first(where: { $0.contains(start) }) {
+        if let start = trip.startCoordinate,
+           let startPlace = places.first(where: { $0.contains(start) }) {
             trip.startPlaceName = startPlace.name
         }
-        if let endPlace = places.first(where: { $0.contains(end) }) {
+        if let end = trip.endCoordinate,
+           let endPlace = places.first(where: { $0.contains(end) }) {
             trip.endPlaceName = endPlace.name
+        }
+    }
+
+    /// Re-applies saved-place names to trip endpoints and refreshes search indexes.
+    /// Call after a `SavedPlace` is created or updated so existing trips pick up the label.
+    static func rematchTrips(
+        _ trips: [Trip],
+        places: [SavedPlace],
+        privacyRadius: Double
+    ) {
+        guard !places.isEmpty else { return }
+
+        for trip in trips {
+            matchPlaces(for: trip, places: places)
+            TripDerivedMetrics.refreshSearchIndex(
+                for: trip,
+                places: places,
+                privacyRadius: privacyRadius
+            )
         }
     }
 

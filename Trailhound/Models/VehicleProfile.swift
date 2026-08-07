@@ -10,6 +10,8 @@ final class VehicleProfile {
     var chargePricePerKWh: Double?
     var isDefault: Bool
     var iconName: String = "car.fill"
+    /// Filename only under Application Support/VehiclePhotos (e.g. `{uuid}.jpg`). Nil = icon fallback.
+    var photoFileName: String?
 
     /// Auto-start binding: when enabled, the paired Bluetooth audio route
     /// (identified by `pairedRouteUID`) triggers connect-start / disconnect-stop.
@@ -28,6 +30,7 @@ final class VehicleProfile {
         chargePricePerKWh: Double? = nil,
         isDefault: Bool = false,
         iconName: String = VehicleIconOption.default.rawValue,
+        photoFileName: String? = nil,
         autoStartEnabled: Bool = false,
         pairedRouteUID: String? = nil,
         pairedRouteName: String? = nil,
@@ -40,6 +43,7 @@ final class VehicleProfile {
         self.chargePricePerKWh = chargePricePerKWh
         self.isDefault = isDefault
         self.iconName = iconName
+        self.photoFileName = photoFileName
         self.autoStartEnabled = autoStartEnabled
         self.pairedRouteUID = pairedRouteUID
         self.pairedRouteName = pairedRouteName

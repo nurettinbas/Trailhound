@@ -17,6 +17,8 @@ enum L10n {
     static var stop: String { string("action.stop") }
     static var delete: String { string("action.delete") }
     static var share: String { string("action.share") }
+    static var shareCardPreparing: String { string("share.card.preparing") }
+    static var shareCardPreviewTitle: String { string("share.card.preview.title") }
 
     static func shareCaptionWhenRange(date: String, start: String, end: String) -> String {
         String(format: string("share.caption.when_range"), date, start, end)
@@ -54,6 +56,10 @@ enum L10n {
     static var tripStartedAt: String { string("trip.started_at") }
     static var tripEndedAt: String { string("trip.ended_at") }
     static var tripDetailTitle: String { string("trip.detail.title") }
+    static var tripDetailPanelResize: String { string("trip.detail.panel.resize") }
+    static var tripDetailPanelResizeHint: String { string("trip.detail.panel.resize.hint") }
+    static var tripDetailPanelMoreMap: String { string("trip.detail.panel.more_map") }
+    static var tripDetailPanelMoreDetails: String { string("trip.detail.panel.more_details") }
     static var tripPointStart: String { string("trip.point.start") }
     static var tripPointEnd: String { string("trip.point.end") }
     static var tripPointStop: String { string("trip.point.stop") }
@@ -309,6 +315,15 @@ enum L10n {
     static var pairingShortcutsGuideNote: String { string("pairing.shortcuts.guide.note") }
     static var pairingShortcutsGuideOpenShortcuts: String { string("pairing.shortcuts.guide.open_shortcuts") }
     static var pairingShortcutsGuideDone: String { string("pairing.shortcuts.guide.done") }
+    static var pairingShortcutsGuideNext: String { string("pairing.shortcuts.guide.next") }
+    static var pairingShortcutsGuideBack: String { string("pairing.shortcuts.guide.back") }
+    static var pairingShortcutsGuideHandoffTitle: String { string("pairing.shortcuts.guide.handoff.title") }
+    static var pairingShortcutsGuideHandoffBody: String { string("pairing.shortcuts.guide.handoff.body") }
+    static var pairingShortcutsGuideFinishedToggle: String { string("pairing.shortcuts.guide.finished.toggle") }
+    static func pairingShortcutsGuideStepProgress(current: Int, total: Int) -> String {
+        String(format: string("pairing.shortcuts.guide.step_progress"), current, total)
+    }
+    static var toastShortcutsGuideFinished: String { string("toast.shortcuts.guide.finished") }
     static var settingsShortcutsAutomationGuide: String { string("settings.shortcuts.automation_guide") }
     static var shortcutStartTitle: String { string("shortcut.start.title") }
     static var shortcutStopTitle: String { string("shortcut.stop.title") }
@@ -386,6 +401,16 @@ enum L10n {
     static var storeOpenFailedInMemory: String { string("store.open_failed_in_memory") }
     static var errorTitle: String { string("alert.error.title") }
     static var infoTitle: String { string("alert.info.title") }
+
+    static var toastSaved: String { string("toast.saved") }
+    static var toastDeleted: String { string("toast.deleted") }
+    static var toastPlaceSaved: String { string("toast.place.saved") }
+    static var toastVehicleSaved: String { string("toast.vehicle.saved") }
+    static var toastTripSaved: String { string("toast.trip.saved") }
+    static var toastCategoryAdded: String { string("toast.category.added") }
+    static var toastCategoryDeleted: String { string("toast.category.deleted") }
+    static var toastOrphanSaved: String { string("toast.orphan.saved") }
+    static var toastTripsMerged: String { string("toast.trips.merged") }
 
     static func pairingTabSaveFailed(_ detail: String) -> String {
         String(format: string("pairing.tab.save_failed"), detail)

@@ -85,6 +85,8 @@ struct AtmosphericBackground: View {
     enum Style {
         case full
         case lightweight
+        /// System canvas + soft brand glows — for onboarding / surfaces that should follow light/dark, not the blue shell.
+        case canvas
     }
 
     var style: Style = .full
@@ -92,43 +94,52 @@ struct AtmosphericBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        LinearGradient(
-            colors: colorScheme == .dark
-                ? [
-                    Color(red: 0.03, green: 0.07, blue: 0.14),
-                    Color(red: 0.07, green: 0.13, blue: 0.24),
-                    Color(red: 0.04, green: 0.10, blue: 0.20)
-                ]
-                : [
-                    Color(red: 0.70, green: 0.88, blue: 0.99),
-                    Color(red: 0.82, green: 0.93, blue: 1.00),
-                    Color(red: 0.76, green: 0.90, blue: 0.99)
-                ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        Group {
+            if style == .canvas {
+                Color(.systemBackground)
+            } else {
+                LinearGradient(
+                    colors: colorScheme == .dark
+                        ? [
+                            Color(red: 0.03, green: 0.07, blue: 0.14),
+                            Color(red: 0.07, green: 0.13, blue: 0.24),
+                            Color(red: 0.04, green: 0.10, blue: 0.20)
+                        ]
+                        : [
+                            Color(red: 0.70, green: 0.88, blue: 0.99),
+                            Color(red: 0.82, green: 0.93, blue: 1.00),
+                            Color(red: 0.76, green: 0.90, blue: 0.99)
+                        ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        }
         // Overlay, not a ZStack sibling: the glows are wider than the screen and as siblings
         // they would stretch every container that puts this behind its content.
         .overlay {
-            if style == .full {
+            if style == .full || style == .canvas {
+                let glowScale = style == .canvas ? 0.45 : 1.0
                 ZStack {
                     glow(
-                        TrailhoundBrandColors.brandTop.opacity(colorScheme == .dark ? 0.38 : 0.42),
+                        TrailhoundBrandColors.brandTop.opacity((colorScheme == .dark ? 0.38 : 0.42) * glowScale),
                         diameter: 520,
                         offset: CGSize(width: -120, height: -220)
                     )
 
                     glow(
-                        TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.32 : 0.36),
+                        TrailhoundBrandColors.brandBottom.opacity((colorScheme == .dark ? 0.32 : 0.36) * glowScale),
                         diameter: 580,
                         offset: CGSize(width: 140, height: 280)
                     )
 
-                    glow(
-                        Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18),
-                        diameter: 380,
-                        offset: CGSize(width: 60, height: 40)
-                    )
+                    if style == .full {
+                        glow(
+                            Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18),
+                            diameter: 380,
+                            offset: CGSize(width: 60, height: 40)
+                        )
+                    }
                 }
                 .allowsHitTesting(false)
             }

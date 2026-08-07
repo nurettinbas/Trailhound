@@ -65,6 +65,43 @@ private enum TripDetailRevealSession {
     }
 }
 
+/// Bottom panel snap points — grabber drag switches between more map / balanced / more details.
+private enum TripDetailPanelDetent: CaseIterable, Equatable {
+    case mapFocused
+    case balanced
+    case details
+
+    var fraction: CGFloat {
+        switch self {
+        case .mapFocused: 0.28
+        case .balanced: 0.52
+        case .details: 0.78
+        }
+    }
+
+    var lower: TripDetailPanelDetent? {
+        switch self {
+        case .mapFocused: nil
+        case .balanced: .mapFocused
+        case .details: .balanced
+        }
+    }
+
+    var higher: TripDetailPanelDetent? {
+        switch self {
+        case .mapFocused: .balanced
+        case .balanced: .details
+        case .details: nil
+        }
+    }
+
+    static func nearest(height: CGFloat, containerHeight: CGFloat) -> TripDetailPanelDetent {
+        guard containerHeight > 0 else { return .balanced }
+        let fraction = height / containerHeight
+        return allCases.min(by: { abs($0.fraction - fraction) < abs($1.fraction - fraction) }) ?? .balanced
+    }
+}
+
 struct TripDetailView: View {
     @Bindable var trip: Trip
     @Environment(\.modelContext) private var modelContext
@@ -101,6 +138,13 @@ struct TripDetailView: View {
     @State private var didStartDetailReveal = false
     @State private var detailRevealTask: Task<Void, Never>?
     @State private var panelRisen = false
+    /// Bottom panel height detent — drag the grabber to resize map vs details.
+    @State private var panelDetent: TripDetailPanelDetent = .balanced
+    @State private var panelDragTranslation: CGFloat = 0
+    /// 0 = muted settle veil, 1 = map clear. Held muted until the route path is ready.
+    @State private var mapClarity: Double = 0
+    @State private var showSharePreview = false
+    @State private var pendingSystemShare = false
     @State private var statCountProgress: [String: Double] = [:]
     @State private var speedChartRevealProgress: Double = 0
     @State private var tripDetailViewModel: TripDetailViewModel?
@@ -137,13 +181,19 @@ struct TripDetailView: View {
             AtmosphericBackground()
 
             GeometryReader { geometry in
-                let panelHeight = geometry.size.height * 0.52
+                let containerHeight = geometry.size.height
+                let panelHeight = livePanelHeight(containerHeight: containerHeight)
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .topTrailing) {
                         tripMapView(style: mapStyle, interactive: panelRisen)
                             .onTapGesture {
                                 dismissNoteKeyboard()
                             }
+
+                        // Lightweight settle veil — avoid MapKit style thrash during reveal.
+                        Color.black.opacity(0.42 * (1 - mapClarity))
+                            .allowsHitTesting(false)
+                            .animation(reduceMotion ? nil : TrailhoundMotion.mapClear, value: mapClarity)
 
                         if !networkMonitor.isConnected {
                             Text(L10n.tripMapOfflineHint)
@@ -153,21 +203,25 @@ struct TripDetailView: View {
                                 .glassChrome(cornerRadius: 14)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                                 .padding(12)
+                                .opacity(mapClarity)
                         }
 
                         compactSpeedLegend
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                             .padding(12)
+                            .opacity(mapClarity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.bottom, panelRisen ? panelHeight : 0)
                     .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
+                    .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelDetent)
 
-                    detailPanel
+                    detailPanel(containerHeight: containerHeight)
                         .frame(height: panelHeight)
                         .offset(y: panelRisen ? 0 : panelHeight + 24)
                         .opacity(panelRisen ? 1 : 0)
                         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
+                        .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelDetent)
                         .allowsHitTesting(panelRisen)
                 }
             }
@@ -202,9 +256,34 @@ struct TripDetailView: View {
         .sheet(isPresented: $showFullscreenMap) {
             fullscreenMapSheet
         }
+        .sheet(isPresented: $showSharePreview, onDismiss: {
+            if pendingSystemShare {
+                pendingSystemShare = false
+                showShareSheet = true
+            } else {
+                shareImage = nil
+                shareCaption = nil
+            }
+        }) {
+            if let shareImage {
+                TripSharePreviewSheet(
+                    image: shareImage,
+                    caption: shareCaption,
+                    onShare: {
+                        pendingSystemShare = true
+                        showSharePreview = false
+                    },
+                    onClose: {
+                        pendingSystemShare = false
+                        showSharePreview = false
+                    }
+                )
+            }
+        }
         .sheet(isPresented: $showShareSheet, onDismiss: {
             shareImage = nil
             shareCaption = nil
+            pendingSystemShare = false
         }) {
             if let shareImage {
                 let items: [Any] = shareCaption.map { [shareImage, $0] } ?? [shareImage]
@@ -212,6 +291,25 @@ struct TripDetailView: View {
                     .ignoresSafeArea()
             }
         }
+        .overlay {
+            if isRenderingShareCard {
+                ZStack {
+                    Color.black.opacity(0.22)
+                        .ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        TrailhoundBrandMark(showsWordmark: true, symbolSize: 56)
+                        ProgressView()
+                            .controlSize(.large)
+                        Text(L10n.shareCardPreparing)
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .padding(28)
+                    .glassCard(cornerRadius: 16, contentInset: 0)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isRenderingShareCard)
         .sheet(item: $favoritePlaceSheet) { item in
             NavigationStack {
                 favoritePlacePicker(for: item)
@@ -239,12 +337,9 @@ struct TripDetailView: View {
                 )
             }
 
-            // Show the panel immediately from stored trip fields; the route fills in async.
-            if !panelRisen {
-                withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
-                    panelRisen = true
-                }
-            }
+            // Keep the map muted until the path is ready — then clear → sheet → route draw.
+            mapClarity = 0
+            panelRisen = false
 
             routeLoadTask?.cancel()
             routeLoadTask = Task { @MainActor in
@@ -304,28 +399,50 @@ struct TripDetailView: View {
         routeRevealProgress = 0
         startPinVisible = false
         endPinVisible = false
+        mapClarity = 0
+        panelRisen = false
         statCountProgress = Dictionary(
             uniqueKeysWithValues: resolvedViewModel.summaryMetrics.map { ($0.id, 0.0) }
         )
         speedChartRevealProgress = 0
 
-        if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
+        let useCinematicCamera = !plan.useCheapMapDuringReveal
+        if useCinematicCamera, let opening = resolvedViewModel.cinematicOpeningCamera(fit: .cinematicReveal) {
+            cameraPosition = .camera(opening)
+        } else if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
             cameraPosition = .region(region)
         }
 
         detailRevealTask?.cancel()
         detailRevealTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
 
-            withAnimation(TrailhoundMotion.pinPop) {
-                startPinVisible = true
+            // Beat: map clear
+            withAnimation(TrailhoundMotion.mapClear) {
+                mapClarity = 1
             }
 
-            if !panelRisen {
-                withAnimation(TrailhoundMotion.sheetRise) {
-                    panelRisen = true
+            if useCinematicCamera, let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
+                withAnimation(TrailhoundMotion.mapClear) {
+                    cameraPosition = .region(region)
                 }
+            }
+
+            try? await Task.sleep(for: .milliseconds(280))
+            guard !Task.isCancelled else { return }
+
+            // Beat: frosted sheet rise
+            withAnimation(TrailhoundMotion.sheetRise) {
+                panelRisen = true
+            }
+
+            try? await Task.sleep(for: .milliseconds(160))
+            guard !Task.isCancelled else { return }
+
+            // Beat: start pin → route draw → end pin
+            withAnimation(TrailhoundMotion.pinPop) {
+                startPinVisible = true
             }
 
             await runContentReveal(plan: plan)
@@ -378,6 +495,7 @@ struct TripDetailView: View {
         routeRevealProgress = 1
         startPinVisible = true
         endPinVisible = true
+        mapClarity = 1
         panelRisen = true
         statCountProgress = Dictionary(
             uniqueKeysWithValues: resolvedViewModel.summaryMetrics.map { ($0.id, 1.0) }
@@ -389,13 +507,46 @@ struct TripDetailView: View {
         }
     }
 
-    private var detailPanel: some View {
+    private func livePanelHeight(containerHeight: CGFloat) -> CGFloat {
+        let minHeight = containerHeight * TripDetailPanelDetent.mapFocused.fraction
+        let maxHeight = containerHeight * TripDetailPanelDetent.details.fraction
+        let base = containerHeight * panelDetent.fraction
+        // Drag down → smaller panel (more map); drag up → taller panel.
+        return min(maxHeight, max(minHeight, base - panelDragTranslation))
+    }
+
+    private func snapPanelDetent(containerHeight: CGFloat, velocityY: CGFloat) {
+        let live = livePanelHeight(containerHeight: containerHeight)
+        var target = TripDetailPanelDetent.nearest(height: live, containerHeight: containerHeight)
+        // Fling: downward velocity favors more map; upward favors more details.
+        if velocityY > 900 {
+            target = target.lower ?? target
+        } else if velocityY < -900 {
+            target = target.higher ?? target
+        }
+        withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
+            panelDetent = target
+            panelDragTranslation = 0
+        }
+        refitMapForPanelDetent(target)
+    }
+
+    private func refitMapForPanelDetent(_ detent: TripDetailPanelDetent) {
+        let fit = TripDetailViewModel.MapFitContext(
+            top: 0.13,
+            bottom: Double(detent.fraction) + 0.02,
+            horizontal: 0.08
+        )
+        if let region = resolvedViewModel.mapRegion(fit: fit) {
+            withAnimation(reduceMotion ? nil : TrailhoundMotion.gentle) {
+                cameraPosition = .region(region)
+            }
+        }
+    }
+
+    private func detailPanel(containerHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
-            Capsule()
-                .fill(Color.secondary.opacity(0.28))
-                .frame(width: 36, height: 4)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            panelGrabber(containerHeight: containerHeight)
 
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -549,6 +700,50 @@ struct TripDetailView: View {
             .scrollBounceBehavior(.basedOnSize)
             .dismissKeyboardOnScroll()
         }
+    }
+
+    private func panelGrabber(containerHeight: CGFloat) -> some View {
+        Capsule()
+            .fill(Color.secondary.opacity(0.35))
+            .frame(width: 36, height: 5)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                    .onChanged { value in
+                        dismissNoteKeyboard()
+                        panelDragTranslation = value.translation.height
+                    }
+                    .onEnded { value in
+                        snapPanelDetent(
+                            containerHeight: containerHeight,
+                            velocityY: value.predictedEndTranslation.height - value.translation.height
+                        )
+                    }
+            )
+            .accessibilityLabel(L10n.tripDetailPanelResize)
+            .accessibilityHint(L10n.tripDetailPanelResizeHint)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityActions {
+                Button(L10n.tripDetailPanelMoreMap) {
+                    guard let lower = panelDetent.lower else { return }
+                    withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
+                        panelDetent = lower
+                        panelDragTranslation = 0
+                    }
+                    refitMapForPanelDetent(lower)
+                }
+                Button(L10n.tripDetailPanelMoreDetails) {
+                    guard let higher = panelDetent.higher else { return }
+                    withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
+                        panelDetent = higher
+                        panelDragTranslation = 0
+                    }
+                    refitMapForPanelDetent(higher)
+                }
+            }
     }
 
     private var tripHeader: some View {
@@ -1155,6 +1350,7 @@ struct TripDetailView: View {
     }
 
     private func renderShareCard() async {
+        guard !isRenderingShareCard else { return }
         isRenderingShareCard = true
         defer { isRenderingShareCard = false }
 
@@ -1173,7 +1369,7 @@ struct TripDetailView: View {
             places: places,
             privacyRadius: privacyRadius
         )
-        showShareSheet = true
+        showSharePreview = true
     }
 
     private func dismissNoteKeyboard() {
@@ -1213,6 +1409,7 @@ struct TripDetailView: View {
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
         originalNoteText = noteText
         try? modelContext.save()
+        ToastPresenter.shared.show(.tripSaved)
     }
 
     private func applyGPSTrimIfNeeded() {
@@ -1330,6 +1527,64 @@ private struct TripStopEditRow: View {
         .onAppear {
             startedAt = stop.startedAt
             durationMinutes = max(1, Int(stop.durationSeconds / 60))
+        }
+    }
+}
+
+private struct TripSharePreviewSheet: View {
+    let image: UIImage
+    let caption: String?
+    let onShare: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AtmosphericBackground().ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    TrailhoundBrandMark(showsWordmark: true, symbolSize: 44)
+
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        }
+                        .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
+                        .padding(.horizontal, 20)
+
+                    if let caption, !caption.isEmpty {
+                        Text(caption)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                            .lineLimit(4)
+                    }
+
+                    Button(action: onShare) {
+                        Label(L10n.share, systemImage: "square.and.arrow.up")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 12)
+                }
+                .padding(.top, 8)
+            }
+            .navigationTitle(L10n.shareCardPreviewTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .glassNavigationChrome()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.actionClose, action: onClose)
+                }
+            }
         }
     }
 }

@@ -30,7 +30,12 @@ struct TripListViewModel {
            let privacy = PlaceMatchingService.privacyDisplayName(for: coordinate, places: places, privacyRadius: privacyRadius) {
             return privacy
         }
-        if let placeName { return placeName }
+        if let placeName, !placeName.isEmpty { return placeName }
+        // Prefer a matching saved place over the raw geocoded address.
+        if let coordinate,
+           let matched = places.first(where: { $0.contains(coordinate) }) {
+            return matched.name
+        }
         if let address, !address.isEmpty { return address }
         if let coordinate { return DateFormatters.formatCoordinate(coordinate) }
         return "—"

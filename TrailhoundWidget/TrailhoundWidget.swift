@@ -386,7 +386,7 @@ struct TrailhoundWidgetView: View {
                 .foregroundStyle(usesLiquidGlassLayout ? .primary : WidgetPalette.brandBottom)
                 .widgetAccentable(usesLiquidGlassLayout)
             Text("Trailhound")
-                .font(compact ? .subheadline.weight(.semibold) : .headline)
+                .font(compact ? .subheadline.weight(.semibold) : .headline.weight(.bold))
             Spacer(minLength: 0)
         }
     }
@@ -506,10 +506,10 @@ private struct LiveActivityCarIcon: View {
         Group {
             if isPaused {
                 Image(systemName: "pause.circle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(WidgetPalette.paused)
             } else {
                 Image(systemName: "car.side.fill")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(WidgetPalette.brandBottom)
                     .scaleEffect(x: -1, y: 1)
             }
         }
@@ -546,7 +546,7 @@ struct TrailhoundLiveActivity: Widget {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
                         .font(.headline)
-                        .foregroundStyle(context.state.isPaused ? .orange : .primary)
+                        .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
                     Text(liveActivityStats(context.state))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -558,7 +558,9 @@ struct TrailhoundLiveActivity: Widget {
                 liveActivityControls(isPaused: context.state.isPaused)
             }
             .padding()
-            .activityBackgroundTint((context.state.isPaused ? Color.orange : Color.blue).opacity(0.12))
+            .activityBackgroundTint(
+                (context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.14)
+            )
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -569,7 +571,7 @@ struct TrailhoundLiveActivity: Widget {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
                             .font(.caption)
-                            .foregroundStyle(context.state.isPaused ? .orange : .primary)
+                            .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
                         Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
                             .font(.title3.weight(.semibold))
                             .monospacedDigit()

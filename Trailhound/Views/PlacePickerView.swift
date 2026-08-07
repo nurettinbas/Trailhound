@@ -704,12 +704,14 @@ struct PlacePickerView: View {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     let privacy = isPrivacyZone || kind == .home
 
+    let savedPlace: SavedPlace
     if let editingPlace {
       editingPlace.name = trimmedName
       editingPlace.latitude = latitude
       editingPlace.longitude = longitude
       editingPlace.kind = kind
       editingPlace.isPrivacyZone = privacy
+      savedPlace = editingPlace
     } else {
       let place = SavedPlace(
         name: trimmedName,
@@ -719,9 +721,23 @@ struct PlacePickerView: View {
         isPrivacyZone: privacy
       )
       modelContext.insert(place)
+      savedPlace = place
     }
 
+    // @Query can lag one frame after insert; include the place we just wrote.
+    var allPlaces = places
+    if !allPlaces.contains(where: { $0.id == savedPlace.id }) {
+      allPlaces.append(savedPlace)
+    }
+
+    PlaceMatchingService.rematchTrips(
+      trips,
+      places: allPlaces,
+      privacyRadius: settings.privacyRadiusMeters
+    )
+
     try? modelContext.save()
+    ToastPresenter.shared.show(.placeSaved)
     onSaved?(trimmedName)
     dismiss()
   }

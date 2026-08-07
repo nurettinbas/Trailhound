@@ -79,11 +79,29 @@ At the source, `RecordingMovementPolicy.trustedGPSSpeedMps` gates Core Location'
 
 | Display point count | Behavior |
 |-------------|----------|
-| ≤ 300 | ~16 ticks, full map styling during reveal |
-| 301–1500 | ~12 ticks, flat map + single polyline stroke during reveal |
+| ≤ 300 | ~16 ticks, full map styling during reveal; cinematic opening camera + map-clear veil |
+| 301–1500 | ~12 ticks, flat map + single polyline stroke during reveal; skip cinematic camera |
 | > 1500 | Instant reveal (no animation) |
 
 Reduce Motion always uses instant reveal.
+
+Signature open order (animated path only): muted map veil → `mapClear` → frosted panel `sheetRise` → start pin → route ticks → end pin. The settle veil is a lightweight SwiftUI overlay (not a MapKit style switch). The bottom panel stays a custom glass panel (not system detents) so map padding stays in sync with the reveal.
+
+## Share card
+
+- One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
+- Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
+- Brand logo is drawn into the raster at compose time; no ActivityKit / widget images.
+
+## Recording cold-open
+
+- `TripListView` arms `coldOpenArmed` for manual, Shortcuts, and widget deep-link starts; `ActiveTripView.playEntranceReveal` must stay wired to that flag.
+- Road `TimelineView` remains gated (recording, unpaused, on-screen, LPM 12 FPS). Do not reintroduce a live mini-map on the card.
+
+## Shortcuts guide wizard
+
+- At most one live `OnboardingHeroScene` `TimelineView` (prereq / handoff pages only); pause when backgrounded or Reduce Motion.
+- Step-complete uses `SoftPulseRing` + haptics — not a continuous road loop while paging.
 
 ## Derived trip fields (schema V10)
 
@@ -232,7 +250,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 1. Instruments → Time Profiler + Core Animation on device.
 2. Pairing → edit vehicle name with keyboard — should feel smooth vs list screens.
 3. Start recording, scroll trip list, switch tabs — CPU should drop on non-Trips tabs.
-4. Open a long trip detail — should not hitch for multi-second map reveal.
+4. Open a long trip detail — should not hitch for multi-second map reveal. Short trips may run map-clear + panel rise before the route ticks; long trips stay instant.
 5. Stats tab with many trips — scroll through charts; rows below the fold should appear after placeholders, without blocking the summary header.
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.

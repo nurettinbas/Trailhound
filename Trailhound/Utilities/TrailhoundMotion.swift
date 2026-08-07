@@ -18,6 +18,10 @@ enum TrailhoundMotion {
     static let mapClear = Animation.easeOut(duration: 0.9)
     /// Pin pop with a bit of overshoot.
     static let pinPop = Animation.spring(response: 0.36, dampingFraction: 0.72)
+    /// Toast chip drop-in — soft overshoot, matches pinPop energy.
+    static let toastSpring = Animation.spring(response: 0.42, dampingFraction: 0.78)
+    /// Toast chip exit — quick ease up/fade.
+    static let toastDismiss = Animation.easeIn(duration: 0.22)
 
     /// Soft rise (fade + slight upward settle).
     static var softRiseTransition: AnyTransition {
@@ -77,6 +81,19 @@ enum TrailhoundMotion {
     static func fadeScaleTransition(reduceMotion: Bool) -> AnyTransition {
         guard !reduceMotion else { return .identity }
         return .opacity.combined(with: .scale(scale: 0.98))
+    }
+
+    /// Toast chip: drop from above + scale settle; leave upward with fade.
+    static func toastTransition(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .opacity
+                .combined(with: .offset(y: -18))
+                .combined(with: .scale(scale: 0.88)),
+            removal: .opacity
+                .combined(with: .offset(y: -10))
+                .combined(with: .scale(scale: 0.94))
+        )
     }
 }
 

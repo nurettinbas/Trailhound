@@ -177,7 +177,9 @@ struct PairingTabView: View {
             navigationPath = NavigationPath()
         }
 
-        VehiclePairingService.deleteVehicle(vehicle, in: modelContext)
+        if VehiclePairingService.deleteVehicle(vehicle, in: modelContext) {
+            ToastPresenter.shared.show(.deleted)
+        }
         self.vehiclePendingDeleteID = nil
     }
 }

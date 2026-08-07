@@ -211,6 +211,7 @@ struct NotificationsListView: View {
                         if TripRecoveryService.deleteOrphan(trip, in: modelContext) {
                             store.delete(item.id)
                             store.reload()
+                            ToastPresenter.shared.show(.deleted)
                         }
                     } label: {
                         Label(L10n.delete, systemImage: "trash")

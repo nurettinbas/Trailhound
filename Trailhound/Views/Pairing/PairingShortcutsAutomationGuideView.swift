@@ -49,56 +49,61 @@ struct PairingShortcutsAutomationCard: View {
 
 struct PairingShortcutsAutomationGuideView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
+    @State private var stepIndex = 0
+    @State private var completedStepIDs: Set<String> = []
+    @State private var stepCompletePulse = false
+    @State private var heroBeat: CGFloat = 0
+
     private var brandAccent: Color { TrailhoundBrandColors.brandBottom }
+    private var steps: [GuideWizardStep] { Self.makeSteps() }
+    private var currentStep: GuideWizardStep { steps[min(stepIndex, steps.count - 1)] }
+    private var isLastStep: Bool { stepIndex >= steps.count - 1 }
+    private var isFirstStep: Bool { stepIndex <= 0 }
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text(L10n.pairingShortcutsGuideIntro)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+            ZStack {
+                AtmosphericBackground().ignoresSafeArea()
 
-                        prerequisiteSection
-                        triggerOptionsSection
-                        automationFlowSection(
-                            title: L10n.pairingShortcutsGuideConnectTitle,
-                            steps: connectSteps,
-                            stepIcons: ["apps.iphone", "plus.circle.fill", "point.3.connected.trianglepath.dotted", "play.fill", "bell.slash.fill"],
-                            symbol: "play.circle.fill",
-                            triggerChipStepIndex: 2,
-                            actionChipStepIndex: 3,
-                            actionChipTitle: L10n.shortcutStartTitle
-                        )
-                        automationFlowSection(
-                            title: L10n.pairingShortcutsGuideDisconnectTitle,
-                            steps: disconnectSteps,
-                            stepIcons: ["plus.circle.fill", "point.3.connected.trianglepath.dotted", "stop.fill", "bell.slash.fill"],
-                            symbol: "stop.circle.fill",
-                            triggerChipStepIndex: 1,
-                            actionChipStepIndex: 2,
-                            actionChipTitle: L10n.shortcutStopTitle
-                        )
+                VStack(spacing: 0) {
+                    progressRail
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
 
-                        Text(L10n.pairingShortcutsGuideNote)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    heroChrome
+                        .padding(.bottom, 8)
 
-                        ShortcutsLink()
-                            .shortcutsLinkStyle(.automaticOutline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityLabel(L10n.pairingShortcutsGuideOpenShortcuts)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            Group {
+                                if showsStackedAutomationSteps {
+                                    stackedAutomationSteps
+                                } else {
+                                    stepContent(for: currentStep)
+                                        .id(currentStep.id)
+                                        .transition(reduceMotion ? .opacity : TrailhoundMotion.softRiseTransition)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 24)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                        .onChange(of: stepIndex) { _, newIndex in
+                            guard showsStackedAutomationSteps else { return }
+                            withAnimation(reduceMotion ? nil : TrailhoundMotion.snappy) {
+                                proxy.scrollTo(steps[newIndex].id, anchor: .top)
+                            }
+                        }
                     }
-                    .padding()
-                    .frame(width: geometry.size.width, alignment: .leading)
+
+                    bottomChrome
                 }
             }
-            .background { AtmosphericBackground().ignoresSafeArea() }
             .navigationTitle(L10n.pairingShortcutsGuideTitle)
             .navigationBarTitleDisplayMode(.inline)
             .glassNavigationChrome()
@@ -109,7 +114,172 @@ struct PairingShortcutsAutomationGuideView: View {
                     }
                 }
             }
+            .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: stepIndex)
         }
+    }
+
+    /// Connect + disconnect steps accumulate on screen (newest on top).
+    private var showsStackedAutomationSteps: Bool {
+        switch currentStep.kind {
+        case .connectStep, .disconnectStep:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var firstAutomationStepIndex: Int {
+        steps.firstIndex { step in
+            switch step.kind {
+            case .connectStep, .disconnectStep: true
+            default: false
+            }
+        } ?? 2
+    }
+
+    private var stackedAutomationSteps: some View {
+        let revealed = Array(steps[firstAutomationStepIndex...stepIndex].reversed())
+        return VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(revealed.enumerated()), id: \.element.id) { _, step in
+                let isCurrent = step.id == currentStep.id
+                stackedAutomationCard(for: step, isCurrent: isCurrent)
+                    .id(step.id)
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .opacity.combined(with: .scale(scale: 0.98))
+                            )
+                    )
+            }
+        }
+    }
+
+    private var progressRail: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.pairingShortcutsGuideStepProgress(current: stepIndex + 1, total: steps.count))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            GeometryReader { geo in
+                let progress = CGFloat(stepIndex + 1) / CGFloat(max(steps.count, 1))
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.18))
+                    Capsule()
+                        .fill(brandAccent)
+                        .frame(width: max(8, geo.size.width * progress))
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+
+    @ViewBuilder
+    private var heroChrome: some View {
+        switch currentStep.kind {
+        case .prereq, .handoff:
+            ZStack {
+                OnboardingHeroScene(
+                    kind: currentStep.kind == .handoff ? .shortcutsLink : .welcomeDrive,
+                    driveInProgress: 1,
+                    beatProgress: heroBeat,
+                    isAnimating: scenePhase == .active && !reduceMotion
+                )
+
+                if stepCompletePulse {
+                    SoftPulseRing(
+                        color: UIColor(brandAccent),
+                        isActive: true,
+                        reduceMotion: reduceMotion
+                    )
+                    .frame(width: 72, height: 72)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
+            }
+            .frame(height: 140)
+            .padding(.horizontal, 16)
+        case .triggers, .connectStep, .disconnectStep:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func stepContent(for step: GuideWizardStep) -> some View {
+        switch step.kind {
+        case .prereq:
+            prerequisiteSection
+        case .triggers:
+            triggerOptionsSection
+        case .connectStep, .disconnectStep:
+            // Rendered via `stackedAutomationSteps` while in this range.
+            EmptyView()
+        case .handoff:
+            handoffSection
+        }
+    }
+
+    @ViewBuilder
+    private func stackedAutomationCard(for step: GuideWizardStep, isCurrent: Bool) -> some View {
+        switch step.kind {
+        case .connectStep(let index):
+            automationStepCard(
+                sectionTitle: L10n.pairingShortcutsGuideConnectTitle,
+                sectionSymbol: "play.circle.fill",
+                number: index + 1,
+                text: connectSteps[index],
+                icon: connectIcons[index],
+                showsTriggerChips: index == 2,
+                showsActionChip: index == 3,
+                actionChipTitle: L10n.shortcutStartTitle,
+                isCurrent: isCurrent,
+                isComplete: !isCurrent || completedStepIDs.contains(step.id)
+            )
+        case .disconnectStep(let index):
+            automationStepCard(
+                sectionTitle: L10n.pairingShortcutsGuideDisconnectTitle,
+                sectionSymbol: "stop.circle.fill",
+                number: index + 1,
+                text: disconnectSteps[index],
+                icon: disconnectIcons[index],
+                showsTriggerChips: index == 1,
+                showsActionChip: index == 2,
+                actionChipTitle: L10n.shortcutStopTitle,
+                isCurrent: isCurrent,
+                isComplete: !isCurrent || completedStepIDs.contains(step.id)
+            )
+        default:
+            EmptyView()
+        }
+    }
+
+    private var bottomChrome: some View {
+        HStack(spacing: 12) {
+            Button {
+                goBack()
+            } label: {
+                Text(L10n.pairingShortcutsGuideBack)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isFirstStep)
+
+            Button {
+                advance()
+            } label: {
+                Text(isLastStep ? L10n.pairingShortcutsGuideDone : L10n.pairingShortcutsGuideNext)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(brandAccent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
     }
 
     private var prerequisiteSection: some View {
@@ -163,6 +333,130 @@ struct PairingShortcutsAutomationGuideView: View {
         .padding(14)
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .glassChrome(cornerRadius: 12)
+    }
+
+    private var handoffSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideHandoffTitle, symbol: "arrow.up.forward.app")
+
+            Text(L10n.pairingShortcutsGuideHandoffBody)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(L10n.pairingShortcutsGuideNote)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ShortcutsLink()
+                .shortcutsLinkStyle(.automaticOutline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(L10n.pairingShortcutsGuideOpenShortcuts)
+
+            Toggle(
+                L10n.pairingShortcutsGuideFinishedToggle,
+                isOn: Binding(
+                    get: { settings.hasCompletedShortcutsGuide },
+                    set: { newValue in
+                        if newValue {
+                            settings.markShortcutsGuideCompleted()
+                            TrailhoundHaptics.pairingSucceeded()
+                            ToastPresenter.shared.show(.shortcutsGuideFinished)
+                            playStepComplete()
+                        }
+                    }
+                )
+            )
+            .font(.subheadline)
+            .tint(brandAccent)
+            .disabled(settings.hasCompletedShortcutsGuide)
+        }
+        .padding(14)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+    }
+
+    private func automationStepCard(
+        sectionTitle: String,
+        sectionSymbol: String,
+        number: Int,
+        text: String,
+        icon: String,
+        showsTriggerChips: Bool,
+        showsActionChip: Bool,
+        actionChipTitle: String,
+        isCurrent: Bool,
+        isComplete: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: sectionSymbol)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isCurrent ? brandAccent : brandAccent.opacity(0.55))
+                Text(sectionTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isCurrent ? .primary : .secondary)
+                Spacer(minLength: 0)
+                if isComplete && !isCurrent {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(isComplete && !isCurrent ? Color.green : brandAccent)
+                        .frame(width: 32, height: 32)
+                    if isComplete && !isCurrent {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("\(number)")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .scaleEffect(isCurrent ? 1.06 : 1)
+                .animation(reduceMotion ? nil : TrailhoundMotion.pinPop, value: isCurrent)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: icon)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isCurrent ? brandAccent : .secondary)
+                            .padding(.top, 2)
+                        Text(text)
+                            .font(isCurrent ? .subheadline.weight(.medium) : .subheadline)
+                            .foregroundStyle(isCurrent ? .primary : .secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if isCurrent, showsTriggerChips {
+                        triggerChipsRow
+                    }
+                    if isCurrent, showsActionChip {
+                        actionChip(title: actionChipTitle)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(
+                    brandAccent.opacity(isCurrent ? 0.35 : 0.12),
+                    lineWidth: isCurrent ? 1.5 : 1
+                )
+        }
+        .opacity(isCurrent ? 1 : 0.78)
+        .scaleEffect(isCurrent ? 1 : 0.985, anchor: .top)
     }
 
     private func triggerOptionRow(
@@ -239,116 +533,12 @@ struct PairingShortcutsAutomationGuideView: View {
         ]
     }
 
-    private func automationFlowSection(
-        title: String,
-        steps: [String],
-        stepIcons: [String],
-        symbol: String,
-        triggerChipStepIndex: Int?,
-        actionChipStepIndex: Int?,
-        actionChipTitle: String
-    ) -> some View {
-        let tint = brandAccent
-
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(tint)
-
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(tint.opacity(0.08))
-
-            Divider().opacity(0.35)
-
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                    automationStepRow(
-                        number: index + 1,
-                        text: step,
-                        icon: stepIcons.indices.contains(index) ? stepIcons[index] : "circle.fill",
-                        tint: tint,
-                        isLast: index == steps.count - 1,
-                        showsTriggerChips: triggerChipStepIndex == index,
-                        showsActionChip: actionChipStepIndex == index,
-                        actionChipTitle: actionChipTitle
-                    )
-                }
-            }
-            .padding(14)
-        }
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .glassChrome(cornerRadius: 12)
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(tint.opacity(0.18), lineWidth: 1)
-        }
+    private var connectIcons: [String] {
+        ["apps.iphone", "plus.circle.fill", "point.3.connected.trianglepath.dotted", "play.fill", "bell.slash.fill"]
     }
 
-    private func automationStepRow(
-        number: Int,
-        text: String,
-        icon: String,
-        tint: Color,
-        isLast: Bool,
-        showsTriggerChips: Bool,
-        showsActionChip: Bool,
-        actionChipTitle: String
-    ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            ZStack(alignment: .top) {
-                if !isLast {
-                    Rectangle()
-                        .fill(tint.opacity(0.22))
-                        .frame(width: 2)
-                        .padding(.top, 11)
-                        .frame(maxHeight: .infinity, alignment: .top)
-                }
-
-                ZStack {
-                    Circle()
-                        .fill(tint)
-                        .frame(width: 22, height: 22)
-                    Text("\(number)")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(tint)
-                        .frame(width: 14, alignment: .center)
-                        .padding(.top, 1)
-
-                    Text(text)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if showsTriggerChips {
-                    triggerChipsRow
-                }
-
-                if showsActionChip {
-                    actionChip(title: actionChipTitle)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, isLast ? 2 : 8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private var disconnectIcons: [String] {
+        ["plus.circle.fill", "point.3.connected.trianglepath.dotted", "stop.fill", "bell.slash.fill"]
     }
 
     private var triggerChipsRow: some View {
@@ -401,6 +591,90 @@ struct PairingShortcutsAutomationGuideView: View {
                 .strokeBorder(brandAccent.opacity(0.25), lineWidth: 1)
         }
     }
+
+    private func advance() {
+        markCurrentStepComplete()
+        if isLastStep {
+            dismiss()
+            return
+        }
+
+        // Stacking range keeps prior cards visible — short beat, then push the next on top.
+        let delayMs: UInt64 = reduceMotion ? 0 : (showsStackedAutomationSteps ? 140 : 220)
+        Task { @MainActor in
+            if delayMs > 0 {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+            }
+            withAnimation(reduceMotion ? nil : TrailhoundMotion.cardSpring) {
+                stepIndex += 1
+            }
+            if currentStep.kind == .handoff {
+                withAnimation(reduceMotion ? nil : TrailhoundMotion.pinPop) {
+                    heroBeat = 1
+                }
+            }
+        }
+    }
+
+    private func goBack() {
+        guard !isFirstStep else { return }
+        withAnimation(reduceMotion ? nil : TrailhoundMotion.snappy) {
+            stepIndex -= 1
+        }
+    }
+
+    private func markCurrentStepComplete() {
+        let id = currentStep.id
+        guard !completedStepIDs.contains(id) else { return }
+        completedStepIDs.insert(id)
+        TrailhoundHaptics.selection()
+        playStepComplete()
+    }
+
+    private func playStepComplete() {
+        guard !reduceMotion else { return }
+        stepCompletePulse = true
+        withAnimation(TrailhoundMotion.pinPop) {
+            heroBeat = 1
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(650))
+            withAnimation(.easeOut(duration: 0.2)) {
+                stepCompletePulse = false
+            }
+            if currentStep.kind != .handoff {
+                heroBeat = 0
+            }
+        }
+    }
+
+    private static func makeSteps() -> [GuideWizardStep] {
+        var result: [GuideWizardStep] = [
+            GuideWizardStep(id: "prereq", kind: .prereq),
+            GuideWizardStep(id: "triggers", kind: .triggers)
+        ]
+        for index in 0..<5 {
+            result.append(GuideWizardStep(id: "connect-\(index)", kind: .connectStep(index)))
+        }
+        for index in 0..<4 {
+            result.append(GuideWizardStep(id: "disconnect-\(index)", kind: .disconnectStep(index)))
+        }
+        result.append(GuideWizardStep(id: "handoff", kind: .handoff))
+        return result
+    }
+}
+
+private struct GuideWizardStep: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case prereq
+        case triggers
+        case connectStep(Int)
+        case disconnectStep(Int)
+        case handoff
+    }
+
+    let id: String
+    let kind: Kind
 }
 
 private extension Binding where Value == Bool {

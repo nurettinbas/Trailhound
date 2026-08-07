@@ -344,6 +344,7 @@ struct SettingsView: View {
     private func deletePlace(_ place: SavedPlace) {
         modelContext.delete(place)
         try? modelContext.save()
+        ToastPresenter.shared.show(.deleted)
     }
 
     private func runCleanupIfNeeded() {

@@ -57,20 +57,39 @@ enum TrailhoundSchemaV11: VersionedSchema {
     }
 }
 
+/// Adds optional `VehicleProfile.photoFileName` (disk thumb path key). Additive only.
+enum TrailhoundSchemaV12: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(12, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
+/// Tip schema must be a single live-model enum (V12); V11 stays for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV11.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV12.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV11]
+        [migrateV5toV12]
     }
 
-    static let migrateV5toV11 = MigrationStage.lightweight(
+    static let migrateV5toV12 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV11.self
+        toVersion: TrailhoundSchemaV12.self
     )
 }

@@ -137,6 +137,7 @@ private struct PairingVehicleEditorForm: View {
                 in: modelContext,
                 settings: settings
             )
+            ToastPresenter.shared.show(.vehicleSaved)
             dismiss()
         } catch {
             AppErrorPresenter.shared.present(L10n.pairingTabSaveFailed(error.localizedDescription))

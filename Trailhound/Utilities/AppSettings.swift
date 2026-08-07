@@ -28,6 +28,8 @@ final class AppSettings {
 
     var hasCompletedOnboarding = false
     var hasCompletedCarSetup = false
+    /// User-marked completion of the in-app Shortcuts guide (not verified against Shortcuts).
+    var hasCompletedShortcutsGuide = false
     /// Live target for the calendar month currently in progress. Widgets and fuel-agnostic surfaces read this.
     var monthlyDistanceGoalMeters: Double = 500_000 {
         didSet { defaults.set(monthlyDistanceGoalMeters, forKey: Key.monthlyDistanceGoalMeters) }
@@ -58,6 +60,7 @@ final class AppSettings {
         static let blurExportCoordinates = "blurExportCoordinates"
         static let hasCompletedCarSetup = "hasCompletedCarSetup"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let hasCompletedShortcutsGuide = "hasCompletedShortcutsGuide"
         static let monthlyDistanceGoalMeters = "monthlyDistanceGoalMeters"
         static let monthlyGoalsByMonth = "monthlyGoalsByMonth"
         static let preferredLanguageCode = "preferredLanguageCode"
@@ -70,6 +73,7 @@ final class AppSettings {
         defaults = resolvedDefaults
         hasCompletedOnboarding = resolvedDefaults.bool(forKey: Key.hasCompletedOnboarding)
         hasCompletedCarSetup = resolvedDefaults.bool(forKey: Key.hasCompletedCarSetup)
+        hasCompletedShortcutsGuide = resolvedDefaults.bool(forKey: Key.hasCompletedShortcutsGuide)
         resolvedDefaults.removeObject(forKey: Key.preferredLanguageCode)
         monthlyDistanceGoalMeters = Self.loadedPositiveDouble(
             from: resolvedDefaults,
@@ -160,6 +164,12 @@ final class AppSettings {
             hasCompletedCarSetup = true
             defaults.set(true, forKey: Key.hasCompletedCarSetup)
         }
+    }
+
+    func markShortcutsGuideCompleted() {
+        guard !hasCompletedShortcutsGuide else { return }
+        hasCompletedShortcutsGuide = true
+        defaults.set(true, forKey: Key.hasCompletedShortcutsGuide)
     }
 
     private static func removeLegacyRecordingSensitivityKeys(from defaults: UserDefaults) {

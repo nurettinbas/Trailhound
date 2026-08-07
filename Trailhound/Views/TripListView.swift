@@ -226,12 +226,14 @@ struct TripListView: View {
                             .buttonStyle(.borderedProminent)
                             Button(L10n.orphanSave) {
                                 if TripRecoveryService.finalizeOrphan(orphan.trip, in: modelContext, saveTrip: true) {
+                                    ToastPresenter.shared.show(.orphanSaved)
                                     refreshOrphans()
                                 }
                             }
                             .buttonStyle(.bordered)
                             Button(L10n.delete, role: .destructive) {
                                 if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
+                                    ToastPresenter.shared.show(.deleted, playHaptic: false)
                                     refreshOrphans()
                                 }
                             }
@@ -249,7 +251,7 @@ struct TripListView: View {
                     ActiveTripView(
                         morphNamespace: tripMorphNamespace,
                         morphID: activeTripID,
-                        playEntranceReveal: false,
+                        playEntranceReveal: coldOpenArmed && coldOpenTripID == activeTripID,
                         onEntranceFinished: finishColdOpen,
                         onStop: { anchor in beginEndCredits(cardAnchor: anchor) },
                         isRecordingCardVisible: tabSelection.selectedTab == .trips && isRecordingCardInViewport
@@ -877,6 +879,7 @@ struct TripListView: View {
         modelContext.delete(trip)
         mergeSelection.remove(trip.id)
         try? modelContext.save()
+        ToastPresenter.shared.show(.deleted, playHaptic: false)
     }
 
     private func performMerge() async {
@@ -897,6 +900,7 @@ struct TripListView: View {
             let legCount = selectedIDs.count
             isMergeMode = false
             mergeSelection.removeAll()
+            ToastPresenter.shared.show(.tripsMerged)
             if !UITestSupport.isUnitTesting {
                 TripNotificationService.notifyTripsMerged(
                     tripID: mergedUUID,

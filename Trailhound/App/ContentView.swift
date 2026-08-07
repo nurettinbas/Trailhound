@@ -8,13 +8,16 @@ struct ContentView: View {
     @Bindable private var tabSelection = TabSelection.shared
 
     var body: some View {
-        if !settings.hasCompletedOnboarding {
-            OnboardingView()
-        } else if settings.appLockEnabled && !appLockService.isUnlocked {
-            AppLockView()
-        } else {
-            mainTabs
+        Group {
+            if !settings.hasCompletedOnboarding {
+                OnboardingView()
+            } else if settings.appLockEnabled && !appLockService.isUnlocked {
+                AppLockView()
+            } else {
+                mainTabs
+            }
         }
+        .toastHost()
     }
 
     private var isRecordingSession: Bool {

@@ -92,6 +92,7 @@
 		A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSTATSROW000000001 /* TripStatsRow.swift */; };
 		A1TRIPLISTPAGE000000001 /* TripListPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPLISTPAGE000000001 /* TripListPage.swift */; };
 		A1STATSDEFCHART00000001 /* StatsDeferredChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */; };
+		A1STATSCHARTPAGER000001 /* StatsChartPager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSCHARTPAGER000001 /* StatsChartPager.swift */; };
 		A1TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */; };
 		A1UITESTSUPPORT00000001 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2UITESTSUPPORT00000001 /* UITestSupport.swift */; };
 		A1TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */; };
@@ -108,6 +109,8 @@
 		A10000000000000000000028 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000027 /* PrivacyInfo.xcprivacy */; };
 		B10000000000000000000001 /* TripNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* TripNotificationService.swift */; };
 		A1ONBOARDING00000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ONBOARDING00000000001 /* OnboardingView.swift */; };
+		A1ONBOARDHERO00000001 /* OnboardingHeroScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */; };
+		A1BRANDMARK0000000001 /* TrailhoundBrandMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */; };
 		A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERMBANNER00000000001 /* PermissionBanner.swift */; };
 		B10000000000000000000003 /* RecordingCarAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* RecordingCarAnimationView.swift */; };
 		B1LIVEBREADCRUMB00000001 /* LiveBreadcrumbCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */; };
@@ -164,6 +167,8 @@
 		A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */; };
 		A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
+		A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTPRESENTER000001 /* ToastPresenter.swift */; };
+		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
 		A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROUTES00000000001 /* FrequentRoutesService.swift */; };
 		A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */; };
@@ -302,6 +307,7 @@
 		A2TRIPSTATSROW000000001 /* TripStatsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStatsRow.swift; sourceTree = "<group>"; };
 		A2TRIPLISTPAGE000000001 /* TripListPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripListPage.swift; sourceTree = "<group>"; };
 		A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDeferredChart.swift; sourceTree = "<group>"; };
+		A2STATSCHARTPAGER000001 /* StatsChartPager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsChartPager.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailRevealPolicy.swift; sourceTree = "<group>"; };
 		A2UITESTSUPPORT00000001 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundSounds.swift; sourceTree = "<group>"; };
@@ -322,6 +328,8 @@
 		AF0E09B4CEDD485E9B744E57 /* TripStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStop.swift; sourceTree = "<group>"; };
 		B20000000000000000000001 /* TripNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripNotificationService.swift; sourceTree = "<group>"; };
 		A2ONBOARDING00000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingHeroScene.swift; sourceTree = "<group>"; };
+		A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundBrandMark.swift; sourceTree = "<group>"; };
 		A2PERMBANNER00000000001 /* PermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionBanner.swift; sourceTree = "<group>"; };
 		B20000000000000000000003 /* RecordingCarAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCarAnimationView.swift; sourceTree = "<group>"; };
 		A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBreadcrumbCanvas.swift; sourceTree = "<group>"; };
@@ -350,6 +358,8 @@
 		A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSyncCoordinator.swift; sourceTree = "<group>"; };
 		A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDisplaySampler.swift; sourceTree = "<group>"; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
+		A2TOASTPRESENTER000001 /* ToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastPresenter.swift; sourceTree = "<group>"; };
+		A2TOASTVIEW00000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000005 /* TrailhoundWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000006 /* WidgetRecordingIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRecordingIntents.swift; sourceTree = "<group>"; };
@@ -579,6 +589,7 @@
 			children = (
 				809405DA3B0A4D33AFE11517 /* StatsView.swift */,
 				A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */,
+				A2STATSCHARTPAGER000001 /* StatsChartPager.swift */,
 				89C5F75B18D74EB4B35E48C0 /* PlacePickerView.swift */,
 				1F8346A303B84C5089017287 /* AppLockView.swift */,
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
@@ -589,9 +600,12 @@
 				A2RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift */,
 				A2RECENDCREDITS00000001 /* RecordingEndCreditsView.swift */,
 				A2ONBOARDING00000000001 /* OnboardingView.swift */,
+				A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */,
+				A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */,
 				A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */,
 				A2DEVLOGVIEW000000001 /* DevLogView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
+				A2TOASTVIEW00000000001 /* ToastView.swift */,
 				A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */,
 				A5PAIRINGGRP00000000001 /* Pairing */,
 				A20000000000000000000017 /* SettingsView.swift */,
@@ -609,6 +623,7 @@
 				8A24E57F785447E780408D08 /* ModelContainerFactory.swift */,
 				A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */,
 				A2APPERRORPRES0000001 /* AppErrorPresenter.swift */,
+				A2TOASTPRESENTER000001 /* ToastPresenter.swift */,
 				A20000000000000000000018 /* DistanceCalculator.swift */,
 				A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */,
 				A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */,
@@ -932,6 +947,8 @@
 				A1RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift in Sources */,
 				A1RECENDCREDITS00000001 /* RecordingEndCreditsView.swift in Sources */,
 				A1ONBOARDING00000000001 /* OnboardingView.swift in Sources */,
+				A1ONBOARDHERO00000001 /* OnboardingHeroScene.swift in Sources */,
+				A1BRANDMARK0000000001 /* TrailhoundBrandMark.swift in Sources */,
 				A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */,
 				A10000000000000000000017 /* SettingsView.swift in Sources */,
 				A10000000000000000000018 /* DistanceCalculator.swift in Sources */,
@@ -950,6 +967,7 @@
 				A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */,
 				A1TRIPLISTPAGE000000001 /* TripListPage.swift in Sources */,
 				A1STATSDEFCHART00000001 /* StatsDeferredChart.swift in Sources */,
+				A1STATSCHARTPAGER000001 /* StatsChartPager.swift in Sources */,
 				A1TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift in Sources */,
 				A1UITESTSUPPORT00000001 /* UITestSupport.swift in Sources */,
 				A1TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift in Sources */,
@@ -999,6 +1017,8 @@
 				A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */,
 				A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
+				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
+				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,
 				A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,

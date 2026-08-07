@@ -310,7 +310,50 @@ enum TripShareCardRenderer {
                     width: contentWidth
                 )
             }
+
+            drawBrandMark(
+                in: rect,
+                contentX: contentX,
+                contentWidth: contentWidth
+            )
         }
+    }
+
+    private static func drawBrandMark(
+        in bounds: CGRect,
+        contentX: CGFloat,
+        contentWidth: CGFloat
+    ) {
+        let logoSize: CGFloat = 44
+        let wordmark = "Trailhound" as NSString
+        let wordAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 22, weight: .bold),
+            .foregroundColor: UIColor.white.withAlphaComponent(0.92)
+        ]
+        let wordSize = wordmark.size(withAttributes: wordAttributes)
+        let gap: CGFloat = 12
+        let hasLogo = UIImage(named: "TrailhoundLogo") != nil
+        let rowWidth = (hasLogo ? logoSize + gap : 0) + wordSize.width
+        let originX = contentX + max(0, (contentWidth - rowWidth) / 2)
+        let originY = bounds.height - 56 - logoSize
+
+        if let logo = UIImage(named: "TrailhoundLogo"),
+           let context = UIGraphicsGetCurrentContext() {
+            let logoRect = CGRect(x: originX, y: originY, width: logoSize, height: logoSize)
+            context.saveGState()
+            UIBezierPath(roundedRect: logoRect, cornerRadius: logoSize * 0.22).addClip()
+            logo.draw(in: logoRect)
+            context.restoreGState()
+        }
+
+        let textX = hasLogo ? originX + logoSize + gap : originX
+        wordmark.draw(
+            at: CGPoint(
+                x: textX,
+                y: originY + (logoSize - wordSize.height) / 2
+            ),
+            withAttributes: wordAttributes
+        )
     }
 
     private static func drawMetrics(

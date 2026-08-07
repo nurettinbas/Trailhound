@@ -16,10 +16,11 @@ enum VehiclePairingService {
         }
     }
 
+    @discardableResult
     static func deleteVehicle(
         _ vehicle: VehicleProfile,
         in context: ModelContext
-    ) {
+    ) -> Bool {
         let wasDefault = vehicle.isDefault
         context.delete(vehicle)
         do {
@@ -27,8 +28,10 @@ enum VehiclePairingService {
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)
             }
+            return true
         } catch {
             AppErrorPresenter.shared.present(L10n.pairingTabDeleteFailed(error.localizedDescription))
+            return false
         }
     }
 

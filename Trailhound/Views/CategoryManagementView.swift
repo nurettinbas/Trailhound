@@ -63,11 +63,13 @@ struct CategoryManagementView: View {
         modelContext.insert(category)
         try? modelContext.save()
         newCategoryName = ""
+        ToastPresenter.shared.show(.categoryAdded)
     }
 
     private func deleteCategory(_ category: UserCategory) {
         guard !category.isBuiltIn else { return }
         modelContext.delete(category)
         try? modelContext.save()
+        ToastPresenter.shared.show(.categoryDeleted)
     }
 }

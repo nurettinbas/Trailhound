@@ -10,16 +10,32 @@ private enum OnboardingStep: Int, CaseIterable {
 
 struct OnboardingView: View {
     @Environment(LocationService.self) private var locationService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @Bindable private var settings = AppSettings.shared
 
     @State private var page = OnboardingStep.welcome.rawValue
     @State private var showShortcutsAutomationGuide = false
 
+    @State private var brandReveal: CGFloat = 0
+    @State private var heroReveal: CGFloat = 0
+    @State private var driveInProgress: CGFloat = 0
+    @State private var beatProgress: CGFloat = 0
+    @State private var detailsReveal: CGFloat = 0
+    @State private var entranceToken = 0
+
     private var pageCount: Int { OnboardingStep.count }
+    private var currentStep: OnboardingStep {
+        OnboardingStep(rawValue: page) ?? .welcome
+    }
+
+    private var sceneIsLive: Bool {
+        scenePhase == .active && heroReveal > 0.02
+    }
 
     var body: some View {
         ZStack {
-            AtmosphericBackground()
+            AtmosphericBackground(style: .canvas)
 
             VStack(spacing: 0) {
                 TabView(selection: $page) {
@@ -39,10 +55,19 @@ struct OnboardingView: View {
                 bottomBar
                     .padding(.horizontal, 24)
                     .padding(.bottom, 32)
+                    .opacity(detailsReveal)
+                    .offset(y: (1 - detailsReveal) * 12)
             }
         }
         .sheet(isPresented: $showShortcutsAutomationGuide) {
             PairingShortcutsAutomationGuideView()
+        }
+        .task(id: entranceToken) {
+            await runEntrance(for: currentStep)
+        }
+        .onChange(of: page) { _, _ in
+            prepareEntrance()
+            entranceToken &+= 1
         }
     }
 
@@ -50,9 +75,10 @@ struct OnboardingView: View {
 
     private var welcomePage: some View {
         onboardingHeroPage(
-            icon: "car.side.fill",
+            kind: .welcomeDrive,
             title: L10n.string("onboarding.welcome.title"),
-            message: L10n.string("onboarding.welcome.message")
+            message: L10n.string("onboarding.welcome.message"),
+            showsBrandColdOpen: true
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 onboardingFeatureRow(
@@ -79,7 +105,7 @@ struct OnboardingView: View {
 
     private var locationPage: some View {
         onboardingHeroPage(
-            icon: "location.fill",
+            kind: .locationPin,
             title: L10n.string("onboarding.location.title"),
             message: L10n.string("onboarding.location.message")
         ) {
@@ -93,7 +119,7 @@ struct OnboardingView: View {
 
     private var shortcutsPage: some View {
         onboardingHeroPage(
-            icon: "car.side.fill",
+            kind: .shortcutsLink,
             title: L10n.string("onboarding.shortcuts.title"),
             message: L10n.string("onboarding.shortcuts.message")
         ) {
@@ -116,18 +142,35 @@ struct OnboardingView: View {
     // MARK: - Building blocks
 
     private func onboardingHeroPage<Extra: View>(
-        icon: String,
+        kind: OnboardingHeroKind,
         title: String,
         message: String? = nil,
+        showsBrandColdOpen: Bool = false,
         @ViewBuilder extra: () -> Extra = { EmptyView() }
     ) -> some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: 22) {
+            Spacer(minLength: 12)
 
-            Image(systemName: icon)
-                .font(.system(size: 56))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                .symbolRenderingMode(.hierarchical)
+            ZStack {
+                if showsBrandColdOpen {
+                    TrailhoundBrandMark(showsWordmark: true, symbolSize: 96)
+                        .opacity(Double(brandReveal) * Double(1 - heroReveal))
+                        .scaleEffect(0.92 + 0.08 * brandReveal)
+                        .allowsHitTesting(false)
+                }
+
+                OnboardingHeroScene(
+                    kind: kind,
+                    driveInProgress: driveInProgress,
+                    beatProgress: beatProgress,
+                    isAnimating: sceneIsLive && page == stepRawValue(for: kind)
+                )
+                .opacity(heroReveal)
+                .offset(y: (1 - heroReveal) * 18)
+                .scaleEffect(0.96 + 0.04 * heroReveal, anchor: .center)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: TrailhoundRoadSceneMetrics.hero.sceneHeight)
 
             VStack(spacing: 12) {
                 Text(title)
@@ -143,13 +186,25 @@ struct OnboardingView: View {
                 }
             }
             .padding(.horizontal, 8)
+            .opacity(detailsReveal)
+            .offset(y: (1 - detailsReveal) * 10)
 
             extra()
+                .opacity(detailsReveal)
+                .offset(y: (1 - detailsReveal) * 8)
 
             Spacer()
             Spacer()
         }
         .padding(.horizontal, 28)
+    }
+
+    private func stepRawValue(for kind: OnboardingHeroKind) -> Int {
+        switch kind {
+        case .welcomeDrive: return OnboardingStep.welcome.rawValue
+        case .locationPin: return OnboardingStep.location.rawValue
+        case .shortcutsLink: return OnboardingStep.shortcuts.rawValue
+        }
     }
 
     private func onboardingFeatureRow(icon: String, text: String) -> some View {
@@ -192,11 +247,13 @@ struct OnboardingView: View {
     private var pageIndicator: some View {
         HStack(spacing: 8) {
             ForEach(0..<pageCount, id: \.self) { index in
-                Circle()
+                Capsule()
                     .fill(index == page ? Color.primary : Color.secondary.opacity(0.25))
-                    .frame(width: 8, height: 8)
+                    .frame(width: index == page ? 18 : 8, height: 8)
+                    .animation(TrailhoundMotion.gentle, value: page)
             }
         }
+        .opacity(detailsReveal)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(format: L10n.string("onboarding.step_a11y"), page + 1, pageCount))
     }
@@ -219,6 +276,7 @@ struct OnboardingView: View {
                     withAnimation(TrailhoundMotion.gentle) {
                         page += 1
                     }
+                    TrailhoundHaptics.selection()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(TrailhoundBrandColors.brandBottom)
@@ -229,6 +287,89 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(TrailhoundBrandColors.brandBottom)
             }
+        }
+    }
+
+    // MARK: - Entrance
+
+    @MainActor
+    private func prepareEntrance() {
+        if reduceMotion {
+            settleEntrance()
+            return
+        }
+        brandReveal = 0
+        heroReveal = 0
+        driveInProgress = 0
+        beatProgress = 0
+        detailsReveal = 0
+    }
+
+    @MainActor
+    private func settleEntrance() {
+        brandReveal = 0
+        heroReveal = 1
+        driveInProgress = 1
+        beatProgress = 1
+        detailsReveal = 1
+    }
+
+    @MainActor
+    private func runEntrance(for step: OnboardingStep) async {
+        if reduceMotion {
+            settleEntrance()
+            return
+        }
+
+        brandReveal = 0
+        heroReveal = 0
+        driveInProgress = step == .welcome ? 0 : 1
+        beatProgress = 0
+        detailsReveal = 0
+
+        if step == .welcome {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                brandReveal = 1
+            }
+            try? await Task.sleep(for: .milliseconds(420))
+            guard !Task.isCancelled else {
+                settleEntrance()
+                return
+            }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                heroReveal = 1
+                brandReveal = 0
+            }
+            try? await Task.sleep(for: .milliseconds(40))
+            guard !Task.isCancelled else {
+                settleEntrance()
+                return
+            }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                driveInProgress = 1
+            }
+            beatProgress = 1
+        } else {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                heroReveal = 1
+            }
+            try? await Task.sleep(for: .milliseconds(50))
+            guard !Task.isCancelled else {
+                settleEntrance()
+                return
+            }
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
+                beatProgress = 1
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(90))
+        guard !Task.isCancelled else {
+            settleEntrance()
+            return
+        }
+        withAnimation(.easeOut(duration: 0.18)) {
+            detailsReveal = 1
         }
     }
 
@@ -243,7 +384,7 @@ struct OnboardingView: View {
     private func finishOnboarding() {
         settings.completeOnboarding()
         settings.skipCarSetup()
-        TrailhoundHaptics.selection()
+        TrailhoundHaptics.pairingSucceeded()
     }
 }
 
