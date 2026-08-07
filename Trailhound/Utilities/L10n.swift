@@ -363,6 +363,34 @@ enum L10n {
     static var pairingTabVehicleSection: String { string("pairing.tab.vehicle.section") }
     static var pairingTabVehicleName: String { string("pairing.tab.vehicle.name") }
     static var pairingTabVehicleIcon: String { string("pairing.tab.vehicle.icon") }
+    static var pairingTabVehiclePhoto: String { string("pairing.tab.vehicle.photo") }
+    static var pairingTabVehiclePhotoChange: String { string("pairing.tab.vehicle.photo.change") }
+    static var pairingTabVehiclePhotoAdjust: String { string("pairing.tab.vehicle.photo.adjust") }
+    static var pairingTabVehiclePhotoActionDelete: String { string("pairing.tab.vehicle.photo.action.delete") }
+    static var pairingTabVehiclePhotoActionChange: String { string("pairing.tab.vehicle.photo.action.change") }
+    static var pairingTabVehiclePhotoActionEdit: String { string("pairing.tab.vehicle.photo.action.edit") }
+    static var pairingTabVehiclePhotoActionAdd: String { string("pairing.tab.vehicle.photo.action.add") }
+    static var pairingTabVehiclePhotoChoose: String { string("pairing.tab.vehicle.photo.choose") }
+    static var pairingTabVehiclePhotoChooseSubtitle: String { string("pairing.tab.vehicle.photo.choose.subtitle") }
+    static var pairingTabVehiclePhotoCamera: String { string("pairing.tab.vehicle.photo.camera") }
+    static var pairingTabVehiclePhotoCameraSubtitle: String { string("pairing.tab.vehicle.photo.camera.subtitle") }
+    static var pairingTabVehiclePhotoRemove: String { string("pairing.tab.vehicle.photo.remove") }
+    static var pairingTabVehiclePhotoFailed: String { string("pairing.tab.vehicle.photo.failed") }
+    static var pairingTabVehiclePhotoSourceSubtitle: String { string("pairing.tab.vehicle.photo.source.subtitle") }
+    static var pairingTabVehiclePhotoCropTitle: String { string("pairing.tab.vehicle.photo.crop.title") }
+    static var pairingTabVehiclePhotoCropHint: String { string("pairing.tab.vehicle.photo.crop.hint") }
+    static var pairingTabVehiclePhotoUse: String { string("pairing.tab.vehicle.photo.use") }
+    static var pairingTabVehiclePhotoApply: String { string("pairing.tab.vehicle.photo.apply") }
+    static var pairingTabVehiclePhotoDeleteTitle: String { string("pairing.tab.vehicle.photo.delete.title") }
+    static var pairingTabVehiclePhotoDeleteMessage: String { string("pairing.tab.vehicle.photo.delete.message") }
+    static var pairingTabVehiclePhotoZoom: String { string("pairing.tab.vehicle.photo.zoom") }
+    static var pairingTabVehiclePhotoOrientation: String { string("pairing.tab.vehicle.photo.orientation") }
+    static var pairingTabVehiclePhotoRotateLeft: String { string("pairing.tab.vehicle.photo.rotate.left") }
+    static var pairingTabVehiclePhotoRotateRight: String { string("pairing.tab.vehicle.photo.rotate.right") }
+    static var pairingTabVehiclePhotoFlipHorizontal: String { string("pairing.tab.vehicle.photo.flip.horizontal") }
+    static var pairingTabVehiclePhotoFlipVertical: String { string("pairing.tab.vehicle.photo.flip.vertical") }
+    static var pairingTabVehiclePhotoPreviewList: String { string("pairing.tab.vehicle.photo.preview.list") }
+    static var pairingTabVehiclePhotoPreviewEditor: String { string("pairing.tab.vehicle.photo.preview.editor") }
     static var pairingTabVehicleNotFound: String { string("pairing.tab.vehicle.not_found") }
     static var pairingTabFuelType: String { string("pairing.tab.vehicle.fuel_type") }
     static var pairingTabChargePrice: String { string("pairing.tab.vehicle.charge_price") }

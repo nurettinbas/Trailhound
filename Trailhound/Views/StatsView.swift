@@ -368,6 +368,10 @@ struct StatsView: View {
         return vehicle.name
     }
 
+    private var vehiclePhotoPrefetchID: String {
+        VehiclePhotoStore.prefetchTaskID(for: vehicles)
+    }
+
     private var selectedCategoryName: String {
         guard let selectedCategoryID,
               let category = categories.first(where: { $0.storageKey == selectedCategoryID }) else {
@@ -449,6 +453,16 @@ struct StatsView: View {
 
                     Spacer(minLength: 8)
 
+                    if let selected = vehicles.first(where: { $0.id == selectedVehicleID }) {
+                        VehicleAvatarView(
+                            systemImage: selected.systemImage,
+                            photoFileName: selected.photoFileName,
+                            size: 22,
+                            cornerRadius: 6,
+                            isElectricAccent: selected.fuelType == .electric
+                        )
+                    }
+
                     Picker(L10n.string("filter.vehicle"), selection: $selectedVehicleID) {
                         Text(L10n.all).tag(UUID?.none)
                         ForEach(vehicles) { vehicle in
@@ -466,6 +480,9 @@ struct StatsView: View {
         }
         .padding(.vertical, 6)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
     }
 
     private var selectableMonths: [Date] {

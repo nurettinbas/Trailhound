@@ -86,6 +86,15 @@
 		A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSSTYLE000000000001 /* GlassStyle.swift */; };
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
+		A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */; };
+		A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */; };
+		A1CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */; };
+		A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */; };
+		A1VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */; };
+		A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */; };
+		A1VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */; };
+		A1VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */; };
+		A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */; };
 		A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */; };
 		A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */; };
 		A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */; };
@@ -301,6 +310,15 @@
 		A2GLASSSTYLE000000000001 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoStore.swift; sourceTree = "<group>"; };
+		A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAvatarView.swift; sourceTree = "<group>"; };
+		A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraImagePicker.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoInlineFraming.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoSourceSheet.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCropMath.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoCropMathTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehicleIconOptionTests.swift; sourceTree = SOURCE_ROOT; };
 		A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDisplaySnapshot.swift; sourceTree = "<group>"; };
 		A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSnapshotLoader.swift; sourceTree = "<group>"; };
 		A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedChartSeries.swift; sourceTree = "<group>"; };
@@ -577,6 +595,10 @@
 				A2PAIRINGTAB000000001 /* PairingTabView.swift */,
 				A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */,
 				A2PAIRINGVEHROW00001 /* PairingVehicleRow.swift */,
+				A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */,
+				A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */,
+				A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */,
+				A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */,
 				A2PAIRINGSTYLE000001 /* PairingCardStyle.swift */,
 				A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */,
 				A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */,
@@ -634,6 +656,8 @@
 				A2GLASSSTYLE000000000001 /* GlassStyle.swift */,
 				A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
+				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
+				A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */,
 				A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */,
 				A2UITESTSUPPORT00000001 /* UITestSupport.swift */,
 				A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */,
@@ -702,6 +726,9 @@
 				F022AE590A614050A20CB2B5 /* TripRollupServiceTests.swift */,
 				EF9719B413964AF8980A52EC /* ExportServiceTests.swift */,
 				7FFC65F31BB34BC699B8F9AF /* VehicleEditorDraftTests.swift */,
+				A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */,
+				A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */,
+				A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */,
 				7EFB565543694FF7A152FF68 /* VehiclePairingServiceTests.swift */,
 				CF11406D5006463CBFA0BE27 /* RecordingAccessibilityTests.swift */,
 				CE48011480424265BF06DB8A /* RecordingAndTripStoreTests.swift */,
@@ -888,6 +915,9 @@
 				1106DC3D0A4643D7AE5043BA /* TripRollupServiceTests.swift in Sources */,
 				8EE14521465F43329E77A5ED /* ExportServiceTests.swift in Sources */,
 				D46150AB794F43019F5AFB9F /* VehicleEditorDraftTests.swift in Sources */,
+				A1VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift in Sources */,
+				A1VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift in Sources */,
+				A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */,
 				4CAC12E8350A44B7AC98958E /* VehiclePairingServiceTests.swift in Sources */,
 				9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */,
 				BE3AFC9E07BB40388852765D /* RecordingAndTripStoreTests.swift in Sources */,
@@ -961,6 +991,12 @@
 				A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */,
 				A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
+				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
+				A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */,
+				A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */,
+				A1CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift in Sources */,
+				A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */,
+				A1VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift in Sources */,
 				A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */,
 				A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */,
 				A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */,
@@ -1228,9 +1264,11 @@
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo of your vehicle to use as its avatar.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -1269,9 +1307,11 @@
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo of your vehicle to use as its avatar.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

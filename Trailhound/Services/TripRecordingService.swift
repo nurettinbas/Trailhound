@@ -1,7 +1,167 @@
 import CoreLocation
 import Foundation
 import SwiftData
+import UIKit
 import WidgetKit
+
+/// Compact vehicle identity for Live Activity / Dynamic Island updates.
+struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
+    var systemImage: String
+    var symbolScaleX: Double
+    /// PNG preferred (keeps punched alpha). Name kept for ContentState field compatibility.
+    var photoJPEGData: Data?
+
+    static let fallback = RecordingVehicleMarkSnapshot(
+        systemImage: "car.side.fill",
+        symbolScaleX: -1,
+        photoJPEGData: nil
+    )
+
+    /// Encoded mark bytes by disk file name — encode once per session photo.
+    @MainActor private static var compactMarkByFileName: [String: Data] = [:]
+
+    @MainActor
+    static func makeCached(for vehicle: VehicleProfile?) -> RecordingVehicleMarkSnapshot {
+        let photoJPEGData = compactMarkData(fileName: vehicle?.photoFileName)
+        return RecordingVehicleMarkSnapshot(
+            systemImage: fallback.systemImage,
+            symbolScaleX: fallback.symbolScaleX,
+            photoJPEGData: photoJPEGData
+        )
+    }
+
+    @MainActor
+    static func clearCompactPNGCache(fileName: String? = nil) {
+        if let fileName {
+            compactMarkByFileName.removeValue(forKey: fileName)
+        } else {
+            compactMarkByFileName.removeAll()
+        }
+    }
+
+    /// ActivityKit rejects `ContentState` near 4 KB. Data fields become base64 in JSON (~4/3×),
+    /// so the mark budget must be checked against the *encoded* state, not raw bytes.
+    nonisolated static let maxLiveActivityContentStateBytes = 3_800
+    nonisolated private static let markCandidateSides: [CGFloat] = [96, 80, 64, 52, 40, 28]
+    nonisolated private static let markJPEGQualities: [CGFloat] = [0.72, 0.58, 0.45, 0.32]
+
+    @MainActor
+    private static func compactMarkData(fileName: String?) -> Data? {
+        guard let fileName, !fileName.isEmpty else { return nil }
+        if let cached = compactMarkByFileName[fileName] { return cached }
+        guard let image = VehiclePhotoStore.shared.imageSync(fileName: fileName) else {
+            DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk (\(fileName))", level: .warning)
+            return nil
+        }
+        guard let data = compactMarkData(from: image) else {
+            DevLog.shared.log(
+                .widget,
+                "Live Activity mark: photo unusable after encode; using SF Symbol",
+                level: .warning
+            )
+            return nil
+        }
+        compactMarkByFileName[fileName] = data
+        DevLog.shared.log(.widget, "Live Activity mark: photo attached (\(data.count) B)")
+        return data
+    }
+
+    /// Thumb that fits inside the full JSON-encoded Live Activity `ContentState`.
+    nonisolated static func compactMarkData(from image: UIImage) -> Data? {
+        let cleaned = VehiclePhotoStore.markImageForDisplay(image)
+        if let data = encodeMarkForLiveActivity(cleaned) { return data }
+        if ObjectIdentifier(cleaned) != ObjectIdentifier(image) {
+            return encodeMarkForLiveActivity(image)
+        }
+        return nil
+    }
+
+    /// Back-compat alias for tests.
+    nonisolated static func compactMarkPNG(from image: UIImage) -> Data? {
+        compactMarkData(from: image)
+    }
+
+    nonisolated static func fitsLiveActivityPayload(_ photoData: Data) -> Bool {
+        let state = TripRecordingAttributes.ContentState(
+            elapsedSeconds: 99_999,
+            distanceMeters: 999_999,
+            currentSpeedKmh: 999,
+            isPaused: true,
+            vehicleSystemImage: fallback.systemImage,
+            vehicleSymbolScaleX: fallback.symbolScaleX,
+            vehiclePhotoJPEGData: photoData
+        )
+        guard let encoded = try? JSONEncoder().encode(state) else { return false }
+        return encoded.count <= maxLiveActivityContentStateBytes
+    }
+
+    nonisolated private static func encodeMarkForLiveActivity(_ image: UIImage) -> Data? {
+        if VehiclePhotoStore.markImageIsVisuallyEmpty(image) { return nil }
+
+        var bestOversized: Data?
+        // PNG first — punched vehicle marks need alpha; JPEG fills transparency with white.
+        for side in markCandidateSides {
+            if let data = pngData(from: image, maxSide: side) {
+                if fitsLiveActivityPayload(data) { return data }
+                if bestOversized == nil || data.count < (bestOversized?.count ?? .max) {
+                    bestOversized = data
+                }
+            }
+        }
+        // JPEG only for fully opaque thumbs when PNG cannot fit the payload budget.
+        if !VehiclePhotoStore.imageHasAlpha(image) {
+            for side in markCandidateSides {
+                for quality in markJPEGQualities {
+                    guard let data = jpegData(from: image, maxSide: side, quality: quality) else { continue }
+                    if fitsLiveActivityPayload(data) { return data }
+                    if bestOversized == nil || data.count < (bestOversized?.count ?? .max) {
+                        bestOversized = data
+                    }
+                }
+            }
+        }
+        if let bestOversized, fitsLiveActivityPayload(bestOversized) { return bestOversized }
+        return nil
+    }
+
+    nonisolated private static func jpegData(
+        from image: UIImage,
+        maxSide: CGFloat,
+        quality: CGFloat
+    ) -> Data? {
+        guard let rendered = downscaledImage(from: image, maxSide: maxSide) else { return nil }
+        return rendered.jpegData(compressionQuality: quality)
+    }
+
+    nonisolated private static func pngData(from image: UIImage, maxSide: CGFloat) -> Data? {
+        guard let output = downscaledImage(from: image, maxSide: maxSide) else { return nil }
+        if VehiclePhotoStore.markImageIsVisuallyEmpty(output),
+           VehiclePhotoStore.opaquePixelCoverage(output) < 0.005 {
+            return nil
+        }
+        return output.pngData()
+    }
+
+    nonisolated private static func downscaledImage(from image: UIImage, maxSide: CGFloat) -> UIImage? {
+        let pixelW = image.size.width * image.scale
+        let pixelH = image.size.height * image.scale
+        let longest = max(pixelW, pixelH)
+        guard longest > 0 else { return nil }
+
+        let scale = min(1, maxSide / longest)
+        let size = CGSize(
+            width: max(1, (pixelW * scale).rounded()),
+            height: max(1, (pixelH * scale).rounded())
+        )
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+}
 
 enum TripRecordingState: Equatable {
     case idle
@@ -57,6 +217,14 @@ final class TripRecordingService {
         RecordingConfiguration.stopDetectionSpeedKmh / 3.6
     }
 
+    /// Bumped when the recording vehicle changes so SwiftUI surfaces re-read trip.vehicleID
+    /// (mutating a SwiftData property on `activeTrip` alone does not invalidate `@Observable`).
+    private(set) var recordingVehicleEpoch: UInt = 0
+
+    /// Reuse last Live Activity mark while vehicle identity is unchanged (avoids PNG churn).
+    private var lastLiveActivityMarkIdentity: String?
+    private var lastLiveActivityMark: RecordingVehicleMarkSnapshot?
+
     private static weak var elapsedTimerService: TripRecordingService?
 
     init(
@@ -90,6 +258,72 @@ final class TripRecordingService {
             VehicleResolver.assign(vehicle: vehicle, to: trip)
             try? modelContext.save()
         }
+
+        // Invalidate sticky Live Activity mark *before* any concurrent timer sync can
+        // cache a nil-photo snapshot for this identity (race with thumb warm).
+        recordingVehicleEpoch &+= 1
+        lastLiveActivityMarkIdentity = nil
+        lastLiveActivityMark = nil
+        if let fileName = vehicle.photoFileName {
+            RecordingVehicleMarkSnapshot.clearCompactPNGCache(fileName: fileName)
+        }
+
+        guard state.isActiveSession else { return }
+        // Immediate publish (imageSync can read disk even when memory is cold).
+        syncExternalState(force: true)
+        Task {
+            guard let fileName = vehicle.photoFileName else { return }
+            _ = await VehiclePhotoStore.shared.image(fileName: fileName)
+            lastLiveActivityMarkIdentity = nil
+            lastLiveActivityMark = nil
+            RecordingVehicleMarkSnapshot.clearCompactPNGCache(fileName: fileName)
+            syncExternalState(force: true)
+        }
+    }
+
+    /// Selected vehicle for Live Activity / intents (photo + side icon).
+    func activeRecordingVehicleForLiveActivity() -> VehicleProfile? {
+        guard let modelContext else { return nil }
+        if let trip = activeTrip, let id = trip.vehicleID {
+            return VehicleResolver.vehicle(withID: id, in: modelContext)
+        }
+        return VehicleResolver.resolveActiveVehicle(in: modelContext, settings: settings)
+    }
+
+    private func liveActivityVehicleMark() -> RecordingVehicleMarkSnapshot {
+        let vehicle = activeRecordingVehicleForLiveActivity()
+        let identity = [
+            vehicle?.id.uuidString ?? "",
+            vehicle?.photoFileName ?? "",
+            "\(recordingVehicleEpoch)"
+        ].joined(separator: "|")
+        if identity == lastLiveActivityMarkIdentity,
+           let lastLiveActivityMark,
+           // Never reuse a symbol-only mark while the vehicle still has a photo file —
+           // a concurrent sync can race ahead of thumb warm and stick on nil forever.
+           lastLiveActivityMark.photoJPEGData != nil || vehicle?.photoFileName == nil {
+            return lastLiveActivityMark
+        }
+        let mark = RecordingVehicleMarkSnapshot.makeCached(for: vehicle)
+        // Only pin the cache when complete (photo attached or no photo expected).
+        if mark.photoJPEGData != nil || vehicle?.photoFileName == nil {
+            lastLiveActivityMarkIdentity = identity
+            lastLiveActivityMark = mark
+        }
+        return mark
+    }
+
+    /// Prefetch thumb then republish Live Activity so Dynamic Island can show the photo.
+    private func warmLiveActivityVehiclePhoto() async {
+        guard let vehicle = activeRecordingVehicleForLiveActivity(),
+              let fileName = vehicle.photoFileName else { return }
+        _ = await VehiclePhotoStore.shared.image(fileName: fileName)
+        // Drop cached mark so Compact PNG can attach after a cold cache miss.
+        lastLiveActivityMarkIdentity = nil
+        lastLiveActivityMark = nil
+        RecordingVehicleMarkSnapshot.clearCompactPNGCache(fileName: fileName)
+        guard state.isActiveSession else { return }
+        syncExternalState(force: true)
     }
 
     func activeRecordingVehicleID(in context: ModelContext) -> UUID? {
@@ -172,20 +406,39 @@ final class TripRecordingService {
     }
 
     func processExternalPauseRequest() {
-        settings.pendingPauseRecordingRequest = false
+        // Flip state before clearing the pending flag. Clearing first let a concurrent
+        // sync rewrite App Group `isPaused=false` while we were still `.recording`, so the
+        // home-screen widget kept showing Pause after a successful pause tap.
         if state == .recording {
-            pauseRecording()
-        } else if state == .paused {
+            updateElapsedTime()
+            state = .paused
+            RecordingDiagnostics.logPaused(tripID: activeTrip?.id)
+            stopElapsedTimer()
+            settings.pendingPauseRecordingRequest = false
             syncExternalState(force: true)
+            TrailhoundHaptics.recordingPaused()
+        } else if state == .paused {
+            settings.pendingPauseRecordingRequest = false
+            syncExternalState(force: true)
+        } else {
+            settings.pendingPauseRecordingRequest = false
         }
     }
 
     func processExternalResumeRequest() {
-        settings.pendingResumeRecordingRequest = false
         if state == .paused {
-            resumeRecording()
-        } else if state == .recording {
+            recordingStartedAt = Date().addingTimeInterval(-elapsedTime)
+            state = .recording
+            RecordingDiagnostics.logResumed(tripID: activeTrip?.id, orphanResume: false)
+            startElapsedTimer()
+            settings.pendingResumeRecordingRequest = false
             syncExternalState(force: true)
+            TrailhoundHaptics.recordingResumed()
+        } else if state == .recording {
+            settings.pendingResumeRecordingRequest = false
+            syncExternalState(force: true)
+        } else {
+            settings.pendingResumeRecordingRequest = false
         }
     }
 
@@ -195,6 +448,7 @@ final class TripRecordingService {
         state = .paused
         RecordingDiagnostics.logPaused(tripID: activeTrip?.id)
         stopElapsedTimer()
+        settings.pendingPauseRecordingRequest = false
         syncExternalState(force: true)
         TrailhoundHaptics.recordingPaused()
     }
@@ -205,6 +459,7 @@ final class TripRecordingService {
         state = .recording
         RecordingDiagnostics.logResumed(tripID: activeTrip?.id, orphanResume: false)
         startElapsedTimer()
+        settings.pendingResumeRecordingRequest = false
         syncExternalState(force: true)
         TrailhoundHaptics.recordingResumed()
     }
@@ -244,11 +499,20 @@ final class TripRecordingService {
         RecordingDiagnostics.logResumed(tripID: trip.id, orphanResume: true)
         startElapsedTimer()
         if !UITestSupport.isUnitTesting {
+            if let vehicle = activeRecordingVehicleForLiveActivity(),
+               let fileName = vehicle.photoFileName {
+                _ = VehiclePhotoStore.shared.imageSync(fileName: fileName)
+            }
+            let mark = liveActivityVehicleMark()
             RecordingLiveActivityService.start(
                 startedAt: trip.startedAt,
                 elapsed: elapsedTime,
-                distanceMeters: currentDistanceMeters
+                distanceMeters: currentDistanceMeters,
+                vehicleSystemImage: mark.systemImage,
+                vehicleSymbolScaleX: mark.symbolScaleX,
+                vehiclePhotoJPEGData: mark.photoJPEGData
             )
+            Task { await warmLiveActivityVehiclePhoto() }
         }
         syncExternalState(force: true)
     }
@@ -547,6 +811,10 @@ final class TripRecordingService {
 
         let resolvedStartedAt = startedAt ?? Date()
         state = .recording
+        // Stale widget stop/pause/resume flags must not block Live Activity sync.
+        settings.pendingStopRecordingRequest = false
+        settings.pendingPauseRecordingRequest = false
+        settings.pendingResumeRecordingRequest = false
         currentDistanceMeters = 0
         currentSpeedMps = 0
         lastRecordedLocation = nil
@@ -594,7 +862,18 @@ final class TripRecordingService {
         }
         startElapsedTimer()
         if !UITestSupport.isUnitTesting {
-            RecordingLiveActivityService.start(startedAt: resolvedStartedAt)
+            if let vehicle = activeRecordingVehicleForLiveActivity(),
+               let fileName = vehicle.photoFileName {
+                _ = VehiclePhotoStore.shared.imageSync(fileName: fileName)
+            }
+            let mark = liveActivityVehicleMark()
+            RecordingLiveActivityService.start(
+                startedAt: resolvedStartedAt,
+                vehicleSystemImage: mark.systemImage,
+                vehicleSymbolScaleX: mark.symbolScaleX,
+                vehiclePhotoJPEGData: mark.photoJPEGData
+            )
+            Task { await warmLiveActivityVehiclePhoto() }
             TripNotificationService.notifyTripStarted(tripID: trip.id)
         }
         syncExternalState(force: true)
@@ -918,6 +1197,8 @@ final class TripRecordingService {
         // Live Activity / widget controls already wrote optimistic App Group
         // state (and may have ended the activity). Don't clobber that while the
         // matching request is still waiting to be applied in-process.
+        // Use in-process settings flags — CFPreferences refresh here previously
+        // re-introduced stale widget stop/pause bits and blocked LA updates.
         if settings.pendingStopRecordingRequest {
             settings.syncRecordingState(
                 isRecording: false,
@@ -936,6 +1217,9 @@ final class TripRecordingService {
                 distanceMeters: currentDistanceMeters,
                 currentSpeedKmh: 0
             )
+            if force {
+                RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
+            }
             return
         }
         if settings.pendingResumeRecordingRequest {
@@ -945,8 +1229,12 @@ final class TripRecordingService {
                 isPaused: false,
                 elapsed: elapsedTime,
                 distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: speedKmh
+                currentSpeedKmh: speedKmh,
+                recordingStartedAt: state == .recording ? recordingStartedAt : nil
             )
+            if force {
+                RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
+            }
             return
         }
 
@@ -958,17 +1246,22 @@ final class TripRecordingService {
             isPaused: isPaused,
             elapsed: elapsedTime,
             distanceMeters: currentDistanceMeters,
-            currentSpeedKmh: speedKmh
+            currentSpeedKmh: speedKmh,
+            recordingStartedAt: isRecording ? recordingStartedAt : nil
         )
         guard !UITestSupport.isUnitTesting else { return }
 
+        let vehicleMark = liveActivityVehicleMark()
         if state.isActiveSession, let recordingStartedAt {
             RecordingLiveActivityService.ensureActiveIfNeeded(
                 startedAt: recordingStartedAt,
                 elapsed: elapsedTime,
                 distanceMeters: currentDistanceMeters,
                 currentSpeedKmh: speedKmh,
-                isPaused: isPaused
+                isPaused: isPaused,
+                vehicleSystemImage: vehicleMark.systemImage,
+                vehicleSymbolScaleX: vehicleMark.symbolScaleX,
+                vehiclePhotoJPEGData: vehicleMark.photoJPEGData
             )
         }
         RecordingLiveActivityService.update(
@@ -976,7 +1269,10 @@ final class TripRecordingService {
             distanceMeters: currentDistanceMeters,
             currentSpeedKmh: speedKmh,
             isPaused: isPaused,
-            force: force
+            force: force,
+            vehicleSystemImage: vehicleMark.systemImage,
+            vehicleSymbolScaleX: vehicleMark.symbolScaleX,
+            vehiclePhotoJPEGData: vehicleMark.photoJPEGData
         )
 
         if state.isActiveSession, let tripID = activeTripID {
@@ -989,8 +1285,12 @@ final class TripRecordingService {
             )
         }
 
+        // Never reload home-screen timelines on the 2s recording tick — the widget
+        // extension also hosts Live Activity / Dynamic Island; thrashing timelines
+        // kills Island presentation. Timer ticks via pre-scheduled entries; distance
+        // refreshes when force == true (pause/resume/stop/start/vehicle change).
         if force {
-            WidgetCenter.shared.reloadAllTimelines()
+            RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
         }
     }
 

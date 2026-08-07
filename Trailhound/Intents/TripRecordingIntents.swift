@@ -30,12 +30,18 @@ struct StartTripRecordingIntent: LiveActivityIntent {
         }
         let recording = AppServices.runtime.tripRecordingService
         if recording.state.isActiveSession, let startedAt = recording.recordingStartedAt {
+            let mark = RecordingVehicleMarkSnapshot.makeCached(
+                for: recording.activeRecordingVehicleForLiveActivity()
+            )
             await RecordingLiveActivityService.startOnCurrentTask(
                 startedAt: startedAt,
                 elapsed: recording.elapsedTime,
                 distanceMeters: recording.currentDistanceMeters,
                 currentSpeedKmh: Int(max(0, recording.currentSpeedMps) * 3.6),
-                isPaused: recording.state == .paused
+                isPaused: recording.state == .paused,
+                vehicleSystemImage: mark.systemImage,
+                vehicleSymbolScaleX: mark.symbolScaleX,
+                vehiclePhotoJPEGData: mark.photoJPEGData
             )
         }
         return .result(dialog: IntentDialog("shortcut.start.success"))

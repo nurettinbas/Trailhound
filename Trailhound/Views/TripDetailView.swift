@@ -176,6 +176,10 @@ struct TripDetailView: View {
         }
     }
 
+    private var vehiclePhotoPrefetchID: String {
+        VehiclePhotoStore.prefetchTaskID(for: sortedDetailVehicles)
+    }
+
     var body: some View {
         ZStack {
             AtmosphericBackground()
@@ -649,25 +653,47 @@ struct TripDetailView: View {
                                 .font(.subheadline.weight(.semibold))
 
                             detailMiniCard {
-                                Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
-                                    Label(L10n.string("trip.edit.vehicle_none"), systemImage: "minus.circle")
-                                        .tag(UUID?.none)
-                                    ForEach(sortedDetailVehicles) { vehicle in
-                                        Label(vehicle.name, systemImage: vehicle.systemImage)
-                                            .tag(Optional(vehicle.id))
+                                HStack(spacing: 10) {
+                                    // Single identity mark: photo if set, else SF Symbol (facing right).
+                                    if let selected = sortedDetailVehicles.first(where: { $0.id == selectedVehicleID }) {
+                                        VehicleAvatarView(
+                                            systemImage: selected.systemImage,
+                                            photoFileName: selected.photoFileName,
+                                            size: 28,
+                                            cornerRadius: 7,
+                                            isElectricAccent: selected.fuelType == .electric
+                                        )
+                                    } else {
+                                        Image(systemName: "minus.circle")
+                                            .font(.body)
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 28, height: 28)
+                                    }
+
+                                    // Name-only menu — avoid a second system icon beside the avatar.
+                                    Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
+                                        Text(L10n.string("trip.edit.vehicle_none"))
+                                            .tag(UUID?.none)
+                                        ForEach(sortedDetailVehicles) { vehicle in
+                                            Text(vehicle.name)
+                                                .tag(Optional(vehicle.id))
+                                        }
+                                    }
+                                    .labelsHidden()
+                                    .pickerStyle(.menu)
+                                    .buttonStyle(.plain)
+                                    .font(.callout)
+                                    .tint(.primary)
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .onChange(of: selectedVehicleID) { _, _ in
+                                        dismissNoteKeyboard()
                                     }
                                 }
-                                .labelsHidden()
-                                .pickerStyle(.menu)
-                                .buttonStyle(.plain)
-                                .font(.callout)
-                                .tint(.primary)
-                                .foregroundStyle(.primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .onChange(of: selectedVehicleID) { _, _ in
-                                    dismissNoteKeyboard()
-                                }
                             }
+                        }
+                        .task(id: vehiclePhotoPrefetchID) {
+                            await VehiclePhotoStore.shared.prefetch(vehicles: sortedDetailVehicles)
                         }
                     }
 

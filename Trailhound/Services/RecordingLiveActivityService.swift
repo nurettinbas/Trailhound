@@ -1,12 +1,13 @@
 import ActivityKit
 import Foundation
 
+// Vehicle mark is passed as systemImage / scaleX / photoJPEG primitives only.
 @MainActor
 enum RecordingLiveActivityService {
     private static let logCategory: DevLogCategory = .widget
     private static var lastUpdateAt: Date?
     private static var lastPublishedIsPaused: Bool?
-    private static let minimumUpdateInterval: TimeInterval = 2
+    private static let minimumUpdateInterval: TimeInterval = 3
     private static var operationChain: Task<Void, Never>?
 
     /// Ends orphan Live Activities left over from a prior process (e.g. Xcode debug restart).
@@ -23,7 +24,10 @@ enum RecordingLiveActivityService {
         elapsed: TimeInterval = 0,
         distanceMeters: Double = 0,
         currentSpeedKmh: Int = 0,
-        isPaused: Bool = false
+        isPaused: Bool = false,
+        vehicleSystemImage: String = "car.side.fill",
+        vehicleSymbolScaleX: Double = -1,
+        vehiclePhotoJPEGData: Data? = nil
     ) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         enqueue {
@@ -34,6 +38,9 @@ enum RecordingLiveActivityService {
                 distanceMeters: distanceMeters,
                 currentSpeedKmh: currentSpeedKmh,
                 isPaused: isPaused,
+                vehicleSystemImage: vehicleSystemImage,
+                vehicleSymbolScaleX: vehicleSymbolScaleX,
+                vehiclePhotoJPEGData: vehiclePhotoJPEGData,
                 logMessage: "Live Activity started"
             )
             lastUpdateAt = nil
@@ -51,7 +58,10 @@ enum RecordingLiveActivityService {
         elapsed: TimeInterval = 0,
         distanceMeters: Double = 0,
         currentSpeedKmh: Int = 0,
-        isPaused: Bool = false
+        isPaused: Bool = false,
+        vehicleSystemImage: String = "car.side.fill",
+        vehicleSymbolScaleX: Double = -1,
+        vehiclePhotoJPEGData: Data? = nil
     ) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         await operationChain?.value
@@ -63,6 +73,9 @@ enum RecordingLiveActivityService {
             distanceMeters: distanceMeters,
             currentSpeedKmh: currentSpeedKmh,
             isPaused: isPaused,
+            vehicleSystemImage: vehicleSystemImage,
+            vehicleSymbolScaleX: vehicleSymbolScaleX,
+            vehiclePhotoJPEGData: vehiclePhotoJPEGData,
             logMessage: "Live Activity started (intent)"
         )
         lastUpdateAt = nil
@@ -75,7 +88,10 @@ enum RecordingLiveActivityService {
         elapsed: TimeInterval,
         distanceMeters: Double,
         currentSpeedKmh: Int,
-        isPaused: Bool
+        isPaused: Bool,
+        vehicleSystemImage: String = "car.side.fill",
+        vehicleSymbolScaleX: Double = -1,
+        vehiclePhotoJPEGData: Data? = nil
     ) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         enqueue {
@@ -88,6 +104,9 @@ enum RecordingLiveActivityService {
                 distanceMeters: distanceMeters,
                 currentSpeedKmh: currentSpeedKmh,
                 isPaused: isPaused,
+                vehicleSystemImage: vehicleSystemImage,
+                vehicleSymbolScaleX: vehicleSymbolScaleX,
+                vehiclePhotoJPEGData: vehiclePhotoJPEGData,
                 logMessage: "Live Activity restarted"
             )
             lastUpdateAt = nil
@@ -100,7 +119,10 @@ enum RecordingLiveActivityService {
         distanceMeters: Double,
         currentSpeedKmh: Int,
         isPaused: Bool,
-        force: Bool = false
+        force: Bool = false,
+        vehicleSystemImage: String = "car.side.fill",
+        vehicleSymbolScaleX: Double = -1,
+        vehiclePhotoJPEGData: Data? = nil
     ) {
         let pauseStateChanged = lastPublishedIsPaused != isPaused
         let now = Date()
@@ -117,17 +139,43 @@ enum RecordingLiveActivityService {
             elapsedSeconds: Int(elapsed.rounded()),
             distanceMeters: distanceMeters,
             currentSpeedKmh: currentSpeedKmh,
-            isPaused: isPaused
+            isPaused: isPaused,
+            vehicleSystemImage: vehicleSystemImage,
+            vehicleSymbolScaleX: vehicleSymbolScaleX,
+            vehiclePhotoJPEGData: vehiclePhotoJPEGData
         )
-        let content = ActivityContent(state: state, staleDate: nil)
+        let safeState = payloadSafe(state)
+        let content = ActivityContent(state: safeState, staleDate: nil)
 
         enqueue {
             await dedupeActivitiesIfNeeded()
             guard !Activity<TripRecordingAttributes>.activities.isEmpty else { return }
             for activity in Activity<TripRecordingAttributes>.activities {
+                // Live Activity intent already painted pause/resume; a second near-identical
+                // update restarts the control morph and reads as stutter.
+                if Self.isRedundantPublish(current: activity.content.state, next: safeState) {
+                    continue
+                }
                 await activity.update(content)
             }
         }
+    }
+
+    /// True when a publish would not change what the banner shows in a meaningful way.
+    private static func isRedundantPublish(
+        current: TripRecordingAttributes.ContentState,
+        next: TripRecordingAttributes.ContentState
+    ) -> Bool {
+        guard current.isPaused == next.isPaused,
+              current.elapsedSeconds == next.elapsedSeconds,
+              current.currentSpeedKmh == next.currentSpeedKmh,
+              current.vehicleSystemImage == next.vehicleSystemImage,
+              current.vehicleSymbolScaleX == next.vehicleSymbolScaleX,
+              current.vehiclePhotoJPEGData == next.vehiclePhotoJPEGData,
+              abs(current.distanceMeters - next.distanceMeters) < 0.5 else {
+            return false
+        }
+        return true
     }
 
     static func stop() {
@@ -162,6 +210,9 @@ enum RecordingLiveActivityService {
         distanceMeters: Double,
         currentSpeedKmh: Int,
         isPaused: Bool,
+        vehicleSystemImage: String,
+        vehicleSymbolScaleX: Double,
+        vehiclePhotoJPEGData: Data?,
         logMessage: String
     ) async {
         let attributes = TripRecordingAttributes(startedAt: startedAt)
@@ -169,10 +220,13 @@ enum RecordingLiveActivityService {
             elapsedSeconds: Int(elapsed.rounded()),
             distanceMeters: distanceMeters,
             currentSpeedKmh: currentSpeedKmh,
-            isPaused: isPaused
+            isPaused: isPaused,
+            vehicleSystemImage: vehicleSystemImage,
+            vehicleSymbolScaleX: vehicleSymbolScaleX,
+            vehiclePhotoJPEGData: vehiclePhotoJPEGData
         )
         do {
-            _ = try Activity.request(attributes: attributes, content: .init(state: state, staleDate: nil))
+            _ = try Activity.request(attributes: attributes, content: .init(state: payloadSafe(state), staleDate: nil))
             DevLog.shared.log(logCategory, logMessage)
             await dedupeActivitiesIfNeeded()
         } catch {
@@ -187,6 +241,24 @@ enum RecordingLiveActivityService {
                 level: level
             )
         }
+    }
+
+    private static func payloadSafe(
+        _ state: TripRecordingAttributes.ContentState
+    ) -> TripRecordingAttributes.ContentState {
+        guard let photoData = state.vehiclePhotoJPEGData,
+              !RecordingVehicleMarkSnapshot.fitsLiveActivityPayload(photoData),
+              let encoded = try? JSONEncoder().encode(state) else {
+            return state
+        }
+        var trimmed = state
+        trimmed.vehiclePhotoJPEGData = nil
+        DevLog.shared.log(
+            logCategory,
+            "Live Activity payload \(encoded.count) B over budget; vehicle photo dropped",
+            level: .warning
+        )
+        return trimmed
     }
 
     private static func dedupeActivitiesIfNeeded() async {

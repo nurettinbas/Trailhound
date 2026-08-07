@@ -9,7 +9,7 @@ final class VehicleProfile {
     var consumption: Double
     var chargePricePerKWh: Double?
     var isDefault: Bool
-    var iconName: String = "car.fill"
+    var iconName: String = VehicleIconOption.default.rawValue
     /// Filename only under Application Support/VehiclePhotos (e.g. `{uuid}.jpg`). Nil = icon fallback.
     var photoFileName: String?
 
@@ -56,7 +56,7 @@ final class VehicleProfile {
     }
 
     var systemImage: String {
-        VehicleIconOption.resolved(iconName).rawValue
+        VehicleIconOption.default.rawValue
     }
 
     var consumptionLabel: String {

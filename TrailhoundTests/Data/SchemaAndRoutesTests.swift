@@ -120,4 +120,21 @@ final class SchemaMigrationTests: XCTestCase {
         XCTAssertEqual(fetched?.pairedRouteUID, "puma-bt-uid")
         XCTAssertEqual(fetched?.pairedRouteName, "Ford Puma")
     }
+
+    func testV12PersistsVehiclePhotoFileName() throws {
+        let container = try ModelContainer(
+            for: Schema(versionedSchema: TrailhoundSchemaV12.self),
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let vehicle = VehicleProfile(
+            name: "Photo Car",
+            photoFileName: "abc-123.jpg"
+        )
+        container.mainContext.insert(vehicle)
+        try container.mainContext.save()
+
+        let fetched = try container.mainContext.fetch(FetchDescriptor<VehicleProfile>()).first
+        XCTAssertEqual(fetched?.photoFileName, "abc-123.jpg")
+        XCTAssertNil(VehicleProfile(name: "No Photo").photoFileName)
+    }
 }

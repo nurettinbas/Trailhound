@@ -220,12 +220,14 @@ actor TripRollupRebuilder {
             guard !batch.isEmpty else { break }
 
             for trip in batch {
-                accumulator[TripRollupKey(trip: trip), default: .zero].merge(Contribution(trip: trip))
+                    accumulator[TripRollupKey(trip: trip), default: .zero].merge(Contribution(trip: trip))
                 trip.invalidatePointCaches()
             }
 
             offset += batch.count
             await Task.yield()
+            
+            
         }
 
         for (key, contribution) in accumulator {

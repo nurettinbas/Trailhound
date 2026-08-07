@@ -75,24 +75,28 @@ final class RecordingRequestObserver {
 
 private nonisolated func dispatchRecordingStopRequestToMainActor() {
     Task { @MainActor in
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         RecordingRequestObserver.handleStopRequestFromBackground()
     }
 }
 
 private nonisolated func dispatchRecordingStartRequestToMainActor() {
     Task { @MainActor in
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         RecordingRequestObserver.handleStartRequestFromBackground()
     }
 }
 
 private nonisolated func dispatchRecordingPauseRequestToMainActor() {
     Task { @MainActor in
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         RecordingRequestObserver.handlePauseRequestFromBackground()
     }
 }
 
 private nonisolated func dispatchRecordingResumeRequestToMainActor() {
     Task { @MainActor in
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         RecordingRequestObserver.handleResumeRequestFromBackground()
     }
 }

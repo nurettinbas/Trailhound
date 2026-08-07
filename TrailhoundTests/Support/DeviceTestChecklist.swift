@@ -18,6 +18,19 @@ enum DeviceTestChecklist {
         "App kill → aç → uzun trip detay hâlâ hızlı (disk cache)",
         "GPS trim sonrası harita güncellenir (cache invalidation)",
         "Merge sonrası birleşik rota doğru çizilir",
-        "Tünel/sinyal kaybı olan trip'te rota kırık kalır (kuş uçuşu yok)"
+        "Tünel/sinyal kaybı olan trip'te rota kırık kalır (kuş uçuşu yok)",
+        "Start yanı Select: sadece foto/simge + chevron; isim yazısı yok, taşma yok",
+        "Kayıt kartı: araç foto büyük, Stop’ta stop.fill ikonu",
+        "Vespa / motorsiklet / araba işaretleri yolda sağa bakıyor",
+        "Dynamic Island + kilit banner: araç foto veya doğru SF; yön sağa",
+        "Bildirimler: canlı kayıt kartı road + foto + kontroller",
+        "Pause/resume: road remount yok; Island foto kaybolmuyor",
+        "Home-screen widget: Pause → Resume etiketi değişir; Resume → Pause geri gelir",
+        "Kilit banner pause/resume: ikon+renk anında; widget da Resume’a geçer",
+        "Fotolu araçla kayıt: Island’da foto çıkar; DevLog ‘photo attached (N B)’",
+        "Beyaz/açık renkli araç fotosu: punch sonrası foto kayboluyorsa orijinal foto gösterilir",
+        "Fotosuz araç: Island + bildirim kartı SF simgeye düşer, boş kalmaz",
+        "Island genişletilmiş: üstte boşluk yok, alt butonlar kesilmiyor (1:00:10 süreyle de)",
+        "Araç seçim menüsü: satır ikonları sağa bakıyor, seçilide tik kalıyor"
     ]
 }

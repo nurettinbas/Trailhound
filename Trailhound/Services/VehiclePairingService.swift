@@ -22,9 +22,13 @@ enum VehiclePairingService {
         in context: ModelContext
     ) -> Bool {
         let wasDefault = vehicle.isDefault
+        let photoFileName = vehicle.photoFileName
         context.delete(vehicle)
         do {
             try context.save()
+            if let photoFileName {
+                VehiclePhotoStore.shared.remove(fileName: photoFileName)
+            }
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)
             }

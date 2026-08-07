@@ -82,29 +82,11 @@ enum VehicleIconOption: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    static let `default`: VehicleIconOption = .car
+    /// Fixed side-profile mark when no vehicle photo is set (faces left in SF Symbols → flip `-1`).
+    static let `default`: VehicleIconOption = .carSide
 
     static var available: [VehicleIconOption] {
         allCases.filter(\.isAvailable)
-    }
-
-    /// Curated icons for add/edit vehicle (cars, motorcycles, moped/Vespa).
-    static var pairingEditorIcons: [VehicleIconOption] {
-        let candidates: [VehicleIconOption] = [
-            .car,
-            .electric,
-            .suv,
-            .convertible,
-            .pickup,
-            .truck,
-            .moped,
-            .motorcycle
-        ]
-        var seen = Set<String>()
-        return candidates.filter { option in
-            guard option.isAvailable else { return false }
-            return seen.insert(option.rawValue).inserted
-        }
     }
 
     var isAvailable: Bool {
@@ -117,22 +99,13 @@ enum VehicleIconOption: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Maps stored / legacy icon names to a known option; unknown values → `.default`.
     static func resolved(_ iconName: String?) -> VehicleIconOption {
         guard let iconName else { return .default }
         if let option = VehicleIconOption(rawValue: iconName), option.isAvailable {
             return option
         }
-        // Legacy raw values from earlier builds.
-        switch iconName {
-        case "motorcycle":
-            return resolved(Self.motorcycle.rawValue)
-        case "moped":
-            return resolved(Self.moped.rawValue)
-        case "fuelpump.fill", "airplane", "ferry.fill", "car.ferry.fill", "sailboat.fill":
-            return .default
-        default:
-            return .default
-        }
+        return .default
     }
 
 }

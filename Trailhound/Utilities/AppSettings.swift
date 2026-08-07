@@ -308,7 +308,8 @@ final class AppSettings {
         isPaused: Bool = false,
         elapsed: TimeInterval,
         distanceMeters: Double,
-        currentSpeedKmh: Int = 0
+        currentSpeedKmh: Int = 0,
+        recordingStartedAt: Date? = nil
     ) {
         defaults.set(isRecording, forKey: "recording.isActive")
         defaults.set(isPaused, forKey: "recording.isPaused")
@@ -316,6 +317,11 @@ final class AppSettings {
         defaults.set(elapsed, forKey: "recording.elapsed")
         defaults.set(distanceMeters, forKey: "recording.distance")
         defaults.set(currentSpeedKmh, forKey: "recording.currentSpeedKmh")
+        if let recordingStartedAt {
+            defaults.set(recordingStartedAt.timeIntervalSince1970, forKey: RecordingControlBridge.Keys.startedAt)
+        } else if !isRecording || isPaused {
+            defaults.removeObject(forKey: RecordingControlBridge.Keys.startedAt)
+        }
     }
 
     var pendingStartRecordingRequest: Bool {

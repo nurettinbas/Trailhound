@@ -6,6 +6,8 @@ enum TrailhoundMotion {
     static let snappy = Animation.snappy(duration: 0.28)
     /// Tab bar content switch — keep snappy so tab taps don't feel laggy.
     static let tabSwitch = Animation.easeOut(duration: 0.15)
+    /// Notifications playback switch thumb — short snappy slide, no mush.
+    static let recordingToggle = Animation.spring(response: 0.22, dampingFraction: 0.86)
     static let gentle = Animation.easeInOut(duration: 0.22)
     static let cardSpring = Animation.spring(response: 0.32, dampingFraction: 0.86)
     /// Recording card ↔ list row morph / stop settle.
@@ -22,6 +24,8 @@ enum TrailhoundMotion {
     static let toastSpring = Animation.spring(response: 0.42, dampingFraction: 0.78)
     /// Toast chip exit — quick ease up/fade.
     static let toastDismiss = Animation.easeIn(duration: 0.22)
+    /// Vehicle photo framing settle (rotate / expand inline controls).
+    static let photoSettle = Animation.spring(response: 0.34, dampingFraction: 0.86)
 
     /// Soft rise (fade + slight upward settle).
     static var softRiseTransition: AnyTransition {

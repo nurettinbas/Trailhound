@@ -167,19 +167,22 @@ struct LocationPermissionBanner: View {
 
 struct GPSQualityBadge: View {
   let quality: LocationService.GPSQuality
+  var compact: Bool = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: compact ? 3 : 4) {
       Image(systemName: icon)
-        .font(.caption2)
+        .font(compact ? .system(size: 9, weight: .semibold) : .caption2)
         .symbolEffect(.bounce, value: quality)
       Text(label)
-        .font(.caption2.weight(.medium))
+        .font(compact ? .system(size: 10, weight: .medium) : .caption2.weight(.medium))
+        .lineLimit(1)
+        .minimumScaleFactor(compact ? 0.75 : 1)
     }
     .foregroundStyle(color)
-    .padding(.horizontal, 8)
-    .padding(.vertical, 4)
+    .padding(.horizontal, compact ? 6 : 8)
+    .padding(.vertical, compact ? 3 : 4)
     .background(color.opacity(0.15))
     .clipShape(Capsule())
     .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: quality)

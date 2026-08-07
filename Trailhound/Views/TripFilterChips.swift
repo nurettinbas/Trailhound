@@ -38,6 +38,10 @@ struct TripListFiltersBar: View {
         }
     }
 
+    private var vehiclePhotoPrefetchID: String {
+        VehiclePhotoStore.prefetchTaskID(for: vehicles)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -61,6 +65,9 @@ struct TripListFiltersBar: View {
         }
         .padding(.vertical, 4)
         .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: isFiltersExpanded)
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
     }
 
     private var filtersRevealTransition: AnyTransition {
@@ -231,7 +238,10 @@ struct TripListFiltersBar: View {
                             vehicleChip(
                                 title: vehicle.name,
                                 key: key,
-                                isSelected: selectedVehicleFilter == filter
+                                isSelected: selectedVehicleFilter == filter,
+                                avatarSystemImage: vehicle.systemImage,
+                                avatarPhotoFileName: vehicle.photoFileName,
+                                avatarIsElectric: vehicle.fuelType == .electric
                             ) {
                                 selectedVehicleFilter = selectedVehicleFilter == filter ? nil : filter
                             }
@@ -296,6 +306,9 @@ struct TripListFiltersBar: View {
         title: String,
         key: String,
         isSelected: Bool,
+        avatarSystemImage: String? = nil,
+        avatarPhotoFileName: String? = nil,
+        avatarIsElectric: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         GlassFilterChip(
@@ -304,6 +317,9 @@ struct TripListFiltersBar: View {
             namespace: vehicleChipNamespace,
             highlightID: "tripVehicleFilterHighlight",
             size: .compact,
+            avatarSystemImage: avatarSystemImage,
+            avatarPhotoFileName: avatarPhotoFileName,
+            avatarIsElectric: avatarIsElectric,
             action: {
                 if reduceMotion {
                     action()

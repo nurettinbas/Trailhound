@@ -1,6 +1,7 @@
 import CoreLocation
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct RecordingVehiclePicker: View {
     let vehicles: [VehicleProfile]
@@ -24,8 +25,11 @@ struct RecordingVehiclePicker: View {
         selectedVehicle?.name ?? L10n.string("recording.vehicle.choose")
     }
 
-    private var selectedSystemImage: String {
-        selectedVehicle?.systemImage ?? VehicleIconOption.default.rawValue
+    /// Mark-only chip: the glyph now fits its frame, so the box grows to keep the same optical size.
+    private var avatarSize: CGFloat { compact ? 26 : 28 }
+
+    private var vehiclePhotoPrefetchID: String {
+        VehiclePhotoStore.prefetchTaskID(for: vehicles)
     }
 
     var body: some View {
@@ -38,36 +42,73 @@ struct RecordingVehiclePicker: View {
                     if vehicle.id == selectedVehicleID {
                         Label(vehicle.name, systemImage: "checkmark")
                     } else {
-                        Label(vehicle.name, systemImage: vehicle.systemImage)
+                        Label(vehicle.name, systemImage: VehicleIconOption.default.rawValue)
                     }
                 }
             }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: selectedSystemImage)
-                    .font(compact ? .caption.weight(.semibold) : .subheadline)
-                if !compact {
-                    Text(selectedName)
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                }
+                VehicleAvatarView(
+                    systemImage: VehicleIconOption.default.rawValue,
+                    photoFileName: selectedVehicle?.photoFileName,
+                    size: avatarSize,
+                    cornerRadius: avatarSize * 0.28,
+                    isElectricAccent: selectedVehicle?.fuelType == .electric,
+                    symbolColor: compact ? .white : nil,
+                    showsSymbolPlate: false,
+                    symbolFitsFrame: true
+                )
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.bold))
             }
             .foregroundStyle(compact ? Color.white.opacity(0.9) : TrailhoundBrandColors.brandBottom)
-            .padding(.horizontal, compact ? 8 : 10)
-            .padding(.vertical, compact ? 5 : 6)
-            .background(compact ? Color.white.opacity(0.14) : TrailhoundBrandColors.brandBottom.opacity(0.1))
-            .clipShape(Capsule())
+            .padding(.horizontal, compact ? 4 : 6)
+            .padding(.vertical, compact ? 2 : 4)
+            .contentShape(Rectangle())
         }
         .accessibilityLabel(L10n.string("recording.vehicle.accessibility"))
         .accessibilityValue(selectedName)
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
     }
 }
 
 enum RecordingMorphID {
     static let statusChip = "recording.statusChip"
     static let car = "recording.car"
+}
+
+/// Pause / Resume / Stop label: glyph matches the title color (never the blue accent tint).
+struct RecordingActionLabel: View {
+    let title: String
+    let systemImage: String
+    var tint: Color = .white
+    /// When false, the glyph swaps instantly (no SF Symbol replace morph).
+    var animatedSymbolSwap: Bool = true
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .modifier(RecordingActionSymbolTransition(enabled: animatedSymbolSwap))
+            Text(title)
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(tint)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct RecordingActionSymbolTransition: ViewModifier {
+    var enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.contentTransition(.symbolEffect(.replace))
+        } else {
+            content
+        }
+    }
 }
 
 struct ActiveTripView: View {
@@ -92,6 +133,8 @@ struct ActiveTripView: View {
     @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
     @State private var anchorBox = RecordingCardAnchorBox()
+    /// Decoded thumb for the road scene — injected so TimelineView never hits disk.
+    @State private var roadVehiclePhoto: UIImage?
 
     init(
         morphNamespace: Namespace.ID? = nil,
@@ -121,8 +164,26 @@ struct ActiveTripView: View {
         cardReveal > 0.02
     }
 
-    private var shouldAnimateRoad: Bool {
-        !isPaused && cardVisible && isRecordingCardVisible
+    /// Keep TimelineView mounted while the card is on-screen (pause freezes the scene, no view swap).
+    private var shouldRunRoadClock: Bool {
+        cardVisible && isRecordingCardVisible
+    }
+
+    private var recordingVehicle: VehicleProfile? {
+        let id = recordingService.activeRecordingVehicleID(from: vehicles)
+        guard let id else { return nil }
+        return vehicles.first(where: { $0.id == id })
+    }
+
+    private var roadPhotoIdentity: String {
+        let id = recordingVehicle?.id.uuidString ?? "none"
+        let file = recordingVehicle?.photoFileName ?? "none"
+        // Epoch forces reload when Observation misses nested SwiftData vehicleID mutations.
+        return "\(id)|\(file)|\(recordingService.recordingVehicleEpoch)"
+    }
+
+    private var vehiclePhotoPrefetchID: String {
+        VehiclePhotoStore.prefetchTaskID(for: vehicles)
     }
 
     var body: some View {
@@ -140,8 +201,13 @@ struct ActiveTripView: View {
             HStack(alignment: .center, spacing: 10) {
                 RecordingCarAnimationView(
                     compact: true,
-                    isAnimating: shouldAnimateRoad,
-                    driveInProgress: carDriveIn
+                    isAnimating: shouldRunRoadClock,
+                    isPaused: isPaused,
+                    driveInProgress: carDriveIn,
+                    systemImage: VehicleIconOption.default.rawValue,
+                    vehiclePhoto: roadVehiclePhoto,
+                    symbolScaleX: -1,
+                    allowsVerticalBounce: false
                 )
                 .matchedGeometryEffectIfAvailable(
                     stringID: RecordingMorphID.car,
@@ -196,6 +262,12 @@ struct ActiveTripView: View {
         .task(id: morphID) {
             await runEntranceIfNeeded()
         }
+        .task(id: roadPhotoIdentity) {
+            await loadRoadVehiclePhoto()
+        }
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
         .onChange(of: playEntranceReveal) { wasPlaying, shouldPlay in
             guard shouldPlay, !wasPlaying else { return }
             prepareEntranceReplay()
@@ -203,11 +275,27 @@ struct ActiveTripView: View {
         }
     }
 
+    private func loadRoadVehiclePhoto() async {
+        let fileName = recordingVehicle?.photoFileName
+        guard let fileName, !fileName.isEmpty else {
+            roadVehiclePhoto = nil
+            return
+        }
+        let image: UIImage?
+        if let synced = VehiclePhotoStore.shared.imageSync(fileName: fileName) {
+            image = synced
+        } else {
+            image = await VehiclePhotoStore.shared.image(fileName: fileName)
+        }
+        guard recordingVehicle?.photoFileName == fileName else { return }
+        roadVehiclePhoto = image.map(VehiclePhotoStore.markImageForDisplay)
+    }
+
     private var statusRow: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
+        HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 Image(systemName: statusIcon)
-                    .font(.subheadline)
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(statusColor)
                     .symbolEffect(
                         .pulse,
@@ -215,9 +303,12 @@ struct ActiveTripView: View {
                         isActive: !isPaused && !reduceMotion && isRecordingCardVisible
                     )
                 Text(statusText)
-                    .font(.subheadline.weight(.bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
+            .layoutPriority(1)
             .modifier(RecordingStatusChipMorphModifier(
                 morphNamespace: morphNamespace
             ))
@@ -250,9 +341,10 @@ struct ActiveTripView: View {
                     recordingService.pauseRecording()
                 }
             } label: {
-                Label(isPaused ? L10n.resume : L10n.pause, systemImage: isPaused ? "play.fill" : "pause.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+                RecordingActionLabel(
+                    title: isPaused ? L10n.resume : L10n.pause,
+                    systemImage: isPaused ? "play.fill" : "pause.fill"
+                )
             }
             .buttonStyle(SoftPressBorderedButtonStyle(reduceMotion: reduceMotion))
             .controlSize(.small)
@@ -265,9 +357,7 @@ struct ActiveTripView: View {
                     recordingService.stopManualRecording()
                 }
             } label: {
-                Text(L10n.stop)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+                RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
@@ -398,20 +488,22 @@ private struct RecordingLocationChromeRow: View {
     @State private var showsAlwaysLocationHint = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             if showsAlwaysLocationHint {
                 Button {
                     locationService.requestPermission()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Image(systemName: "location.circle")
-                            .font(.caption2)
+                            .font(.system(size: 9, weight: .semibold))
                         Text(L10n.string("recording.location.always_required"))
-                            .font(.caption2.weight(.semibold))
+                            .font(.system(size: 10, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .foregroundStyle(.orange)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
                     .background(Color.orange.opacity(0.15))
                     .clipShape(Capsule())
                 }
@@ -419,7 +511,7 @@ private struct RecordingLocationChromeRow: View {
                 .accessibilityLabel(L10n.string("recording.location.always_required"))
             }
 
-            GPSQualityBadge(quality: displayedGPSQuality)
+            GPSQualityBadge(quality: displayedGPSQuality, compact: true)
         }
         .onAppear {
             refreshFromLocationService()
@@ -461,7 +553,7 @@ private struct ActiveTripLiveStats: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 6) {
             statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
             statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
             statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
@@ -470,22 +562,25 @@ private struct ActiveTripLiveStats: View {
 
     private func statPill(icon: String, label: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label(label, systemImage: icon)
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.75))
-                .labelStyle(.titleAndIcon)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
+            .foregroundStyle(.white.opacity(0.75))
             Text(text)
-                .font(.subheadline.weight(.bold))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .numericTextAnimation(value: text)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
         .background(.white.opacity(0.14))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .combine)

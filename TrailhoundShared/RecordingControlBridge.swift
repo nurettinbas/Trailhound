@@ -14,14 +14,36 @@ public enum RecordingControlBridge {
         value: UserDefaults(suiteName: appGroupSuiteName) ?? .standard
     )
 
-    /// Cached app-group defaults; avoids repeated `UserDefaults(suiteName:)` calls that spam cfprefsd logs.
+    /// Cached app-group defaults; avoids repeated `UserDefaults(suiteName:)` calls that spam cfprefsd
+    /// logs and add cfprefsd round trips to the Live Activity intent's critical path.
     public static func sharedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: appGroupSuiteName) ?? uncheckedSharedDefaults.value
+        uncheckedSharedDefaults.value
+    }
+
+    /// Pulls cross-process App Group writes (widget extension → app) into this process before reads.
+    public static func refreshSharedDefaultsFromDisk() {
+        CFPreferencesAppSynchronize(appGroupSuiteName as CFString)
+    }
+
+    public static func hasPendingStopRequest() -> Bool {
+        sharedDefaults().bool(forKey: Keys.requestStop)
+    }
+
+    public static func hasPendingPauseRequest() -> Bool {
+        sharedDefaults().bool(forKey: Keys.requestPause)
+    }
+
+    public static func hasPendingResumeRequest() -> Bool {
+        sharedDefaults().bool(forKey: Keys.requestResume)
     }
 
     private static func stampRequest(_ key: String, at timestampKey: String, in defaults: UserDefaults) {
         defaults.set(Date().timeIntervalSince1970, forKey: timestampKey)
         defaults.set(true, forKey: key)
+    }
+
+    private static func commitSharedDefaultsToDisk() {
+        CFPreferencesAppSynchronize(appGroupSuiteName as CFString)
     }
 
     public enum Keys {
@@ -36,9 +58,54 @@ public enum RecordingControlBridge {
         public static let isActive = "recording.isActive"
         public static let isPaused = "recording.isPaused"
         public static let elapsed = "recording.elapsed"
+        public static let startedAt = "recording.startedAt"
         public static let distance = "recording.distance"
+        public static let weekDistance = "stats.weekDistance"
+        public static let monthDistance = "stats.monthDistance"
         /// When true, external start (Shortcuts/Siri) opens the app for confirmation.
         public static let confirmExternalRecordingStart = "confirmExternalRecordingStart"
+    }
+
+    /// Home-screen / lock-screen widget timeline payload from App Group defaults.
+    public struct RecordingWidgetSnapshot: Equatable, Sendable {
+        public var isRecording: Bool
+        public var isPaused: Bool
+        public var elapsed: TimeInterval
+        public var distanceMeters: Double
+        public var weekDistanceMeters: Double
+        public var monthDistanceMeters: Double
+        /// When actively recording, widget extrapolates elapsed locally from this anchor.
+        public var recordingStartedAt: Date?
+
+        public var showsRecordingControls: Bool { isRecording || isPaused }
+        /// Pause control when actively recording; Resume when paused.
+        public var showsResumeControl: Bool { isPaused }
+
+        /// Elapsed duration for widget display at `now` — ticks locally while recording.
+        public func elapsed(at now: Date = Date()) -> TimeInterval {
+            if isRecording, !isPaused, let recordingStartedAt {
+                return max(0, now.timeIntervalSince(recordingStartedAt))
+            }
+            return elapsed
+        }
+    }
+
+    public static func recordingWidgetSnapshot(
+        from defaults: UserDefaults? = nil
+    ) -> RecordingWidgetSnapshot {
+        let defaults = defaults ?? sharedDefaults()
+        let startedAtTimestamp = defaults.double(forKey: Keys.startedAt)
+        return RecordingWidgetSnapshot(
+            isRecording: defaults.bool(forKey: Keys.isActive),
+            isPaused: defaults.bool(forKey: Keys.isPaused),
+            elapsed: defaults.double(forKey: Keys.elapsed),
+            distanceMeters: defaults.double(forKey: Keys.distance),
+            weekDistanceMeters: defaults.double(forKey: Keys.weekDistance),
+            monthDistanceMeters: defaults.double(forKey: Keys.monthDistance),
+            recordingStartedAt: startedAtTimestamp > 0
+                ? Date(timeIntervalSince1970: startedAtTimestamp)
+                : nil
+        )
     }
 
     private enum DarwinNotification: CaseIterable {
@@ -129,8 +196,38 @@ public enum RecordingControlBridge {
     public static func updateLiveActivities(isPaused: Bool) async {
         for activity in Activity<TripRecordingAttributes>.activities {
             var state = activity.content.state
+            guard state.isPaused != isPaused else { continue }
             state.isPaused = isPaused
+            // Match in-app pause snapshot so the follow-up app publish is a no-op
+            // (avoids a second paint that restarts the pause/resume morph).
+            if isPaused {
+                state.currentSpeedKmh = 0
+            }
             await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
+    }
+
+    private static let homeWidgetKind = "TrailhoundWidget"
+    private static let lockScreenWidgetKind = "TrailhoundLockScreenWidget"
+
+    /// Requests an immediate home-screen widget repaint. Non-blocking; safe inside `perform()`.
+    public static func reloadHomeScreenWidgetTimelinesImmediately() {
+        WidgetCenter.shared.reloadTimelines(ofKind: homeWidgetKind)
+        WidgetCenter.shared.reloadTimelines(ofKind: lockScreenWidgetKind)
+    }
+
+    @MainActor
+    private static func scheduleLiveActivitySideEffects(
+        liveActivityPaused: Bool? = nil,
+        endLiveActivities: Bool = false
+    ) {
+        Task { @MainActor(priority: .userInitiated) in
+            if let liveActivityPaused {
+                await updateLiveActivities(isPaused: liveActivityPaused)
+            }
+            if endLiveActivities {
+                await endAllLiveActivitiesImmediately()
+            }
         }
     }
 
@@ -140,6 +237,7 @@ public enum RecordingControlBridge {
         defaults.set(false, forKey: Keys.requestPause)
         defaults.set(false, forKey: Keys.requestResume)
         stampRequest(Keys.requestStart, at: Keys.requestStartAt, in: defaults)
+        commitSharedDefaultsToDisk()
         postDarwinNotification(.start)
     }
 
@@ -150,6 +248,7 @@ public enum RecordingControlBridge {
         stampRequest(Keys.requestStop, at: Keys.requestStopAt, in: defaults)
         defaults.set(false, forKey: Keys.isActive)
         defaults.set(false, forKey: Keys.isPaused)
+        commitSharedDefaultsToDisk()
         postDarwinNotification(.stop)
     }
 
@@ -157,7 +256,10 @@ public enum RecordingControlBridge {
         let defaults = sharedDefaults()
         defaults.set(false, forKey: Keys.requestResume)
         stampRequest(Keys.requestPause, at: Keys.requestPauseAt, in: defaults)
+        // Keep session active — widget shows Resume only when isActive && isPaused.
+        defaults.set(true, forKey: Keys.isActive)
         defaults.set(true, forKey: Keys.isPaused)
+        commitSharedDefaultsToDisk()
         postDarwinNotification(.pause)
     }
 
@@ -165,31 +267,56 @@ public enum RecordingControlBridge {
         let defaults = sharedDefaults()
         defaults.set(false, forKey: Keys.requestPause)
         stampRequest(Keys.requestResume, at: Keys.requestResumeAt, in: defaults)
+        defaults.set(true, forKey: Keys.isActive)
         defaults.set(false, forKey: Keys.isPaused)
+        commitSharedDefaultsToDisk()
         postDarwinNotification(.resume)
     }
 
+    // MARK: - Home-screen widget (AppIntent — stays in extension, no LA handoff stall)
+
     @MainActor
-    public static func handleStopButtonPressed() async {
+    public static func handleHomeWidgetStopPressed() {
+        requestStopFromControlSurface()
+        reloadHomeScreenWidgetTimelinesImmediately()
+        scheduleLiveActivitySideEffects(endLiveActivities: true)
+    }
+
+    @MainActor
+    public static func handleHomeWidgetPausePressed() {
+        requestPauseFromControlSurface()
+        reloadHomeScreenWidgetTimelinesImmediately()
+        scheduleLiveActivitySideEffects(liveActivityPaused: true)
+    }
+
+    @MainActor
+    public static func handleHomeWidgetResumePressed() {
+        requestResumeFromControlSurface()
+        reloadHomeScreenWidgetTimelinesImmediately()
+        scheduleLiveActivitySideEffects(liveActivityPaused: false)
+    }
+
+    // MARK: - Live Activity / Dynamic Island (LiveActivityIntent — paint LA in `perform()`)
+
+    @MainActor
+    public static func handleLiveActivityStopPressed() async {
         requestStopFromControlSurface()
         await endAllLiveActivitiesImmediately()
-        // Home-screen widget reads App Group state from its timeline; reload
-        // immediately so it does not keep showing the last recording entry.
-        WidgetCenter.shared.reloadAllTimelines()
+        reloadHomeScreenWidgetTimelinesImmediately()
     }
 
     @MainActor
-    public static func handlePauseButtonPressed() async {
+    public static func handleLiveActivityPausePressed() async {
         requestPauseFromControlSurface()
         await updateLiveActivities(isPaused: true)
-        WidgetCenter.shared.reloadAllTimelines()
+        reloadHomeScreenWidgetTimelinesImmediately()
     }
 
     @MainActor
-    public static func handleResumeButtonPressed() async {
+    public static func handleLiveActivityResumePressed() async {
         requestResumeFromControlSurface()
         await updateLiveActivities(isPaused: false)
-        WidgetCenter.shared.reloadAllTimelines()
+        reloadHomeScreenWidgetTimelinesImmediately()
     }
 }
 

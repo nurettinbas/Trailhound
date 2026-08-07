@@ -6,6 +6,9 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 
 - Edits use `VehicleEditorDraft` and persist on **Save** only (no SwiftData writes per keystroke).
 - Visual chrome matches the rest of the app (`glassListChrome()` / `glassRow()`); draft keeps keyboard work off the model layer.
+- Optional vehicle photos are 256 px JPEG/PNG thumbs on disk (`VehiclePhotoStore`); SwiftData stores only `photoFileName`. Decode/resize runs off the main actor; list rows use a memory cache hit when scrolling.
+- Identity surfaces (pairing rows, recording capsule, trip/stats vehicle filters, trip-detail picker) reuse `VehicleAvatarView` + `VehiclePhotoStore.prefetch` so thumbs are warm before scroll/chips appear.
+- Recording road animation (`RecordingCarAnimationView` in TrailhoundShared) accepts a **pre-decoded** `UIImage?` plus optional `systemImage` from the app. Shared never opens photo files; `TimelineView` / `drawingGroup` must not do per-frame I/O.
 
 ## Trips list scroll (recording card)
 

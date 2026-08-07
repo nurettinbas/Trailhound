@@ -8,7 +8,13 @@ struct PairingVehicleRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(alignment: .center, spacing: 12) {
-                vehicleIcon
+                VehicleAvatarView(
+                    systemImage: vehicle.systemImage,
+                    photoFileName: vehicle.photoFileName,
+                    size: 36,
+                    cornerRadius: 8,
+                    isElectricAccent: isElectricAccent
+                )
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -44,18 +50,7 @@ struct PairingVehicleRow: View {
         .buttonStyle(.plain)
     }
 
-    private var vehicleIcon: some View {
-        let isElectricAccent = vehicle.fuelType == .electric
-            || vehicle.systemImage == VehicleIconOption.electric.rawValue
-        return ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isElectricAccent
-                    ? Color.yellow.opacity(0.15)
-                    : TrailhoundBrandColors.brandBottom.opacity(0.12))
-                .frame(width: 36, height: 36)
-            Image(systemName: vehicle.systemImage)
-                .font(.body)
-                .foregroundStyle(isElectricAccent ? .yellow : TrailhoundBrandColors.brandBottom)
-        }
+    private var isElectricAccent: Bool {
+        vehicle.fuelType == .electric
     }
 }

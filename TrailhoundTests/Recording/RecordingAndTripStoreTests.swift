@@ -75,13 +75,36 @@ final class RecordingControlBridgeRequestTests: XCTestCase {
         RecordingControlBridge.requestPauseFromControlSurface()
         XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestPause))
         XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestPauseAt), 0)
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.isActive))
         XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.isPaused))
 
         RecordingControlBridge.requestResumeFromControlSurface()
         XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.requestResume))
         XCTAssertGreaterThan(defaults.double(forKey: RecordingControlBridge.Keys.requestResumeAt), 0)
+        XCTAssertTrue(defaults.bool(forKey: RecordingControlBridge.Keys.isActive))
         XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.isPaused))
         XCTAssertFalse(defaults.bool(forKey: RecordingControlBridge.Keys.requestPause))
+    }
+
+    func testPauseControlSurfaceMakesWidgetSnapshotShowResume() {
+        let defaults = RecordingControlBridge.sharedDefaults()
+        defaults.set(true, forKey: RecordingControlBridge.Keys.isActive)
+        defaults.set(false, forKey: RecordingControlBridge.Keys.isPaused)
+
+        var snapshot = RecordingControlBridge.recordingWidgetSnapshot(from: defaults)
+        XCTAssertTrue(snapshot.showsRecordingControls)
+        XCTAssertFalse(snapshot.showsResumeControl)
+
+        RecordingControlBridge.requestPauseFromControlSurface()
+        snapshot = RecordingControlBridge.recordingWidgetSnapshot(from: defaults)
+        XCTAssertTrue(snapshot.isRecording)
+        XCTAssertTrue(snapshot.isPaused)
+        XCTAssertTrue(snapshot.showsResumeControl)
+
+        RecordingControlBridge.requestResumeFromControlSurface()
+        snapshot = RecordingControlBridge.recordingWidgetSnapshot(from: defaults)
+        XCTAssertTrue(snapshot.showsRecordingControls)
+        XCTAssertFalse(snapshot.showsResumeControl)
     }
 }
 
@@ -126,6 +149,60 @@ final class ExternalRecordingRequestTests: XCTestCase {
         XCTAssertFalse(settings.awaitingExternalStartConfirmation)
         XCTAssertFalse(settings.pendingStartRecordingRequest)
         XCTAssertEqual(recordingService.state, .recording)
+    }
+
+    /// Widget Pause must leave App Group in the Resume-control snapshot after in-app apply.
+    func testProcessExternalPauseKeepsWidgetSnapshotOnResumeControl() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.external.pause.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        let container = try ModelContainerFactory.makeInMemory()
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: container.mainContext)
+        XCTAssertTrue(recordingService.startManualRecording())
+        defer { recordingService.stopManualRecording() }
+
+        // Optimistic writes from the widget/Live Activity pause control.
+        settings.pendingPauseRecordingRequest = true
+        defaults.set(true, forKey: RecordingControlBridge.Keys.isActive)
+        defaults.set(true, forKey: RecordingControlBridge.Keys.isPaused)
+
+        recordingService.processExternalPauseRequest()
+
+        XCTAssertEqual(recordingService.state, .paused)
+        XCTAssertFalse(settings.pendingPauseRecordingRequest)
+        let snapshot = RecordingControlBridge.recordingWidgetSnapshot(from: defaults)
+        XCTAssertTrue(snapshot.isRecording)
+        XCTAssertTrue(snapshot.isPaused)
+        XCTAssertTrue(snapshot.showsResumeControl)
+    }
+
+    func testProcessExternalResumeReturnsWidgetSnapshotToPauseControl() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.external.resume.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        let container = try ModelContainerFactory.makeInMemory()
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: container.mainContext)
+        XCTAssertTrue(recordingService.startManualRecording())
+        defer { recordingService.stopManualRecording() }
+        recordingService.pauseRecording()
+
+        settings.pendingResumeRecordingRequest = true
+        defaults.set(true, forKey: RecordingControlBridge.Keys.isActive)
+        defaults.set(false, forKey: RecordingControlBridge.Keys.isPaused)
+
+        recordingService.processExternalResumeRequest()
+
+        XCTAssertEqual(recordingService.state, .recording)
+        XCTAssertFalse(settings.pendingResumeRecordingRequest)
+        let snapshot = RecordingControlBridge.recordingWidgetSnapshot(from: defaults)
+        XCTAssertTrue(snapshot.showsRecordingControls)
+        XCTAssertFalse(snapshot.showsResumeControl)
     }
 }
 

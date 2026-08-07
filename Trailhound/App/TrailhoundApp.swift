@@ -167,6 +167,8 @@ final class AppRuntime {
     }
 
     func processPendingRecordingRequests() {
+        // Widget extension writes land on disk; pull them before reading pending flags.
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         let settings = AppSettings.shared
         settings.expireStaleRecordingRequests()
         if settings.pendingStopRecordingRequest {

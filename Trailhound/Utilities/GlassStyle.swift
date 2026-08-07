@@ -329,6 +329,7 @@ struct GlassFilterChip: View {
         var font: Font { self == .compact ? .caption2 : .caption }
         var horizontalPadding: CGFloat { self == .compact ? 10 : 12 }
         var verticalPadding: CGFloat { self == .compact ? 5 : 7 }
+        var avatarSize: CGFloat { self == .compact ? 16 : 18 }
     }
 
     let title: String
@@ -337,34 +338,49 @@ struct GlassFilterChip: View {
     var highlightID: String = "glassFilterChipHighlight"
     var expands: Bool = false
     var size: Size = .regular
+    /// Optional vehicle identity mark (photo thumb or SF Symbol).
+    var avatarSystemImage: String? = nil
+    var avatarPhotoFileName: String? = nil
+    var avatarIsElectric: Bool = false
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(size.font.weight(isSelected ? .semibold : .regular))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .padding(.horizontal, size.horizontalPadding)
-                .padding(.vertical, size.verticalPadding)
-                .frame(maxWidth: expands ? .infinity : nil)
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(TrailhoundBrandColors.brandBottom)
-                            .matchedGeometryEffect(id: highlightID, in: namespace)
-                    } else {
-                        Capsule()
-                            .fill(
-                                colorScheme == .dark
-                                    ? Color.white.opacity(0.12)
-                                    : Color.white.opacity(0.55)
-                            )
-                    }
+            HStack(spacing: 5) {
+                if let avatarSystemImage {
+                    VehicleAvatarView(
+                        systemImage: avatarSystemImage,
+                        photoFileName: avatarPhotoFileName,
+                        size: size.avatarSize,
+                        cornerRadius: size.avatarSize * 0.28,
+                        isElectricAccent: avatarIsElectric
+                    )
                 }
+                Text(title)
+                    .font(size.font.weight(isSelected ? .semibold : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .padding(.horizontal, size.horizontalPadding)
+            .padding(.vertical, size.verticalPadding)
+            .frame(maxWidth: expands ? .infinity : nil)
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(TrailhoundBrandColors.brandBottom)
+                        .matchedGeometryEffect(id: highlightID, in: namespace)
+                } else {
+                    Capsule()
+                        .fill(
+                            colorScheme == .dark
+                                ? Color.white.opacity(0.12)
+                                : Color.white.opacity(0.55)
+                        )
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

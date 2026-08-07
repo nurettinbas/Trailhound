@@ -142,6 +142,7 @@ struct ContentView: View {
     }
 
     private func processPendingRecordingRequests() {
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
         settings.expireStaleRecordingRequests()
         if settings.pendingStopRecordingRequest {
             tripRecordingService.processExternalStopRequest()

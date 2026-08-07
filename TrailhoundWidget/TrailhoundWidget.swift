@@ -1,6 +1,7 @@
 import ActivityKit
 import AppIntents
 import SwiftUI
+import UIKit
 import WidgetKit
 
 private enum WidgetL10n {
@@ -14,6 +15,10 @@ private enum WidgetL10n {
     static var start: String { text("action.start") }
     static var paused: String { text("live_activity.paused") }
     static var recording: String { text("live_activity.recording") }
+    static var tripActive: String { text("live_activity.trip_active") }
+    static var tripPaused: String { text("live_activity.trip_paused") }
+    static var distance: String { text("label.distance") }
+    static var speed: String { text("live_activity.speed") }
     static var noRecording: String { text("widget.no_recording") }
     static var thisWeek: String { text("section.this_week") }
     static var displayName: String { text("widget.display_name") }
@@ -204,6 +209,7 @@ struct TrailhoundWidgetEntry: TimelineEntry {
     let distanceMeters: Double
     let weekDistanceMeters: Double
     let monthDistanceMeters: Double
+    let recordingStartedAt: Date?
 
     static func preview(
         isRecording: Bool = true,
@@ -211,7 +217,8 @@ struct TrailhoundWidgetEntry: TimelineEntry {
         elapsed: TimeInterval = 3_723,
         distanceMeters: Double = 12_400,
         weekDistanceMeters: Double = 45_200,
-        monthDistanceMeters: Double = 182_000
+        monthDistanceMeters: Double = 182_000,
+        recordingStartedAt: Date? = nil
     ) -> TrailhoundWidgetEntry {
         TrailhoundWidgetEntry(
             date: .now,
@@ -220,7 +227,21 @@ struct TrailhoundWidgetEntry: TimelineEntry {
             elapsed: elapsed,
             distanceMeters: distanceMeters,
             weekDistanceMeters: weekDistanceMeters,
-            monthDistanceMeters: monthDistanceMeters
+            monthDistanceMeters: monthDistanceMeters,
+            recordingStartedAt: recordingStartedAt ?? (isRecording && !isPaused ? Date().addingTimeInterval(-elapsed) : nil)
+        )
+    }
+
+    static func from(snapshot: RecordingControlBridge.RecordingWidgetSnapshot, at date: Date = Date()) -> TrailhoundWidgetEntry {
+        TrailhoundWidgetEntry(
+            date: date,
+            isRecording: snapshot.isRecording,
+            isPaused: snapshot.isPaused,
+            elapsed: snapshot.elapsed(at: date),
+            distanceMeters: snapshot.distanceMeters,
+            weekDistanceMeters: snapshot.weekDistanceMeters,
+            monthDistanceMeters: snapshot.monthDistanceMeters,
+            recordingStartedAt: snapshot.recordingStartedAt
         )
     }
 }
@@ -239,23 +260,42 @@ struct TrailhoundWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TrailhoundWidgetEntry>) -> Void) {
-        let entry = loadEntry()
-        let refreshInterval: TimeInterval = entry.isRecording ? 15 : 30
-        let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(refreshInterval)))
-        completion(timeline)
+        let snapshot = RecordingControlBridge.recordingWidgetSnapshot()
+        let now = Date()
+
+        // Match Live Activity / Dynamic Island cadence (3s) so both surfaces tick together.
+        if snapshot.isRecording, !snapshot.isPaused, let startedAt = snapshot.recordingStartedAt {
+            let tick: TimeInterval = 3
+            let horizon = 20
+            var entries: [TrailhoundWidgetEntry] = []
+            entries.reserveCapacity(horizon)
+            for step in 0..<horizon {
+                let date = now.addingTimeInterval(TimeInterval(step) * tick)
+                entries.append(
+                    TrailhoundWidgetEntry(
+                        date: date,
+                        isRecording: true,
+                        isPaused: false,
+                        elapsed: max(0, date.timeIntervalSince(startedAt)),
+                        distanceMeters: snapshot.distanceMeters,
+                        weekDistanceMeters: snapshot.weekDistanceMeters,
+                        monthDistanceMeters: snapshot.monthDistanceMeters,
+                        recordingStartedAt: startedAt
+                    )
+                )
+            }
+            completion(Timeline(entries: entries, policy: .atEnd))
+            return
+        }
+
+        let entry = TrailhoundWidgetEntry.from(snapshot: snapshot, at: now)
+        let refreshInterval: TimeInterval = snapshot.isRecording ? 15 : 30
+        completion(Timeline(entries: [entry], policy: .after(now.addingTimeInterval(refreshInterval))))
     }
 
     private func loadEntry() -> TrailhoundWidgetEntry {
-        let defaults = UserDefaults(suiteName: "group.com.trailhound.app")
-        return TrailhoundWidgetEntry(
-            date: Date(),
-            isRecording: defaults?.bool(forKey: "recording.isActive") ?? false,
-            isPaused: defaults?.bool(forKey: "recording.isPaused") ?? false,
-            elapsed: defaults?.double(forKey: "recording.elapsed") ?? 0,
-            distanceMeters: defaults?.double(forKey: "recording.distance") ?? 0,
-            weekDistanceMeters: defaults?.double(forKey: "stats.weekDistance") ?? 0,
-            monthDistanceMeters: defaults?.double(forKey: "stats.monthDistance") ?? 0
-        )
+        let snapshot = RecordingControlBridge.recordingWidgetSnapshot()
+        return TrailhoundWidgetEntry.from(snapshot: snapshot)
     }
 }
 
@@ -295,6 +335,7 @@ struct TrailhoundWidgetView: View {
                 Text(DateFormatters.formatDuration(entry.elapsed))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                     .minimumScaleFactor(0.8)
                     .lineLimit(1)
                 Text(DateFormatters.formatDistance(entry.distanceMeters))
@@ -332,6 +373,7 @@ struct TrailhoundWidgetView: View {
                 Text("\(DateFormatters.formatDuration(entry.elapsed)) · \(DateFormatters.formatDistance(entry.distanceMeters))")
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             } else {
@@ -358,6 +400,7 @@ struct TrailhoundWidgetView: View {
                 Text(DateFormatters.formatDuration(entry.elapsed))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                 Text(DateFormatters.formatDistance(entry.distanceMeters))
                     .font(.title3)
                     .foregroundStyle(.secondary)
@@ -420,7 +463,7 @@ struct TrailhoundWidgetView: View {
                         systemImage: "play.fill",
                         tint: WidgetPalette.resume,
                         size: .regular,
-                        intent: WidgetResumeRecordingIntent()
+                        intent: HomeWidgetResumeRecordingIntent()
                     )
                 } else {
                     WidgetIntentButton(
@@ -428,7 +471,7 @@ struct TrailhoundWidgetView: View {
                         systemImage: "pause.fill",
                         tint: WidgetPalette.paused,
                         size: .regular,
-                        intent: WidgetPauseRecordingIntent()
+                        intent: HomeWidgetPauseRecordingIntent()
                     )
                 }
 
@@ -437,7 +480,7 @@ struct TrailhoundWidgetView: View {
                     systemImage: "stop.fill",
                     tint: WidgetPalette.stop,
                     size: .regular,
-                    intent: WidgetStopRecordingIntent()
+                    intent: HomeWidgetStopRecordingIntent()
                 )
             }
         } else {
@@ -459,7 +502,7 @@ struct TrailhoundWidgetView: View {
                     systemImage: "play.fill",
                     tint: WidgetPalette.resume,
                     size: .small,
-                    intent: WidgetResumeRecordingIntent()
+                    intent: HomeWidgetResumeRecordingIntent()
                 )
             } else {
                 WidgetIntentButton(
@@ -467,7 +510,7 @@ struct TrailhoundWidgetView: View {
                     systemImage: "pause.fill",
                     tint: WidgetPalette.paused,
                     size: .small,
-                    intent: WidgetPauseRecordingIntent()
+                    intent: HomeWidgetPauseRecordingIntent()
                 )
             }
 
@@ -476,7 +519,7 @@ struct TrailhoundWidgetView: View {
                 systemImage: "stop.fill",
                 tint: WidgetPalette.stop,
                 size: .small,
-                intent: WidgetStopRecordingIntent()
+                intent: HomeWidgetStopRecordingIntent()
             )
         }
     }
@@ -499,139 +542,331 @@ struct TrailhoundWidget: Widget {
 }
 
 private struct LiveActivityCarIcon: View {
-    let isPaused: Bool
-    var font: Font = .title2
+    var side: CGFloat = 22
+    var photoJPEGData: Data? = nil
+    /// Island chrome is black — white symbols read cleaner than brand blue.
+    var symbolTint: Color = .white
 
     var body: some View {
-        Group {
-            if isPaused {
-                Image(systemName: "pause.circle.fill")
-                    .foregroundStyle(WidgetPalette.paused)
-            } else {
-                Image(systemName: "car.side.fill")
-                    .foregroundStyle(WidgetPalette.brandBottom)
-                    .scaleEffect(x: -1, y: 1)
-            }
+        markContent
+            .frame(width: side, height: side)
+    }
+
+    @ViewBuilder
+    private var markContent: some View {
+        // Photo wins when ActivityKit payload carries a usable thumb; otherwise fixed
+        // right-facing `car.side.fill`.
+        if let photoJPEGData,
+           photoJPEGData.count > 32,
+           let image = UIImage(data: photoJPEGData) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "car.side.fill")
+                .font(.system(size: side * 0.58, weight: .semibold))
+                .foregroundStyle(symbolTint)
+                .scaleEffect(x: -1, y: 1)
         }
-        .font(font)
     }
 }
 
-/// Compact circular control for the expanded Dynamic Island — avoids bulky bordered buttons.
+/// Compact circular control — tinted disc only; no outer plate / glass box.
+///
+/// Uses `.borderedProminent` rather than a hand-drawn `Circle()` behind `.plain`: WidgetKit only
+/// draws its built-in press highlight for system button styles, and without that highlight the
+/// round trip through the intent reads as lag even when it is fast.
 private struct LiveActivityIslandButton<Intent: AppIntent>: View {
     let title: String
     let systemImage: String
     let tint: Color
     let intent: Intent
+    var size: CGFloat = 36
 
     var body: some View {
         Button(intent: intent) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.bold))
+                .font(.system(size: size * 0.36, weight: .bold))
                 .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(tint.gradient, in: Circle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.mini)
+        .tint(tint)
+        .frame(width: size, height: size)
         .accessibilityLabel(title)
+    }
+}
+
+/// Stable pause/play slot — CSS-style bounce-in / bounce-out glyph swap on tap.
+///
+/// Live Activity state arrives late from ActivityKit; `@State displayPaused` flips on tap so the
+/// bounce runs immediately instead of waiting for the next ContentState push.
+private struct LiveActivityPlaybackControl: View {
+    let isPaused: Bool
+    var size: CGFloat = 38
+
+    @State private var displayPaused: Bool
+
+    init(isPaused: Bool, size: CGFloat = 38) {
+        self.isPaused = isPaused
+        self.size = size
+        _displayPaused = State(initialValue: isPaused)
+    }
+
+    var body: some View {
+        Button(intent: WidgetTogglePauseResumeIntent(wasPaused: displayPaused)) {
+            ZStack {
+                LiveActivityBounceGlyph(
+                    systemName: "pause.fill",
+                    isActive: !displayPaused,
+                    size: size
+                )
+                LiveActivityBounceGlyph(
+                    systemName: "play.fill",
+                    isActive: displayPaused,
+                    size: size,
+                    offsetX: 0.8
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.mini)
+        .tint(displayPaused ? WidgetPalette.resume : WidgetPalette.paused)
+        .frame(width: size, height: size)
+        .keyframeAnimator(initialValue: CGFloat(1), trigger: displayPaused) { view, scale in
+            view.scaleEffect(scale)
+        } keyframes: { _ in
+            CubicKeyframe(0.82, duration: 0.0004)
+            CubicKeyframe(1.10, duration: 0.0006)
+            CubicKeyframe(1.0, duration: 0.0005)
+        }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                displayPaused.toggle()
+            }
+        )
+        .onChange(of: isPaused) { _, newValue in
+            displayPaused = newValue
+        }
+        .accessibilityLabel(displayPaused ? WidgetL10n.resume : WidgetL10n.pause)
+    }
+}
+
+private struct LiveActivityBounceGlyph: View {
+    let systemName: String
+    let isActive: Bool
+    let size: CGFloat
+    var offsetX: CGFloat = 0
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size * 0.38, weight: .bold))
+            .foregroundStyle(.white)
+            .offset(x: offsetX)
+            .keyframeAnimator(
+                initialValue: isActive ? 1.0 : 0.2,
+                trigger: isActive
+            ) { view, scale in
+                view
+                    .scaleEffect(scale)
+                    .opacity(scale > 0.18 ? 1 : 0)
+            } keyframes: { _ in
+                if isActive {
+                    LinearKeyframe(0.2, duration: 0)
+                    CubicKeyframe(1.22, duration: 0.0008)
+                    CubicKeyframe(0.94, duration: 0.0005)
+                    CubicKeyframe(1.0, duration: 0.0004)
+                } else {
+                    LinearKeyframe(1.0, duration: 0)
+                    CubicKeyframe(1.08, duration: 0.0003)
+                    CubicKeyframe(0.2, duration: 0.0009)
+                }
+            }
+    }
+}
+
+/// Distance / Speed row for expanded Island (mockup hierarchy).
+/// `fixedSize` keeps labels and values whole — the Island must never truncate them.
+private struct LiveActivityIslandMetricRow: View {
+    let systemImage: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.75))
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Color.white.opacity(0.10)))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
+                Text(value)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+            }
+            // The trailing Island region is narrow — scale down instead of truncating.
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+        }
     }
 }
 
 struct TrailhoundLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TripRecordingAttributes.self) { context in
-            HStack(spacing: 12) {
-                LiveActivityCarIcon(isPaused: context.state.isPaused)
+            HStack(alignment: .center, spacing: 12) {
+                liveActivityCarIcon(for: context.state, side: 54, symbolTint: WidgetPalette.brandBottom)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
-                        .font(.headline)
-                        .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
-                    Text(liveActivityStats(context.state))
-                        .font(.subheadline)
+                    Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(.primary)
+                        .minimumScaleFactor(0.8)
+                        .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.recording)
+                            .frame(width: 6, height: 6)
+                        Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : .secondary)
+                            .lineLimit(1)
+                            .contentTransition(.opacity)
+                    }
+                    Text(liveActivityBannerMeta(context.state))
+                        .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 liveActivityControls(isPaused: context.state.isPaused)
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .activityBackgroundTint(
-                (context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.14)
+                (context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.10)
             )
         } dynamicIsland: { context in
             DynamicIsland {
+                // Vehicle mark + duration share one row height; status copy lives in `.bottom`.
                 DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityCarIcon(isPaused: context.state.isPaused, font: .title3)
-                        .frame(maxHeight: .infinity, alignment: .center)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
-                            .font(.caption)
-                            .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
+                    let markSide: CGFloat = 40
+                    HStack(alignment: .center, spacing: 10) {
+                        liveActivityCarIcon(
+                            for: context.state,
+                            side: markSide,
+                            symbolTint: .white
+                        )
+
                         Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                            .font(.title3.weight(.semibold))
+                            .font(.system(size: markSide * 0.92, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack(alignment: .center, spacing: 8) {
-                        Text(liveActivityIslandSecondaryStats(context.state))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .foregroundStyle(.white)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .frame(height: markSide)
+                }
+
+                DynamicIslandExpandedRegion(.trailing) {
+                    HStack(spacing: 0) {
                         Spacer(minLength: 0)
+                        VStack(alignment: .leading, spacing: 6) {
+                            LiveActivityIslandMetricRow(
+                                systemImage: "road.lanes",
+                                label: WidgetL10n.distance,
+                                value: DateFormatters.formatDistance(context.state.distanceMeters)
+                            )
+                            LiveActivityIslandMetricRow(
+                                systemImage: "gauge.with.dots.needle.67percent",
+                                label: WidgetL10n.speed,
+                                value: context.state.isPaused
+                                    ? "—"
+                                    : "\(context.state.currentSpeedKmh) km/s"
+                            )
+                        }
+                    }
+                }
+
+                DynamicIslandExpandedRegion(.bottom) {
+                    HStack(alignment: .center, spacing: 10) {
+                        HStack(spacing: 7) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.75))
+                                .frame(width: 26, height: 26)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.white.opacity(0.10))
+                                )
+                            Circle()
+                                .fill(context.state.isPaused ? WidgetPalette.paused : Color.green)
+                                .frame(width: 6, height: 6)
+                            Text(context.state.isPaused ? WidgetL10n.tripPaused : WidgetL10n.tripActive)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.72))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+
+                        Spacer(minLength: 8)
+
                         liveActivityIslandControls(isPaused: context.state.isPaused)
                     }
+                    .padding(.top, 2)
                 }
             } compactLeading: {
-                LiveActivityCarIcon(isPaused: context.state.isPaused, font: .caption)
+                liveActivityCarIcon(for: context.state, side: 18, symbolTint: .white)
             } compactTrailing: {
                 Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                    .font(.caption2)
+                    .font(.caption2.weight(.bold))
                     .monospacedDigit()
+                    .foregroundStyle(.white)
             } minimal: {
-                LiveActivityCarIcon(isPaused: context.state.isPaused, font: .caption2)
+                liveActivityCarIcon(for: context.state, side: 15, symbolTint: .white)
             }
+            .keylineTint(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
         }
+    }
+
+    private func liveActivityCarIcon(
+        for state: TripRecordingAttributes.ContentState,
+        side: CGFloat,
+        symbolTint: Color
+    ) -> LiveActivityCarIcon {
+        LiveActivityCarIcon(
+            side: side,
+            photoJPEGData: state.vehiclePhotoJPEGData,
+            symbolTint: symbolTint
+        )
     }
 
     @ViewBuilder
     private func liveActivityControls(isPaused: Bool) -> some View {
-        HStack(spacing: 8) {
-            if isPaused {
-                WidgetIntentButton(
-                    title: WidgetL10n.resume,
-                    systemImage: "play.fill",
-                    tint: WidgetPalette.resume,
-                    size: .small,
-                    iconOnly: true,
-                    intent: WidgetResumeRecordingIntent()
-                )
-            } else {
-                WidgetIntentButton(
-                    title: WidgetL10n.pause,
-                    systemImage: "pause.fill",
-                    tint: WidgetPalette.paused,
-                    size: .small,
-                    iconOnly: true,
-                    intent: WidgetPauseRecordingIntent()
-                )
-            }
-
-            WidgetIntentButton(
+        HStack(spacing: 10) {
+            LiveActivityPlaybackControl(isPaused: isPaused, size: 40)
+            LiveActivityIslandButton(
                 title: WidgetL10n.stop,
                 systemImage: "stop.fill",
                 tint: WidgetPalette.stop,
-                size: .small,
-                iconOnly: true,
-                intent: WidgetStopRecordingIntent()
+                intent: WidgetStopRecordingIntent(),
+                size: 40
             )
         }
     }
@@ -639,44 +874,23 @@ struct TrailhoundLiveActivity: Widget {
     @ViewBuilder
     private func liveActivityIslandControls(isPaused: Bool) -> some View {
         HStack(spacing: 10) {
-            if isPaused {
-                LiveActivityIslandButton(
-                    title: WidgetL10n.resume,
-                    systemImage: "play.fill",
-                    tint: WidgetPalette.resume,
-                    intent: WidgetResumeRecordingIntent()
-                )
-            } else {
-                LiveActivityIslandButton(
-                    title: WidgetL10n.pause,
-                    systemImage: "pause.fill",
-                    tint: WidgetPalette.paused,
-                    intent: WidgetPauseRecordingIntent()
-                )
-            }
-
+            LiveActivityPlaybackControl(isPaused: isPaused, size: 36)
             LiveActivityIslandButton(
                 title: WidgetL10n.stop,
                 systemImage: "stop.fill",
                 tint: WidgetPalette.stop,
-                intent: WidgetStopRecordingIntent()
+                intent: WidgetStopRecordingIntent(),
+                size: 36
             )
         }
     }
 
-    private func liveActivityIslandSecondaryStats(_ state: TripRecordingAttributes.ContentState) -> String {
+    private func liveActivityBannerMeta(_ state: TripRecordingAttributes.ContentState) -> String {
         let distance = DateFormatters.formatDistance(state.distanceMeters)
         if state.isPaused {
             return distance
         }
         return "\(distance) · \(state.currentSpeedKmh) km/s"
-    }
-
-    private func liveActivityStats(_ state: TripRecordingAttributes.ContentState) -> String {
-        if state.isPaused {
-            return "\(DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds))) · \(DateFormatters.formatDistance(state.distanceMeters))"
-        }
-        return "\(DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds))) · \(DateFormatters.formatDistance(state.distanceMeters)) · \(state.currentSpeedKmh) km/s"
     }
 }
 
