@@ -3,6 +3,7 @@ import SwiftUI
 private enum OnboardingStep: Int, CaseIterable {
     case welcome
     case location
+    case vehicleCare
     case shortcuts
 
     static var count: Int { allCases.count }
@@ -43,6 +44,8 @@ struct OnboardingView: View {
                         .tag(OnboardingStep.welcome.rawValue)
                     locationPage
                         .tag(OnboardingStep.location.rawValue)
+                    vehicleCarePage
+                        .tag(OnboardingStep.vehicleCare.rawValue)
                     shortcutsPage
                         .tag(OnboardingStep.shortcuts.rawValue)
                 }
@@ -114,6 +117,27 @@ struct OnboardingView: View {
 
                 locationPermissionActions
             }
+        }
+    }
+
+    private var vehicleCarePage: some View {
+        onboardingHeroPage(
+            kind: .vehicleCare,
+            title: L10n.string("onboarding.vehicle_care.title"),
+            message: L10n.string("onboarding.vehicle_care.message")
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                onboardingFeatureRow(
+                    icon: "calendar.badge.clock",
+                    text: L10n.string("onboarding.vehicle_care.reminders")
+                )
+                onboardingFeatureRow(
+                    icon: "creditcard.circle.fill",
+                    text: L10n.string("onboarding.vehicle_care.expenses")
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
         }
     }
 
@@ -203,6 +227,7 @@ struct OnboardingView: View {
         switch kind {
         case .welcomeDrive: return OnboardingStep.welcome.rawValue
         case .locationPin: return OnboardingStep.location.rawValue
+        case .vehicleCare: return OnboardingStep.vehicleCare.rawValue
         case .shortcutsLink: return OnboardingStep.shortcuts.rawValue
         }
     }
@@ -271,7 +296,7 @@ struct OnboardingView: View {
 
             Spacer()
 
-            if page < OnboardingStep.shortcuts.rawValue {
+            if page < pageCount - 1 {
                 Button(L10n.string("onboarding.next")) {
                     withAnimation(TrailhoundMotion.gentle) {
                         page += 1

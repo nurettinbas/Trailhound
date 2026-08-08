@@ -52,7 +52,7 @@ final class VehicleCostSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snap.serviceTotal, 200, accuracy: 0.01)
         XCTAssertEqual(snap.total, 300, accuracy: 0.01)
         XCTAssertEqual(snap.days.count, 2)
-        XCTAssertEqual(snap.days.first?.amount(for: .fuel) ?? 0, 100, accuracy: 0.01)
+        XCTAssertEqual(snap.days.first?.amount(for: VehicleExpenseCategory.fuel) ?? 0, 100, accuracy: 0.01)
         XCTAssertFalse(snap.categoryBreakdown.contains(where: \.isTripEstimate))
     }
 
@@ -96,9 +96,9 @@ final class VehicleCostSnapshotLoaderTests: XCTestCase {
 
         XCTAssertEqual(snap.days.count, 1)
         let dayCost = try XCTUnwrap(snap.days.first)
-        XCTAssertEqual(dayCost.amount(for: .fuel), 100, accuracy: 0.01)
-        XCTAssertEqual(dayCost.amount(for: .accessory), 250, accuracy: 0.01)
-        XCTAssertEqual(dayCost.amount(for: .other), 50, accuracy: 0.01)
+        XCTAssertEqual(dayCost.amount(for: VehicleExpenseCategory.fuel), 100, accuracy: 0.01)
+        XCTAssertEqual(dayCost.amount(for: VehicleExpenseCategory.accessory), 250, accuracy: 0.01)
+        XCTAssertEqual(dayCost.amount(for: VehicleExpenseCategory.other), 50, accuracy: 0.01)
         XCTAssertEqual(
             snap.categoryBreakdown.map(\.id).sorted(),
             ["accessory", "fuel", "other"]

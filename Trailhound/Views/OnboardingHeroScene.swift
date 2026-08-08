@@ -4,6 +4,7 @@ import UIKit
 enum OnboardingHeroKind: Equatable {
     case welcomeDrive
     case locationPin
+    case vehicleCare
     case shortcutsLink
 }
 
@@ -11,7 +12,7 @@ enum OnboardingHeroKind: Equatable {
 struct OnboardingHeroScene: View {
     var kind: OnboardingHeroKind
     var driveInProgress: CGFloat = 1
-    /// Pin drop / Shortcuts link snap (0 → 1).
+    /// Pin drop / care icons / Shortcuts link snap (0 → 1).
     var beatProgress: CGFloat = 1
     var isAnimating: Bool = true
 
@@ -121,6 +122,8 @@ private struct OnboardingHeroOverlay: View {
             EmptyView()
         case .locationPin:
             locationPinOverlay
+        case .vehicleCare:
+            vehicleCareOverlay
         case .shortcutsLink:
             shortcutsLinkOverlay
         }
@@ -150,6 +153,65 @@ private struct OnboardingHeroOverlay: View {
                 .scaleEffect(0.86 + 0.14 * eased)
                 .opacity(pinOpacity)
                 .position(x: pinX, y: pinY)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var vehicleCareOverlay: some View {
+        let clamped = min(1, max(0, beatProgress))
+        let calendarEased = TrailhoundRoadSceneMetrics.easeOutCubic(clamped)
+        let expenseRaw = min(1, max(0, (clamped - 0.15) / 0.85))
+        let expenseEased = TrailhoundRoadSceneMetrics.easeOutCubic(expenseRaw)
+        let pathEased = TrailhoundRoadSceneMetrics.easeOutCubic(min(1, max(0, (clamped - 0.08) / 0.92)))
+
+        let calendarPoint = CGPoint(x: layout.size.width * 0.22, y: layout.size.height * 0.30)
+        let expensePoint = CGPoint(x: layout.size.width * 0.78, y: layout.size.height * 0.30)
+        let calendarStartY = calendarPoint.y - 34
+        let expenseStartY = expensePoint.y - 34
+        let calendarY = calendarStartY + (calendarPoint.y - calendarStartY) * calendarEased
+        let expenseY = expenseStartY + (expensePoint.y - expenseStartY) * expenseEased
+        let mid = CGPoint(
+            x: (calendarPoint.x + expensePoint.x) * 0.5,
+            y: min(calendarPoint.y, expensePoint.y) - 22
+        )
+
+        return ZStack {
+            Path { path in
+                path.move(to: CGPoint(x: calendarPoint.x, y: calendarY))
+                path.addQuadCurve(to: CGPoint(x: expensePoint.x, y: expenseY), control: mid)
+            }
+            .trim(from: 0, to: pathEased)
+            .stroke(
+                TrailhoundBrandColors.brandTop.opacity(0.95),
+                style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+            )
+            .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.45), radius: 4, y: 0)
+
+            Image(systemName: "calendar.badge.clock")
+                .font(.system(size: 26, weight: .semibold))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+                .scaleEffect(0.86 + 0.14 * calendarEased)
+                .opacity(Double(0.2 + 0.8 * calendarEased))
+                .position(x: calendarPoint.x, y: calendarY)
+
+            SoftPulseRing(
+                color: UIColor(TrailhoundBrandColors.brandBottom),
+                isActive: expenseEased > 0.85,
+                reduceMotion: reduceMotion
+            )
+            .frame(width: 38, height: 38)
+            .position(x: expensePoint.x, y: expenseY)
+
+            Image(systemName: "creditcard.circle.fill")
+                .font(.system(size: 28, weight: .semibold))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+                .scaleEffect(0.86 + 0.14 * expenseEased)
+                .opacity(Double(0.2 + 0.8 * expenseEased))
+                .position(x: expensePoint.x, y: expenseY)
         }
         .allowsHitTesting(false)
     }
@@ -210,6 +272,14 @@ private struct OnboardingHeroOverlay: View {
     ZStack {
         AtmosphericBackground(style: .canvas)
         OnboardingHeroScene(kind: .locationPin, driveInProgress: 1, beatProgress: 1)
+            .padding()
+    }
+}
+
+#Preview("Vehicle care") {
+    ZStack {
+        AtmosphericBackground(style: .canvas)
+        OnboardingHeroScene(kind: .vehicleCare, driveInProgress: 1, beatProgress: 1)
             .padding()
     }
 }

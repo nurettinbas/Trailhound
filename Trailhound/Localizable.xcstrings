@@ -3077,6 +3077,74 @@
         }
       }
     },
+    "onboarding.vehicle_care.expenses" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log fuel and garage visits — your spend, in the currency you set."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yakıt ve servisi kaydet — harcaman, ayarladığın para biriminde."
+          }
+        }
+      }
+    },
+    "onboarding.vehicle_care.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stay ahead of every renewal — vehicle costs tracked in your selected currency."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her vadenin önünde ol — araç giderleri seçtiğin para biriminde."
+          }
+        }
+      }
+    },
+    "onboarding.vehicle_care.reminders" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspection, insurance, service — quiet alerts before due dates arrive."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vize, sigorta, bakım — vade gelmeden sakin hatırlatmalar."
+          }
+        }
+      }
+    },
+    "onboarding.vehicle_care.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Care, calmly kept"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bakım, sakin takipte"
+          }
+        }
+      }
+    },
     "onboarding.welcome.message" : {
       "extractionState" : "manual",
       "localizations" : {
