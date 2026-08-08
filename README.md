@@ -34,6 +34,12 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Swift Charts stats, trends, monthly goals
 - Frequent routes, category filters, trip merge/split
 
+### Vehicle care & costs
+- **Reminders** — inspection, insurance, comprehensive cover, service due dates with local push (30/7/1 days for service; 7/1 for insurance)
+- **Expenses** — log fuel, service, insurance, and other vehicle costs separately from reminders
+- One vehicle detail screen under **Vehicles**: profile → reminders → expenses; cost charts live on **Stats**
+- Overdue care shown as an in-app banner (no push spam)
+
 ### Organization
 - Personal / business categories (+ custom)
 - Vehicle management (petrol, diesel, hybrid, EV)
@@ -61,7 +67,7 @@ Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern 
 | Requirement | Used for |
 |-------------|----------|
 | GPS (Always / When In Use) | Route recording and background trips |
-| Notifications | Trip started/ended alerts |
+| Notifications | Trip started/ended alerts; vehicle care due reminders |
 | Face ID (optional) | App lock |
 | Shortcuts (system) | Auto-start/stop Personal Automations |
 
@@ -163,7 +169,7 @@ TrailhoundWidget/        # WidgetKit + Live Activity extension
 TrailhoundTests/         # Unit + integration tests
 TrailhoundUITests/       # UI smoke tests (XCUITest)
 scripts/              # CI simulator pick + xcodebuild test runner
-docs/                 # Battery optimization, TestFlight checklist
+docs/                 # Battery, TestFlight, vehicle care notes
 ```
 
 **Stack:** SwiftUI · SwiftData · MapKit · CoreLocation · App Intents · WidgetKit · ActivityKit
@@ -174,6 +180,7 @@ docs/                 # Battery optimization, TestFlight checklist
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
+- [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, UI layout, notification rules
 
 ---
 
@@ -186,6 +193,8 @@ Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik od
 - Siri: *Yolculuğu başlat*, *duraklat*, *sürdür*, *bitir*
 - Widget ve Live Activity
 - İş/kişisel kategori, yakıt/EV maliyet tahmini
+- **Araç bakım & hatırlatmalar** — vize, sigorta, kasko, bakım vadeleri + yerel bildirim
+- **Araç harcamaları** — yakıt, bakım, sigorta vb. gider kaydı (hatırlatmadan ayrı); maliyet grafikleri Stats’te
 - JSON, CSV, GPX, KML, aylık iş PDF export
 - Türkçe ve İngilizce arayüz
 
