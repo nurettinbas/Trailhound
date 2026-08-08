@@ -396,6 +396,9 @@ enum L10n {
     static var pairingTabChargePrice: String { string("pairing.tab.vehicle.charge_price") }
     static var pairingTabDefaultVehicle: String { string("pairing.tab.vehicle.default") }
     static var pairingTabSave: String { string("pairing.tab.save") }
+    static var pairingTabDiscardVehicleEditsTitle: String { string("pairing.tab.discard_edits.title") }
+    static var pairingTabDiscardVehicleEditsMessage: String { string("pairing.tab.discard_edits.message") }
+    static var pairingTabDiscardVehicleEditsLeave: String { string("pairing.tab.discard_edits.leave") }
     static var pairingTabNewVehicleName: String { string("pairing.tab.new_vehicle_name") }
     static var pairingTabMissingConnection: String { string("pairing.tab.missing_connection") }
     static var pairingTabWaitingBluetooth: String { string("pairing.tab.waiting_bluetooth") }
@@ -434,6 +437,8 @@ enum L10n {
     static var toastDeleted: String { string("toast.deleted") }
     static var toastPlaceSaved: String { string("toast.place.saved") }
     static var toastVehicleSaved: String { string("toast.vehicle.saved") }
+    static var toastVehicleReminderSaved: String { string("toast.vehicle.reminder.saved") }
+    static var toastVehicleExpenseSaved: String { string("toast.vehicle.expense.saved") }
     static var toastTripSaved: String { string("toast.trip.saved") }
     static var toastCategoryAdded: String { string("toast.category.added") }
     static var toastCategoryDeleted: String { string("toast.category.deleted") }

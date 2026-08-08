@@ -19,8 +19,17 @@ final class VehicleProfile {
     var pairedRouteUID: String?
     var pairedRouteName: String?
 
+    /// Optional odometer reading for km-based care schedules (v1.1).
+    var currentOdometerKm: Int?
+
     @Relationship(deleteRule: .nullify, inverse: \Trip.vehicle)
     var trips: [Trip]
+
+    @Relationship(deleteRule: .cascade, inverse: \VehicleSchedule.vehicle)
+    var schedules: [VehicleSchedule]
+
+    @Relationship(deleteRule: .cascade, inverse: \VehicleExpense.vehicle)
+    var expenses: [VehicleExpense]
 
     init(
         id: UUID = UUID(),
@@ -34,7 +43,10 @@ final class VehicleProfile {
         autoStartEnabled: Bool = false,
         pairedRouteUID: String? = nil,
         pairedRouteName: String? = nil,
-        trips: [Trip] = []
+        currentOdometerKm: Int? = nil,
+        trips: [Trip] = [],
+        schedules: [VehicleSchedule] = [],
+        expenses: [VehicleExpense] = []
     ) {
         self.id = id
         self.name = name
@@ -47,7 +59,10 @@ final class VehicleProfile {
         self.autoStartEnabled = autoStartEnabled
         self.pairedRouteUID = pairedRouteUID
         self.pairedRouteName = pairedRouteName
+        self.currentOdometerKm = currentOdometerKm
         self.trips = trips
+        self.schedules = schedules
+        self.expenses = expenses
     }
 
     var fuelType: VehicleFuelType {

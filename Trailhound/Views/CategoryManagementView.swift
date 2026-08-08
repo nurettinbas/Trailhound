@@ -17,20 +17,35 @@ struct CategoryManagementView: View {
         categories.count + 1
     }
 
+    private var compactRowInsets: EdgeInsets {
+        EdgeInsets(
+            top: 7,
+            leading: GlassTokens.listContentHorizontalInset,
+            bottom: 7,
+            trailing: GlassTokens.listContentHorizontalInset
+        )
+    }
+
     var body: some View {
         Section(L10n.categorySection) {
             ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
-                HStack {
+                HStack(spacing: 10) {
                     Image(systemName: category.systemImage)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
                     Text(category.name)
+                        .font(.subheadline)
+                        .lineLimit(1)
                     if category.isBuiltIn {
-                        Spacer()
+                        Spacer(minLength: 8)
                         Text(L10n.categoryBuiltinBadge)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .glassRow(position: GlassRowPosition.index(index, in: rowCount))
+                .listRowInsets(compactRowInsets)
                 .swipeActions(edge: .trailing, allowsFullSwipe: !category.isBuiltIn) {
                     if !category.isBuiltIn {
                         Button(role: .destructive) {
@@ -46,12 +61,19 @@ struct CategoryManagementView: View {
             HStack {
                 TextField(L10n.categoryNewPlaceholder, text: $newCategoryName)
                     .focused($focusedField, equals: .newCategory)
+                    .glassInputField()
                 Button(L10n.actionAdd) {
                     addCategory()
                 }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.roundedRectangle(radius: 10))
+                .tint(TrailhoundBrandColors.brandBottom)
+                .fixedSize()
                 .disabled(newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .glassRow(position: .last)
+            .listRowInsets(compactRowInsets)
         }
     }
 

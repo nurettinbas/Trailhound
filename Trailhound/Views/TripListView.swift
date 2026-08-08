@@ -7,12 +7,14 @@ struct TripListView: View {
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
+    @Query private var schedules: [VehicleSchedule]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TripRecordingService.self) private var recordingService
     @Bindable private var settings = AppSettings.shared
 
     @Bindable private var notificationStore = AppNotificationStore.shared
+    @Bindable private var careSummary = VehicleCareSummaryStore.shared
 
     @State private var selectedLabel: String?
     @State private var selectedCategoryID: String?
@@ -181,9 +183,10 @@ struct TripListView: View {
                         TripListScrollToTopInstaller(request: scrollToTopRequest)
                     }
             }
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            .listSectionSpacing(6)
 
             if showsVehicleSetupPrompt {
                 Section {
@@ -207,6 +210,23 @@ struct TripListView: View {
                     .padding(.vertical, 4)
                 }
                 .glassListRow()
+                .listSectionSpacing(6)
+            }
+
+            if let careItem = careSummary.topBannerItem {
+                Section {
+                    VehicleCareBannerView(
+                        item: careItem,
+                        onTap: {
+                            tabSelection.openVehicleCare(vehicleID: careItem.vehicleID)
+                        },
+                        onDismiss: {
+                            careSummary.dismissBanner(scheduleID: careItem.scheduleID)
+                        }
+                    )
+                }
+                .vehicleCareBannerRow(state: careItem.state)
+                .listSectionSpacing(6)
             }
 
             if let orphan = visibleOrphan {
@@ -242,6 +262,7 @@ struct TripListView: View {
                     }
                 }
                 .glassListRow()
+                .listSectionSpacing(6)
             }
 
             if recordingService.state.isActiveSession,
@@ -262,29 +283,7 @@ struct TripListView: View {
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
-            }
-
-            if hasAnyTrips {
-                Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "calendar")
-                            .font(.title3)
-                            .foregroundStyle(.blue)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.sectionThisWeek)
-                                .font(.subheadline.weight(.semibold))
-                            Text(weekSummary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .numericTextAnimation(value: weekSummary)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.vertical, 4)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummary)")
-                }
-                .glassListRow()
+                .listSectionSpacing(6)
             }
 
             if hasAnyTrips {
@@ -294,7 +293,8 @@ struct TripListView: View {
                         selectedDateSection: $selectedDateSection,
                         selectedCategoryID: $selectedCategoryID,
                         selectedVehicleFilter: $selectedVehicleFilter,
-                        vehicles: vehicles
+                        vehicles: vehicles,
+                        weekSummaryText: weekSummary
                     )
                     .background {
                         // Only the stop-credits slide needs this, and a `.global` frame
@@ -309,9 +309,16 @@ struct TripListView: View {
                         }
                     }
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .glassListRow()
+                .listRowInsets(
+                    EdgeInsets(
+                        top: 8,
+                        leading: GlassTokens.listContentHorizontalInset,
+                        bottom: 8,
+                        trailing: GlassTokens.listContentHorizontalInset
+                    )
+                )
+                .listSectionSpacing(6)
             }
 
             if visibleTrips.isEmpty {
@@ -362,8 +369,9 @@ struct TripListView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .listSectionSpacing(12)
         .glassListChrome()
+        // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
+        .listSectionSpacing(6)
         .onChange(of: searchText) { _, newValue in
             let pending = newValue
             Task { @MainActor in
@@ -393,11 +401,13 @@ struct TripListView: View {
             refreshOrphans()
             refreshListAggregates()
             reloadTrips()
+            careSummary.refresh(in: modelContext)
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
         }
         .onStoreSave {
             // Row identity must refresh before the next body pass or a deleted model crashes.
             reloadTrips()
+            careSummary.refresh(in: modelContext)
             // Week summary is display-only — coalesce rapid saves (merge + post-process).
             aggregatesRefreshTask?.cancel()
             aggregatesRefreshTask = Task { @MainActor in
@@ -713,12 +723,19 @@ struct TripListView: View {
 
         resetTripFiltersToAll()
 
+        let activeVehicleID = recordingService.activeRecordingVehicleID(from: vehicles)
+        let serviceDue = activeVehicleID.flatMap { vehicleID in
+            VehicleCareDueCalculator.urgentServiceDue(for: vehicleID, from: schedules)
+        }
+
         let snapshot = RecordingEndCreditsSnapshot(
             sessionID: UUID(),
             tripID: tripID,
             durationText: DateFormatters.formatDuration(recordingService.elapsedTime),
             distanceText: DateFormatters.formatDistance(recordingService.currentDistanceMeters),
-            coordinates: recordingService.liveBreadcrumbCoordinates
+            coordinates: recordingService.liveBreadcrumbCoordinates,
+            showsServiceDue: serviceDue != nil,
+            serviceIsOverdue: serviceDue?.state.isOverdue ?? false
         )
 
         morphingTripID = tripID

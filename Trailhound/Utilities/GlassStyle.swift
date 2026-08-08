@@ -308,6 +308,18 @@ struct GlassFieldModifier: ViewModifier {
     }
 }
 
+struct GlassInputFieldModifier: ViewModifier {
+    var cornerRadius: CGFloat = 8
+
+    func body(content: Content) -> some View {
+        content
+            .font(.subheadline)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .glassField(cornerRadius: cornerRadius)
+    }
+}
+
 /// Backwards-compatible alias for section panels.
 struct GlassListRowBackground: View {
     var cornerRadius: CGFloat = GlassTokens.cardRadius
@@ -329,7 +341,7 @@ struct GlassFilterChip: View {
         var font: Font { self == .compact ? .caption2 : .caption }
         var horizontalPadding: CGFloat { self == .compact ? 10 : 12 }
         var verticalPadding: CGFloat { self == .compact ? 5 : 7 }
-        var avatarSize: CGFloat { self == .compact ? 16 : 18 }
+        var avatarSize: CGFloat { self == .compact ? 12 : 16 }
     }
 
     let title: String
@@ -346,6 +358,10 @@ struct GlassFilterChip: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    private var labelColor: Color {
+        isSelected ? Color.white : Color.primary
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
@@ -355,7 +371,10 @@ struct GlassFilterChip: View {
                         photoFileName: avatarPhotoFileName,
                         size: size.avatarSize,
                         cornerRadius: size.avatarSize * 0.28,
-                        isElectricAccent: avatarIsElectric
+                        isElectricAccent: avatarIsElectric,
+                        symbolColor: labelColor,
+                        showsSymbolPlate: false,
+                        symbolFitsFrame: true
                     )
                 }
                 Text(title)
@@ -366,7 +385,7 @@ struct GlassFilterChip: View {
             .padding(.horizontal, size.horizontalPadding)
             .padding(.vertical, size.verticalPadding)
             .frame(maxWidth: expands ? .infinity : nil)
-            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .foregroundStyle(labelColor)
             .background {
                 if isSelected {
                     Capsule()
@@ -384,6 +403,21 @@ struct GlassFilterChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Navigation bar save control — icon + title only; toolbar supplies the glass pill.
+struct GlassToolbarSaveButton: View {
+    let title: String
+    var systemImage: String = "square.and.arrow.down"
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .semibold))
+            Text(title)
+        }
+        .foregroundStyle(TrailhoundBrandColors.brandBottom)
     }
 }
 
@@ -419,6 +453,23 @@ struct GlassEmptyState: View {
     }
 }
 
+/// Persistent caption above an input so glass rows read as editable fields, not static text.
+struct GlassFieldLabel<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content()
+                .glassInputField()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 extension View {
     /// Segmented pickers inside glass cards — blue selection instead of system white.
     func glassSegmentedStyle() -> some View {
@@ -441,6 +492,11 @@ extension View {
     /// Inline inputs on glass panels — frosted tint instead of system grouped black/white.
     func glassField(cornerRadius: CGFloat = 8) -> some View {
         modifier(GlassFieldModifier(cornerRadius: cornerRadius))
+    }
+
+    /// Standard frosted text field — matches trip detail place/address inputs.
+    func glassInputField(cornerRadius: CGFloat = 8) -> some View {
+        modifier(GlassInputFieldModifier(cornerRadius: cornerRadius))
     }
 
     func glassRow(position: GlassRowPosition) -> some View {

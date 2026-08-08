@@ -170,6 +170,30 @@
 		A1TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */; };
 		A1TRIPROLLUPSERVICE00001 /* TripRollupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */; };
 		A1TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */; };
+		A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREENUMS000000001 /* VehicleCareEnums.swift */; };
+		A1VSCHEDULE0000000001 /* VehicleSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDULE0000000001 /* VehicleSchedule.swift */; };
+		A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPENSE00000000001 /* VehicleExpense.swift */; };
+		A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */; };
+		A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */; };
+		A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */; };
+		A1VCARESUMMARY000001 /* VehicleCareSummaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */; };
+		A1VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */; };
+		A1VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */; };
+		A1VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */; };
+		A1VCARESTATUS0000001 /* VehicleCareStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARESTATUS0000001 /* VehicleCareStatusCard.swift */; };
+		A1VCAREBANNER0000001 /* VehicleCareBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREBANNER0000001 /* VehicleCareBannerView.swift */; };
+		A1RECSERVICEBADGE0001 /* RecordingVehicleServiceBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSERVICEBADGE0001 /* RecordingVehicleServiceBadge.swift */; };
+		A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */; };
+		A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */; };
+		A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */; };
+		A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */; };
+		A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */; };
+		A1STATSCHARTTHEME0001 /* StatsChartTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */; };
+		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
+		A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */; };
+		A1VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */; };
+		A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */; };
+		A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */; };
 		A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */; };
         A1RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */; };
 		A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDIAG000000000001 /* RecordingDiagnostics.swift */; };
@@ -370,6 +394,30 @@
 		A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDerivedBackfillService.swift; sourceTree = "<group>"; };
 		A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRollupService.swift; sourceTree = "<group>"; };
 		A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDailyRollup.swift; sourceTree = "<group>"; };
+		A2VCAREENUMS000000001 /* VehicleCareEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareEnums.swift; sourceTree = "<group>"; };
+		A2VSCHEDULE0000000001 /* VehicleSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleSchedule.swift; sourceTree = "<group>"; };
+		A2VEXPENSE00000000001 /* VehicleExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpense.swift; sourceTree = "<group>"; };
+		A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDueCalculator.swift; sourceTree = "<group>"; };
+		A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleCompletionService.swift; sourceTree = "<group>"; };
+		A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareNotificationScheduler.swift; sourceTree = "<group>"; };
+		A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareSummaryStore.swift; sourceTree = "<group>"; };
+		A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostSnapshot.swift; sourceTree = "<group>"; };
+		A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostSnapshotLoader.swift; sourceTree = "<group>"; };
+		A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleEditorDraft.swift; sourceTree = "<group>"; };
+		A2VCARESTATUS0000001 /* VehicleCareStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareStatusCard.swift; sourceTree = "<group>"; };
+		A2VCAREBANNER0000001 /* VehicleCareBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareBannerView.swift; sourceTree = "<group>"; };
+		A2RECSERVICEBADGE0001 /* RecordingVehicleServiceBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingVehicleServiceBadge.swift; sourceTree = "<group>"; };
+		A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleEditorView.swift; sourceTree = "<group>"; };
+		A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseEditorView.swift; sourceTree = "<group>"; };
+		A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareMiniChart.swift; sourceTree = "<group>"; };
+		A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostDonutChart.swift; sourceTree = "<group>"; };
+		A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostCategoryChart.swift; sourceTree = "<group>"; };
+		A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsChartTheme.swift; sourceTree = "<group>"; };
+		A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDetailView.swift; sourceTree = "<group>"; };
+		A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCareDueCalculatorTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseCategoryTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCareMigrationTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCostSnapshotLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingConfiguration.swift; sourceTree = "<group>"; };
 		A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMovementPolicy.swift; sourceTree = "<group>"; };
 		A2RECDIAG000000000001 /* RecordingDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDiagnostics.swift; sourceTree = "<group>"; };
@@ -529,6 +577,9 @@
 				A2USERCATEGORY00000000001 /* UserCategory.swift */,
 				A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */,
 				A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */,
+				A2VCAREENUMS000000001 /* VehicleCareEnums.swift */,
+				A2VSCHEDULE0000000001 /* VehicleSchedule.swift */,
+				A2VEXPENSE00000000001 /* VehicleExpense.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -547,6 +598,10 @@
 				FA15226A5E0A4E42AD2285A2 /* TripCleanupService.swift */,
 				86CA401B8CE941218B625F2C /* AppLockService.swift */,
 				A2VEHPAIRING00000001 /* VehiclePairingService.swift */,
+				A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */,
+				A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */,
+				A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */,
+				A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */,
 				7E7218250D954707A753EAFC /* RecordingLiveActivityService.swift */,
 				A2REC0BSERVER00000000001 /* RecordingRequestObserver.swift */,
 				A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */,
@@ -580,6 +635,8 @@
 				D171349C59CE45DEA7298678 /* StatsViewModel.swift */,
 				A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */,
 				A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */,
+				A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */,
+				A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
 				A2TRIPSTATSROW000000001 /* TripStatsRow.swift */,
 				A2TRIPLISTPAGE000000001 /* TripListPage.swift */,
@@ -587,6 +644,22 @@
 				A20000000000000000000012 /* TripDetailViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A5VCAREGRP000000000001 /* VehicleCare */ = {
+			isa = PBXGroup;
+			children = (
+				A2VCARESTATUS0000001 /* VehicleCareStatusCard.swift */,
+				A2VCAREBANNER0000001 /* VehicleCareBannerView.swift */,
+				A2RECSERVICEBADGE0001 /* RecordingVehicleServiceBadge.swift */,
+				A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */,
+				A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */,
+				A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */,
+				A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */,
+				A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */,
+				A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */,
+			);
+			path = VehicleCare;
 			sourceTree = "<group>";
 		};
 		A5PAIRINGGRP00000000001 /* Pairing */ = {
@@ -629,6 +702,7 @@
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
 				A2TOASTVIEW00000000001 /* ToastView.swift */,
 				A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */,
+				A5VCAREGRP000000000001 /* VehicleCare */,
 				A5PAIRINGGRP00000000001 /* Pairing */,
 				A20000000000000000000017 /* SettingsView.swift */,
 				A2CATMGMT00000000000001 /* CategoryManagementView.swift */,
@@ -654,8 +728,10 @@
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
 				A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */,
 				A2GLASSSTYLE000000000001 /* GlassStyle.swift */,
+				A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */,
 				A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
+				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
 				A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */,
 				A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */,
@@ -717,9 +793,21 @@
 			path = TrailhoundWidget;
 			sourceTree = "<group>";
 		};
+		A5VCARETESTGRP00000001 /* VehicleCare */ = {
+			isa = PBXGroup;
+			children = (
+				A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */,
+				A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */,
+				A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */,
+				A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */,
+			);
+			path = TrailhoundTests/VehicleCare;
+			sourceTree = SOURCE_ROOT;
+		};
 		EAD0FC18DADB4E359AC65213 /* TrailhoundTests */ = {
 			isa = PBXGroup;
 			children = (
+				A5VCARETESTGRP00000001 /* VehicleCare */,
 				66F2CDC576CA4E4980281099 /* CoreUtilityTests.swift */,
 				AE5D44F9163D4B5EB57A78C0 /* SchemaAndRoutesTests.swift */,
 				994D139325B34A9BA98B2E46 /* TripDerivedMetricsTests.swift */,
@@ -919,6 +1007,10 @@
 				A1VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift in Sources */,
 				A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */,
 				4CAC12E8350A44B7AC98958E /* VehiclePairingServiceTests.swift in Sources */,
+				A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */,
+				A1VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift in Sources */,
+				A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */,
+				A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */,
 				9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */,
 				BE3AFC9E07BB40388852765D /* RecordingAndTripStoreTests.swift in Sources */,
 				129AB149E7A744238CEDB118 /* RecordingDisplaySamplerTests.swift in Sources */,
@@ -1056,6 +1148,26 @@
 				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
 				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,
+				A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */,
+				A1VSCHEDULE0000000001 /* VehicleSchedule.swift in Sources */,
+				A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */,
+				A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */,
+				A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */,
+				A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */,
+				A1VCARESUMMARY000001 /* VehicleCareSummaryStore.swift in Sources */,
+				A1VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift in Sources */,
+				A1VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift in Sources */,
+				A1VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift in Sources */,
+				A1VCARESTATUS0000001 /* VehicleCareStatusCard.swift in Sources */,
+				A1VCAREBANNER0000001 /* VehicleCareBannerView.swift in Sources */,
+				A1RECSERVICEBADGE0001 /* RecordingVehicleServiceBadge.swift in Sources */,
+				A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */,
+				A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */,
+				A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */,
+				A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */,
+				A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */,
+				A1STATSCHARTTHEME0001 /* StatsChartTheme.swift in Sources */,
+				A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */,
 				A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,

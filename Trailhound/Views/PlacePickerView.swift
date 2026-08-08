@@ -66,12 +66,8 @@ struct PlacePickerView: View {
     trimmedSearchQuery.count >= 2
   }
 
-  private var showsInlineSearchResults: Bool {
-    isPlaceSearchActive || isSearchingPlaces
-  }
-
-  private var showsNearbySection: Bool {
-    !isPlaceSearchActive && (isLoadingNearby || !nearbyPlaces.isEmpty)
+  private var showsLocationPickerResults: Bool {
+    isSearchFocused || isPlaceSearchActive || isSearchingPlaces
   }
 
   private var locationSectionRowKinds: [LocationSectionRowKind] {
@@ -137,11 +133,13 @@ struct PlacePickerView: View {
       }
 
       Section {
-        TextField(L10n.string("place.name.field"), text: $name)
-          .focused($isNameFocused)
-          .submitLabel(.done)
-          .onSubmit { dismissNameKeyboard() }
-          .glassRow(position: .first)
+        GlassFieldLabel(title: L10n.string("place.name.field")) {
+          TextField("", text: $name)
+            .focused($isNameFocused)
+            .submitLabel(.done)
+            .onSubmit { dismissNameKeyboard() }
+        }
+        .glassRow(position: .first)
 
         Picker(L10n.string("place.kind.field"), selection: $kind) {
           ForEach(SavedPlaceKind.allCases, id: \.self) { kind in
@@ -162,15 +160,23 @@ struct PlacePickerView: View {
         VStack(alignment: .leading, spacing: 12) {
           locationSearchField
 
-          if showsInlineSearchResults {
-            inlineSearchResults
+          if showsLocationPickerResults {
+            inlineLocationResults
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassRow(position: locationSectionPosition(.search))
 
-        mapPicker
-          .glassRow(position: locationSectionPosition(.map))
+        VStack(alignment: .leading, spacing: 8) {
+          mapPicker
+
+          Text(L10n.placePickerSearchHint)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassRow(position: locationSectionPosition(.map))
 
         selectedLocationCard
           .glassRow(position: locationSectionPosition(.selected))
@@ -185,50 +191,37 @@ struct PlacePickerView: View {
           .glassRow(position: locationSectionPosition(.useAddressAsName))
         }
 
-        Button(L10n.placePickerUseCurrentLocation) {
+        Button {
           useCurrentLocation()
+        } label: {
+          Label(L10n.placePickerUseCurrentLocation, systemImage: "location.fill")
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 4)
         }
+        .buttonStyle(.plain)
         .glassRow(position: locationSectionPosition(.useCurrentLocation))
       } header: {
         Text(L10n.string("place.location.section"))
-      } footer: {
-        Text(L10n.placePickerSearchHint)
       }
 
-      if showsNearbySection {
-        Section(L10n.placePickerNearbySection) {
-          if isLoadingNearby {
-            HStack {
-              ProgressView()
-              Text(L10n.placePickerResolvingAddress)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            .glassRow(position: nearbyPlaces.isEmpty ? .only : .first)
-          }
-
-          ForEach(Array(nearbyPlaces.enumerated()), id: \.element.id) { index, place in
-            Button {
-              selectPlaceOption(place)
-            } label: {
-              placeResultRow(place)
-            }
-            .buttonStyle(.plain)
-            .glassRow(position: nearbyRowPosition(placeIndex: index))
-          }
-        }
-      }
-
-      Section {
-        Button(L10n.placePickerSave) {
-          dismissNameKeyboard()
-          savePlace()
-        }
-        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .glassListRow()
-      }
     }
     .navigationTitle(isEditing ? L10n.placePickerEditTitle : L10n.placePickerNewTitle)
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button {
+          dismissNameKeyboard()
+          savePlace()
+        } label: {
+          GlassToolbarSaveButton(title: L10n.placePickerSave)
+        }
+        .buttonStyle(.plain)
+        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+      }
+    }
     .glassListChrome()
     .dismissKeyboardOnScroll()
     .keyboardDoneToolbar()
@@ -249,6 +242,11 @@ struct PlacePickerView: View {
     }
     .onChange(of: searchQuery) { _, _ in
       schedulePlaceSearch()
+    }
+    .onChange(of: isSearchFocused) { _, focused in
+      if focused, !isPlaceSearchActive {
+        loadNearbyPlaces()
+      }
     }
     .onChange(of: latitude) { _, _ in
       guard !isCoordinateFocused else { return }
@@ -329,6 +327,15 @@ struct PlacePickerView: View {
   }
 
   @ViewBuilder
+  private var inlineLocationResults: some View {
+    if isPlaceSearchActive || isSearchingPlaces {
+      inlineSearchResults
+    } else {
+      inlineNearbyResults
+    }
+  }
+
+  @ViewBuilder
   private var inlineSearchResults: some View {
     VStack(alignment: .leading, spacing: 0) {
       if isSearchingPlaces {
@@ -370,13 +377,52 @@ struct PlacePickerView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  private var nearbyRowCount: Int {
-    (isLoadingNearby ? 1 : 0) + nearbyPlaces.count
-  }
+  @ViewBuilder
+  private var inlineNearbyResults: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text(L10n.placePickerNearbySection)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.top, 4)
+        .padding(.bottom, 6)
 
-  private func nearbyRowPosition(placeIndex: Int) -> GlassRowPosition {
-    let offset = isLoadingNearby ? 1 : 0
-    return GlassRowPosition.index(placeIndex + offset, in: nearbyRowCount)
+      if isLoadingNearby {
+        HStack(spacing: 10) {
+          ProgressView()
+          Text(L10n.placePickerSearchLoading)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+      } else if nearbyPlaces.isEmpty {
+        Text(L10n.placePickerSearchEmpty)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 8)
+      } else {
+        ScrollView {
+          VStack(spacing: 0) {
+            ForEach(nearbyPlaces) { place in
+              Button {
+                selectPlaceOption(place)
+              } label: {
+                placeResultRow(place)
+                  .padding(.vertical, 10)
+              }
+              .buttonStyle(.plain)
+
+              if place.id != nearbyPlaces.last?.id {
+                Divider()
+              }
+            }
+          }
+        }
+        .frame(maxHeight: 280)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var mapPicker: some View {
@@ -412,7 +458,6 @@ struct PlacePickerView: View {
     .frame(height: 260)
     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     .padding(.top, 4)
-    .padding(.bottom, 8)
     .accessibilityLabel(L10n.placePickerSelectedLocation)
     .accessibilityValue(selectedLocationSummary)
   }
@@ -582,7 +627,7 @@ struct PlacePickerView: View {
 
   private func refreshLocationDetails() {
     scheduleAddressLookup()
-    if !isPlaceSearchActive {
+    if isSearchFocused, !isPlaceSearchActive {
       loadNearbyPlaces()
     }
   }
@@ -641,7 +686,9 @@ struct PlacePickerView: View {
     guard query.count >= 2 else {
       searchResults = []
       isSearchingPlaces = false
-      loadNearbyPlaces()
+      if isSearchFocused {
+        loadNearbyPlaces()
+      }
       return
     }
 
@@ -668,8 +715,9 @@ struct PlacePickerView: View {
     searchResults = []
     isSearchingPlaces = false
     searchTask?.cancel()
-    isSearchFocused = false
-    loadNearbyPlaces()
+    if isSearchFocused {
+      loadNearbyPlaces()
+    }
   }
 
   private func selectPlaceOption(_ place: NearbyPlaceOption) {

@@ -1,11 +1,17 @@
 import SwiftData
 import SwiftUI
 
+private enum VehicleNavDestination: Hashable {
+    case detail(UUID)
+}
+
 struct PairingTabView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(LocationService.self) private var locationService
     @Bindable private var settings = AppSettings.shared
+    @Bindable private var tabSelection = TabSelection.shared
     @Query private var vehicles: [VehicleProfile]
+    @Query private var schedules: [VehicleSchedule]
 
     @State private var vehiclePendingDeleteID: UUID?
     @State private var showDeleteConfirmation = false
@@ -22,11 +28,20 @@ struct PairingTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             pairingList
-                .navigationDestination(for: UUID.self) { vehicleID in
-                    PairingVehicleEditorView(vehicleID: vehicleID)
+                .navigationDestination(for: VehicleNavDestination.self) { destination in
+                    switch destination {
+                    case .detail(let id):
+                        VehicleDetailView(vehicleID: id)
+                    }
                 }
         }
         .background(Color.clear)
+        .onAppear {
+            consumePendingCareDeepLink()
+        }
+        .onChange(of: tabSelection.pendingVehicleCareID) { _, _ in
+            consumePendingCareDeepLink()
+        }
     }
 
     private var pairingList: some View {
@@ -75,7 +90,7 @@ struct PairingTabView: View {
                     Button(action: addVehiclePrompt) {
                         Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
                             .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 4)
                     }
                     .tint(TrailhoundBrandColors.brandBottom)
@@ -85,7 +100,7 @@ struct PairingTabView: View {
         }
         .listStyle(.insetGrouped)
         .glassListChrome()
-        .navigationTitle(L10n.pairingTabTitle)
+        .navigationTitle(L10n.string("vehicles.tab.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -113,16 +128,20 @@ struct PairingTabView: View {
             PairingVehicleRow(
                 vehicle: vehicle,
                 subtitle: vehicleSubtitle(vehicle),
-                onOpen: { openEditor(for: vehicle.id) }
+                onOpen: { openDetail(for: vehicle.id) }
             )
             .padding(12)
         }
-        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
 
     private func vehicleSubtitle(_ vehicle: VehicleProfile) -> String {
+        let vehicleSchedules = schedules.filter { $0.vehicle?.id == vehicle.id && $0.isEnabled }
+        if let urgent = VehicleCareDueCalculator.dueItems(from: vehicleSchedules, urgentOnly: true).first {
+            return VehicleCareDueCalculator.subtitle(for: urgent.state, title: urgent.title)
+        }
         let consumption = String(format: "%.1f %@", vehicle.consumption, vehicle.consumptionLabel)
         return [vehicle.fuelType.displayName, consumption].joined(separator: " · ")
     }
@@ -138,11 +157,16 @@ struct PairingTabView: View {
         return "\(base) \(index)"
     }
 
-    private func openEditor(for vehicleID: UUID) {
+    private func openDetail(for vehicleID: UUID) {
         Task { @MainActor in
             await Task.yield()
-            navigationPath.append(vehicleID)
+            navigationPath.append(VehicleNavDestination.detail(vehicleID))
         }
+    }
+
+    private func consumePendingCareDeepLink() {
+        guard let vehicleID = tabSelection.consumePendingVehicleCareID() else { return }
+        openDetail(for: vehicleID)
     }
 
     private func addFirstVehicle() {
@@ -154,6 +178,7 @@ struct PairingTabView: View {
         guard (try? modelContext.save()) != nil else { return }
         VehiclePairingService.setDefaultVehicle(vehicle, in: modelContext)
         settings.skipCarSetup()
+        openDetail(for: vehicle.id)
     }
 
     private func addVehiclePrompt() {
@@ -163,7 +188,7 @@ struct PairingTabView: View {
         )
         modelContext.insert(vehicle)
         guard (try? modelContext.save()) != nil else { return }
-        openEditor(for: vehicle.id)
+        openDetail(for: vehicle.id)
     }
 
     private func deletePendingVehicle() {

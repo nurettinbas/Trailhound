@@ -702,9 +702,7 @@ struct TripDetailView: View {
                             .lineLimit(2...4)
                             .focused($noteFocused)
                             .submitLabel(.done)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .glassField(cornerRadius: 8)
+                            .glassInputField()
                             .onSubmit { dismissNoteKeyboard() }
                     }
 
@@ -1059,10 +1057,7 @@ struct TripDetailView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField(title, text: text)
-                .font(.subheadline)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .glassField(cornerRadius: 8)
+                .glassInputField()
         }
     }
 

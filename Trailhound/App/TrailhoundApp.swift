@@ -121,6 +121,8 @@ final class AppRuntime {
         networkMonitor.startIfNeeded()
         CategorySeeder.seedIfNeeded(in: container.mainContext)
         VehiclePairingService.seedDefaultVehicleIfNeeded(in: container.mainContext)
+        VehicleCareSummaryStore.shared.refresh(in: container.mainContext)
+        VehicleCareNotificationScheduler.rescheduleAll(in: container.mainContext)
         TripStore.syncWidgetWeekDistance(in: container.mainContext)
         TripRecoveryService.finalizeStaleOrphans(in: container.mainContext)
         TripRecoveryService.scheduleOrphanStaleNotifications(

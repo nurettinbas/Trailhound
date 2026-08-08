@@ -48,6 +48,15 @@ Ek smoke (opsiyonel):
 - [ ] **Widget / Siri** — widget veya Siri kısayolu ile kayıt başlatma / durdurma
 - [ ] **Export** — JSON, CSV, GPX veya KML dışa aktarma
 
+## Araç bakım & masraf (V13)
+
+- [ ] **Schema upgrade** — mevcut store ile açılış; trip/araç kaybı yok
+- [ ] **Vade ekle** — bakım (30/7/1), sigorta/kasko (7/1) hatırlatmaları planlanır
+- [ ] **Overdue banner** — Trips üstünde kırmızı uyarı; dismiss ertesi güne kadar
+- [ ] **Masraf ekle** — tutar + kategori; Stats → Araç maliyetleri grafiği güncellenir
+- [ ] **Araç sil** — schedule/expense cascade + care bildirimleri iptal
+- [ ] **Kayıt scroll** — aktif trip varken Trips kaydırma akıcı (banner regression yok)
+
 ## Kısayollar ile otomatik kayıt
 
 - Otomatik başlat/bitir **Shortcuts Personal Automations** ile kurulur (Pairing sekmesindeki rehber).

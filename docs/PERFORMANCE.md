@@ -189,6 +189,10 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `@MainActor`, so that task would inherit the main actor and still block the UI.
 - Filter changes are debounced (~120 ms) after the first load, and the loader keeps an 8-entry
   request cache cleared whenever `storeVersion` bumps, so week ↔ month ↔ back is instant.
+- **Pager charts mount lazily per slide.** `StatsDeferredChart` / `StatsDeferredContent` take an
+  `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
+  build all five Swift Charts when the section first appears — only the visible page (after the row
+  scrolls into view). Vehicle cost charts use the same pattern via `VehicleCostSnapshotLoader`.
 
 ## Reacting to saves
 

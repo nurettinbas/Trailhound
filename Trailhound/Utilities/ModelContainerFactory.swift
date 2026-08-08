@@ -6,7 +6,7 @@ enum ModelContainerFactory {
     private static let schemaVersionKey = "trailhound.swiftdata.schemaVersion"
     private static let recoveryNoticeKey = "store.recovery.notice.shown"
     private static let minimumBackupBytesForNotice: Int64 = 8_192
-    static let currentSchemaVersion = 12
+    static let currentSchemaVersion = 13
 
     static var storeURL: URL {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -24,6 +24,8 @@ enum ModelContainerFactory {
             MatchedRoutePoint.self,
             VehicleProfile.self,
             TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
         ])
     }
 

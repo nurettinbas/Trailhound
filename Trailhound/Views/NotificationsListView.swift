@@ -7,6 +7,7 @@ struct NotificationsListView: View {
     @Environment(TripRecordingService.self) private var recordingService
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
     @Query private var vehicles: [VehicleProfile]
+    @Query private var schedules: [VehicleSchedule]
     @Bindable private var store = AppNotificationStore.shared
     @State private var roadVehiclePhoto: UIImage?
 
@@ -92,12 +93,20 @@ struct NotificationsListView: View {
         return "\(id)|\(file)|\(recordingService.recordingVehicleEpoch)"
     }
 
+    private var urgentServiceDue: VehicleDueItem? {
+        guard let vehicleID = recordingService.activeRecordingVehicleID(from: vehicles) else {
+            return nil
+        }
+        return VehicleCareDueCalculator.urgentServiceDue(for: vehicleID, from: schedules)
+    }
+
     private var activeRecordingCard: some View {
         NotificationActiveRecordingCard(
             recordingService: recordingService,
             roadVehiclePhoto: roadVehiclePhoto,
             roadPhotoIdentity: roadPhotoIdentity,
             liveSessionBody: liveSessionBody,
+            urgentServiceDue: urgentServiceDue,
             onLoadPhoto: { await loadRoadVehiclePhoto() },
             onStop: { recordingService.stopManualRecording() }
         )
@@ -250,6 +259,7 @@ struct NotificationsListView: View {
         case .orphanStale: .orange
         case .recordingStopped: .red
         case .pairingSuggestion: .blue
+        case .vehicleCareReminder: .orange
         }
     }
 
@@ -267,6 +277,7 @@ private struct NotificationActiveRecordingCard: View {
     let roadVehiclePhoto: UIImage?
     let roadPhotoIdentity: String
     let liveSessionBody: String
+    var urgentServiceDue: VehicleDueItem? = nil
     let onLoadPhoto: () async -> Void
     let onStop: () -> Void
 
@@ -298,7 +309,15 @@ private struct NotificationActiveRecordingCard: View {
                 vehiclePhoto: roadVehiclePhoto,
                 symbolScaleX: -1,
                 allowsVerticalBounce: false
-            )
+            ) { layout in
+                if let serviceDue = urgentServiceDue {
+                    RecordingVehicleServiceBadge(
+                        carSize: layout.carSize,
+                        isOverdue: serviceDue.state.isOverdue
+                    )
+                    .recordingVehicleServiceBadgePosition(layout: layout)
+                }
+            }
             .transaction { $0.disablesAnimations = true }
             .task(id: roadPhotoIdentity) {
                 await onLoadPhoto()

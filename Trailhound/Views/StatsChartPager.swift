@@ -3,13 +3,15 @@ import SwiftUI
 enum StatsChartPagerMetrics {
     /// Caption title + spacing + 200pt chart.
     static let dailyContentHeight: CGFloat = 236
-    /// Title + donut + compact legend — keep close to intrinsic content so pages don’t look top-heavy.
-    static let donutContentHeight: CGFloat = 228
+    /// Title + donut + legend (room for 3+ rows with descenders like “y”).
+    static let donutContentHeight: CGFloat = 280
+    /// Cost pager: title + chart + optional legend.
+    static let costContentHeight: CGFloat = 260
     static let indicatorHeight: CGFloat = 20
-    static let chevronSize: CGFloat = 28
 }
 
 /// Horizontal page slider for stacking similar stats charts in one list row.
+/// Swipe only — no chevrons. Page dots remain when there is more than one chart.
 struct StatsChartPager<Content: View>: View {
     let pageCount: Int
     let contentHeight: CGFloat
@@ -23,7 +25,7 @@ struct StatsChartPager<Content: View>: View {
         reduceMotion || environmentReduceMotion
     }
 
-    private var showsChrome: Bool {
+    private var showsPageIndicator: Bool {
         pageCount > 1
     }
 
@@ -32,37 +34,46 @@ struct StatsChartPager<Content: View>: View {
         return min(max(0, selection), pageCount - 1)
     }
 
-    var body: some View {
-        VStack(spacing: 8) {
-            TabView(selection: selectionBinding) {
-                ForEach(0..<pageCount, id: \.self) { index in
-                    content(index)
-                        .tag(index)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
+    private var scrollPosition: Binding<Int?> {
+        Binding(
+            get: { pageCount > 0 ? clampedSelection : nil },
+            set: { newValue in
+                guard pageCount > 0, let newValue else { return }
+                let next = min(max(0, newValue), pageCount - 1)
+                guard next != selection else { return }
+                selection = next
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
+        )
+    }
+
+    var body: some View {
+        if pageCount <= 0 {
+            EmptyView()
+        } else {
+            pagerBody
+        }
+    }
+
+    private var pagerBody: some View {
+        VStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 0) {
+                    ForEach(0..<pageCount, id: \.self) { index in
+                        content(index)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .containerRelativeFrame(.horizontal)
+                            .id(index)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: scrollPosition)
+            .scrollBounceBehavior(.basedOnSize)
             .frame(height: contentHeight)
             .clipped()
-            .animation(motionReduced ? nil : TrailhoundMotion.gentle, value: clampedSelection)
-            .overlay {
-                if showsChrome {
-                    HStack {
-                        pageChevron(systemName: "chevron.left", enabled: clampedSelection > 0) {
-                            move(by: -1)
-                        }
-                        Spacer(minLength: 0)
-                        pageChevron(systemName: "chevron.right", enabled: clampedSelection < pageCount - 1) {
-                            move(by: 1)
-                        }
-                    }
-                    // Sit near the visual center of the chart block (below title), not the empty footer.
-                    .padding(.horizontal, 2)
-                    .padding(.bottom, 24)
-                }
-            }
 
-            if showsChrome {
+            if showsPageIndicator {
                 pageIndicator
                     .frame(height: StatsChartPagerMetrics.indicatorHeight)
             }
@@ -86,66 +97,19 @@ struct StatsChartPager<Content: View>: View {
         )
     }
 
-    private var selectionBinding: Binding<Int> {
-        Binding(
-            get: { clampedSelection },
-            set: { newValue in
-                guard pageCount > 0 else {
-                    selection = 0
-                    return
-                }
-                selection = min(max(0, newValue), pageCount - 1)
-            }
-        )
-    }
-
     private var pageIndicator: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(0..<pageCount, id: \.self) { index in
-                Circle()
-                    .fill(index == clampedSelection ? Color.primary : Color.secondary.opacity(0.25))
-                    .frame(width: 8, height: 8)
+                Capsule()
+                    .fill(
+                        index == clampedSelection
+                            ? TrailhoundBrandColors.brandBottom
+                            : Color.secondary.opacity(0.25)
+                    )
+                    .frame(width: index == clampedSelection ? 18 : 8, height: 8)
+                    .animation(motionReduced ? nil : TrailhoundMotion.snappy, value: clampedSelection)
             }
         }
         .accessibilityHidden(true)
-    }
-
-    private func pageChevron(
-        systemName: String,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(enabled ? Color.secondary : Color.secondary.opacity(0.25))
-                .frame(width: StatsChartPagerMetrics.chevronSize, height: StatsChartPagerMetrics.chevronSize)
-                .background {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .opacity(enabled ? 0.95 : 0.55)
-                }
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(
-            L10n.string(
-                systemName == "chevron.left"
-                    ? "stats.chart.previous_a11y"
-                    : "stats.chart.next_a11y"
-            )
-        )
-    }
-
-    private func move(by delta: Int) {
-        let next = clampedSelection + delta
-        guard next >= 0, next < pageCount else { return }
-        if motionReduced {
-            selection = next
-        } else {
-            withAnimation(TrailhoundMotion.gentle) {
-                selection = next
-            }
-        }
     }
 }

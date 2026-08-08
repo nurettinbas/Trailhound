@@ -9,6 +9,7 @@ enum AppNotificationKind: String {
     case orphanStale
     case recordingStopped
     case pairingSuggestion
+    case vehicleCareReminder
 
     var systemImage: String {
         switch self {
@@ -19,6 +20,7 @@ enum AppNotificationKind: String {
         case .orphanStale: "exclamationmark.triangle.fill"
         case .recordingStopped: "stop.circle.fill"
         case .pairingSuggestion: "link.circle.fill"
+        case .vehicleCareReminder: "wrench.and.screwdriver.fill"
         }
     }
 
@@ -31,6 +33,7 @@ enum AppNotificationKind: String {
         case .orphanStale: "orange"
         case .recordingStopped: "red"
         case .pairingSuggestion: "blue"
+        case .vehicleCareReminder: "orange"
         }
     }
 }
@@ -182,6 +185,7 @@ final class AppNotificationStore {
         if identifier.contains("orphan") { return .orphanStale }
         if identifier.contains("stopped") { return .recordingStopped }
         if identifier.contains("pairing") { return .pairingSuggestion }
+        if identifier.contains(".care.") { return .vehicleCareReminder }
         return .tripEnded
     }
 

@@ -158,7 +158,8 @@ struct LocationPermissionBanner: View {
         .font(.caption.bold())
       }
     }
-    .padding(12)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
     .background(Color.orange.opacity(0.12))
     .glassCard(cornerRadius: 12, contentInset: 0)
     .padding(.horizontal)

@@ -125,6 +125,7 @@ struct ActiveTripView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(\.modelContext) private var modelContext
     @Query private var vehicles: [VehicleProfile]
+    @Query private var schedules: [VehicleSchedule]
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -186,6 +187,13 @@ struct ActiveTripView: View {
         VehiclePhotoStore.prefetchTaskID(for: vehicles)
     }
 
+    private var urgentServiceDue: VehicleDueItem? {
+        guard let vehicleID = recordingService.activeRecordingVehicleID(from: vehicles) else {
+            return nil
+        }
+        return VehicleCareDueCalculator.urgentServiceDue(for: vehicleID, from: schedules)
+    }
+
     var body: some View {
         if recordingService.state.isActiveSession {
             recordingCard
@@ -208,7 +216,15 @@ struct ActiveTripView: View {
                     vehiclePhoto: roadVehiclePhoto,
                     symbolScaleX: -1,
                     allowsVerticalBounce: true
-                )
+                ) { layout in
+                    if let serviceDue = urgentServiceDue {
+                        RecordingVehicleServiceBadge(
+                            carSize: layout.carSize,
+                            isOverdue: serviceDue.state.isOverdue
+                        )
+                        .recordingVehicleServiceBadgePosition(layout: layout)
+                    }
+                }
                 .matchedGeometryEffectIfAvailable(
                     stringID: RecordingMorphID.car,
                     namespace: morphNamespace,

@@ -10,11 +10,15 @@ enum TrailhoundSchemaV5: VersionedSchema {
 }
 
 /// Legacy in-memory / test schema before connection fields on vehicles.
+/// Care models are listed because live `VehicleProfile` relationships require them in the same schema.
 enum TrailhoundSchemaV6: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(6, 0, 0) }
 
     static var models: [any PersistentModel.Type] {
-        [Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self, MatchedRoutePoint.self, VehicleProfile.self]
+        [
+            Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self,
+            MatchedRoutePoint.self, VehicleProfile.self, VehicleSchedule.self, VehicleExpense.self,
+        ]
     }
 }
 
@@ -22,7 +26,10 @@ enum TrailhoundSchemaV7: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(8, 0, 0) }
 
     static var models: [any PersistentModel.Type] {
-        [Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self, MatchedRoutePoint.self, VehicleProfile.self]
+        [
+            Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self,
+            MatchedRoutePoint.self, VehicleProfile.self, VehicleSchedule.self, VehicleExpense.self,
+        ]
     }
 }
 
@@ -33,7 +40,10 @@ enum TrailhoundSchemaV10: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(10, 0, 0) }
 
     static var models: [any PersistentModel.Type] {
-        [Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self, MatchedRoutePoint.self, VehicleProfile.self]
+        [
+            Trip.self, TripPoint.self, SavedPlace.self, TripStop.self, UserCategory.self,
+            MatchedRoutePoint.self, VehicleProfile.self, VehicleSchedule.self, VehicleExpense.self,
+        ]
     }
 }
 
@@ -53,6 +63,8 @@ enum TrailhoundSchemaV11: VersionedSchema {
             MatchedRoutePoint.self,
             VehicleProfile.self,
             TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
         ]
     }
 }
@@ -71,6 +83,28 @@ enum TrailhoundSchemaV12: VersionedSchema {
             MatchedRoutePoint.self,
             VehicleProfile.self,
             TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
+/// Adds vehicle care schedules/expenses and optional `currentOdometerKm`. Purely additive.
+enum TrailhoundSchemaV13: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(13, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
         ]
     }
 }
@@ -78,18 +112,18 @@ enum TrailhoundSchemaV12: VersionedSchema {
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V12); V11 stays for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V13); V11/V12 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV12.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV13.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV12]
+        [migrateV5toV13]
     }
 
-    static let migrateV5toV12 = MigrationStage.lightweight(
+    static let migrateV5toV13 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV12.self
+        toVersion: TrailhoundSchemaV13.self
     )
 }

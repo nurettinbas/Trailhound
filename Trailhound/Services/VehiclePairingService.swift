@@ -23,6 +23,8 @@ enum VehiclePairingService {
     ) -> Bool {
         let wasDefault = vehicle.isDefault
         let photoFileName = vehicle.photoFileName
+        let vehicleID = vehicle.id
+        VehicleCareNotificationScheduler.cancelAll(for: vehicleID)
         context.delete(vehicle)
         do {
             try context.save()
@@ -32,6 +34,7 @@ enum VehiclePairingService {
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)
             }
+            VehicleCareNotificationScheduler.rescheduleAll(in: context)
             return true
         } catch {
             AppErrorPresenter.shared.present(L10n.pairingTabDeleteFailed(error.localizedDescription))

@@ -5,6 +5,7 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(LocationService.self) private var locationService
     @Environment(TripRecordingService.self) private var tripRecordingService
     @Environment(GeocodingRetryService.self) private var geocodingRetryService
@@ -18,6 +19,7 @@ struct SettingsView: View {
     @State private var isExporting = false
     @State private var showAppLockUnavailableAlert = false
     @State private var showShortcutsAutomationGuide = false
+    @State private var showAddPlacePicker = false
     @State private var versionTapCount = 0
 
     @FocusState private var focusedField: SettingsFocusedField?
@@ -62,17 +64,29 @@ struct SettingsView: View {
                     NavigationLink {
                         PlacePickerView(editingPlace: place)
                     } label: {
-                        HStack {
+                        HStack(spacing: 10) {
                             Image(systemName: place.kind.systemImage)
-                            VStack(alignment: .leading) {
-                                Text(place.name)
-                                Text(place.kind.displayName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 18)
+                            Text(place.name)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(place.kind.displayName)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .glassRow(position: favoritePlacePosition(placeIndex: index))
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: 7,
+                            leading: GlassTokens.listContentHorizontalInset,
+                            bottom: 7,
+                            trailing: GlassTokens.listContentHorizontalInset
+                        )
+                    )
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             deletePlace(place)
@@ -83,9 +97,16 @@ struct SettingsView: View {
                     }
                 }
 
-                NavigationLink(L10n.settingsAddPlace) {
-                    PlacePickerView()
+                Button {
+                    showAddPlacePicker = true
+                } label: {
+                    Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 4)
                 }
+                .buttonStyle(.plain)
                 .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsFavoritePlaces)
@@ -111,10 +132,13 @@ struct SettingsView: View {
             Section(L10n.settingsFuelSection) {
                 LabeledContent(L10n.settingsFuelPrice) {
                     HStack(spacing: 8) {
+                        Spacer(minLength: 0)
                         TextField(settings.fuelCurrency.symbol, value: $settings.fuelPricePerLiter, format: .number)
                             .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
+                            .multilineTextAlignment(.leading)
                             .focused($focusedField, equals: .fuelPrice)
+                            .glassInputField()
+                            .frame(width: 96)
                         Picker(selection: $settings.fuelCurrency) {
                             ForEach(FuelCurrency.allCases) { currency in
                                 Text(currency.symbol).tag(currency)
@@ -125,6 +149,7 @@ struct SettingsView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .accessibilityLabel(L10n.settingsFuelCurrency)
+                        .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     }
                 }
                 .glassRow(position: .first)
@@ -218,6 +243,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(L10n.settingsTitle)
+        .navigationDestination(isPresented: $showAddPlacePicker) {
+            PlacePickerView()
+        }
         .glassListChrome()
         .dismissKeyboardOnTap(focus: $focusedField)
         .dismissKeyboardOnScroll()

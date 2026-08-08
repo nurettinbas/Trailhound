@@ -75,6 +75,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             Task { @MainActor in
                 TabSelection.shared.openPairing()
             }
+        } else if userInfo[VehicleCareNotificationScheduler.actionUserInfoKey] as? String
+            == VehicleCareNotificationScheduler.openVehicleCareAction {
+            let vehicleID = (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
+                .flatMap(UUID.init(uuidString:))
+            Task { @MainActor in
+                if let vehicleID {
+                    TabSelection.shared.openVehicleCare(vehicleID: vehicleID)
+                } else {
+                    TabSelection.shared.openPairing()
+                }
+            }
         }
         completionHandler()
     }

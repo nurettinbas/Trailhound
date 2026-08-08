@@ -134,6 +134,16 @@ final class TabSelectionTests: XCTestCase {
         tabs.openPairing()
         XCTAssertEqual(tabs.selectedTab, .pairing)
     }
+
+    func testOpenVehicleCareSetsPendingID() {
+        let tabs = TabSelection.shared
+        tabs.selectedTab = .trips
+        let id = UUID()
+        tabs.openVehicleCare(vehicleID: id)
+        XCTAssertEqual(tabs.selectedTab, .pairing)
+        XCTAssertEqual(tabs.consumePendingVehicleCareID(), id)
+        XCTAssertNil(tabs.consumePendingVehicleCareID())
+    }
 }
 
 final class DeviceTestChecklistTests: XCTestCase {

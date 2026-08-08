@@ -6,6 +6,8 @@ enum ToastKind {
     case deleted
     case placeSaved
     case vehicleSaved
+    case vehicleReminderSaved
+    case vehicleExpenseSaved
     case tripSaved
     case categoryAdded
     case categoryDeleted
@@ -19,6 +21,8 @@ enum ToastKind {
         case .deleted: L10n.toastDeleted
         case .placeSaved: L10n.toastPlaceSaved
         case .vehicleSaved: L10n.toastVehicleSaved
+        case .vehicleReminderSaved: L10n.toastVehicleReminderSaved
+        case .vehicleExpenseSaved: L10n.toastVehicleExpenseSaved
         case .tripSaved: L10n.toastTripSaved
         case .categoryAdded: L10n.toastCategoryAdded
         case .categoryDeleted: L10n.toastCategoryDeleted
@@ -30,7 +34,7 @@ enum ToastKind {
 
     var systemImage: String {
         switch self {
-        case .saved, .tripSaved, .orphanSaved, .shortcutsGuideFinished:
+        case .saved, .tripSaved, .orphanSaved, .shortcutsGuideFinished, .vehicleReminderSaved, .vehicleExpenseSaved:
             "checkmark.circle.fill"
         case .placeSaved:
             "mappin.circle.fill"

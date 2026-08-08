@@ -1,0 +1,206 @@
+import Charts
+import SwiftUI
+
+struct VehicleCareMiniChart: View {
+    let months: [VehicleMonthlyCost]
+    let days: [VehicleDailyCost]
+    let periodStart: Date
+    let periodEnd: Date
+    let currencyCode: String
+
+    private var useDaily: Bool {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: periodStart)
+        let end = calendar.startOfDay(for: periodEnd)
+        let spanDays = calendar.dateComponents([.day], from: start, to: end).day ?? 0
+        return spanDays <= 31
+    }
+
+    var body: some View {
+        if useDaily {
+            dailyChart
+        } else {
+            monthlyChart
+        }
+    }
+
+    /// Only days that actually have recorded expenses.
+    private var dailyEntries: [VehicleDailyCost] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: periodStart)
+        let end = calendar.startOfDay(for: periodEnd)
+        return days
+            .filter { $0.total > 0 && $0.dayStart >= start && $0.dayStart <= end }
+            .sorted { $0.dayStart < $1.dayStart }
+    }
+
+    private var monthlyEntries: [VehicleMonthlyCost] {
+        months.filter { $0.total > 0 }
+    }
+
+    @ViewBuilder
+    private var dailyChart: some View {
+        let entries = dailyEntries
+        let categories = presentCategories(in: entries)
+        if entries.isEmpty {
+            emptyState
+        } else {
+            Chart {
+                ForEach(entries) { entry in
+                    ForEach(categories, id: \.self) { category in
+                        let value = entry.amount(for: category)
+                        if value > 0 {
+                            BarMark(
+                                x: .value("Day", entry.dayStart, unit: .day),
+                                y: .value("Amount", value),
+                                width: barWidth(forCount: entries.count)
+                            )
+                            .foregroundStyle(by: .value("Category", category.displayName))
+                            .cornerRadius(StatsChartTheme.barCornerRadius)
+                        }
+                    }
+                }
+            }
+            .modifier(CostBarChartStyle(
+                dates: entries.map(\.dayStart),
+                xPaddingComponent: .day,
+                xValues: dailyXAxisValues(entries),
+                xLabel: { DateFormatters.chartDay.string(from: $0) },
+                currencyCode: currencyCode,
+                legendDomain: categories.map(\.displayName),
+                legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
+                accessibilityKey: "stats.chart.daily_expenses"
+            ))
+        }
+    }
+
+    @ViewBuilder
+    private var monthlyChart: some View {
+        let entries = monthlyEntries
+        let categories = presentMonthlyCategories(in: entries)
+        if entries.isEmpty {
+            emptyState
+        } else {
+            Chart {
+                ForEach(entries) { entry in
+                    ForEach(categories, id: \.self) { category in
+                        let value = entry.amount(for: category)
+                        if value > 0 {
+                            BarMark(
+                                x: .value("Month", entry.monthStart, unit: .month),
+                                y: .value("Amount", value),
+                                width: barWidth(forCount: entries.count)
+                            )
+                            .foregroundStyle(by: .value("Category", category.displayName))
+                            .cornerRadius(StatsChartTheme.barCornerRadius)
+                        }
+                    }
+                }
+            }
+            .modifier(CostBarChartStyle(
+                dates: entries.map(\.monthStart),
+                xPaddingComponent: .month,
+                xValues: entries.map(\.monthStart),
+                xLabel: { DateFormatters.monthYear.string(from: $0) },
+                currencyCode: currencyCode,
+                legendDomain: categories.map(\.displayName),
+                legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
+                accessibilityKey: "stats.cost.chart.monthly"
+            ))
+        }
+    }
+
+    private var emptyState: some View {
+        Text(L10n.string("vehicles.care.chart.empty"))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 8)
+    }
+
+    private func presentCategories(in entries: [VehicleDailyCost]) -> [VehicleExpenseCategory] {
+        VehicleExpenseCategory.allCases.filter { category in
+            entries.contains { $0.amount(for: category) > 0 }
+        }
+    }
+
+    private func presentMonthlyCategories(in entries: [VehicleMonthlyCost]) -> [VehicleExpenseCategory] {
+        VehicleExpenseCategory.allCases.filter { category in
+            entries.contains { $0.amount(for: category) > 0 }
+        }
+    }
+
+    private func barWidth(forCount count: Int) -> MarkDimension {
+        switch count {
+        case 1: return .ratio(0.28)
+        case 2: return .ratio(0.36)
+        case 3...5: return .ratio(0.45)
+        default: return .ratio(0.55)
+        }
+    }
+
+    private func dailyXAxisValues(_ entries: [VehicleDailyCost]) -> [Date] {
+        guard entries.count > 5 else { return entries.map(\.dayStart) }
+        let step = max(1, (entries.count - 1) / 3)
+        var values: [Date] = []
+        for index in stride(from: 0, to: entries.count, by: step) {
+            values.append(entries[index].dayStart)
+        }
+        if let last = entries.last?.dayStart, values.last != last {
+            values.append(last)
+        }
+        return values
+    }
+}
+
+private struct CostBarChartStyle: ViewModifier {
+    let dates: [Date]
+    let xPaddingComponent: Calendar.Component
+    let xValues: [Date]
+    let xLabel: (Date) -> String
+    let currencyCode: String
+    let legendDomain: [String]
+    let legendRange: [Color]
+    let accessibilityKey: StaticString
+
+    private var xDomain: [Date] {
+        StatsChartTheme.xScaleDomain(from: dates, padding: xPaddingComponent)
+    }
+
+    func body(content: Content) -> some View {
+        Group {
+            if xDomain.count >= 2 {
+                content
+                    .chartForegroundStyleScale(domain: legendDomain, range: legendRange)
+                    .chartXScale(domain: xDomain)
+                    .chartXAxis {
+                        AxisMarks(values: xValues) { value in
+                            if let date = value.as(Date.self) {
+                                AxisValueLabel {
+                                    Text(xLabel(date))
+                                        .font(.caption2)
+                                }
+                            }
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading, values: .automatic) { value in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                                .foregroundStyle(Color.secondary.opacity(0.2))
+                            if let amount = value.as(Double.self) {
+                                AxisValueLabel {
+                                    Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
+                                        .font(.caption2)
+                                }
+                            }
+                        }
+                    }
+                    .chartLegend(position: .bottom, alignment: .center, spacing: 8)
+                    .statsChartCardLayout()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 180)
+                    .accessibilityLabel(L10n.string(accessibilityKey))
+            }
+        }
+    }
+}

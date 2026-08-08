@@ -23,45 +23,45 @@ struct TripRowView: View {
         HStack(alignment: .center, spacing: 12) {
             thumbnailView
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(routeSummary)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     HStack(spacing: 3) {
                         Image(systemName: "stopwatch")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 7, weight: .semibold))
                         Text(TripListViewModel.durationText(for: trip))
-                            .font(.caption)
+                            .font(.system(size: 9))
                             .lineLimit(1)
                     }
                     .foregroundStyle(TrailhoundBrandColors.brandBottom)
 
                     Text("·")
-                        .font(.caption)
+                        .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
 
                     HStack(spacing: 3) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 7, weight: .semibold))
                         Text(TripListViewModel.dateText(for: trip))
-                            .font(.caption)
+                            .font(.system(size: 9))
                             .lineLimit(1)
                     }
                     .foregroundStyle(.secondary)
 
                     if trip.categoryID == BuiltInCategory.businessID.uuidString {
                         Image(systemName: "briefcase.fill")
-                            .font(.caption2)
+                            .font(.system(size: 8))
                             .foregroundStyle(TrailhoundBrandColors.brandBottom)
                     }
 
                     Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     metricChip(icon: "road.lanes", text: TripListViewModel.distanceText(for: trip))
 
                     if let fuel = TripListViewModel.fuelText(for: trip) {
@@ -80,10 +80,10 @@ struct TripRowView: View {
 
                 if let label = trip.label, !label.isEmpty {
                     Text(label)
-                        .font(.caption2.weight(.medium))
+                        .font(.system(size: 8, weight: .medium))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
                         .background(Color(.tertiarySystemFill))
                         .clipShape(Capsule())
                 }
@@ -156,12 +156,12 @@ struct TripRowView: View {
                     Color(.tertiarySystemFill)
                         .shimmer()
                     Image(systemName: "map")
-                        .font(.caption)
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(width: 58, height: 58)
+        .frame(width: 52, height: 52)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -173,9 +173,9 @@ struct TripRowView: View {
     private func metricChip(icon: String, text: String, tint: Color = .secondary) -> some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 7, weight: .semibold))
             Text(text)
-                .font(.caption2.weight(.medium))
+                .font(.system(size: 8, weight: .medium))
                 .lineLimit(1)
         }
         .foregroundStyle(tint)

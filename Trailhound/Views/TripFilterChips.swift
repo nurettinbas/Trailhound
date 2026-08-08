@@ -1,13 +1,15 @@
 import SwiftData
 import SwiftUI
 
-/// Search + date + category + vehicle filters pinned directly above the trip rows.
+/// Week summary + search + date/category/vehicle filters pinned above the trip rows.
 struct TripListFiltersBar: View {
     @Binding var searchText: String
     @Binding var selectedDateSection: TripDateSection?
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
     var vehicles: [VehicleProfile] = []
+    /// Compact “This week” strip shown above search when non-empty.
+    var weekSummaryText: String = ""
 
     @Namespace private var dateChipNamespace
     @Namespace private var vehicleChipNamespace
@@ -31,6 +33,10 @@ struct TripListFiltersBar: View {
         activeChipFilterCount > 0
     }
 
+    private var showsWeekSummary: Bool {
+        !weekSummaryText.isEmpty
+    }
+
     private var sortedVehicles: [VehicleProfile] {
         vehicles.sorted { lhs, rhs in
             if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
@@ -44,30 +50,56 @@ struct TripListFiltersBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+            if showsWeekSummary {
+                weekSummaryRow
+            }
+
+            HStack(alignment: .center, spacing: 8) {
                 searchField
                 filtersToggleButton
                 if hasChipFiltersActive {
                     clearFiltersButton
                 }
             }
-            .padding(.horizontal, GlassTokens.listContentHorizontalInset)
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasChipFiltersActive)
 
             if isFiltersExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     dateFilterRow
-                    TripFilterChips(selectedCategoryID: $selectedCategoryID)
+                    TripFilterChips(selectedCategoryID: $selectedCategoryID, usesCardInsets: false)
                     vehicleFilterRow
                 }
                 .transition(filtersRevealTransition)
             }
         }
-        .padding(.vertical, 4)
         .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: isFiltersExpanded)
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+    }
+
+    private var weekSummaryRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "calendar")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.blue)
+                .frame(width: 16)
+
+            Text(L10n.sectionThisWeek)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+
+            Spacer(minLength: 6)
+
+            Text(weekSummaryText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .multilineTextAlignment(.trailing)
+                .numericTextAnimation(value: weekSummaryText)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummaryText)")
     }
 
     private var filtersRevealTransition: AnyTransition {
@@ -77,8 +109,10 @@ struct TripListFiltersBar: View {
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
             TextField(L10n.searchTrips, text: $searchText)
+                .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             if !searchText.isEmpty {
@@ -92,9 +126,10 @@ struct TripListFiltersBar: View {
                 .accessibilityLabel(L10n.placePickerSearchClear)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .glassField(cornerRadius: 12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(minHeight: 36)
+        .glassField(cornerRadius: 10)
     }
 
     private var filtersToggleButton: some View {
@@ -109,15 +144,16 @@ struct TripListFiltersBar: View {
             }
         } label: {
             Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .symbolVariant(isFiltersExpanded || hasChipFiltersActive ? .fill : .none)
                 .foregroundStyle(
                     isFiltersExpanded || hasChipFiltersActive
                         ? TrailhoundBrandColors.brandBottom
                         : Color.secondary
                 )
-                .frame(width: 44, height: 44)
-                .glassField(cornerRadius: 12)
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+                .glassField(cornerRadius: 10)
                 .overlay(alignment: .topTrailing) {
                     if activeChipFilterCount > 0 {
                         Text("\(activeChipFilterCount)")
@@ -147,10 +183,11 @@ struct TripListFiltersBar: View {
             clearChipFilters()
         } label: {
             Image(systemName: "xmark.circle")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                .frame(width: 44, height: 44)
-                .glassField(cornerRadius: 12)
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+                .glassField(cornerRadius: 10)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.tripsFiltersClear)
@@ -194,7 +231,6 @@ struct TripListFiltersBar: View {
                             }
                         }
                     }
-                    .padding(.trailing, GlassTokens.listContentHorizontalInset)
                     .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: dateSelectionKey)
                 }
                 .onChange(of: dateSelectionKey) { _, newKey in
@@ -247,7 +283,6 @@ struct TripListFiltersBar: View {
                             }
                         }
                     }
-                    .padding(.trailing, GlassTokens.listContentHorizontalInset)
                     .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: vehicleSelectionKey)
                 }
                 .onChange(of: vehicleSelectionKey) { _, newKey in
@@ -267,7 +302,6 @@ struct TripListFiltersBar: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .fixedSize()
-                .padding(.leading, GlassTokens.listContentHorizontalInset)
                 .accessibilityHidden(true)
 
             chips()
@@ -347,6 +381,8 @@ struct TripListFiltersBar: View {
 struct TripFilterChips: View {
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Binding var selectedCategoryID: String?
+    /// When embedded in a glass card, outer list insets already handle horizontal padding.
+    var usesCardInsets: Bool = true
 
     @Namespace private var chipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -356,13 +392,21 @@ struct TripFilterChips: View {
         return "all"
     }
 
+    private var leadingInset: CGFloat {
+        usesCardInsets ? GlassTokens.listContentHorizontalInset : 0
+    }
+
+    private var trailingInset: CGFloat {
+        usesCardInsets ? GlassTokens.listContentHorizontalInset : 0
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
             Text("\(L10n.filterCategory):")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .fixedSize()
-                .padding(.leading, GlassTokens.listContentHorizontalInset)
+                .padding(.leading, leadingInset)
                 .accessibilityHidden(true)
 
             ScrollViewReader { proxy in
@@ -386,7 +430,7 @@ struct TripFilterChips: View {
                             }
                         }
                     }
-                    .padding(.trailing, GlassTokens.listContentHorizontalInset)
+                    .padding(.trailing, trailingInset)
                     .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: selectionKey)
                 }
                 .onChange(of: selectionKey) { _, newKey in

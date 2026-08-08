@@ -8,6 +8,10 @@ struct RecordingEndCreditsSnapshot: Equatable {
     let durationText: String
     let distanceText: String
     let coordinates: [CLLocationCoordinate2D]
+    /// Service schedule was urgent for the recording vehicle when Stop was tapped.
+    let showsServiceDue: Bool
+    /// Red wrench when the service date is past due.
+    let serviceIsOverdue: Bool
 
     static func == (lhs: RecordingEndCreditsSnapshot, rhs: RecordingEndCreditsSnapshot) -> Bool {
         lhs.sessionID == rhs.sessionID
@@ -37,7 +41,9 @@ struct RecordingEndCreditsView: View {
             BrakeToStopScene(
                 brakeProgress: brakeProgress,
                 showBrakeLights: showBrakeLights,
-                noseDive: carNoseDive
+                noseDive: carNoseDive,
+                showsServiceDue: snapshot.showsServiceDue,
+                serviceIsOverdue: snapshot.serviceIsOverdue
             )
             .frame(width: 56, height: 36)
             .opacity(sceneOpacity)
@@ -196,6 +202,8 @@ private struct BrakeToStopScene: View {
     var brakeProgress: CGFloat
     var showBrakeLights: Bool
     var noseDive: CGFloat
+    var showsServiceDue: Bool = false
+    var serviceIsOverdue: Bool = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -254,6 +262,18 @@ private struct BrakeToStopScene: View {
                             }
                             .offset(x: 1, y: 1)
                             .shadow(color: .red.opacity(showBrakeLights ? 0.75 : 0), radius: 4)
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if showsServiceDue {
+                                RecordingVehicleServiceBadge(
+                                    carSize: carSize,
+                                    isOverdue: serviceIsOverdue
+                                )
+                                .offset(
+                                    x: RecordingVehicleServiceBadgeLayout.brakeSceneOffsetX(for: carSize),
+                                    y: RecordingVehicleServiceBadgeLayout.brakeSceneOffsetY(for: carSize)
+                                )
+                            }
                         }
                         .position(x: carX, y: carY)
                 }

@@ -41,6 +41,19 @@ struct ContentView: View {
                 .badge(isRecordingSession ? "" : nil)
                 .tag(AppTab.trips)
 
+                Group {
+                    if tabSelection.selectedTab == .pairing {
+                        PairingTabView()
+                    } else {
+                        Color.clear
+                    }
+                }
+                .tabItem {
+                    Label(L10n.string("vehicles.tab.title"), systemImage: "car.fill")
+                        .accessibilityIdentifier("tab.pairing")
+                }
+                .tag(AppTab.pairing)
+
                 NavigationStack {
                     if tabSelection.selectedTab == .stats {
                         StatsView()
@@ -54,19 +67,6 @@ struct ContentView: View {
                         .accessibilityIdentifier("tab.stats")
                 }
                 .tag(AppTab.stats)
-
-                Group {
-                    if tabSelection.selectedTab == .pairing {
-                        PairingTabView()
-                    } else {
-                        Color.clear
-                    }
-                }
-                .tabItem {
-                    Label(L10n.tabPairing, systemImage: "link.circle")
-                        .accessibilityIdentifier("tab.pairing")
-                }
-                .tag(AppTab.pairing)
 
                 NavigationStack {
                     if tabSelection.selectedTab == .settings {

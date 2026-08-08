@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-struct RecordingCarAnimationView: View {
+struct RecordingCarAnimationView<CarOverlay: View>: View {
     var compact: Bool = false
     /// When true, the road clock ticks (TimelineView stays mounted). Independent of pause.
     var isAnimating: Bool = true
@@ -17,6 +17,7 @@ struct RecordingCarAnimationView: View {
     var symbolScaleX: CGFloat = -1
     /// Compact notification / list cards skip the sin bounce (avoids pause/resume bounce-in/out).
     var allowsVerticalBounce: Bool = true
+    @ViewBuilder var carOverlay: (TrailhoundRoadSceneLayout) -> CarOverlay
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -57,7 +58,8 @@ struct RecordingCarAnimationView: View {
                 systemImage: systemImage,
                 vehiclePhoto: vehiclePhoto,
                 symbolScaleX: symbolScaleX,
-                allowsVerticalBounce: allowsVerticalBounce
+                allowsVerticalBounce: allowsVerticalBounce,
+                carOverlay: carOverlay
             )
         }
         .id(markIdentity)
@@ -66,6 +68,29 @@ struct RecordingCarAnimationView: View {
         .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10))
         .drawingGroup(opaque: false, colorMode: .linear)
         .accessibilityHidden(true)
+    }
+}
+
+extension RecordingCarAnimationView where CarOverlay == EmptyView {
+    init(
+        compact: Bool = false,
+        isAnimating: Bool = true,
+        isPaused: Bool = false,
+        driveInProgress: CGFloat = 1,
+        systemImage: String? = nil,
+        vehiclePhoto: UIImage? = nil,
+        symbolScaleX: CGFloat = -1,
+        allowsVerticalBounce: Bool = true
+    ) {
+        self.compact = compact
+        self.isAnimating = isAnimating
+        self.isPaused = isPaused
+        self.driveInProgress = driveInProgress
+        self.systemImage = systemImage
+        self.vehiclePhoto = vehiclePhoto
+        self.symbolScaleX = symbolScaleX
+        self.allowsVerticalBounce = allowsVerticalBounce
+        self.carOverlay = { _ in EmptyView() }
     }
 }
 
@@ -416,7 +441,7 @@ extension TrailhoundRoadDrivingScene where Overlay == EmptyView {
     }
 }
 
-private struct RoadSceneDriver: View {
+private struct RoadSceneDriver<CarOverlay: View>: View {
     /// Live clock while animating; `nil` uses a frozen frame (no `TimelineView` tick).
     let liveTime: TimeInterval?
     let shouldAnimate: Bool
@@ -428,6 +453,7 @@ private struct RoadSceneDriver: View {
     var vehiclePhoto: UIImage? = nil
     var symbolScaleX: CGFloat = -1
     var allowsVerticalBounce: Bool = true
+    @ViewBuilder var carOverlay: (TrailhoundRoadSceneLayout) -> CarOverlay
 
     @State private var frozenRoadTime: TimeInterval = Date.timeIntervalSinceReferenceDate
 
@@ -448,7 +474,8 @@ private struct RoadSceneDriver: View {
             systemImage: systemImage,
             vehiclePhoto: vehiclePhoto,
             symbolScaleX: symbolScaleX,
-            allowsVerticalBounce: allowsVerticalBounce
+            allowsVerticalBounce: allowsVerticalBounce,
+            overlay: carOverlay
         )
         .frame(height: metrics.sceneHeight)
         .onAppear {
