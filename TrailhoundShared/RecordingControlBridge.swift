@@ -59,6 +59,8 @@ public enum RecordingControlBridge {
         public static let isPaused = "recording.isPaused"
         public static let elapsed = "recording.elapsed"
         public static let startedAt = "recording.startedAt"
+        /// Persisted so widget/intent stop after process death can finalize the correct orphan.
+        public static let activeTripID = "recording.activeTripID"
         public static let distance = "recording.distance"
         public static let weekDistance = "stats.weekDistance"
         public static let monthDistance = "stats.monthDistance"

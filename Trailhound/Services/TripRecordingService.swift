@@ -8,7 +8,7 @@ import WidgetKit
 struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
     var systemImage: String
     var symbolScaleX: Double
-    /// PNG preferred (keeps punched alpha). Name kept for ContentState field compatibility.
+    /// PNG when the thumb has alpha; JPEG for opaque plates. Field name kept for ContentState compatibility.
     var photoJPEGData: Data?
 
     static let fallback = RecordingVehicleMarkSnapshot(
@@ -68,12 +68,12 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
 
     /// Thumb that fits inside the full JSON-encoded Live Activity `ContentState`.
     nonisolated static func compactMarkData(from image: UIImage) -> Data? {
-        let cleaned = VehiclePhotoStore.markImageForDisplay(image)
-        if let data = encodeMarkForLiveActivity(cleaned) { return data }
-        if ObjectIdentifier(cleaned) != ObjectIdentifier(image) {
-            return encodeMarkForLiveActivity(image)
-        }
-        return nil
+        // Prefer the same asset as the recording picker — no punch (eats light vehicles).
+        if let data = encodeMarkForLiveActivity(image) { return data }
+        // Studio plates and other opaque thumbs only shrink enough after backdrop removal.
+        let displayMark = VehiclePhotoStore.markImageForDisplay(image)
+        guard ObjectIdentifier(displayMark) != ObjectIdentifier(image) else { return nil }
+        return encodeMarkForLiveActivity(displayMark)
     }
 
     /// Back-compat alias for tests.
@@ -82,28 +82,21 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
     }
 
     nonisolated static func fitsLiveActivityPayload(_ photoData: Data) -> Bool {
-        let state = TripRecordingAttributes.ContentState(
-            elapsedSeconds: 99_999,
-            distanceMeters: 999_999,
-            currentSpeedKmh: 999,
-            isPaused: true,
-            vehicleSystemImage: fallback.systemImage,
-            vehicleSymbolScaleX: fallback.symbolScaleX,
-            vehiclePhotoJPEGData: photoData
-        )
-        guard let encoded = try? JSONEncoder().encode(state) else { return false }
-        return encoded.count <= maxLiveActivityContentStateBytes
+        payloadEncodedSize(photoData) <= maxLiveActivityContentStateBytes
     }
 
     nonisolated private static func encodeMarkForLiveActivity(_ image: UIImage) -> Data? {
         if VehiclePhotoStore.markImageIsVisuallyEmpty(image) { return nil }
 
         var bestOversized: Data?
-        // PNG first — punched vehicle marks need alpha; JPEG fills transparency with white.
+        var bestPayloadBytes = Int.max
+        // PNG first — punched alpha marks compress far below UIKit JPEG (~5 KB floor).
         for side in markCandidateSides {
             if let data = pngData(from: image, maxSide: side) {
-                if fitsLiveActivityPayload(data) { return data }
-                if bestOversized == nil || data.count < (bestOversized?.count ?? .max) {
+                let payload = payloadEncodedSize(data)
+                if payload <= maxLiveActivityContentStateBytes { return data }
+                if payload < bestPayloadBytes {
+                    bestPayloadBytes = payload
                     bestOversized = data
                 }
             }
@@ -113,15 +106,36 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
             for side in markCandidateSides {
                 for quality in markJPEGQualities {
                     guard let data = jpegData(from: image, maxSide: side, quality: quality) else { continue }
-                    if fitsLiveActivityPayload(data) { return data }
-                    if bestOversized == nil || data.count < (bestOversized?.count ?? .max) {
+                    let payload = payloadEncodedSize(data)
+                    if payload <= maxLiveActivityContentStateBytes { return data }
+                    if payload < bestPayloadBytes {
+                        bestPayloadBytes = payload
                         bestOversized = data
                     }
                 }
             }
         }
-        if let bestOversized, fitsLiveActivityPayload(bestOversized) { return bestOversized }
+        if bestPayloadBytes <= maxLiveActivityContentStateBytes {
+            return bestOversized
+        }
         return nil
+    }
+
+    nonisolated private static func payloadEncodedSize(_ photoData: Data) -> Int {
+        guard let encoded = try? JSONEncoder().encode(
+            TripRecordingAttributes.ContentState(
+                elapsedSeconds: 99_999,
+                distanceMeters: 999_999,
+                currentSpeedKmh: 999,
+                isPaused: true,
+                vehicleSystemImage: fallback.systemImage,
+                vehicleSymbolScaleX: fallback.symbolScaleX,
+                vehiclePhotoJPEGData: photoData
+            )
+        ) else {
+            return .max
+        }
+        return encoded.count
     }
 
     nonisolated private static func jpegData(
@@ -129,7 +143,7 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
         maxSide: CGFloat,
         quality: CGFloat
     ) -> Data? {
-        guard let rendered = downscaledImage(from: image, maxSide: maxSide) else { return nil }
+        guard let rendered = downscaledImage(from: image, maxSide: maxSide, opaque: true) else { return nil }
         return rendered.jpegData(compressionQuality: quality)
     }
 
@@ -142,7 +156,11 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
         return output.pngData()
     }
 
-    nonisolated private static func downscaledImage(from image: UIImage, maxSide: CGFloat) -> UIImage? {
+    nonisolated private static func downscaledImage(
+        from image: UIImage,
+        maxSide: CGFloat,
+        opaque: Bool = false
+    ) -> UIImage? {
         let pixelW = image.size.width * image.scale
         let pixelH = image.size.height * image.scale
         let longest = max(pixelW, pixelH)
@@ -155,9 +173,13 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
         )
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
-        format.opaque = false
+        format.opaque = opaque
         let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        return renderer.image { _ in
+        return renderer.image { context in
+            if opaque {
+                UIColor.black.setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
             image.draw(in: CGRect(origin: .zero, size: size))
         }
     }
@@ -401,8 +423,40 @@ final class TripRecordingService {
     func processExternalStopRequest() {
         DevLog.shared.log(.recording, "processExternalStopRequest (state: \(state))")
         settings.pendingStopRecordingRequest = false
-        guard state.isActiveSession else { return }
-        stopRecording(saveTrip: true)
+        if state.isActiveSession {
+            stopRecording(saveTrip: true)
+            return
+        }
+        finalizeOrphanFromExternalStopIfNeeded()
+    }
+
+    /// Widget/intent stop after process death: in-memory session is gone but SwiftData orphan remains.
+    @discardableResult
+    func finalizeOrphanFromExternalStopIfNeeded() -> Bool {
+        guard state == .idle, let modelContext else { return false }
+        guard let orphan = TripStore.orphanMatchingRecordingSession(
+            tripID: settings.persistedActiveTripID,
+            startedAt: settings.persistedRecordingStartedAt,
+            from: modelContext
+        ) else {
+            return false
+        }
+        DevLog.shared.log(
+            .recording,
+            "processExternalStopRequest: finalizing orphan trip=\(orphan.id.uuidString.prefix(8))"
+        )
+        let saved = TripRecoveryService.finalizeOrphan(orphan, in: modelContext, saveTrip: true)
+        if saved {
+            settings.syncRecordingState(
+                isRecording: false,
+                isPaused: false,
+                elapsed: 0,
+                distanceMeters: 0,
+                currentSpeedKmh: 0,
+                activeTripID: nil
+            )
+        }
+        return saved
     }
 
     func processExternalPauseRequest() {
@@ -801,6 +855,17 @@ final class TripRecordingService {
         beginRecordingImmediately()
     }
 
+    /// Cached pre-tracking fixes are often minutes old; only replay when fresh and accurate.
+    private func isUsableInitialLocation(_ location: CLLocation) -> Bool {
+        let age = Date().timeIntervalSince(location.timestamp)
+        guard age >= 0, age <= RecordingMovementPolicy.maximumSpeedFixAgeSeconds else { return false }
+        guard location.horizontalAccuracy >= 0,
+              location.horizontalAccuracy <= RecordingMovementPolicy.maximumSpeedFixAccuracyMeters else {
+            return false
+        }
+        return true
+    }
+
     private func beginRecordingImmediately(
         startedAt: Date? = nil,
         announceStart: Bool = true,
@@ -808,6 +873,10 @@ final class TripRecordingService {
     ) {
         guard state == .idle else { return }
         guard let modelContext else { return }
+        if !TripStore.orphans(from: modelContext).isEmpty {
+            DevLog.shared.log(.recording, "beginRecording blocked: orphan exists")
+            return
+        }
 
         let resolvedStartedAt = startedAt ?? Date()
         state = .recording
@@ -883,7 +952,8 @@ final class TripRecordingService {
         }
 
         if processInitialLocation, !UITestSupport.isUnitTesting,
-           let location = locationService.lastLocation {
+           let location = locationService.lastLocation,
+           isUsableInitialLocation(location) {
             processRecordingLocationUpdate(location)
         }
     }
@@ -1011,7 +1081,8 @@ final class TripRecordingService {
             isPaused: false,
             elapsed: 0,
             distanceMeters: 0,
-            currentSpeedKmh: 0
+            currentSpeedKmh: 0,
+            activeTripID: nil
         )
         if !UITestSupport.isUnitTesting {
             TrailhoundHaptics.recordingStopped()
@@ -1191,7 +1262,7 @@ final class TripRecordingService {
         displaySpeedMps = currentSpeedMps
     }
 
-    private func syncExternalState(force: Bool = false) {
+    func syncExternalState(force: Bool = false) {
         guard force || RecordingSyncCoordinator.shouldSync() else { return }
 
         // Live Activity / widget controls already wrote optimistic App Group
@@ -1205,7 +1276,8 @@ final class TripRecordingService {
                 isPaused: false,
                 elapsed: elapsedTime,
                 distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: 0
+                currentSpeedKmh: 0,
+                activeTripID: activeTripID
             )
             return
         }
@@ -1215,7 +1287,8 @@ final class TripRecordingService {
                 isPaused: true,
                 elapsed: elapsedTime,
                 distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: 0
+                currentSpeedKmh: 0,
+                activeTripID: activeTripID
             )
             if force {
                 RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
@@ -1230,7 +1303,8 @@ final class TripRecordingService {
                 elapsed: elapsedTime,
                 distanceMeters: currentDistanceMeters,
                 currentSpeedKmh: speedKmh,
-                recordingStartedAt: state == .recording ? recordingStartedAt : nil
+                recordingStartedAt: state == .recording ? recordingStartedAt : nil,
+                activeTripID: activeTripID
             )
             if force {
                 RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
@@ -1247,7 +1321,8 @@ final class TripRecordingService {
             elapsed: elapsedTime,
             distanceMeters: currentDistanceMeters,
             currentSpeedKmh: speedKmh,
-            recordingStartedAt: isRecording ? recordingStartedAt : nil
+            recordingStartedAt: isRecording ? recordingStartedAt : nil,
+            activeTripID: (isRecording || isPaused) ? activeTripID : nil
         )
         guard !UITestSupport.isUnitTesting else { return }
 

@@ -19,6 +19,9 @@ enum RecordingMovementPolicy {
     static let maximumPlausibleSpeedMps: Double = 70
     /// Do not draw a map chord longer than this (sparse GPS may still count distance).
     static let mapMaxChordMeters: CLLocationDistance = 450
+    /// Same-timestamp / sub-second batch fixes at trip start look like teleports once
+    /// `timeDelta` is floored to 0.01 s (7 m → 700 m/s → gapResume). Treat as convergence.
+    static let minimumMovementTimeDeltaSeconds: TimeInterval = 0.5
 
     // MARK: - Speed trust
 
@@ -111,6 +114,8 @@ enum RecordingMovementPolicy {
         locationSpeedMps: Double
     ) -> Decision {
         guard delta >= minimumDistanceSampleMeters else { return .ignore }
+        // GPS convergence batches often share a timestamp; do not invent a gapResume.
+        guard timeDelta >= minimumMovementTimeDeltaSeconds else { return .ignore }
 
         let safeTimeDelta = max(0.01, timeDelta)
         let impliedSpeedMps = delta / safeTimeDelta

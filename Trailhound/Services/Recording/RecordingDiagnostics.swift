@@ -241,6 +241,7 @@ extension RecordingMovementPolicy {
         guard decision(delta: delta, timeDelta: timeDelta, locationSpeedMps: locationSpeedMps) == .ignore
         else { return nil }
         if delta < minimumDistanceSampleMeters { return "jitter" }
+        if timeDelta < minimumMovementTimeDeltaSeconds { return "convergence" }
         let implied = delta / max(0.01, timeDelta)
         let movement = locationSpeedMps > 0 ? locationSpeedMps : implied
         if movement < stationarySpeedMps, delta < stationaryDistanceMeters {

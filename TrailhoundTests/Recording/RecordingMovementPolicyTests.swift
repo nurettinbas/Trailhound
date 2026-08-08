@@ -27,6 +27,21 @@ final class RecordingMovementPolicyTests: XCTestCase {
         XCTAssertEqual(decision, .gapResume)
     }
 
+    /// Same-timestamp batch fixes at trip start must not invent a gapResume via the 0.01 s floor.
+    func testSameTimestampConvergenceDoesNotGapResume() {
+        let decision = RecordingMovementPolicy.decision(delta: 7, timeDelta: 0, speed: 0)
+        XCTAssertEqual(decision, .ignore)
+        XCTAssertEqual(
+            RecordingMovementPolicy.ignoreReason(delta: 7, timeDelta: 0, locationSpeedMps: 0),
+            "convergence"
+        )
+    }
+
+    func testSubHalfSecondConvergenceDoesNotGapResume() {
+        let decision = RecordingMovementPolicy.decision(delta: 7, timeDelta: 0.2, speed: 0)
+        XCTAssertEqual(decision, .ignore)
+    }
+
     func testModerateGapAfterOutageAccumulatesInsteadOfSticking() {
         let decision = RecordingMovementPolicy.decision(delta: 600, timeDelta: 30, speed: 20)
         XCTAssertEqual(decision, .accumulate)

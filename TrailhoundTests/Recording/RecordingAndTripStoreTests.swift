@@ -341,4 +341,61 @@ final class TripRecoveryServiceTests: XCTestCase {
         XCTAssertNotNil(open.endedAt)
         XCTAssertEqual(TripStore.orphans(from: context).count, 0)
     }
+
+    /// Simulates widget/intent stop after process death: service is idle, SwiftData orphan remains.
+    func testExternalStopWhileIdleFinalizesMatchingOrphan() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.orphan.stop.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let startedAt = Date().addingTimeInterval(-180)
+        let open = Trip(startedAt: startedAt, endedAt: nil, distanceMeters: 40)
+        context.insert(open)
+        try context.save()
+
+        settings.syncRecordingState(
+            isRecording: false,
+            isPaused: false,
+            elapsed: 180,
+            distanceMeters: 40,
+            currentSpeedKmh: 0,
+            recordingStartedAt: startedAt,
+            activeTripID: open.id
+        )
+        settings.pendingStopRecordingRequest = true
+
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: context)
+        XCTAssertEqual(recordingService.state, .idle)
+
+        recordingService.processExternalStopRequest()
+
+        XCTAssertFalse(settings.pendingStopRecordingRequest)
+        XCTAssertNotNil(open.endedAt)
+        XCTAssertEqual(TripStore.orphans(from: context).count, 0)
+        XCTAssertNil(settings.persistedActiveTripID)
+    }
+
+    func testStartManualRecordingBlockedWhenOrphanExists() throws {
+        let defaults = UserDefaults(suiteName: "test.trailhound.orphan.guard.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let open = Trip(startedAt: Date().addingTimeInterval(-60), endedAt: nil)
+        context.insert(open)
+        try context.save()
+
+        let recordingService = TripRecordingService(
+            locationService: LocationService(),
+            settings: settings
+        )
+        recordingService.configure(modelContext: context)
+
+        XCTAssertFalse(recordingService.startManualRecording())
+        XCTAssertEqual(recordingService.state, .idle)
+        XCTAssertEqual(TripStore.orphans(from: context).count, 1)
+    }
 }

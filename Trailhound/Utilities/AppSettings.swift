@@ -309,7 +309,8 @@ final class AppSettings {
         elapsed: TimeInterval,
         distanceMeters: Double,
         currentSpeedKmh: Int = 0,
-        recordingStartedAt: Date? = nil
+        recordingStartedAt: Date? = nil,
+        activeTripID: UUID? = nil
     ) {
         defaults.set(isRecording, forKey: "recording.isActive")
         defaults.set(isPaused, forKey: "recording.isPaused")
@@ -322,6 +323,27 @@ final class AppSettings {
         } else if !isRecording || isPaused {
             defaults.removeObject(forKey: RecordingControlBridge.Keys.startedAt)
         }
+        // Keep the ID while a stop is in flight so kill-mid-stop can still finalize the orphan.
+        if let activeTripID {
+            defaults.set(activeTripID.uuidString, forKey: RecordingControlBridge.Keys.activeTripID)
+        } else if !isRecording {
+            defaults.removeObject(forKey: RecordingControlBridge.Keys.activeTripID)
+        }
+    }
+
+    var persistedActiveTripID: UUID? {
+        guard let raw = defaults.string(forKey: RecordingControlBridge.Keys.activeTripID) else { return nil }
+        return UUID(uuidString: raw)
+    }
+
+    var persistedRecordingStartedAt: Date? {
+        let timestamp = defaults.double(forKey: RecordingControlBridge.Keys.startedAt)
+        guard timestamp > 0 else { return nil }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+
+    var isRecordingActiveInAppGroup: Bool {
+        defaults.bool(forKey: RecordingControlBridge.Keys.isActive)
     }
 
     var pendingStartRecordingRequest: Bool {

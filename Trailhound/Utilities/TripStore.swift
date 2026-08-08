@@ -37,6 +37,33 @@ enum TripStore {
         return trips
     }
 
+    static func trip(id: UUID, from context: ModelContext) -> Trip? {
+        all(from: context).first { $0.id == id }
+    }
+
+    /// Prefer persisted App Group trip ID; fall back to startedAt match, then newest orphan.
+    static func orphanMatchingRecordingSession(
+        tripID: UUID?,
+        startedAt: Date?,
+        from context: ModelContext
+    ) -> Trip? {
+        if let tripID, let trip = trip(id: tripID, from: context), trip.duration == nil {
+            return trip
+        }
+        let orphans = orphansNewestFirst(from: context)
+        guard !orphans.isEmpty else { return nil }
+        if let startedAt {
+            let tolerance: TimeInterval = 2
+            if let match = orphans.first(where: {
+                abs($0.startedAt.timeIntervalSince(startedAt)) <= tolerance
+            }) {
+                return match
+            }
+            return orphans.first
+        }
+        return nil
+    }
+
     static func syncWidgetWeekDistance(in context: ModelContext) {
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
         let weekTrips = StatsViewModel.trips(

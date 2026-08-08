@@ -66,21 +66,39 @@ final class AppRuntime {
 
         tripRecordingService.configure(modelContext: container.mainContext)
         wireRecordingRequestHandlers()
-        reconcileRecordingStateAfterLaunch()
+        reconcileRecordingStateAfterLaunch(context: container.mainContext)
     }
 
-    private func reconcileRecordingStateAfterLaunch() {
+    private func reconcileRecordingStateAfterLaunch(context: ModelContext) {
         let settings = AppSettings.shared
         let recordingService = tripRecordingService
         guard !recordingService.state.isActiveSession else { return }
         guard !settings.pendingStartRecordingRequest else { return }
+
+        // Widget already cleared isActive (or App Group still has a trip ID after kill).
+        // Finalize the matching orphan instead of leaving an open trip with no session.
+        let persistedTripID = settings.persistedActiveTripID
+        if !settings.isRecordingActiveInAppGroup,
+           persistedTripID != nil || settings.persistedRecordingStartedAt != nil {
+            _ = recordingService.finalizeOrphanFromExternalStopIfNeeded()
+        }
+
+        // Keep trip ID when an orphan remains (kill without stop) so a later widget stop can match.
+        let orphans = TripStore.orphans(from: context)
+        let remainingOrphanID: UUID? = {
+            if let persistedTripID, orphans.contains(where: { $0.id == persistedTripID }) {
+                return persistedTripID
+            }
+            return orphans.first?.id
+        }()
 
         settings.syncRecordingState(
             isRecording: false,
             isPaused: false,
             elapsed: 0,
             distanceMeters: 0,
-            currentSpeedKmh: 0
+            currentSpeedKmh: 0,
+            activeTripID: remainingOrphanID
         )
 
         Task { @MainActor in
@@ -139,6 +157,8 @@ final class AppRuntime {
     func resumeMonitoringIfNeeded() {
         guard shouldKeepLocationServicesActive else { return }
         DevLog.shared.log(.lifecycle, "resumeMonitoringIfNeeded: active recording session")
+        RecordingLiveActivityService.retryPendingRestartIfNeeded()
+        tripRecordingService.syncExternalState(force: true)
     }
 
     func suspendIdleMonitoringIfNeeded() {

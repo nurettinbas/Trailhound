@@ -327,7 +327,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: photoSize, height: photoSize)
-                    .opacity(isPaused ? 0.75 : opacity)
+                    .opacity(isPaused ? 0.75 : 1)
                     .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
             } else {
                 Image(systemName: systemImage ?? "car.side.fill")

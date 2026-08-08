@@ -207,7 +207,7 @@ struct ActiveTripView: View {
                     systemImage: VehicleIconOption.default.rawValue,
                     vehiclePhoto: roadVehiclePhoto,
                     symbolScaleX: -1,
-                    allowsVerticalBounce: false
+                    allowsVerticalBounce: true
                 )
                 .matchedGeometryEffectIfAvailable(
                     stringID: RecordingMorphID.car,
@@ -288,7 +288,8 @@ struct ActiveTripView: View {
             image = await VehiclePhotoStore.shared.image(fileName: fileName)
         }
         guard recordingVehicle?.photoFileName == fileName else { return }
-        roadVehiclePhoto = image.map(VehiclePhotoStore.markImageForDisplay)
+        // Same asset as RecordingVehiclePicker — no backdrop punch (that eats light vehicles).
+        roadVehiclePhoto = image
     }
 
     private var statusRow: some View {

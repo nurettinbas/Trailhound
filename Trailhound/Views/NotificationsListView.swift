@@ -126,7 +126,7 @@ struct NotificationsListView: View {
             image = await VehiclePhotoStore.shared.image(fileName: fileName)
         }
         guard recordingVehicle?.photoFileName == fileName else { return }
-        roadVehiclePhoto = image.map(VehiclePhotoStore.markImageForDisplay)
+        roadVehiclePhoto = image
     }
 
     private func isLiveTripSession(_ item: StoredAppNotification, kind: AppNotificationKind) -> Bool {

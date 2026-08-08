@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import UIKit
 
 // Vehicle mark is passed as systemImage / scaleX / photoJPEG primitives only.
 @MainActor
@@ -10,6 +11,21 @@ enum RecordingLiveActivityService {
     private static let minimumUpdateInterval: TimeInterval = 3
     private static var operationChain: Task<Void, Never>?
 
+    /// Snapshot for deferred recreate when `Activity.request` is blocked in background.
+    private struct PendingRestart {
+        var startedAt: Date
+        var elapsed: TimeInterval
+        var distanceMeters: Double
+        var currentSpeedKmh: Int
+        var isPaused: Bool
+        var vehicleSystemImage: String
+        var vehicleSymbolScaleX: Double
+        var vehiclePhotoJPEGData: Data?
+    }
+
+    private static var pendingRestart: PendingRestart?
+    private static var didLogDeferredRestart = false
+
     /// Ends orphan Live Activities left over from a prior process (e.g. Xcode debug restart).
     static func reconcileAfterLaunch(hasActiveSession: Bool) async {
         await runSerially {
@@ -17,6 +33,7 @@ enum RecordingLiveActivityService {
             guard !Activity<TripRecordingAttributes>.activities.isEmpty else { return }
             await endAllImmediately()
         }
+        clearPendingRestart()
     }
 
     static func start(
@@ -30,6 +47,7 @@ enum RecordingLiveActivityService {
         vehiclePhotoJPEGData: Data? = nil
     ) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        clearPendingRestart()
         enqueue {
             await endAllImmediately()
             await requestActivity(
@@ -64,6 +82,7 @@ enum RecordingLiveActivityService {
         vehiclePhotoJPEGData: Data? = nil
     ) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        clearPendingRestart()
         await operationChain?.value
         if !Activity<TripRecordingAttributes>.activities.isEmpty { return }
         await endAllImmediately()
@@ -83,6 +102,7 @@ enum RecordingLiveActivityService {
     }
 
     /// Re-creates the Live Activity if recording is active but the system dismissed it.
+    /// Background recreate is deferred — ActivityKit rejects `Activity.request` when not foreground.
     static func ensureActiveIfNeeded(
         startedAt: Date,
         elapsed: TimeInterval,
@@ -96,9 +116,12 @@ enum RecordingLiveActivityService {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         enqueue {
             await dedupeActivitiesIfNeeded()
-            guard Activity<TripRecordingAttributes>.activities.isEmpty else { return }
-            DevLog.shared.log(logCategory, "Live Activity missing during recording; restarting", level: .warning)
-            await requestActivity(
+            guard Activity<TripRecordingAttributes>.activities.isEmpty else {
+                clearPendingRestart()
+                return
+            }
+
+            let snapshot = PendingRestart(
                 startedAt: startedAt,
                 elapsed: elapsed,
                 distanceMeters: distanceMeters,
@@ -106,11 +129,61 @@ enum RecordingLiveActivityService {
                 isPaused: isPaused,
                 vehicleSystemImage: vehicleSystemImage,
                 vehicleSymbolScaleX: vehicleSymbolScaleX,
-                vehiclePhotoJPEGData: vehiclePhotoJPEGData,
+                vehiclePhotoJPEGData: vehiclePhotoJPEGData
+            )
+
+            guard UIApplication.shared.applicationState == .active else {
+                storePendingRestart(snapshot)
+                return
+            }
+
+            DevLog.shared.log(logCategory, "Live Activity missing during recording; restarting", level: .warning)
+            await requestActivity(
+                startedAt: snapshot.startedAt,
+                elapsed: snapshot.elapsed,
+                distanceMeters: snapshot.distanceMeters,
+                currentSpeedKmh: snapshot.currentSpeedKmh,
+                isPaused: snapshot.isPaused,
+                vehicleSystemImage: snapshot.vehicleSystemImage,
+                vehicleSymbolScaleX: snapshot.vehicleSymbolScaleX,
+                vehiclePhotoJPEGData: snapshot.vehiclePhotoJPEGData,
                 logMessage: "Live Activity restarted"
             )
+            clearPendingRestart()
             lastUpdateAt = nil
             lastPublishedIsPaused = isPaused
+        }
+    }
+
+    /// Retries a deferred background recreate once the app is foreground again.
+    static func retryPendingRestartIfNeeded() {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            clearPendingRestart()
+            return
+        }
+        guard UIApplication.shared.applicationState == .active else { return }
+        guard let snapshot = pendingRestart else { return }
+        enqueue {
+            await dedupeActivitiesIfNeeded()
+            guard Activity<TripRecordingAttributes>.activities.isEmpty else {
+                clearPendingRestart()
+                return
+            }
+            DevLog.shared.log(logCategory, "Live Activity missing during recording; restarting", level: .warning)
+            await requestActivity(
+                startedAt: snapshot.startedAt,
+                elapsed: snapshot.elapsed,
+                distanceMeters: snapshot.distanceMeters,
+                currentSpeedKmh: snapshot.currentSpeedKmh,
+                isPaused: snapshot.isPaused,
+                vehicleSystemImage: snapshot.vehicleSystemImage,
+                vehicleSymbolScaleX: snapshot.vehicleSymbolScaleX,
+                vehiclePhotoJPEGData: snapshot.vehiclePhotoJPEGData,
+                logMessage: "Live Activity restarted"
+            )
+            clearPendingRestart()
+            lastUpdateAt = nil
+            lastPublishedIsPaused = snapshot.isPaused
         }
     }
 
@@ -181,9 +254,22 @@ enum RecordingLiveActivityService {
     static func stop() {
         lastUpdateAt = nil
         lastPublishedIsPaused = nil
+        clearPendingRestart()
         enqueue {
             await endAllImmediately()
         }
+    }
+
+    private static func storePendingRestart(_ snapshot: PendingRestart) {
+        pendingRestart = snapshot
+        guard !didLogDeferredRestart else { return }
+        didLogDeferredRestart = true
+        DevLog.shared.log(logCategory, "Live Activity restart deferred (background)")
+    }
+
+    private static func clearPendingRestart() {
+        pendingRestart = nil
+        didLogDeferredRestart = false
     }
 
     private static func enqueue(_ operation: @MainActor @escaping () async -> Void) {
