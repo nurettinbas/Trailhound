@@ -79,7 +79,8 @@ struct VehiclePhotoFlowSheet: View {
     }
 
     var body: some View {
-        ZStack {
+        // Bottom-aligned: sheet top edge grows up; source stays put → stretch, not a new rise.
+        ZStack(alignment: .bottom) {
             Group {
                 switch phase {
                 case .source:
@@ -89,38 +90,34 @@ struct VehiclePhotoFlowSheet: View {
                 }
             }
             .ignoresSafeArea()
+            .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetExpand, value: phase)
 
-            Group {
-                switch phase {
-                case .source:
-                    VehiclePhotoSourceSheet(
-                        canUseCamera: canUseCamera,
-                        onLibrary: {
-                            expand(to: .gallery)
-                        },
-                        onCamera: {
-                            expand(to: .camera)
-                        },
-                        onCancel: onCancel
-                    )
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity,
-                            removal: .opacity.combined(with: .offset(y: 8))
-                        )
-                    )
-                case .capture(let mode):
-                    VehiclePhotoCaptureSheet(
-                        initialMode: mode,
-                        onPicked: onPicked,
-                        onCancel: shrinkToSource,
-                        isProcessing: $isCaptureProcessing
-                    )
-                    .transition(TrailhoundMotion.softRiseTransition)
-                }
+            switch phase {
+            case .source:
+                VehiclePhotoSourceSheet(
+                    canUseCamera: canUseCamera,
+                    onLibrary: {
+                        expand(to: .gallery)
+                    },
+                    onCamera: {
+                        expand(to: .camera)
+                    },
+                    onCancel: onCancel
+                )
+                .transition(.opacity)
+            case .capture(let mode):
+                VehiclePhotoCaptureSheet(
+                    initialMode: mode,
+                    onPicked: onPicked,
+                    onCancel: shrinkToSource,
+                    isProcessing: $isCaptureProcessing
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(TrailhoundMotion.photoSheetRevealTransition)
             }
         }
-        .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetExpand, value: phase)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetReveal, value: phase)
         .presentationDetents([sourceDetent, captureDetent], selection: $selectedDetent)
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(28)
@@ -141,23 +138,34 @@ struct VehiclePhotoFlowSheet: View {
     }
 
     private func expand(to mode: VehiclePhotoCaptureMode) {
-        applyPhase(.capture(mode), detent: captureDetent)
+        if reduceMotion {
+            selectedDetent = captureDetent
+            phase = .capture(mode)
+            return
+        }
+        // 1) Stretch the same sheet upward first (source stays bottom-pinned).
+        withAnimation(TrailhoundMotion.photoSheetExpand) {
+            selectedDetent = captureDetent
+        }
+        // 2) Fill the grown area — opacity/top-scale, never a bottom-rise offset.
+        withAnimation(TrailhoundMotion.photoSheetReveal.delay(0.08)) {
+            phase = .capture(mode)
+        }
     }
 
     private func shrinkToSource() {
         isCaptureProcessing = false
-        applyPhase(.source, detent: sourceDetent)
-    }
-
-    private func applyPhase(_ newPhase: VehiclePhotoFlowPhase, detent: PresentationDetent) {
         if reduceMotion {
-            phase = newPhase
-            selectedDetent = detent
-        } else {
-            withAnimation(TrailhoundMotion.photoSheetExpand) {
-                phase = newPhase
-                selectedDetent = detent
-            }
+            phase = .source
+            selectedDetent = sourceDetent
+            return
+        }
+        // Content out first, then collapse height so it reads as shrinking the same card.
+        withAnimation(TrailhoundMotion.photoSheetReveal) {
+            phase = .source
+        }
+        withAnimation(TrailhoundMotion.photoSheetExpand.delay(0.04)) {
+            selectedDetent = sourceDetent
         }
     }
 
