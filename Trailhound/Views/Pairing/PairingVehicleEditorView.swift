@@ -90,13 +90,12 @@ struct PairingVehicleEditorForm: View {
     @State private var showDeleteConfirm = false
     @State private var isSaving = false
     @State private var isProcessingPhoto = false
+    @State private var showPhotoActions = false
+    @State private var visiblePhotoActionCount = 0
+    @State private var brandRingOpacity: Double = 0.45
 
     private let photoHeroSide: CGFloat = 132
-    private let emptyPhotoControlHeight: CGFloat = 56 * 1.3 + 20 + 8 + 6
-
-    private var activeHeroSide: CGFloat {
-        hasPhoto || isFraming || isProcessingPhoto ? photoHeroSide : emptyPhotoControlHeight
-    }
+    private let restingBrandRingOpacity: Double = 0.45
 
     private var isOnlyVehicle: Bool { vehicles.count <= 1 }
 
@@ -186,32 +185,14 @@ struct PairingVehicleEditorForm: View {
 
     @ViewBuilder
     private var editorSections: some View {
-        if showsCompactEmptyPhotoLayout {
-            Section(L10n.pairingTabVehicleSection) {
-                photoSection
-                    .fixedSize(horizontal: false, vertical: true)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(compactEmptyPhotoRowInsets)
-                    .listRowSeparator(.hidden)
+        Section(L10n.pairingTabVehicleSection) {
+            photoSection
+                .listRowBackground(Color.clear)
+                .listRowInsets(photoListRowInsets)
+                .listRowSeparator(.hidden)
 
-                vehicleProfileFields(compactTop: true)
-            }
-        } else {
-            Section {
-                photoSection
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(photoListRowInsets)
-                    .listRowSeparator(.hidden)
-            }
-
-            Section(L10n.pairingTabVehicleSection) {
-                vehicleProfileFields(compactTop: false)
-            }
+            vehicleProfileFields(compactTop: true)
         }
-    }
-
-    private var showsCompactEmptyPhotoLayout: Bool {
-        !hasPhoto && !isFraming && !isProcessingPhoto
     }
 
     @ViewBuilder
@@ -289,9 +270,8 @@ struct PairingVehicleEditorForm: View {
                     Spacer(minLength: 8)
                     hero
                         .transition(reduceMotion ? .opacity : TrailhoundMotion.photoHeroTransition)
-                    if !isFraming && hasPhoto {
+                    if !isFraming && hasPhoto && visiblePhotoActionCount > 0 {
                         photoActionColumn
-                            .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
                     }
                     Spacer(minLength: 8)
                 } else {
@@ -314,18 +294,24 @@ struct PairingVehicleEditorForm: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, hasPhoto || isFraming ? 4 : 0)
+        .padding(.vertical, 4)
         .animation(reduceMotion ? nil : TrailhoundMotion.photoRemove, value: hasPhoto)
         .animation(reduceMotion ? nil : TrailhoundMotion.photoSettle, value: isFraming)
-    }
-
-    private var compactEmptyPhotoRowInsets: EdgeInsets {
-        EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16)
+        .onChange(of: hasPhoto) { _, present in
+            if !present { collapsePhotoActions(animated: false) }
+        }
+        .onChange(of: isFraming) { _, framing in
+            if framing { collapsePhotoActions(animated: true) }
+        }
+        .onChange(of: isProcessingPhoto) { _, processing in
+            if processing { collapsePhotoActions(animated: true) }
+        }
     }
 
     private var photoListRowInsets: EdgeInsets {
         let horizontal: CGFloat = 16
-        return EdgeInsets(top: 4, leading: horizontal, bottom: 4, trailing: horizontal)
+        // Top: chip clearance + slight drop so the hero isn’t stuck under the section header.
+        return EdgeInsets(top: 8, leading: horizontal, bottom: 2, trailing: horizontal)
     }
 
     private func vehicleFirstRowInsets(compactTop: Bool) -> EdgeInsets {
@@ -350,26 +336,36 @@ struct PairingVehicleEditorForm: View {
 
     private var photoActionColumn: some View {
         VStack(alignment: .leading, spacing: 6) {
-            photoSideButton(
-                title: L10n.pairingTabVehiclePhotoActionEdit,
-                systemImage: "slider.horizontal.3",
-                role: .edit
-            ) {
-                Task { await openFraming() }
+            if visiblePhotoActionCount >= 1 {
+                photoSideButton(
+                    title: L10n.pairingTabVehiclePhotoActionEdit,
+                    systemImage: "slider.horizontal.3",
+                    role: .edit
+                ) {
+                    Task { await openFraming() }
+                }
+                .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
             }
-            photoSideButton(
-                title: L10n.pairingTabVehiclePhotoActionChange,
-                systemImage: "photo.on.rectangle.angled",
-                role: .change
-            ) {
-                photoSheet.wrappedValue = .flow
+            if visiblePhotoActionCount >= 2 {
+                photoSideButton(
+                    title: L10n.pairingTabVehiclePhotoActionChange,
+                    systemImage: "photo.on.rectangle.angled",
+                    role: .change
+                ) {
+                    collapsePhotoActions(animated: true)
+                    photoSheet.wrappedValue = .flow
+                }
+                .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
             }
-            photoSideButton(
-                title: L10n.pairingTabVehiclePhotoActionDelete,
-                systemImage: "trash",
-                role: .destructive
-            ) {
-                showDeleteConfirm = true
+            if visiblePhotoActionCount >= 3 {
+                photoSideButton(
+                    title: L10n.pairingTabVehiclePhotoActionDelete,
+                    systemImage: "trash",
+                    role: .destructive
+                ) {
+                    showDeleteConfirm = true
+                }
+                .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
             }
         }
         .fixedSize(horizontal: true, vertical: false)
@@ -429,6 +425,7 @@ struct PairingVehicleEditorForm: View {
             if !hasPhoto && !isFraming && !isProcessingPhoto {
                 EmptyVehiclePhotoAddButton(
                     title: L10n.pairingTabVehiclePhotoActionAdd,
+                    side: photoHeroSide,
                     isDisabled: isSaving
                 ) {
                     TrailhoundHaptics.selection()
@@ -440,9 +437,14 @@ struct PairingVehicleEditorForm: View {
             }
         }
         .frame(
-            width: isFraming ? nil : (hasPhoto || isProcessingPhoto ? activeHeroSide : nil),
-            height: isFraming ? nil : (hasPhoto || isProcessingPhoto ? activeHeroSide : nil)
+            // Empty control needs intrinsic height for badge bounce clearance.
+            width: isFraming || isEmptyPhotoHero ? nil : photoHeroSide,
+            height: isFraming || isEmptyPhotoHero ? nil : photoHeroSide
         )
+    }
+
+    private var isEmptyPhotoHero: Bool {
+        !hasPhoto && !isFraming && !isProcessingPhoto
     }
 
     private var heroContent: some View {
@@ -466,27 +468,124 @@ struct PairingVehicleEditorForm: View {
                     )
                 )
             } else {
-                ZStack {
-                    VehicleAvatarView(
-                        systemImage: resolvedSystemImage,
-                        photoFileName: photoFileNameForPreview,
-                        pendingImage: pendingPreview,
-                        size: photoHeroSide,
-                        cornerRadius: photoHeroSide * 0.18,
-                        isElectricAccent: isElectricAccent,
-                        showsBrandRing: true,
-                        showsSymbolPlate: true
-                    )
+                filledPhotoHero
+            }
+        }
+    }
 
-                    if isProcessingPhoto {
-                        RoundedRectangle(cornerRadius: photoHeroSide * 0.18, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .frame(width: photoHeroSide, height: photoHeroSide)
-                        ProgressView()
-                    }
+    private var photoGlintID: String {
+        if let pendingPreview {
+            return "pending-\(ObjectIdentifier(pendingPreview))"
+        }
+        return photoFileNameForPreview ?? "none"
+    }
+
+    private var filledPhotoHero: some View {
+        let corner = photoHeroSide * 0.18
+        return Button {
+            guard hasPhoto, !isProcessingPhoto, !isSaving else { return }
+            TrailhoundHaptics.selection()
+            togglePhotoActions()
+        } label: {
+            ZStack {
+                VehicleAvatarView(
+                    systemImage: resolvedSystemImage,
+                    photoFileName: photoFileNameForPreview,
+                    pendingImage: pendingPreview,
+                    size: photoHeroSide,
+                    cornerRadius: corner,
+                    isElectricAccent: isElectricAccent,
+                    showsBrandRing: true,
+                    brandRingOpacity: brandRingOpacity,
+                    showsSymbolPlate: true
+                )
+                .photoEntranceGlint(cornerRadius: corner, id: photoGlintID) {
+                    playCollapsedRingPulse()
                 }
-                .frame(width: photoHeroSide, height: photoHeroSide)
-                .contentShape(RoundedRectangle(cornerRadius: photoHeroSide * 0.18, style: .continuous))
+
+                if isProcessingPhoto {
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .frame(width: photoHeroSide, height: photoHeroSide)
+                    ProgressView()
+                }
+            }
+            .frame(width: photoHeroSide, height: photoHeroSide)
+            .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        }
+        .buttonStyle(VehiclePhotoPressStyle())
+        .disabled(isProcessingPhoto || isSaving || !hasPhoto)
+        .accessibilityLabel(L10n.pairingTabVehiclePhotoChoose)
+        .accessibilityHint(
+            showPhotoActions
+                ? L10n.pairingTabVehiclePhotoActionEdit
+                : L10n.pairingTabVehiclePhotoChooseSubtitle
+        )
+        .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionEdit) {
+            Task { await openFraming() }
+        }
+        .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionChange) {
+            collapsePhotoActions(animated: false)
+            photoSheet.wrappedValue = .flow
+        }
+        .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionDelete) {
+            showDeleteConfirm = true
+        }
+    }
+
+    private func togglePhotoActions() {
+        if showPhotoActions {
+            collapsePhotoActions(animated: true)
+        } else {
+            expandPhotoActions()
+        }
+    }
+
+    private func expandPhotoActions() {
+        showPhotoActions = true
+        brandRingOpacity = restingBrandRingOpacity
+        if reduceMotion {
+            visiblePhotoActionCount = 3
+            return
+        }
+        visiblePhotoActionCount = 0
+        Task { @MainActor in
+            for count in 1 ... 3 {
+                guard showPhotoActions else { return }
+                withAnimation(TrailhoundMotion.photoActionsReveal) {
+                    visiblePhotoActionCount = count
+                }
+                if count < 3 {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+            }
+        }
+    }
+
+    private func collapsePhotoActions(animated: Bool) {
+        showPhotoActions = false
+        let animation: Animation? = animated
+            ? (reduceMotion ? .easeOut(duration: 0.12) : TrailhoundMotion.photoActionsReveal)
+            : nil
+        withAnimation(animation) {
+            visiblePhotoActionCount = 0
+        }
+        brandRingOpacity = restingBrandRingOpacity
+    }
+
+    private func playCollapsedRingPulse() {
+        guard !reduceMotion, hasPhoto, !showPhotoActions, !isFraming else { return }
+        withAnimation(.easeInOut(duration: 0.45)) {
+            brandRingOpacity = 0.9
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !showPhotoActions else {
+                brandRingOpacity = restingBrandRingOpacity
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.45)) {
+                brandRingOpacity = restingBrandRingOpacity
             }
         }
     }
@@ -499,6 +598,8 @@ struct PairingVehicleEditorForm: View {
         isFraming = false
         frameScale = VehiclePhotoCropMath.defaultUserScale
         frameOffset = .zero
+        collapsePhotoActions(animated: false)
+        brandRingOpacity = restingBrandRingOpacity
         syncUnsavedChanges()
     }
 
@@ -512,6 +613,7 @@ struct PairingVehicleEditorForm: View {
 
     private func removePhoto() {
         TrailhoundHaptics.destructive()
+        collapsePhotoActions(animated: true)
         withAnimation(reduceMotion ? nil : TrailhoundMotion.photoRemove) {
             updateDraft { $0.photoEdit = .removed }
             pendingPreview = nil
@@ -525,12 +627,14 @@ struct PairingVehicleEditorForm: View {
         cropSourceImage = prepared
         frameScale = VehiclePhotoCropMath.defaultUserScale
         frameOffset = .zero
+        collapsePhotoActions(animated: true)
         withAnimation(reduceMotion ? nil : TrailhoundMotion.photoSettle) {
             isFraming = true
         }
     }
 
     private func openFraming() async {
+        collapsePhotoActions(animated: true)
         if cropSourceImage != nil {
             withAnimation(reduceMotion ? nil : TrailhoundMotion.photoSettle) {
                 isFraming = true

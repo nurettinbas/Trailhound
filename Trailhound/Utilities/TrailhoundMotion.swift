@@ -26,6 +26,8 @@ enum TrailhoundMotion {
     static let toastDismiss = Animation.easeIn(duration: 0.22)
     /// Vehicle photo framing settle (rotate / expand inline controls).
     static let photoSettle = Animation.spring(response: 0.34, dampingFraction: 0.86)
+    /// Side actions spawn from the photo hero.
+    static let photoActionsReveal = Animation.spring(response: 0.34, dampingFraction: 0.86)
     /// Source dialog → camera/gallery: sheet stretches upward as one filled surface.
     static let photoSheetExpand = Animation.spring(response: 1.1, dampingFraction: 0.86)
     /// Gallery/camera fade inside the grown card.
@@ -79,14 +81,23 @@ enum TrailhoundMotion {
         )
     }
 
-    /// Edit / Change / Delete column exits toward the trailing edge.
+    /// Edit / Change / Delete spawn from the photo (leading = toward hero).
     static var photoActionsTransition: AnyTransition {
         .asymmetric(
-            insertion: .opacity.combined(with: .offset(x: 12)),
+            insertion: .opacity
+                .combined(with: .scale(scale: 0.55))
+                .combined(with: .offset(x: -18)),
             removal: .opacity
-                .combined(with: .scale(scale: 0.92))
-                .combined(with: .offset(x: 16))
+                .combined(with: .scale(scale: 0.7))
+                .combined(with: .offset(x: -12))
         )
+    }
+
+    static func photoActionsRevealAnimation(delay: Double, reduceMotion: Bool) -> Animation? {
+        if reduceMotion {
+            return .easeOut(duration: 0.12).delay(delay * 0.25)
+        }
+        return photoActionsReveal.delay(delay)
     }
 
     /// Curtain / clip-reveal transition (progress 0 → 1).
@@ -204,6 +215,74 @@ private struct ShimmerModifier: ViewModifier {
     }
 }
 
+/// One-shot diagonal sun/glint for vehicle photo hero — overlay removed when finished.
+private struct PhotoEntranceGlintModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let glintID: String
+    var onFinished: (() -> Void)?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = 0
+    @State private var finished = false
+    @State private var playedID: String?
+
+    private let duration: TimeInterval = 0.85
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if !reduceMotion, !finished {
+                    GeometryReader { geometry in
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0),
+                                Color.white.opacity(0.45),
+                                Color.white.opacity(0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(width: geometry.size.width * 0.42, height: geometry.size.height * 1.55)
+                        .rotationEffect(.degrees(22))
+                        .offset(x: -geometry.size.width + phase * geometry.size.width * 2.15)
+                        .allowsHitTesting(false)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .allowsHitTesting(false)
+                }
+            }
+            .onAppear(perform: playIfNeeded)
+            .onChange(of: glintID) { _, _ in
+                finished = false
+                phase = 0
+                playedID = nil
+                playIfNeeded()
+            }
+    }
+
+    private func playIfNeeded() {
+        guard !reduceMotion else {
+            finished = true
+            onFinished?()
+            return
+        }
+        guard playedID != glintID else { return }
+        playedID = glintID
+        finished = false
+        phase = 0
+
+        Task { @MainActor in
+            withAnimation(.easeOut(duration: duration)) {
+                phase = 1
+            }
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000) + 40))
+            finished = true
+            phase = 0
+            onFinished?()
+        }
+    }
+}
+
 /// Curtain wipe — reveals content by expanding a clip from an edge.
 struct ClipRevealEffect: ViewModifier, Animatable {
     var progress: CGFloat
@@ -262,6 +341,21 @@ extension View {
 
     func shimmer() -> some View {
         modifier(ShimmerModifier())
+    }
+
+    /// One-shot entrance glint; overlay is removed after the sweep finishes.
+    func photoEntranceGlint(
+        cornerRadius: CGFloat,
+        id: String,
+        onFinished: (() -> Void)? = nil
+    ) -> some View {
+        modifier(
+            PhotoEntranceGlintModifier(
+                cornerRadius: cornerRadius,
+                glintID: id,
+                onFinished: onFinished
+            )
+        )
     }
 
     func trailhoundCardTransition(reduceMotion: Bool) -> some View {

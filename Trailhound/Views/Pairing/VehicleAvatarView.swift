@@ -11,6 +11,8 @@ struct VehicleAvatarView: View {
     var cornerRadius: CGFloat = 8
     var isElectricAccent: Bool = false
     var showsBrandRing: Bool = false
+    /// Brand ring stroke opacity when `showsBrandRing` is on (hero can pulse this once).
+    var brandRingOpacity: Double = 0.45
     /// Overrides brand/electric symbol tint (e.g. white on the recording card chip).
     var symbolColor: Color? = nil
     /// When false, skip the tinted plate behind the SF Symbol (photo still uses clear glass).
@@ -54,7 +56,10 @@ struct VehicleAvatarView: View {
         .overlay {
             if showsBrandRing, size > 72 {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(TrailhoundBrandColors.brandBottom.opacity(0.45), lineWidth: 1.5)
+                    .strokeBorder(
+                        TrailhoundBrandColors.brandBottom.opacity(brandRingOpacity),
+                        lineWidth: 1.5
+                    )
             }
         }
         .frame(width: size, height: size)

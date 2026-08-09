@@ -67,6 +67,12 @@ final class VehiclePhotoCapturePipelineTests: XCTestCase {
         )
 
         XCTAssertNil(vehicle.photoFileName)
+
+        // Disk delete is async on the store queue — wait briefly (same as VehiclePhotoStoreTests).
+        let deadline = Date().addingTimeInterval(1)
+        while FileManager.default.fileExists(atPath: savedURL.path), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
         XCTAssertFalse(FileManager.default.fileExists(atPath: savedURL.path))
     }
 

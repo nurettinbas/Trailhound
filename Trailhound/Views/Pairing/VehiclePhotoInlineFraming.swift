@@ -235,9 +235,10 @@ struct VehiclePhotoPressStyle: ButtonStyle {
     }
 }
 
-/// Empty-state add photo control — corner badge (v-badge style), intro bounces twice together.
+/// Empty-state add photo control — matches filled hero square + corner badge intro.
 struct EmptyVehiclePhotoAddButton: View {
     let title: String
+    var side: CGFloat = 132
     var isDisabled: Bool = false
     let action: () -> Void
 
@@ -252,22 +253,24 @@ struct EmptyVehiclePhotoAddButton: View {
     private let bounceStep: Duration = .milliseconds(640)
     private let badgeFadeDuration: TimeInterval = 0.7
 
-    /// Base orb was ~56pt; +30% diameter.
-    private let orbDiameter: CGFloat = 56 * 1.3
-    /// Chip position: +20% further right from prior x=22.
-    private let badgeOffsetX: CGFloat = 22 * 1.2
-    private let badgeOffsetY: CGFloat = -12
-    private let badgeTopClearance: CGFloat = 20
+    /// Square top-trailing corner badge (further right than the old circle orb).
+    private let badgeOffsetX: CGFloat = 18
+    private let badgeOffsetY: CGFloat = -10
+    /// Layout room above/beside the square so bounce + chip are not clipped by the list row.
+    private let badgeTopClearance: CGFloat = 22
+    private let badgeTrailingClearance: CGFloat = 22
+
+    private var cornerRadius: CGFloat { side * 0.18 }
 
     private var containerHeight: CGFloat {
-        orbDiameter + badgeTopClearance + bounceAmplitude + 6
+        side + badgeTopClearance + bounceAmplitude
     }
 
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .top) {
                 ZStack(alignment: .topTrailing) {
-                    cameraOrb
+                    photoFrame
 
                     if showBadge {
                         photoBadge
@@ -275,9 +278,15 @@ struct EmptyVehiclePhotoAddButton: View {
                             .offset(x: badgeOffsetX, y: badgeOffsetY)
                     }
                 }
+                .frame(width: side, height: side, alignment: .topTrailing)
                 .offset(y: badgeTopClearance + bounceAmplitude + bounceOffset)
             }
-            .frame(width: orbDiameter + 36, height: containerHeight, alignment: .top)
+            // Symmetric horizontal room so the 132pt square stays centered while the chip peeks out.
+            .frame(
+                width: side + badgeTrailingClearance * 2,
+                height: containerHeight,
+                alignment: .top
+            )
         }
         .buttonStyle(VehiclePhotoPressStyle())
         .disabled(isDisabled)
@@ -334,30 +343,19 @@ struct EmptyVehiclePhotoAddButton: View {
         }
     }
 
-    private var cameraOrb: some View {
+    private var photoFrame: some View {
         Image(systemName: "camera.fill")
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: orbDiameter, height: orbDiameter)
+            .font(.system(size: 30, weight: .semibold))
+            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .frame(width: side, height: side)
             .background(
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                TrailhoundBrandColors.brandBottom,
-                                TrailhoundBrandColors.brandBottom.opacity(0.78)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(TrailhoundBrandColors.brandBottom.opacity(0.12))
             )
             .overlay {
-                Circle()
-                    .strokeBorder(.white.opacity(0.38), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(TrailhoundBrandColors.brandBottom.opacity(0.45), lineWidth: 1.5)
             }
-            .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.32), radius: 10, y: 4)
-            .shadow(color: .black.opacity(0.16), radius: 5, y: 2)
     }
 }
 
