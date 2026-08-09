@@ -14,54 +14,37 @@ struct VehiclePhotoInlineFraming: View {
 
     private let minZoom = VehiclePhotoCropMath.minUserScale
     private let maxZoom = VehiclePhotoCropMath.maxUserScale
+    private let toolStripHeight: CGFloat = 38
+    private let zoomThumbSize: CGFloat = 15
+    private let zoomTrackHeight: CGFloat = 3.5
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             orientationRow
             zoomRow
-            HStack(spacing: 10) {
-                Button(action: onCancel) {
-                    Text(L10n.cancel)
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(.primary)
-                        .glassChrome(cornerRadius: GlassTokens.chipRadius)
-                }
-                .buttonStyle(VehiclePhotoPressStyle())
-
-                Button(action: onApply) {
-                    Text(L10n.pairingTabVehiclePhotoApply)
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(.white)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(TrailhoundBrandColors.brandBottom)
-                        )
-                }
-                .buttonStyle(VehiclePhotoPressStyle())
-            }
+            actionRow
         }
-        .padding(.top, 4)
+        .padding(.top, 2)
         .transition(reduceMotion ? .opacity : TrailhoundMotion.softRiseTransition)
     }
 
     private var orientationRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             orientButton("rotate.left", L10n.pairingTabVehiclePhotoRotateLeft) {
                 applyOrientation(.rotateLeft)
             }
+            orientDivider
             orientButton("rotate.right", L10n.pairingTabVehiclePhotoRotateRight) {
                 applyOrientation(.rotateRight)
             }
+            orientDivider
             orientButton(
                 "arrow.left.and.right.righttriangle.left.righttriangle.right",
                 L10n.pairingTabVehiclePhotoFlipHorizontal
             ) {
                 applyOrientation(.flipHorizontal)
             }
+            orientDivider
             orientButton(
                 "arrow.up.and.down.righttriangle.up.righttriangle.down",
                 L10n.pairingTabVehiclePhotoFlipVertical
@@ -69,6 +52,15 @@ struct VehiclePhotoInlineFraming: View {
                 applyOrientation(.flipVertical)
             }
         }
+        .frame(height: toolStripHeight)
+        .glassChrome(cornerRadius: GlassTokens.chipRadius)
+    }
+
+    private var orientDivider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.12))
+            .frame(width: 1)
+            .padding(.vertical, 8)
     }
 
     private func orientButton(
@@ -79,51 +71,144 @@ struct VehiclePhotoInlineFraming: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .glassChrome(cornerRadius: 12)
+                .foregroundStyle(Color.primary.opacity(0.85))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
         }
         .buttonStyle(VehiclePhotoPressStyle())
         .accessibilityLabel(label)
     }
 
     private var zoomRow: some View {
-        HStack(spacing: 12) {
-            Button {
+        HStack(spacing: 10) {
+            zoomChip(
+                systemImage: "minus.magnifyingglass",
+                disabled: userScale <= minZoom + 0.001
+            ) {
                 nudgeZoom(-0.12)
-            } label: {
-                Image(systemName: "minus.magnifyingglass")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    .frame(width: 34, height: 34)
-                    .glassChrome(cornerRadius: 17)
             }
-            .buttonStyle(VehiclePhotoPressStyle())
-            .disabled(userScale <= minZoom + 0.001)
 
-            Slider(
-                value: Binding(
-                    get: { userScale },
-                    set: { setZoom($0, haptic: true) }
-                ),
-                in: minZoom ... maxZoom
-            )
-            .tint(TrailhoundBrandColors.brandBottom)
-            .accessibilityLabel(L10n.pairingTabVehiclePhotoZoom)
+            framingZoomTrack
 
-            Button {
+            zoomChip(
+                systemImage: "plus.magnifyingglass",
+                disabled: userScale >= maxZoom - 0.001
+            ) {
                 nudgeZoom(0.12)
-            } label: {
-                Image(systemName: "plus.magnifyingglass")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    .frame(width: 34, height: 34)
-                    .glassChrome(cornerRadius: 17)
             }
-            .buttonStyle(VehiclePhotoPressStyle())
-            .disabled(userScale >= maxZoom - 0.001)
         }
+    }
+
+    private func zoomChip(
+        systemImage: String,
+        disabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.primary.opacity(disabled ? 0.35 : 0.75))
+                .frame(width: 32, height: 32)
+                .glassChrome(cornerRadius: 16)
+        }
+        .buttonStyle(VehiclePhotoPressStyle())
+        .disabled(disabled)
+        .accessibilityHidden(true)
+    }
+
+    private var framingZoomTrack: some View {
+        GeometryReader { geometry in
+            let width = max(geometry.size.width, 1)
+            let usable = max(width - zoomThumbSize, 1)
+            let progress = zoomProgress
+            let thumbCenterX = zoomThumbSize / 2 + progress * usable
+
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(0.14))
+                    .frame(height: zoomTrackHeight)
+                    .padding(.horizontal, zoomThumbSize / 2)
+
+                Capsule(style: .continuous)
+                    .fill(TrailhoundBrandColors.brandBottom)
+                    .frame(
+                        width: max(thumbCenterX - zoomThumbSize / 2, zoomTrackHeight),
+                        height: zoomTrackHeight
+                    )
+                    .padding(.leading, zoomThumbSize / 2)
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: zoomThumbSize, height: zoomThumbSize)
+                    .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+                    .offset(x: thumbCenterX - zoomThumbSize / 2)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let ratio = min(max((value.location.x - zoomThumbSize / 2) / usable, 0), 1)
+                        setZoom(zoomValue(for: ratio), haptic: true)
+                    }
+            )
+        }
+        .frame(height: 32)
+        .accessibilityLabel(L10n.pairingTabVehiclePhotoZoom)
+        .accessibilityValue(Text("\(Int((zoomProgress * 100).rounded()))%"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: nudgeZoom(0.12)
+            case .decrement: nudgeZoom(-0.12)
+            @unknown default: break
+            }
+        }
+    }
+
+    private var zoomProgress: CGFloat {
+        let span = maxZoom - minZoom
+        guard span > 0 else { return 0 }
+        return (userScale - minZoom) / span
+    }
+
+    private func zoomValue(for progress: CGFloat) -> CGFloat {
+        minZoom + progress * (maxZoom - minZoom)
+    }
+
+    private var actionRow: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 8) {
+                Button(action: onCancel) {
+                    Text(L10n.cancel)
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .foregroundStyle(.primary)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(Color.primary.opacity(0.08))
+                        )
+                }
+                .buttonStyle(VehiclePhotoPressStyle())
+
+                Button(action: onApply) {
+                    Text(L10n.pairingTabVehiclePhotoApply)
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .foregroundStyle(.white)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(TrailhoundBrandColors.brandBottom)
+                        )
+                }
+                .buttonStyle(VehiclePhotoPressStyle())
+            }
+            .frame(width: geometry.size.width * 0.7)
+            .frame(width: geometry.size.width, alignment: .center)
+        }
+        .frame(height: 32)
+        .padding(.bottom, 14)
     }
 
     private func applyOrientation(_ edit: VehiclePhotoCropMath.OrientationEdit) {
@@ -235,6 +320,31 @@ struct VehiclePhotoPressStyle: ButtonStyle {
     }
 }
 
+/// Corner v-badge chip used on empty add + filled tap-hint intros.
+struct VehiclePhotoCornerChip: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 9, weight: .bold))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(TrailhoundBrandColors.brandBottom)
+            )
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white, lineWidth: 1.5)
+            }
+            .shadow(color: .black.opacity(0.22), radius: 2, y: 1)
+            .allowsHitTesting(false)
+    }
+}
+
 /// Empty-state add photo control — matches filled hero square + corner badge intro.
 struct EmptyVehiclePhotoAddButton: View {
     let title: String
@@ -273,7 +383,7 @@ struct EmptyVehiclePhotoAddButton: View {
                     photoFrame
 
                     if showBadge {
-                        photoBadge
+                        VehiclePhotoCornerChip(title: title)
                             .opacity(badgeOpacity)
                             .offset(x: badgeOffsetX, y: badgeOffsetY)
                     }
@@ -292,26 +402,6 @@ struct EmptyVehiclePhotoAddButton: View {
         .disabled(isDisabled)
         .accessibilityLabel(title)
         .onAppear(perform: playIntroIfNeeded)
-    }
-
-    private var photoBadge: some View {
-        Text(title)
-            .font(.system(size: 9, weight: .bold))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(TrailhoundBrandColors.brandBottom)
-            )
-            .overlay {
-                Capsule(style: .continuous)
-                    .strokeBorder(Color.white, lineWidth: 1.5)
-            }
-            .shadow(color: .black.opacity(0.22), radius: 2, y: 1)
-            .allowsHitTesting(false)
     }
 
     private func playIntroIfNeeded() {

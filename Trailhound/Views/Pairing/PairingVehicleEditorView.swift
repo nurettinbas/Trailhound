@@ -93,9 +93,14 @@ struct PairingVehicleEditorForm: View {
     @State private var showPhotoActions = false
     @State private var visiblePhotoActionCount = 0
     @State private var brandRingOpacity: Double = 0.45
+    @State private var showTapHintBadge = true
+    @State private var tapHintBadgeOpacity: Double = 1
+    @State private var tapHintBounceOffset: CGFloat = 0
+    @State private var didPlayTapHintIntro = false
 
     private let photoHeroSide: CGFloat = 132
     private let restingBrandRingOpacity: Double = 0.45
+    private let tapHintBounceAmplitude: CGFloat = 8
 
     private var isOnlyVehicle: Bool { vehicles.count <= 1 }
 
@@ -265,15 +270,15 @@ struct PairingVehicleEditorForm: View {
 
     private var photoSection: some View {
         VStack(spacing: isFraming ? 12 : 0) {
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .center, spacing: 6) {
                 if hasPhoto || isFraming || isProcessingPhoto {
-                    Spacer(minLength: 8)
+                    Spacer(minLength: 4)
                     hero
                         .transition(reduceMotion ? .opacity : TrailhoundMotion.photoHeroTransition)
                     if !isFraming && hasPhoto && visiblePhotoActionCount > 0 {
                         photoActionColumn
                     }
-                    Spacer(minLength: 8)
+                    Spacer(minLength: 4)
                 } else {
                     Spacer(minLength: 0)
                     hero
@@ -310,8 +315,8 @@ struct PairingVehicleEditorForm: View {
 
     private var photoListRowInsets: EdgeInsets {
         let horizontal: CGFloat = 16
-        // Top: chip clearance + slight drop so the hero isn’t stuck under the section header.
-        return EdgeInsets(top: 8, leading: horizontal, bottom: 2, trailing: horizontal)
+        // Extra top so the tap-hint chip can peek above the square without clipping.
+        return EdgeInsets(top: 14, leading: horizontal, bottom: 4, trailing: horizontal)
     }
 
     private func vehicleFirstRowInsets(compactTop: Bool) -> EdgeInsets {
@@ -436,15 +441,6 @@ struct PairingVehicleEditorForm: View {
                 heroContent
             }
         }
-        .frame(
-            // Empty control needs intrinsic height for badge bounce clearance.
-            width: isFraming || isEmptyPhotoHero ? nil : photoHeroSide,
-            height: isFraming || isEmptyPhotoHero ? nil : photoHeroSide
-        )
-    }
-
-    private var isEmptyPhotoHero: Bool {
-        !hasPhoto && !isFraming && !isProcessingPhoto
     }
 
     private var heroContent: some View {
@@ -485,6 +481,7 @@ struct PairingVehicleEditorForm: View {
         return Button {
             guard hasPhoto, !isProcessingPhoto, !isSaving else { return }
             TrailhoundHaptics.selection()
+            dismissTapHintBadge()
             togglePhotoActions()
         } label: {
             ZStack {
@@ -512,15 +509,19 @@ struct PairingVehicleEditorForm: View {
             }
             .frame(width: photoHeroSide, height: photoHeroSide)
             .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+            // Chip draws outside the square; layout stays 132×132 so actions stay centered.
+            .overlay(alignment: .topTrailing) {
+                if showTapHintBadge, hasPhoto, !isProcessingPhoto {
+                    VehiclePhotoCornerChip(title: L10n.pairingTabVehiclePhotoTapHint)
+                        .opacity(tapHintBadgeOpacity)
+                        .offset(x: 14, y: -10 + tapHintBounceOffset)
+                }
+            }
         }
         .buttonStyle(VehiclePhotoPressStyle())
         .disabled(isProcessingPhoto || isSaving || !hasPhoto)
         .accessibilityLabel(L10n.pairingTabVehiclePhotoChoose)
-        .accessibilityHint(
-            showPhotoActions
-                ? L10n.pairingTabVehiclePhotoActionEdit
-                : L10n.pairingTabVehiclePhotoChooseSubtitle
-        )
+        .accessibilityHint(L10n.pairingTabVehiclePhotoTapHint)
         .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionEdit) {
             Task { await openFraming() }
         }
@@ -530,6 +531,69 @@ struct PairingVehicleEditorForm: View {
         }
         .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionDelete) {
             showDeleteConfirm = true
+        }
+        .onAppear(perform: playTapHintIntroIfNeeded)
+        .onChange(of: photoGlintID) { _, _ in
+            didPlayTapHintIntro = false
+            showTapHintBadge = true
+            tapHintBadgeOpacity = 1
+            tapHintBounceOffset = 0
+            playTapHintIntroIfNeeded()
+        }
+    }
+
+    private func dismissTapHintBadge() {
+        showTapHintBadge = false
+        tapHintBadgeOpacity = 0
+        tapHintBounceOffset = 0
+    }
+
+    private func playTapHintIntroIfNeeded() {
+        guard hasPhoto, !isFraming, !isProcessingPhoto else { return }
+        guard !didPlayTapHintIntro else { return }
+        didPlayTapHintIntro = true
+
+        if reduceMotion {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(1200))
+                guard showTapHintBadge else { return }
+                withAnimation(.easeOut(duration: 0.35)) {
+                    tapHintBadgeOpacity = 0
+                }
+                try? await Task.sleep(for: .milliseconds(350))
+                if tapHintBadgeOpacity == 0 {
+                    showTapHintBadge = false
+                }
+            }
+            return
+        }
+
+        Task { @MainActor in
+            let bounceDuration: TimeInterval = 0.64
+            let bounceStep: Duration = .milliseconds(640)
+            let fadeDuration: TimeInterval = 0.7
+
+            for _ in 0 ..< 2 {
+                guard showTapHintBadge else { return }
+                withAnimation(.easeInOut(duration: bounceDuration)) {
+                    tapHintBounceOffset = -tapHintBounceAmplitude
+                }
+                try? await Task.sleep(for: bounceStep)
+                guard showTapHintBadge else { return }
+                withAnimation(.easeInOut(duration: bounceDuration)) {
+                    tapHintBounceOffset = 0
+                }
+                try? await Task.sleep(for: bounceStep)
+            }
+
+            guard showTapHintBadge else { return }
+            withAnimation(.easeOut(duration: fadeDuration)) {
+                tapHintBadgeOpacity = 0
+            }
+            try? await Task.sleep(for: .milliseconds(Int(fadeDuration * 1000)))
+            if tapHintBadgeOpacity == 0 {
+                showTapHintBadge = false
+            }
         }
     }
 
@@ -542,6 +606,7 @@ struct PairingVehicleEditorForm: View {
     }
 
     private func expandPhotoActions() {
+        dismissTapHintBadge()
         showPhotoActions = true
         brandRingOpacity = restingBrandRingOpacity
         if reduceMotion {
@@ -600,6 +665,10 @@ struct PairingVehicleEditorForm: View {
         frameOffset = .zero
         collapsePhotoActions(animated: false)
         brandRingOpacity = restingBrandRingOpacity
+        didPlayTapHintIntro = false
+        showTapHintBadge = true
+        tapHintBadgeOpacity = 1
+        tapHintBounceOffset = 0
         syncUnsavedChanges()
     }
 

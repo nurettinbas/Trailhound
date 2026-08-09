@@ -370,6 +370,7 @@ enum L10n {
     static var pairingTabVehiclePhotoActionChange: String { string("pairing.tab.vehicle.photo.action.change") }
     static var pairingTabVehiclePhotoActionEdit: String { string("pairing.tab.vehicle.photo.action.edit") }
     static var pairingTabVehiclePhotoActionAdd: String { string("pairing.tab.vehicle.photo.action.add") }
+    static var pairingTabVehiclePhotoTapHint: String { string("pairing.tab.vehicle.photo.tap_hint") }
     static var pairingTabVehiclePhotoChoose: String { string("pairing.tab.vehicle.photo.choose") }
     static var pairingTabVehiclePhotoChooseSubtitle: String { string("pairing.tab.vehicle.photo.choose.subtitle") }
     static var pairingTabVehiclePhotoCamera: String { string("pairing.tab.vehicle.photo.camera") }
