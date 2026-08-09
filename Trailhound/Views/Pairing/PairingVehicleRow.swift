@@ -15,6 +15,7 @@ struct PairingVehicleRow: View {
                     cornerRadius: 8,
                     isElectricAccent: isElectricAccent
                 )
+                .id(vehicle.photoFileName ?? "none")
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {

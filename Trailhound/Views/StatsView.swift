@@ -1087,28 +1087,23 @@ struct StatsView: View {
         .frame(height: 200)
     }
 
-    private func statsDonutLegendRow(
+    private func statsDonutLegendItem(
+        id: String,
         name: String,
-        stableKey: String,
         durationStyle: Bool,
         domainKeys: [String],
-        @ViewBuilder value: () -> some View
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Circle()
-                .fill(StatsChartTheme.sliceColor(forStableKey: stableKey, durationStyle: durationStyle, domainKeys: domainKeys))
-                .frame(width: StatsChartTheme.legendDotSize, height: StatsChartTheme.legendDotSize)
-                .alignmentGuide(.firstTextBaseline) { dims in dims[VerticalAlignment.center] }
-            Text(name)
-                .font(.caption2)
-                .lineLimit(1)
-                .fixedSize(horizontal: false, vertical: true)
-            value()
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.vertical, 1)
+        value: String
+    ) -> StatsDonutLegendItem {
+        StatsDonutLegendItem(
+            id: id,
+            name: name,
+            color: StatsChartTheme.sliceColor(
+                forStableKey: id,
+                durationStyle: durationStyle,
+                domainKeys: domainKeys
+            ),
+            value: value
+        )
     }
 
     private func chartSlicePalette(
@@ -1122,11 +1117,11 @@ struct StatsView: View {
     private static let donutChartHeight: CGFloat = 150
 
     @ViewBuilder
-    private func statsDonutPage<ChartContent: View, Legend: View>(
+    private func statsDonutPage<ChartContent: View>(
         titleKey: StaticString,
         centerTotal: String,
-        @ViewBuilder chart: () -> ChartContent,
-        @ViewBuilder legend: () -> Legend
+        legendItems: [StatsDonutLegendItem],
+        @ViewBuilder chart: () -> ChartContent
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(titledWithScope(titleKey, scope: statsTripChartScopeLabel))
@@ -1136,33 +1131,36 @@ struct StatsView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            ZStack {
-                chart()
-                    .frame(maxWidth: .infinity)
-                    .statsHiddenDonutLegend(height: Self.donutChartHeight)
+            Spacer(minLength: 0)
 
-                VStack(spacing: 2) {
-                    Text(centerTotal)
-                        .font(.caption.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(2)
-                    Text(L10n.string("stats.cost.chart.center_total"))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            VStack(spacing: StatsChartTheme.donutLegendTopPadding) {
+                ZStack {
+                    chart()
+                        .frame(maxWidth: .infinity)
+                        .statsHiddenDonutLegend(height: Self.donutChartHeight)
+
+                    VStack(spacing: 2) {
+                        Text(centerTotal)
+                            .font(.caption.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(2)
+                        Text(L10n.string("stats.cost.chart.center_total"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .allowsHitTesting(false)
                 }
-                .padding(.horizontal, 10)
-                .allowsHitTesting(false)
+
+                StatsDonutLegendGrid(items: legendItems)
             }
 
-            VStack(spacing: 5) {
-                legend()
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-            // Keep legend above the pager clip / page dots.
-            .padding(.bottom, 2)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        // Keep content above the pager clip / page dots.
+        .padding(.bottom, 2)
     }
 
     private func vehicleDistanceDonut(data vehicleChartData: [VehicleDistance]) -> some View {
@@ -1170,9 +1168,19 @@ struct StatsView: View {
         let keys = vehicleChartData.map(\.id)
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let totalMeters = vehicleChartData.reduce(0) { $0 + $1.distanceMeters }
+        let legendItems = vehicleChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: DateFormatters.formatDistance(item.distanceMeters)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.vehicles",
-            centerTotal: DateFormatters.formatDistance(totalMeters)
+            centerTotal: DateFormatters.formatDistance(totalMeters),
+            legendItems: legendItems
         ) {
             Chart(vehicleChartData) { item in
                 SectorMark(
@@ -1183,12 +1191,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.vehicle"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(vehicleChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: false, domainKeys: keys) {
-                    Text(DateFormatters.formatDistance(item.distanceMeters))
-                }
-            }
         }
     }
 
@@ -1197,9 +1199,19 @@ struct StatsView: View {
         let keys = vehicleDurationChartData.map(\.id)
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: true)
         let totalDuration = vehicleDurationChartData.reduce(0) { $0 + $1.duration }
+        let legendItems = vehicleDurationChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: true,
+                domainKeys: keys,
+                value: DateFormatters.formatDuration(item.duration)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.vehicles_duration",
-            centerTotal: DateFormatters.formatDuration(totalDuration)
+            centerTotal: DateFormatters.formatDuration(totalDuration),
+            legendItems: legendItems
         ) {
             Chart(vehicleDurationChartData) { item in
                 SectorMark(
@@ -1210,12 +1222,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.vehicle"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(vehicleDurationChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: true, domainKeys: keys) {
-                    Text(DateFormatters.formatDuration(item.duration))
-                }
-            }
         }
     }
 
@@ -1224,9 +1230,19 @@ struct StatsView: View {
         let keys = categoryChartData.map(\.id)
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let totalMeters = categoryChartData.reduce(0) { $0 + $1.distanceMeters }
+        let legendItems = categoryChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: DateFormatters.formatDistance(item.distanceMeters)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.categories",
-            centerTotal: DateFormatters.formatDistance(totalMeters)
+            centerTotal: DateFormatters.formatDistance(totalMeters),
+            legendItems: legendItems
         ) {
             Chart(categoryChartData) { item in
                 SectorMark(
@@ -1237,12 +1253,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.category"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(categoryChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: false, domainKeys: keys) {
-                    Text(DateFormatters.formatDistance(item.distanceMeters))
-                }
-            }
         }
     }
 
@@ -1251,9 +1261,19 @@ struct StatsView: View {
         let keys = categoryDurationChartData.map(\.id)
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: true)
         let totalDuration = categoryDurationChartData.reduce(0) { $0 + $1.duration }
+        let legendItems = categoryDurationChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: true,
+                domainKeys: keys,
+                value: DateFormatters.formatDuration(item.duration)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.categories_duration",
-            centerTotal: DateFormatters.formatDuration(totalDuration)
+            centerTotal: DateFormatters.formatDuration(totalDuration),
+            legendItems: legendItems
         ) {
             Chart(categoryDurationChartData) { item in
                 SectorMark(
@@ -1264,12 +1284,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.category"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(categoryDurationChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: true, domainKeys: keys) {
-                    Text(DateFormatters.formatDuration(item.duration))
-                }
-            }
         }
     }
 
@@ -1279,9 +1293,19 @@ struct StatsView: View {
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let currency = AppSettings.shared.fuelCurrency.rawValue
         let totalCost = vehicleFuelChartData.reduce(0) { $0 + $1.cost }
+        let legendItems = vehicleFuelChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: FuelCostCalculator.formatCost(item.cost, currencyCode: currency)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.vehicles_fuel",
-            centerTotal: FuelCostCalculator.formatCost(totalCost, currencyCode: currency)
+            centerTotal: FuelCostCalculator.formatCost(totalCost, currencyCode: currency),
+            legendItems: legendItems
         ) {
             Chart(vehicleFuelChartData) { item in
                 SectorMark(
@@ -1292,12 +1316,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.vehicle"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(vehicleFuelChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: false, domainKeys: keys) {
-                    Text(FuelCostCalculator.formatCost(item.cost, currencyCode: currency))
-                }
-            }
         }
     }
 
@@ -1307,9 +1325,19 @@ struct StatsView: View {
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let currency = AppSettings.shared.fuelCurrency.rawValue
         let totalCost = categoryFuelChartData.reduce(0) { $0 + $1.cost }
+        let legendItems = categoryFuelChartData.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: FuelCostCalculator.formatCost(item.cost, currencyCode: currency)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.categories_fuel",
-            centerTotal: FuelCostCalculator.formatCost(totalCost, currencyCode: currency)
+            centerTotal: FuelCostCalculator.formatCost(totalCost, currencyCode: currency),
+            legendItems: legendItems
         ) {
             Chart(categoryFuelChartData) { item in
                 SectorMark(
@@ -1320,12 +1348,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.category"), item.name))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(categoryFuelChartData) { item in
-                statsDonutLegendRow(name: item.name, stableKey: item.id, durationStyle: false, domainKeys: keys) {
-                    Text(FuelCostCalculator.formatCost(item.cost, currencyCode: currency))
-                }
-            }
         }
     }
 
@@ -1336,9 +1358,19 @@ struct StatsView: View {
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let currency = AppSettings.shared.fuelCurrency.rawValue
         let totalAmount = items.reduce(0) { $0 + $1.amount }
+        let legendItems = items.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.displayName,
+                durationStyle: false,
+                domainKeys: keys,
+                value: FuelCostCalculator.formatCost(item.amount, currencyCode: currency)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.vehicles_expenses",
-            centerTotal: FuelCostCalculator.formatCost(totalAmount, currencyCode: currency)
+            centerTotal: FuelCostCalculator.formatCost(totalAmount, currencyCode: currency),
+            legendItems: legendItems
         ) {
             Chart(items) { item in
                 SectorMark(
@@ -1349,17 +1381,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.vehicle"), item.displayName))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(items) { item in
-                statsDonutLegendRow(
-                    name: item.displayName,
-                    stableKey: item.id,
-                    durationStyle: false,
-                    domainKeys: keys
-                ) {
-                    Text(FuelCostCalculator.formatCost(item.amount, currencyCode: currency))
-                }
-            }
         }
     }
 
@@ -1370,9 +1391,19 @@ struct StatsView: View {
         let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
         let currency = AppSettings.shared.fuelCurrency.rawValue
         let totalAmount = items.reduce(0) { $0 + $1.amount }
+        let legendItems = items.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.displayName,
+                durationStyle: false,
+                domainKeys: keys,
+                value: FuelCostCalculator.formatCost(item.amount, currencyCode: currency)
+            )
+        }
         return statsDonutPage(
             titleKey: "stats.chart.categories_expenses",
-            centerTotal: FuelCostCalculator.formatCost(totalAmount, currencyCode: currency)
+            centerTotal: FuelCostCalculator.formatCost(totalAmount, currencyCode: currency),
+            legendItems: legendItems
         ) {
             Chart(items) { item in
                 SectorMark(
@@ -1383,17 +1414,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value(L10n.string("filter.category"), item.displayName))
             }
             .chartForegroundStyleScale(domain: palette.0, range: palette.1)
-        } legend: {
-            ForEach(items) { item in
-                statsDonutLegendRow(
-                    name: item.displayName,
-                    stableKey: item.id,
-                    durationStyle: false,
-                    domainKeys: keys
-                ) {
-                    Text(FuelCostCalculator.formatCost(item.amount, currencyCode: currency))
-                }
-            }
         }
     }
 }

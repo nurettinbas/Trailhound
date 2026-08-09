@@ -16,6 +16,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Manual start/stop, pause/resume
 - **Shortcuts auto-start / auto-stop**: Personal Automations run Trailhound’s *Start trip* / *End trip* actions when you connect to or leave the car (Bluetooth, CarPlay, or Wi‑Fi). Setup guide lives under the **Pairing** tab
 - Vehicle profiles with fuel/EV cost per trip
+- **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
 - Optional confirmation before widget/shortcut/deep-link recording start
@@ -193,6 +194,7 @@ Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik od
 - Siri: *Yolculuğu başlat*, *duraklat*, *sürdür*, *bitir*
 - Widget ve Live Activity
 - İş/kişisel kategori, yakıt/EV maliyet tahmini
+- **Araç avatar fotoğrafı**: Galeri veya Kamera seçimi → uygulama içi ~%70 overlay → kadraj; kayıt / Live Activity’de görünür
 - **Araç bakım & hatırlatmalar** — vize, sigorta, kasko, bakım vadeleri + yerel bildirim
 - **Araç harcamaları** — yakıt, bakım, sigorta vb. gider kaydı (hatırlatmadan ayrı); maliyet grafikleri Stats’te
 - JSON, CSV, GPX, KML, aylık iş PDF export

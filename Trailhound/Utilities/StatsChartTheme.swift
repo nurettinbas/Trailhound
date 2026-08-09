@@ -131,7 +131,12 @@ enum StatsChartTheme {
     static let barCornerRadius: CGFloat = 5
     static let donutInnerRadius: CGFloat = 0.58
     static let donutAngularInset: CGFloat = 2
-    static let legendDotSize: CGFloat = 10
+    static let legendColumns: Int = 4
+    static let legendDotSize: CGFloat = 8
+    static let legendCellSpacing: CGFloat = 8
+    static let legendRowSpacing: CGFloat = 8
+    /// Breathing room between donut plot and legend grid.
+    static let donutLegendTopPadding: CGFloat = 14
     /// Inset inside the Swift Charts plot area.
     static let plotHorizontalInset: CGFloat = 16
     static let plotVerticalInset: CGFloat = 8

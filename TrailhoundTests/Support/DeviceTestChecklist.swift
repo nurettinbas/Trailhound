@@ -31,6 +31,12 @@ enum DeviceTestChecklist {
         "Beyaz/açık renkli araç fotosu: punch sonrası foto kayboluyorsa orijinal foto gösterilir",
         "Fotosuz araç: Island + bildirim kartı SF simgeye düşer, boş kalmaz",
         "Island genişletilmiş: üstte boşluk yok, alt butonlar kesilmiyor (1:00:10 süreyle de)",
-        "Araç seçim menüsü: satır ikonları sağa bakıyor, seçilide tik kalıyor"
+        "Araç seçim menüsü: satır ikonları sağa bakıyor, seçilide tik kalıyor",
+        "Araç foto: Add → animasyonlu Library/Camera dialog → sonra ~%72 overlay",
+        "Araç foto: Library seçince galeri overlay; Camera seçince kamera overlay (çift tık yok)",
+        "Araç foto: All Photos sistem picker; seçince framing",
+        "Araç foto: kamera shutter; arka plana atınca yeşil nokta kapanır",
+        "Araç foto: limited library / deny photos / deny camera durumları",
+        "Araç foto: Change + mevcut framing Apply/Save yolu bozulmaz"
     ]
 }

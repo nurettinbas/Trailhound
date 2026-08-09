@@ -20,6 +20,9 @@ struct VehicleDetailView: View {
     @State private var hasUnsavedVehicleEdits = false
     @State private var vehicleSaveTrigger = 0
     @State private var vehicleSaveDisabled = false
+    @State private var photoSheet: VehiclePhotoSheetRoute?
+    @State private var pendingCaptureMode: VehiclePhotoCaptureMode?
+    @State private var pendingFramingImage: UIImage?
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -62,6 +65,11 @@ struct VehicleDetailView: View {
             }
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedVehicleEdits)
+        .vehiclePhotoFlowSheets(
+            photoSheet: $photoSheet,
+            pendingCaptureMode: $pendingCaptureMode,
+            pendingFramingImage: $pendingFramingImage
+        )
         .sheet(isPresented: $showAddExpense) {
             NavigationStack {
                 VehicleExpenseEditorView(vehicleID: vehicleID)
@@ -116,7 +124,9 @@ struct VehicleDetailView: View {
                 presentation: .embeddedInList,
                 unsavedChanges: $hasUnsavedVehicleEdits,
                 saveTrigger: $vehicleSaveTrigger,
-                saveDisabled: $vehicleSaveDisabled
+                saveDisabled: $vehicleSaveDisabled,
+                photoSheet: $photoSheet,
+                pendingFramingImage: $pendingFramingImage
             )
 
             Section {

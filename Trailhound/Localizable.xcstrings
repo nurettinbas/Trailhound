@@ -3077,6 +3077,23 @@
         }
       }
     },
+    "onboarding.vehicle_care.charts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quiet charts on Stats — see where every cost settles, at a glance."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stats’te sakin grafikler — her giderin nereye oturduğunu tek bakışta gör."
+          }
+        }
+      }
+    },
     "onboarding.vehicle_care.expenses" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5297,6 +5314,23 @@
         }
       }
     },
+    "pairing.tab.vehicle.photo.all_photos" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Photos"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm Fotoğraflar"
+          }
+        }
+      }
+    },
     "pairing.tab.vehicle.photo.camera" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5310,6 +5344,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fotoğraf Çek"
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.camera.denied.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable camera access in Settings to photograph your vehicle."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aracını fotoğraflamak için Ayarlar’dan kamera erişimine izin ver."
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.camera.denied.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera access needed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamera erişimi gerekli"
           }
         }
       }
@@ -5501,6 +5569,91 @@
         }
       }
     },
+    "pairing.tab.vehicle.photo.library.denied.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow photo access in Settings, or use All Photos to pick one."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayarlar’dan fotoğraf erişimine izin ver veya Tüm Fotoğraflar ile seç."
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.library.denied.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos access needed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğraf erişimi gerekli"
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.library.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recent photos yet. Use All Photos to browse your library."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henüz son fotoğraf yok. Kitaplığına Tüm Fotoğraflar ile bak."
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diğer"
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.open_settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayarları Aç"
+          }
+        }
+      }
+    },
     "pairing.tab.vehicle.photo.orientation" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5599,6 +5752,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sağa döndür"
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.shutter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take photo"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğraf çek"
           }
         }
       }

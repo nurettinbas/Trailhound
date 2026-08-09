@@ -107,12 +107,17 @@
     },
     "NSPhotoLibraryUsageDescription" : {
       "comment" : "Privacy - Photo Library Usage Description",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Choose a photo of your vehicle to use as its avatar."
+            "state" : "translated",
+            "value" : "Browse recent photos and choose one of your vehicle for its avatar."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son fotoğraflarına bakıp araç avatarı için bir fotoğraf seçebilirsin."
           }
         }
       }

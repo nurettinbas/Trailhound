@@ -391,6 +391,15 @@ enum L10n {
     static var pairingTabVehiclePhotoFlipVertical: String { string("pairing.tab.vehicle.photo.flip.vertical") }
     static var pairingTabVehiclePhotoPreviewList: String { string("pairing.tab.vehicle.photo.preview.list") }
     static var pairingTabVehiclePhotoPreviewEditor: String { string("pairing.tab.vehicle.photo.preview.editor") }
+    static var pairingTabVehiclePhotoAllPhotos: String { string("pairing.tab.vehicle.photo.all_photos") }
+    static var pairingTabVehiclePhotoShutter: String { string("pairing.tab.vehicle.photo.shutter") }
+    static var pairingTabVehiclePhotoMore: String { string("pairing.tab.vehicle.photo.more") }
+    static var pairingTabVehiclePhotoLibraryEmpty: String { string("pairing.tab.vehicle.photo.library.empty") }
+    static var pairingTabVehiclePhotoLibraryDeniedTitle: String { string("pairing.tab.vehicle.photo.library.denied.title") }
+    static var pairingTabVehiclePhotoLibraryDeniedMessage: String { string("pairing.tab.vehicle.photo.library.denied.message") }
+    static var pairingTabVehiclePhotoCameraDeniedTitle: String { string("pairing.tab.vehicle.photo.camera.denied.title") }
+    static var pairingTabVehiclePhotoCameraDeniedMessage: String { string("pairing.tab.vehicle.photo.camera.denied.message") }
+    static var pairingTabVehiclePhotoOpenSettings: String { string("pairing.tab.vehicle.photo.open_settings") }
     static var pairingTabVehicleNotFound: String { string("pairing.tab.vehicle.not_found") }
     static var pairingTabFuelType: String { string("pairing.tab.vehicle.fuel_type") }
     static var pairingTabChargePrice: String { string("pairing.tab.vehicle.charge_price") }

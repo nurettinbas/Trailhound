@@ -42,6 +42,15 @@ struct PairingTabView: View {
         .onChange(of: tabSelection.pendingVehicleCareID) { _, _ in
             consumePendingCareDeepLink()
         }
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: sortedVehicles)
+        }
+    }
+
+    private var vehiclePhotoPrefetchID: String {
+        sortedVehicles
+            .map { "\($0.id.uuidString):\($0.photoFileName ?? "")" }
+            .joined(separator: "|")
     }
 
     private var pairingList: some View {

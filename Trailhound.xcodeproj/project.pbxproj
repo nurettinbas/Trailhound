@@ -88,12 +88,20 @@
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
 		A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */; };
 		A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */; };
-		A1CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */; };
 		A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */; };
+		A1VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */; };
 		A1VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */; };
+		A1VEHICLEPHOTOLIBGRID01 /* VehiclePhotoLibraryGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOLIBGRID01 /* VehiclePhotoLibraryGrid.swift */; };
+		A1VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift */; };
+		A1VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift */; };
 		A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */; };
 		A1VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */; };
 		A1VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */; };
+		A1VEHICLEPHOTOLIBAUTHTEST /* VehiclePhotoLibraryAuthMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOLIBAUTHTEST /* VehiclePhotoLibraryAuthMappingTests.swift */; };
+		A1VEHICLEPHOTOLIBFETCHTEST /* VehiclePhotoLibraryFetchOptionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOLIBFETCHTEST /* VehiclePhotoLibraryFetchOptionsTests.swift */; };
+		A1VEHICLEINLINECAMAVAILT /* VehicleInlineCameraAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEINLINECAMAVAILT /* VehicleInlineCameraAvailabilityTests.swift */; };
+		A1VEHICLEPHOTOCAPPIPETEST /* VehiclePhotoCapturePipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCAPPIPETEST /* VehiclePhotoCapturePipelineTests.swift */; };
+		A1VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift */; };
 		A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */; };
 		A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */; };
 		A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */; };
@@ -189,6 +197,7 @@
 		A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */; };
 		A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */; };
 		A1STATSCHARTTHEME0001 /* StatsChartTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */; };
+		A1STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */; };
 		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
 		A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */; };
 		A1VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */; };
@@ -336,12 +345,20 @@
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoStore.swift; sourceTree = "<group>"; };
 		A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAvatarView.swift; sourceTree = "<group>"; };
-		A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraImagePicker.swift; sourceTree = "<group>"; };
-		A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoInlineFraming.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCaptureSheet.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoSourceSheet.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOLIBGRID01 /* VehiclePhotoLibraryGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoLibraryGrid.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoLibraryLoader.swift; sourceTree = "<group>"; };
+		A2VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleInlineCameraView.swift; sourceTree = "<group>"; };
+		A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoInlineFraming.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCropMath.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoStoreTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoCropMathTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEPHOTOLIBAUTHTEST /* VehiclePhotoLibraryAuthMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoLibraryAuthMappingTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEPHOTOLIBFETCHTEST /* VehiclePhotoLibraryFetchOptionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoLibraryFetchOptionsTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEINLINECAMAVAILT /* VehicleInlineCameraAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehicleInlineCameraAvailabilityTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEPHOTOCAPPIPETEST /* VehiclePhotoCapturePipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoCapturePipelineTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoCaptureHandoffTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehicleIconOptionTests.swift; sourceTree = SOURCE_ROOT; };
 		A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDisplaySnapshot.swift; sourceTree = "<group>"; };
 		A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSnapshotLoader.swift; sourceTree = "<group>"; };
@@ -413,6 +430,7 @@
 		A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostDonutChart.swift; sourceTree = "<group>"; };
 		A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostCategoryChart.swift; sourceTree = "<group>"; };
 		A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsChartTheme.swift; sourceTree = "<group>"; };
+		A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDonutLegendGrid.swift; sourceTree = "<group>"; };
 		A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDetailView.swift; sourceTree = "<group>"; };
 		A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCareDueCalculatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseCategoryTests.swift; sourceTree = SOURCE_ROOT; };
@@ -669,9 +687,12 @@
 				A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */,
 				A2PAIRINGVEHROW00001 /* PairingVehicleRow.swift */,
 				A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */,
-				A2CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift */,
 				A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */,
 				A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */,
+				A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */,
+				A2VEHICLEPHOTOLIBGRID01 /* VehiclePhotoLibraryGrid.swift */,
+				A2VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift */,
+				A2VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift */,
 				A2PAIRINGSTYLE000001 /* PairingCardStyle.swift */,
 				A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */,
 				A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */,
@@ -683,6 +704,7 @@
 			isa = PBXGroup;
 			children = (
 				809405DA3B0A4D33AFE11517 /* StatsView.swift */,
+				A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */,
 				A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */,
 				A2STATSCHARTPAGER000001 /* StatsChartPager.swift */,
 				89C5F75B18D74EB4B35E48C0 /* PlacePickerView.swift */,
@@ -816,6 +838,11 @@
 				7FFC65F31BB34BC699B8F9AF /* VehicleEditorDraftTests.swift */,
 				A2VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift */,
 				A2VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift */,
+				A2VEHICLEPHOTOLIBAUTHTEST /* VehiclePhotoLibraryAuthMappingTests.swift */,
+				A2VEHICLEPHOTOLIBFETCHTEST /* VehiclePhotoLibraryFetchOptionsTests.swift */,
+				A2VEHICLEINLINECAMAVAILT /* VehicleInlineCameraAvailabilityTests.swift */,
+				A2VEHICLEPHOTOCAPPIPETEST /* VehiclePhotoCapturePipelineTests.swift */,
+				A2VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift */,
 				A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */,
 				7EFB565543694FF7A152FF68 /* VehiclePairingServiceTests.swift */,
 				CF11406D5006463CBFA0BE27 /* RecordingAccessibilityTests.swift */,
@@ -1005,6 +1032,11 @@
 				D46150AB794F43019F5AFB9F /* VehicleEditorDraftTests.swift in Sources */,
 				A1VEHICLEPHOTOSTORETEST1 /* VehiclePhotoStoreTests.swift in Sources */,
 				A1VEHICLEPHOTOCROPTEST1 /* VehiclePhotoCropMathTests.swift in Sources */,
+				A1VEHICLEPHOTOLIBAUTHTEST /* VehiclePhotoLibraryAuthMappingTests.swift in Sources */,
+				A1VEHICLEPHOTOLIBFETCHTEST /* VehiclePhotoLibraryFetchOptionsTests.swift in Sources */,
+				A1VEHICLEINLINECAMAVAILT /* VehicleInlineCameraAvailabilityTests.swift in Sources */,
+				A1VEHICLEPHOTOCAPPIPETEST /* VehiclePhotoCapturePipelineTests.swift in Sources */,
+				A1VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift in Sources */,
 				A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */,
 				4CAC12E8350A44B7AC98958E /* VehiclePairingServiceTests.swift in Sources */,
 				A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */,
@@ -1086,9 +1118,12 @@
 				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
 				A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */,
 				A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */,
-				A1CAMERAIMAGEPICKER0001 /* CameraImagePicker.swift in Sources */,
 				A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */,
 				A1VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift in Sources */,
+				A1VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift in Sources */,
+				A1VEHICLEPHOTOLIBGRID01 /* VehiclePhotoLibraryGrid.swift in Sources */,
+				A1VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift in Sources */,
+				A1VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift in Sources */,
 				A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */,
 				A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */,
 				A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */,
@@ -1167,6 +1202,7 @@
 				A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */,
 				A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */,
 				A1STATSCHARTTHEME0001 /* StatsChartTheme.swift in Sources */,
+				A1STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift in Sources */,
 				A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */,
 				A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,
@@ -1380,7 +1416,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -1423,7 +1459,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

@@ -135,6 +135,10 @@ struct OnboardingView: View {
                     icon: "creditcard.circle.fill",
                     text: L10n.string("onboarding.vehicle_care.expenses")
                 )
+                onboardingFeatureRow(
+                    icon: "chart.pie.fill",
+                    text: L10n.string("onboarding.vehicle_care.charts")
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)

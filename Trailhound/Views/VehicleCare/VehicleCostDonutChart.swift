@@ -25,6 +25,17 @@ struct VehicleCostDonutChart: View {
         }
     }
 
+    private var legendItems: [StatsDonutLegendItem] {
+        slices.map { slice in
+            StatsDonutLegendItem(
+                id: slice.id.rawValue,
+                name: slice.name,
+                color: StatsChartTheme.bucketColor(for: slice.id),
+                value: FuelCostCalculator.formatCost(slice.amount, currencyCode: currencyCode)
+            )
+        }
+    }
+
     var body: some View {
         if slices.isEmpty {
             Text(L10n.string("vehicles.care.chart.empty"))
@@ -33,7 +44,7 @@ struct VehicleCostDonutChart: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 8)
         } else {
-            VStack(spacing: 10) {
+            VStack(spacing: StatsChartTheme.donutLegendTopPadding) {
                 ZStack {
                     Chart(slices) { slice in
                         SectorMark(
@@ -58,32 +69,9 @@ struct VehicleCostDonutChart: View {
                     .padding(.horizontal, 8)
                 }
 
-                VStack(spacing: 5) {
-                    ForEach(slices) { slice in
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Circle()
-                                .fill(StatsChartTheme.bucketColor(for: slice.id))
-                                .frame(
-                                    width: StatsChartTheme.legendDotSize,
-                                    height: StatsChartTheme.legendDotSize
-                                )
-                                .alignmentGuide(.firstTextBaseline) { dims in dims[VerticalAlignment.center] }
-                            Text(slice.name)
-                                .font(.caption2)
-                                .lineLimit(1)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 4)
-                            Text(FuelCostCalculator.formatCost(slice.amount, currencyCode: currencyCode))
-                                .font(.caption2.weight(.medium))
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 1)
-                    }
-                }
-                .frame(maxWidth: .infinity)
+                StatsDonutLegendGrid(items: legendItems)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
     }
 }

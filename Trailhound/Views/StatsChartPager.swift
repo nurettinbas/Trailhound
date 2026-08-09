@@ -3,8 +3,8 @@ import SwiftUI
 enum StatsChartPagerMetrics {
     /// Caption title + spacing + 200pt chart.
     static let dailyContentHeight: CGFloat = 236
-    /// Title + donut + legend (room for 3+ rows with descenders like “y”).
-    static let donutContentHeight: CGFloat = 280
+    /// Title + donut + legend gap + up to 2 centered legend rows.
+    static let donutContentHeight: CGFloat = 268
     /// Cost pager: title + chart + optional legend.
     static let costContentHeight: CGFloat = 260
     static let indicatorHeight: CGFloat = 20
@@ -60,7 +60,7 @@ struct StatsChartPager<Content: View>: View {
                 LazyHStack(spacing: 0) {
                     ForEach(0..<pageCount, id: \.self) { index in
                         content(index)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                             .containerRelativeFrame(.horizontal)
                             .id(index)
                     }

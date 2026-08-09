@@ -1,8 +1,6 @@
-import PhotosUI
 import SwiftData
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
 
 struct PairingVehicleEditorView: View {
     let vehicleID: UUID
@@ -12,6 +10,9 @@ struct PairingVehicleEditorView: View {
     @State private var hasUnsavedChanges = false
     @State private var saveTrigger = 0
     @State private var saveDisabled = false
+    @State private var photoSheet: VehiclePhotoSheetRoute?
+    @State private var pendingCaptureMode: VehiclePhotoCaptureMode?
+    @State private var pendingFramingImage: UIImage?
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -25,7 +26,9 @@ struct PairingVehicleEditorView: View {
                     vehicles: vehicles,
                     unsavedChanges: $hasUnsavedChanges,
                     saveTrigger: $saveTrigger,
-                    saveDisabled: $saveDisabled
+                    saveDisabled: $saveDisabled,
+                    photoSheet: $photoSheet,
+                    pendingFramingImage: $pendingFramingImage
                 )
             } else {
                 ContentUnavailableView(L10n.pairingTabVehicleNotFound, systemImage: "car")
@@ -44,6 +47,11 @@ struct PairingVehicleEditorView: View {
             }
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
+        .vehiclePhotoFlowSheets(
+            photoSheet: $photoSheet,
+            pendingCaptureMode: $pendingCaptureMode,
+            pendingFramingImage: $pendingFramingImage
+        )
         .onChange(of: vehicle?.id) { _, newID in
             if newID == nil {
                 dismiss()
@@ -52,15 +60,10 @@ struct PairingVehicleEditorView: View {
     }
 }
 
-private enum PhotoSourceAction {
-    case library
-    case camera
-}
-
 enum VehicleEditorPresentation {
     /// Standalone Form with nav chrome; dismisses after save.
     case standaloneForm
-    /// Sections for embedding inside a parent List (vehicle detail).
+    /// Sections for embedding inside a parent List (vehicle detail); dismisses after save.
     case embeddedInList
 }
 
@@ -71,6 +74,9 @@ struct PairingVehicleEditorForm: View {
     var unsavedChanges: Binding<Bool> = .constant(false)
     var saveTrigger: Binding<Int> = .constant(0)
     var saveDisabled: Binding<Bool> = .constant(false)
+    /// Owned by the NavigationStack host so List re-renders cannot drop the sheet.
+    var photoSheet: Binding<VehiclePhotoSheetRoute?>
+    var pendingFramingImage: Binding<UIImage?>
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -83,12 +89,6 @@ struct PairingVehicleEditorForm: View {
     @State private var isFraming = false
     @State private var frameScale = VehiclePhotoCropMath.defaultUserScale
     @State private var frameOffset: CGSize = .zero
-    @State private var showPhotoSourceSheet = false
-    @State private var pendingSourceAction: PhotoSourceAction?
-    @State private var showCamera = false
-    @State private var cameraImage: UIImage?
-    @State private var photoPickerItem: PhotosPickerItem?
-    @State private var isPhotosPickerPresented = false
     @State private var showDeleteConfirm = false
     @State private var isSaving = false
     @State private var isProcessingPhoto = false
@@ -145,7 +145,10 @@ struct PairingVehicleEditorForm: View {
             }
         }
         .onAppear {
-            reloadDraft()
+            // Sheet dismiss / List reappearance must NOT wipe in-progress photo edits.
+            if draft == nil {
+                reloadDraft()
+            }
             syncUnsavedChanges()
             syncSaveDisabled()
         }
@@ -160,47 +163,26 @@ struct PairingVehicleEditorForm: View {
         .onChange(of: saveTrigger.wrappedValue) { _, _ in
             Task { await saveVehicle() }
         }
-        .sheet(isPresented: $showPhotoSourceSheet, onDismiss: handleSourceSheetDismissed) {
-            VehiclePhotoSourceSheet(
-                canUseCamera: CameraImagePicker.isCameraAvailable,
-                onLibrary: {
-                    pendingSourceAction = .library
-                    showPhotoSourceSheet = false
-                },
-                onCamera: {
-                    pendingSourceAction = .camera
-                    showPhotoSourceSheet = false
-                },
-                onCancel: {
-                    pendingSourceAction = nil
-                    showPhotoSourceSheet = false
-                }
-            )
-            .presentationDetents([.height(CameraImagePicker.isCameraAvailable ? 340 : 280)])
-            .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(28)
-            .presentationBackground {
-                AtmosphericBackground(style: .full)
+        .onChange(of: pendingFramingImage.wrappedValue) { _, image in
+            guard let image else { return }
+            pendingFramingImage.wrappedValue = nil
+            // Let capture sheet finish dismissing before growing List framing UI.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(200))
+                beginInlineFraming(with: image)
             }
         }
-        .photosPicker(
-            isPresented: $isPhotosPickerPresented,
-            selection: $photoPickerItem,
-            matching: .images,
-            photoLibrary: .shared()
-        )
-        .onChange(of: photoPickerItem) { _, item in
-            guard let item else { return }
-            Task { await importPickerItem(item) }
-        }
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraImagePicker(image: $cameraImage)
-                .ignoresSafeArea()
-        }
-        .onChange(of: cameraImage) { _, image in
-            guard let image else { return }
-            cameraImage = nil
-            beginInlineFraming(with: image)
+        .confirmationDialog(
+            L10n.pairingTabVehiclePhotoDeleteTitle,
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(L10n.pairingTabVehiclePhotoRemove, role: .destructive) {
+                removePhoto()
+            }
+            Button(L10n.cancel, role: .cancel) {}
+        } message: {
+            Text(L10n.pairingTabVehiclePhotoDeleteMessage)
         }
     }
 
@@ -308,13 +290,16 @@ struct PairingVehicleEditorForm: View {
                 if hasPhoto || isFraming || isProcessingPhoto {
                     Spacer(minLength: 8)
                     hero
+                        .transition(reduceMotion ? .opacity : TrailhoundMotion.photoHeroTransition)
                     if !isFraming && hasPhoto {
                         photoActionColumn
+                            .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
                     }
                     Spacer(minLength: 8)
                 } else {
                     Spacer(minLength: 0)
                     hero
+                        .transition(reduceMotion ? .opacity : TrailhoundMotion.photoHeroTransition)
                     Spacer(minLength: 0)
                 }
             }
@@ -327,10 +312,13 @@ struct PairingVehicleEditorForm: View {
                     onApply: { Task { await applyFraming() } },
                     onCancel: cancelFraming
                 )
+                .transition(reduceMotion ? .opacity : TrailhoundMotion.softRiseTransition)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, hasPhoto || isFraming ? 4 : 0)
+        .animation(reduceMotion ? nil : TrailhoundMotion.photoRemove, value: hasPhoto)
+        .animation(reduceMotion ? nil : TrailhoundMotion.photoSettle, value: isFraming)
     }
 
     private var compactEmptyPhotoRowInsets: EdgeInsets {
@@ -376,47 +364,18 @@ struct PairingVehicleEditorForm: View {
                 systemImage: "photo.on.rectangle.angled",
                 role: .change
             ) {
-                showPhotoSourceSheet = true
+                photoSheet.wrappedValue = .source
             }
             photoSideButton(
                 title: L10n.pairingTabVehiclePhotoActionDelete,
                 systemImage: "trash",
                 role: .destructive
             ) {
-                TrailhoundHaptics.destructive()
                 showDeleteConfirm = true
-            }
-            .popover(isPresented: $showDeleteConfirm, arrowEdge: .top) {
-                deletePhotoPopover
             }
         }
         .fixedSize(horizontal: true, vertical: false)
         .disabled(isProcessingPhoto || isSaving)
-    }
-
-    private var deletePhotoPopover: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.pairingTabVehiclePhotoDeleteTitle)
-                .font(.headline)
-            Text(L10n.pairingTabVehiclePhotoDeleteMessage)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(role: .destructive) {
-                showDeleteConfirm = false
-                removePhoto()
-            } label: {
-                Text(L10n.pairingTabVehiclePhotoRemove)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(deleteAccent)
-        }
-        .padding(16)
-        .frame(minWidth: 220, idealWidth: 260)
-        .presentationCompactAdaptation(.popover)
     }
 
     private enum PhotoSideRole {
@@ -475,7 +434,7 @@ struct PairingVehicleEditorForm: View {
                     isDisabled: isSaving
                 ) {
                     TrailhoundHaptics.selection()
-                    showPhotoSourceSheet = true
+                    photoSheet.wrappedValue = .source
                 }
                 .accessibilityHint(L10n.pairingTabVehiclePhotoChooseSubtitle)
             } else {
@@ -486,8 +445,6 @@ struct PairingVehicleEditorForm: View {
             width: isFraming ? nil : (hasPhoto || isProcessingPhoto ? activeHeroSide : nil),
             height: isFraming ? nil : (hasPhoto || isProcessingPhoto ? activeHeroSide : nil)
         )
-        .animation(reduceMotion ? nil : TrailhoundMotion.photoSettle, value: isFraming)
-        .animation(reduceMotion ? nil : TrailhoundMotion.photoSettle, value: hasPhoto)
     }
 
     private var heroContent: some View {
@@ -536,31 +493,14 @@ struct PairingVehicleEditorForm: View {
         }
     }
 
-    private func handleSourceSheetDismissed() {
-        guard let pendingSourceAction else { return }
-        let action = pendingSourceAction
-        self.pendingSourceAction = nil
-        // Sheet + PhotosPicker/camera cannot present in the same turn; SwiftUI
-        // drops the second presentation and the user has to tap Add again.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(350))
-            switch action {
-            case .library:
-                isPhotosPickerPresented = true
-            case .camera:
-                showCamera = true
-            }
-        }
-    }
-
     private func reloadDraft() {
         draft = VehicleEditorDraft(from: vehicle)
         pendingPreview = nil
+        pendingFramingImage.wrappedValue = nil
         cropSourceImage = nil
         isFraming = false
         frameScale = VehiclePhotoCropMath.defaultUserScale
         frameOffset = .zero
-        photoPickerItem = nil
         syncUnsavedChanges()
     }
 
@@ -573,29 +513,12 @@ struct PairingVehicleEditorForm: View {
     }
 
     private func removePhoto() {
-        updateDraft { $0.photoEdit = .removed }
-        pendingPreview = nil
-        cropSourceImage = nil
-        isFraming = false
-        photoPickerItem = nil
-        TrailhoundHaptics.selection()
-    }
-
-    private func importPickerItem(_ item: PhotosPickerItem) async {
-        isProcessingPhoto = true
-        defer {
-            isProcessingPhoto = false
-            photoPickerItem = nil
-        }
-        do {
-            guard let picked = try await item.loadTransferable(type: VehiclePickedImage.self),
-                  let image = UIImage(data: picked.data) else {
-                AppErrorPresenter.shared.present(L10n.pairingTabVehiclePhotoFailed)
-                return
-            }
-            beginInlineFraming(with: image)
-        } catch {
-            AppErrorPresenter.shared.present(L10n.pairingTabVehiclePhotoFailed)
+        TrailhoundHaptics.destructive()
+        withAnimation(reduceMotion ? nil : TrailhoundMotion.photoRemove) {
+            updateDraft { $0.photoEdit = .removed }
+            pendingPreview = nil
+            cropSourceImage = nil
+            isFraming = false
         }
     }
 
@@ -621,7 +544,7 @@ struct PairingVehicleEditorForm: View {
             return
         }
         guard let fileName = photoFileNameForPreview else {
-            showPhotoSourceSheet = true
+            photoSheet.wrappedValue = .source
             return
         }
         isProcessingPhoto = true
@@ -629,7 +552,7 @@ struct PairingVehicleEditorForm: View {
         if let image = await VehiclePhotoStore.shared.image(fileName: fileName) {
             beginInlineFraming(with: image)
         } else {
-            showPhotoSourceSheet = true
+            photoSheet.wrappedValue = .source
         }
     }
 
@@ -686,12 +609,8 @@ struct PairingVehicleEditorForm: View {
                 settings: settings
             )
             ToastPresenter.shared.show(.vehicleSaved)
-            if presentation == .standaloneForm {
-                dismiss()
-            } else {
-                reloadDraft()
-                syncUnsavedChanges()
-            }
+            // Pop back to My Vehicles / pairing list; toast stays on the host.
+            dismiss()
         } catch {
             AppErrorPresenter.shared.present(L10n.pairingTabSaveFailed(error.localizedDescription))
         }
@@ -772,16 +691,6 @@ private struct NavigationInteractivePopDisabled: UIViewControllerRepresentable {
 extension View {
     func vehicleEditorUnsavedChangesGuard(_ hasUnsavedChanges: Binding<Bool>) -> some View {
         modifier(VehicleEditorUnsavedChangesGuard(hasUnsavedChanges: hasUnsavedChanges))
-    }
-}
-
-private struct VehiclePickedImage: Transferable {
-    let data: Data
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(importedContentType: .image) { data in
-            VehiclePickedImage(data: data)
-        }
     }
 }
 
