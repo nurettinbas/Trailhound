@@ -143,6 +143,13 @@ enum StatsChartTheme {
     /// Padding between chart view and card rim.
     static let chartCardHorizontalPadding: CGFloat = 6
 
+    /// Cost timeline plot matches trip daily bar height.
+    static let costBarPlotHeight: CGFloat = 200
+    /// Compact category legend under the cost plot (dot + label row).
+    static let costBarLegendHeight: CGFloat = 40
+    /// Plot + legend spacing + legend reserve for deferred skeleton / pager.
+    static let costBarChartBodyHeight: CGFloat = costBarPlotHeight + legendRowSpacing + costBarLegendHeight
+
     /// Swift Charts linear/temporal X scales require at least two distinct domain values.
     /// Sparse series (1–3 points) get equal side padding so bars sit centered in the card.
     static func xScaleDomain(from dates: [Date], padding component: Calendar.Component) -> [Date] {
@@ -183,6 +190,27 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.2))
                 AxisValueLabel()
                     .font(.caption2)
+            }
+        }
+    }
+
+    /// Dashed vertical grid + centered date labels (trip daily / cost timeline parity).
+    func chartStatsDateXAxis(
+        values: [Date],
+        label: @escaping (Date) -> String
+    ) -> some View {
+        chartXAxis {
+            AxisMarks(values: values) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
+                AxisTick()
+                if let date = value.as(Date.self) {
+                    AxisValueLabel(centered: true) {
+                        Text(label(date))
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
             }
         }
     }

@@ -912,11 +912,10 @@ struct StatsView: View {
             }
         case .expenses:
             StatsDeferredChart(
-                title: L10n.string("stats.chart.daily_expenses"),
-                chartHeight: 180,
+                title: titledWithScope("stats.chart.daily_expenses", scope: statsTripChartScopeLabel),
+                chartHeight: StatsChartTheme.costBarChartBodyHeight,
                 reduceMotion: reduceMotion,
-                isPageActive: isActive,
-                titleAlignment: .center
+                isPageActive: isActive
             ) {
                 VehicleCareMiniChart(
                     months: costSnapshot.months,

@@ -5,8 +5,8 @@ enum StatsChartPagerMetrics {
     static let dailyContentHeight: CGFloat = 236
     /// Title + donut + legend gap + up to 2 centered legend rows.
     static let donutContentHeight: CGFloat = 268
-    /// Cost pager: title + chart + optional legend.
-    static let costContentHeight: CGFloat = 260
+    /// Cost pager: title + spacing + plot + legend (see StatsChartTheme.costBarChartBodyHeight).
+    static let costContentHeight: CGFloat = 36 + StatsChartTheme.costBarChartBodyHeight
     static let indicatorHeight: CGFloat = 20
 }
 

@@ -167,40 +167,71 @@ private struct CostBarChartStyle: ViewModifier {
         StatsChartTheme.xScaleDomain(from: dates, padding: xPaddingComponent)
     }
 
+    private var legendItems: [(name: String, color: Color)] {
+        Array(zip(legendDomain, legendRange)).map { (name: $0.0, color: $0.1) }
+    }
+
     func body(content: Content) -> some View {
         Group {
             if xDomain.count >= 2 {
-                content
-                    .chartForegroundStyleScale(domain: legendDomain, range: legendRange)
-                    .chartXScale(domain: xDomain)
-                    .chartXAxis {
-                        AxisMarks(values: xValues) { value in
-                            if let date = value.as(Date.self) {
-                                AxisValueLabel {
-                                    Text(xLabel(date))
-                                        .font(.caption2)
+                VStack(spacing: StatsChartTheme.legendRowSpacing) {
+                    content
+                        .chartForegroundStyleScale(domain: legendDomain, range: legendRange)
+                        .chartXScale(domain: xDomain)
+                        .chartStatsDateXAxis(values: xValues, label: xLabel)
+                        .chartYAxis {
+                            AxisMarks(values: .automatic) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                                    .foregroundStyle(Color.secondary.opacity(0.2))
+                                if let amount = value.as(Double.self) {
+                                    AxisValueLabel {
+                                        Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
+                                            .font(.caption2)
+                                    }
                                 }
                             }
                         }
-                    }
-                    .chartYAxis {
-                        AxisMarks(position: .leading, values: .automatic) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                .foregroundStyle(Color.secondary.opacity(0.2))
-                            if let amount = value.as(Double.self) {
-                                AxisValueLabel {
-                                    Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
-                                        .font(.caption2)
-                                }
-                            }
-                        }
-                    }
-                    .chartLegend(position: .bottom, alignment: .center, spacing: 8)
-                    .statsChartCardLayout()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 180)
-                    .accessibilityLabel(L10n.string(accessibilityKey))
+                        .chartYAxisLabel(currencyCode)
+                        .chartLegend(.hidden)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: StatsChartTheme.costBarPlotHeight)
+
+                    costLegend
+                        .frame(height: StatsChartTheme.costBarLegendHeight, alignment: .top)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel(L10n.string(accessibilityKey))
             }
         }
+    }
+
+    private var costLegend: some View {
+        let columns = StatsChartTheme.legendColumns
+        let rows = stride(from: 0, to: legendItems.count, by: columns).map { start in
+            Array(legendItems[start..<min(start + columns, legendItems.count)])
+        }
+        return VStack(spacing: 4) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: StatsChartTheme.legendCellSpacing) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { _, item in
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(item.color)
+                                .frame(
+                                    width: StatsChartTheme.legendDotSize,
+                                    height: StatsChartTheme.legendDotSize
+                                )
+                            Text(item.name)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
