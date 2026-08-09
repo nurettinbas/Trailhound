@@ -12,11 +12,8 @@ struct VehiclePhotoSourceSheet: View {
     @State private var appeared = false
 
     var body: some View {
-        ZStack {
-            AtmosphericBackground(style: .full)
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
+        // Background is owned by `VehiclePhotoFlowSheet` so expand is one surface.
+        VStack(spacing: 0) {
                 Capsule()
                     .fill(Color.white.opacity(colorScheme == .dark ? 0.28 : 0.45))
                     .frame(width: 36, height: 5)
@@ -68,7 +65,6 @@ struct VehiclePhotoSourceSheet: View {
                     .padding(.top, 14)
                     .padding(.bottom, 16)
                     .buttonStyle(VehiclePhotoPressStyle())
-            }
         }
         .onAppear {
             guard !reduceMotion else {

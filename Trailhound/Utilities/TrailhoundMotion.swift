@@ -26,17 +26,12 @@ enum TrailhoundMotion {
     static let toastDismiss = Animation.easeIn(duration: 0.22)
     /// Vehicle photo framing settle (rotate / expand inline controls).
     static let photoSettle = Animation.spring(response: 0.34, dampingFraction: 0.86)
-    /// Source picker → gallery/camera sheet stretch upward (detent morph).
-    static let photoSheetExpand = Animation.spring(response: 0.48, dampingFraction: 0.92)
-    /// Content fill after the sheet has started stretching (no bottom-rise offset).
-    static let photoSheetReveal = Animation.easeOut(duration: 0.22)
-    /// Capture content appears as a fill of the stretched sheet (top-anchored, not rising).
-    static var photoSheetRevealTransition: AnyTransition {
-        .asymmetric(
-            insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)),
-            removal: .opacity
-        )
-    }
+    /// Source dialog → camera/gallery: sheet stretches upward as one filled surface.
+    static let photoSheetExpand = Animation.spring(response: 1.1, dampingFraction: 0.86)
+    /// Gallery/camera fade inside the grown card.
+    static let photoSheetReveal = Animation.easeOut(duration: 0.56)
+    /// Pure fade — no offset (offset reads as a new sheet rising).
+    static var photoSheetRevealTransition: AnyTransition { .opacity }
     /// Avatar remove → empty add control (soft shrink out / rise in).
     static let photoRemove = Animation.spring(response: 0.4, dampingFraction: 0.84)
 

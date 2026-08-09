@@ -52,7 +52,9 @@ enum VehiclePhotoCaptureHandoff {
     }
 }
 
-/// Unified source → capture sheet: detent expands, content crossfades (no 450ms handoff).
+/// Unified source → capture sheet.
+/// Opens at source height (no empty 72% host). Content always fills the sheet so detent
+/// stretch + camera/gallery are one surface — never a tall blank layer behind a short card.
 struct VehiclePhotoFlowSheet: View {
     var onPicked: (UIImage) -> Void
     var onCancel: () -> Void
@@ -61,12 +63,18 @@ struct VehiclePhotoFlowSheet: View {
     @State private var phase: VehiclePhotoFlowPhase = .source
     @State private var selectedDetent: PresentationDetent
     @State private var isCaptureProcessing = false
+    /// Kept mounted after first expand so the preview isn't a second growing layer.
+    @State private var captureMode: VehiclePhotoCaptureMode?
 
     private var canUseCamera: Bool { VehicleInlineCameraView.isCameraAvailable }
     private var sourceDetent: PresentationDetent {
         VehiclePhotoFlowDetents.source(cameraAvailable: canUseCamera)
     }
     private var captureDetent: PresentationDetent { VehiclePhotoFlowDetents.capture }
+    private var isSource: Bool {
+        if case .source = phase { return true }
+        return false
+    }
 
     init(
         onPicked: @escaping (UIImage) -> Void,
@@ -75,116 +83,110 @@ struct VehiclePhotoFlowSheet: View {
         self.onPicked = onPicked
         self.onCancel = onCancel
         let camera = VehicleInlineCameraView.isCameraAvailable
-        _selectedDetent = State(initialValue: VehiclePhotoFlowDetents.source(cameraAvailable: camera))
+        _selectedDetent = State(
+            initialValue: VehiclePhotoFlowDetents.source(cameraAvailable: camera)
+        )
     }
 
     var body: some View {
-        // Bottom-aligned: sheet top edge grows up; source stays put → stretch, not a new rise.
         ZStack(alignment: .bottom) {
-            Group {
-                switch phase {
-                case .source:
-                    AtmosphericBackground(style: .full)
-                case .capture:
-                    Color.black.opacity(0.92)
-                }
-            }
-            .ignoresSafeArea()
-            .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetExpand, value: phase)
+            sheetChrome
 
-            switch phase {
-            case .source:
-                VehiclePhotoSourceSheet(
-                    canUseCamera: canUseCamera,
-                    onLibrary: {
-                        expand(to: .gallery)
-                    },
-                    onCamera: {
-                        expand(to: .camera)
-                    },
-                    onCancel: onCancel
-                )
-                .transition(.opacity)
-            case .capture(let mode):
+            if let captureMode {
                 VehiclePhotoCaptureSheet(
-                    initialMode: mode,
+                    initialMode: captureMode,
                     onPicked: onPicked,
                     onCancel: shrinkToSource,
                     isProcessing: $isCaptureProcessing
                 )
+                // Identity follows Library vs Camera so @State mode can't stick on the wrong pane.
+                .id(captureMode)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(TrailhoundMotion.photoSheetRevealTransition)
+                .opacity(isSource ? 0 : 1)
+                .allowsHitTesting(!isSource)
             }
+
+            VehiclePhotoSourceSheet(
+                canUseCamera: canUseCamera,
+                onLibrary: { expand(to: .gallery) },
+                onCamera: { expand(to: .camera) },
+                onCancel: onCancel
+            )
+            .opacity(isSource ? 1 : 0)
+            .allowsHitTesting(isSource)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetReveal, value: phase)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .presentationDetents([sourceDetent, captureDetent], selection: $selectedDetent)
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(28)
-        .presentationBackground {
-            Group {
-                switch phase {
-                case .source:
-                    AtmosphericBackground(style: .full)
-                case .capture:
-                    Color.black.opacity(0.92)
-                }
-            }
-        }
+        .presentationBackground { sheetChrome }
         .interactiveDismissDisabled(isCaptureProcessing)
         .onChange(of: selectedDetent) { _, newValue in
             syncPhase(with: newValue)
         }
     }
 
+    private var sheetChrome: some View {
+        ZStack {
+            AtmosphericBackground(style: .full)
+                .opacity(isSource ? 1 : 0)
+            Color.black.opacity(0.92)
+                .opacity(isSource ? 0 : 1)
+        }
+        .ignoresSafeArea()
+    }
+
     private func expand(to mode: VehiclePhotoCaptureMode) {
+        captureMode = mode
+
         if reduceMotion {
             selectedDetent = captureDetent
             phase = .capture(mode)
             return
         }
-        // 1) Stretch the same sheet upward first (source stays bottom-pinned).
+
         withAnimation(TrailhoundMotion.photoSheetExpand) {
             selectedDetent = captureDetent
-        }
-        // 2) Fill the grown area — opacity/top-scale, never a bottom-rise offset.
-        withAnimation(TrailhoundMotion.photoSheetReveal.delay(0.08)) {
             phase = .capture(mode)
         }
     }
 
     private func shrinkToSource() {
         isCaptureProcessing = false
+
         if reduceMotion {
             phase = .source
             selectedDetent = sourceDetent
+            captureMode = nil
             return
         }
-        // Content out first, then collapse height so it reads as shrinking the same card.
-        withAnimation(TrailhoundMotion.photoSheetReveal) {
+
+        withAnimation(TrailhoundMotion.photoSheetExpand) {
             phase = .source
-        }
-        withAnimation(TrailhoundMotion.photoSheetExpand.delay(0.04)) {
             selectedDetent = sourceDetent
+        }
+        // Tear down after shrink so the next Library/Camera expand mounts the correct pane.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1100))
+            guard case .source = phase else { return }
+            captureMode = nil
         }
     }
 
-    /// Keep phase aligned if the user drags between detents.
+    /// Drag must not leave an empty tall sheet over the source dialog.
     private func syncPhase(with detent: PresentationDetent) {
-        switch (phase, detent) {
-        case (.capture, _) where detent == sourceDetent:
+        switch (isSource, detent == captureDetent) {
+        case (true, true):
+            // Expand only via Library / Camera.
+            selectedDetent = sourceDetent
+        case (false, false):
             if reduceMotion {
                 phase = .source
-                isCaptureProcessing = false
             } else {
                 withAnimation(TrailhoundMotion.photoSheetExpand) {
                     phase = .source
-                    isCaptureProcessing = false
                 }
             }
-        case (.source, _) where detent == captureDetent:
-            // Expand only via Library / Camera — snap drag-up back.
-            selectedDetent = sourceDetent
         default:
             break
         }
@@ -286,7 +288,13 @@ struct VehiclePhotoCaptureSheet: View {
             guard let item else { return }
             Task { await importPickerItem(item) }
         }
-        .task {
+        .onChange(of: initialMode) { _, newMode in
+            mode = newMode
+            entryMode = newMode
+        }
+        // Photos auth only for gallery — Take Photo must not prompt the library dialog.
+        .task(id: mode) {
+            guard mode == .gallery else { return }
             await loader.prepare()
         }
         .onDisappear {
