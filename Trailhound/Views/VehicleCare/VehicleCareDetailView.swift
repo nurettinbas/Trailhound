@@ -21,7 +21,6 @@ struct VehicleDetailView: View {
     @State private var vehicleSaveTrigger = 0
     @State private var vehicleSaveDisabled = false
     @State private var photoSheet: VehiclePhotoSheetRoute?
-    @State private var pendingCaptureMode: VehiclePhotoCaptureMode?
     @State private var pendingFramingImage: UIImage?
 
     private var vehicle: VehicleProfile? {
@@ -67,7 +66,6 @@ struct VehicleDetailView: View {
         .vehicleEditorUnsavedChangesGuard($hasUnsavedVehicleEdits)
         .vehiclePhotoFlowSheets(
             photoSheet: $photoSheet,
-            pendingCaptureMode: $pendingCaptureMode,
             pendingFramingImage: $pendingFramingImage
         )
         .sheet(isPresented: $showAddExpense) {

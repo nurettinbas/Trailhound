@@ -14,18 +14,31 @@ enum VehiclePhotoSourceAction: Equatable {
     case cancel
 }
 
-/// Single sheet route so source → capture never fights dual `.sheet(isPresented:)` modifiers.
+/// Single sheet identity so source → capture expands in place (no dismiss / re-present).
 enum VehiclePhotoSheetRoute: Identifiable, Equatable {
+    case flow
+
+    var id: String { "vehicle-photo-flow" }
+}
+
+enum VehiclePhotoFlowPhase: Equatable {
     case source
     case capture(VehiclePhotoCaptureMode)
+}
 
-    var id: String {
-        switch self {
-        case .source: return "source"
-        case .capture(.gallery): return "capture-gallery"
-        case .capture(.camera): return "capture-camera"
-        }
+/// Detent sizes for the unified vehicle photo sheet.
+enum VehiclePhotoFlowDetents {
+    static func sourceHeight(cameraAvailable: Bool) -> CGFloat {
+        cameraAvailable ? 340 : 280
     }
+
+    static var captureFraction: CGFloat { 0.72 }
+
+    static func source(cameraAvailable: Bool) -> PresentationDetent {
+        .height(sourceHeight(cameraAvailable: cameraAvailable))
+    }
+
+    static var capture: PresentationDetent { .fraction(captureFraction) }
 }
 
 /// Maps the atmospheric source dialog choice to the capture overlay mode.
@@ -39,11 +52,143 @@ enum VehiclePhotoCaptureHandoff {
     }
 }
 
-/// ~72% bottom sheet: recent grid + All Photos + inline camera.
+/// Unified source → capture sheet: detent expands, content crossfades (no 450ms handoff).
+struct VehiclePhotoFlowSheet: View {
+    var onPicked: (UIImage) -> Void
+    var onCancel: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: VehiclePhotoFlowPhase = .source
+    @State private var selectedDetent: PresentationDetent
+    @State private var isCaptureProcessing = false
+
+    private var canUseCamera: Bool { VehicleInlineCameraView.isCameraAvailable }
+    private var sourceDetent: PresentationDetent {
+        VehiclePhotoFlowDetents.source(cameraAvailable: canUseCamera)
+    }
+    private var captureDetent: PresentationDetent { VehiclePhotoFlowDetents.capture }
+
+    init(
+        onPicked: @escaping (UIImage) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.onPicked = onPicked
+        self.onCancel = onCancel
+        let camera = VehicleInlineCameraView.isCameraAvailable
+        _selectedDetent = State(initialValue: VehiclePhotoFlowDetents.source(cameraAvailable: camera))
+    }
+
+    var body: some View {
+        ZStack {
+            Group {
+                switch phase {
+                case .source:
+                    AtmosphericBackground(style: .full)
+                case .capture:
+                    Color.black.opacity(0.92)
+                }
+            }
+            .ignoresSafeArea()
+
+            Group {
+                switch phase {
+                case .source:
+                    VehiclePhotoSourceSheet(
+                        canUseCamera: canUseCamera,
+                        onLibrary: {
+                            expand(to: .gallery)
+                        },
+                        onCamera: {
+                            expand(to: .camera)
+                        },
+                        onCancel: onCancel
+                    )
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity,
+                            removal: .opacity.combined(with: .offset(y: 8))
+                        )
+                    )
+                case .capture(let mode):
+                    VehiclePhotoCaptureSheet(
+                        initialMode: mode,
+                        onPicked: onPicked,
+                        onCancel: shrinkToSource,
+                        isProcessing: $isCaptureProcessing
+                    )
+                    .transition(TrailhoundMotion.softRiseTransition)
+                }
+            }
+        }
+        .animation(reduceMotion ? nil : TrailhoundMotion.photoSheetExpand, value: phase)
+        .presentationDetents([sourceDetent, captureDetent], selection: $selectedDetent)
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(28)
+        .presentationBackground {
+            Group {
+                switch phase {
+                case .source:
+                    AtmosphericBackground(style: .full)
+                case .capture:
+                    Color.black.opacity(0.92)
+                }
+            }
+        }
+        .interactiveDismissDisabled(isCaptureProcessing)
+        .onChange(of: selectedDetent) { _, newValue in
+            syncPhase(with: newValue)
+        }
+    }
+
+    private func expand(to mode: VehiclePhotoCaptureMode) {
+        applyPhase(.capture(mode), detent: captureDetent)
+    }
+
+    private func shrinkToSource() {
+        isCaptureProcessing = false
+        applyPhase(.source, detent: sourceDetent)
+    }
+
+    private func applyPhase(_ newPhase: VehiclePhotoFlowPhase, detent: PresentationDetent) {
+        if reduceMotion {
+            phase = newPhase
+            selectedDetent = detent
+        } else {
+            withAnimation(TrailhoundMotion.photoSheetExpand) {
+                phase = newPhase
+                selectedDetent = detent
+            }
+        }
+    }
+
+    /// Keep phase aligned if the user drags between detents.
+    private func syncPhase(with detent: PresentationDetent) {
+        switch (phase, detent) {
+        case (.capture, _) where detent == sourceDetent:
+            if reduceMotion {
+                phase = .source
+                isCaptureProcessing = false
+            } else {
+                withAnimation(TrailhoundMotion.photoSheetExpand) {
+                    phase = .source
+                    isCaptureProcessing = false
+                }
+            }
+        case (.source, _) where detent == captureDetent:
+            // Expand only via Library / Camera — snap drag-up back.
+            selectedDetent = sourceDetent
+        default:
+            break
+        }
+    }
+}
+
+/// ~72% capture content: recent grid + All Photos + inline camera (hosted inside `VehiclePhotoFlowSheet`).
 struct VehiclePhotoCaptureSheet: View {
     var initialMode: VehiclePhotoCaptureMode
     var onPicked: (UIImage) -> Void
     var onCancel: () -> Void
+    @Binding var isProcessing: Bool
 
     @StateObject private var loader = VehiclePhotoLibraryLoader()
     @State private var mode: VehiclePhotoCaptureMode
@@ -51,18 +196,19 @@ struct VehiclePhotoCaptureSheet: View {
     @State private var entryMode: VehiclePhotoCaptureMode
     @State private var isPhotosPickerPresented = false
     @State private var photoPickerItem: PhotosPickerItem?
-    @State private var isProcessing = false
 
     private var canUseCamera: Bool { VehicleInlineCameraView.isCameraAvailable }
 
     init(
         initialMode: VehiclePhotoCaptureMode = .gallery,
         onPicked: @escaping (UIImage) -> Void,
-        onCancel: @escaping () -> Void
+        onCancel: @escaping () -> Void,
+        isProcessing: Binding<Bool> = .constant(false)
     ) {
         self.initialMode = initialMode
         self.onPicked = onPicked
         self.onCancel = onCancel
+        _isProcessing = isProcessing
         _mode = State(initialValue: initialMode)
         _entryMode = State(initialValue: initialMode)
     }
@@ -88,7 +234,10 @@ struct VehiclePhotoCaptureSheet: View {
                             TrailhoundHaptics.selection()
                             isPhotosPickerPresented = true
                         },
-                        onBack: onCancel,
+                        onBack: {
+                            TrailhoundHaptics.selection()
+                            onCancel()
+                        },
                         onOpenSettings: openSettings
                     )
                 case .camera:
@@ -135,13 +284,6 @@ struct VehiclePhotoCaptureSheet: View {
         .onDisappear {
             loader.tearDown()
         }
-        .presentationDetents([.fraction(0.72)])
-        .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(28)
-        .presentationBackground {
-            Color.black.opacity(0.92)
-        }
-        .interactiveDismissDisabled(isProcessing)
     }
 
     private func pickAsset(_ localIdentifier: String) async {
@@ -197,75 +339,32 @@ struct VehiclePickedImage: Transferable {
 /// Host photo sheets on a NavigationStack root (not inside a List row) so the first tap sticks.
 struct VehiclePhotoFlowSheetModifier: ViewModifier {
     @Binding var photoSheet: VehiclePhotoSheetRoute?
-    @Binding var pendingCaptureMode: VehiclePhotoCaptureMode?
     @Binding var pendingFramingImage: UIImage?
 
     func body(content: Content) -> some View {
         content
-            .sheet(item: $photoSheet, onDismiss: handleDismissed) { route in
-                switch route {
-                case .source:
-                    VehiclePhotoSourceSheet(
-                        canUseCamera: VehicleInlineCameraView.isCameraAvailable,
-                        onLibrary: {
-                            pendingCaptureMode = VehiclePhotoCaptureHandoff.pendingMode(after: .library)
-                            photoSheet = nil
-                        },
-                        onCamera: {
-                            pendingCaptureMode = VehiclePhotoCaptureHandoff.pendingMode(after: .camera)
-                            photoSheet = nil
-                        },
-                        onCancel: {
-                            pendingCaptureMode = VehiclePhotoCaptureHandoff.pendingMode(after: .cancel)
-                            photoSheet = nil
-                        }
-                    )
-                    .presentationDetents([.height(VehicleInlineCameraView.isCameraAvailable ? 340 : 280)])
-                    .presentationDragIndicator(.hidden)
-                    .presentationCornerRadius(28)
-                    .presentationBackground {
-                        AtmosphericBackground(style: .full)
+            .sheet(item: $photoSheet) { _ in
+                VehiclePhotoFlowSheet(
+                    onPicked: { image in
+                        pendingFramingImage = image
+                        photoSheet = nil
+                    },
+                    onCancel: {
+                        photoSheet = nil
                     }
-                    .interactiveDismissDisabled(false)
-                case .capture(let mode):
-                    VehiclePhotoCaptureSheet(
-                        initialMode: mode,
-                        onPicked: { image in
-                            pendingFramingImage = image
-                            photoSheet = nil
-                        },
-                        onCancel: {
-                            photoSheet = nil
-                        }
-                    )
-                }
+                )
             }
-    }
-
-    private func handleDismissed() {
-        if let mode = pendingCaptureMode {
-            pendingCaptureMode = nil
-            Task { @MainActor in
-                // Source teardown must finish; 350ms is often tight inside NavigationStack+List.
-                try? await Task.sleep(for: .milliseconds(450))
-                photoSheet = .capture(mode)
-            }
-            return
-        }
-        // Framing handoff is consumed by the editor via `pendingFramingImage` binding.
     }
 }
 
 extension View {
     func vehiclePhotoFlowSheets(
         photoSheet: Binding<VehiclePhotoSheetRoute?>,
-        pendingCaptureMode: Binding<VehiclePhotoCaptureMode?>,
         pendingFramingImage: Binding<UIImage?>
     ) -> some View {
         modifier(
             VehiclePhotoFlowSheetModifier(
                 photoSheet: photoSheet,
-                pendingCaptureMode: pendingCaptureMode,
                 pendingFramingImage: pendingFramingImage
             )
         )

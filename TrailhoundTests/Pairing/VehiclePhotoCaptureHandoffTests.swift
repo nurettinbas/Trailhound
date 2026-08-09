@@ -20,13 +20,16 @@ final class VehiclePhotoCaptureHandoffTests: XCTestCase {
         XCTAssertNil(VehiclePhotoCaptureHandoff.pendingMode(after: .cancel))
     }
 
-    func testSheetRouteIDsAreStableAndDistinct() {
-        XCTAssertEqual(VehiclePhotoSheetRoute.source.id, "source")
-        XCTAssertEqual(VehiclePhotoSheetRoute.capture(.gallery).id, "capture-gallery")
-        XCTAssertEqual(VehiclePhotoSheetRoute.capture(.camera).id, "capture-camera")
-        XCTAssertNotEqual(
-            VehiclePhotoSheetRoute.capture(.gallery).id,
-            VehiclePhotoSheetRoute.capture(.camera).id
-        )
+    func testSheetRouteIDIsStableFlowIdentity() {
+        XCTAssertEqual(VehiclePhotoSheetRoute.flow.id, "vehicle-photo-flow")
+    }
+
+    func testSourceDetentHeightDependsOnCamera() {
+        XCTAssertEqual(VehiclePhotoFlowDetents.sourceHeight(cameraAvailable: true), 340)
+        XCTAssertEqual(VehiclePhotoFlowDetents.sourceHeight(cameraAvailable: false), 280)
+    }
+
+    func testCaptureFractionIsSeventyTwoPercent() {
+        XCTAssertEqual(VehiclePhotoFlowDetents.captureFraction, 0.72, accuracy: 0.0001)
     }
 }

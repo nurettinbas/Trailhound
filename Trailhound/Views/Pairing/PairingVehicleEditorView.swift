@@ -11,7 +11,6 @@ struct PairingVehicleEditorView: View {
     @State private var saveTrigger = 0
     @State private var saveDisabled = false
     @State private var photoSheet: VehiclePhotoSheetRoute?
-    @State private var pendingCaptureMode: VehiclePhotoCaptureMode?
     @State private var pendingFramingImage: UIImage?
 
     private var vehicle: VehicleProfile? {
@@ -49,7 +48,6 @@ struct PairingVehicleEditorView: View {
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
         .vehiclePhotoFlowSheets(
             photoSheet: $photoSheet,
-            pendingCaptureMode: $pendingCaptureMode,
             pendingFramingImage: $pendingFramingImage
         )
         .onChange(of: vehicle?.id) { _, newID in
@@ -364,7 +362,7 @@ struct PairingVehicleEditorForm: View {
                 systemImage: "photo.on.rectangle.angled",
                 role: .change
             ) {
-                photoSheet.wrappedValue = .source
+                photoSheet.wrappedValue = .flow
             }
             photoSideButton(
                 title: L10n.pairingTabVehiclePhotoActionDelete,
@@ -434,7 +432,7 @@ struct PairingVehicleEditorForm: View {
                     isDisabled: isSaving
                 ) {
                     TrailhoundHaptics.selection()
-                    photoSheet.wrappedValue = .source
+                    photoSheet.wrappedValue = .flow
                 }
                 .accessibilityHint(L10n.pairingTabVehiclePhotoChooseSubtitle)
             } else {
@@ -544,7 +542,7 @@ struct PairingVehicleEditorForm: View {
             return
         }
         guard let fileName = photoFileNameForPreview else {
-            photoSheet.wrappedValue = .source
+            photoSheet.wrappedValue = .flow
             return
         }
         isProcessingPhoto = true
@@ -552,7 +550,7 @@ struct PairingVehicleEditorForm: View {
         if let image = await VehiclePhotoStore.shared.image(fileName: fileName) {
             beginInlineFraming(with: image)
         } else {
-            photoSheet.wrappedValue = .source
+            photoSheet.wrappedValue = .flow
         }
     }
 

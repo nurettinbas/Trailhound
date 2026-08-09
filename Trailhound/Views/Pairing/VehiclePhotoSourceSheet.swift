@@ -70,9 +70,6 @@ struct VehiclePhotoSourceSheet: View {
                     .buttonStyle(VehiclePhotoPressStyle())
             }
         }
-        .presentationBackground {
-            AtmosphericBackground(style: .full)
-        }
         .onAppear {
             guard !reduceMotion else {
                 appeared = true
