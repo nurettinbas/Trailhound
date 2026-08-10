@@ -12,26 +12,37 @@ enum TripShareCardRenderer {
         privacyRadius: Double,
         size: CGSize = defaultSize
     ) async -> UIImage? {
-        let samples = RouteDisplayPath.samples(from: trip.sortedPoints)
-        let clippedRange = RoutePrivacyClipper.clippedRange(
-            samples.map(\.coordinate),
-            privacyRadiusMeters: privacyRadius,
-            places: places
+        // Fault points once on the main actor, then hop off for clip / decimate / chart / bands.
+        let points = TripShareRoutePrep.points(
+            from: RouteDisplayPath.samples(from: trip.sortedPoints)
         )
-        let clippedSamples = Array(samples[clippedRange])
-        let pieces = RouteDisplayPath.displaySegments(samples: clippedSamples)
-        let coordinates = pieces.flatMap { $0.map(\.coordinate) }
+        let placeInputs = places.map(TripShareRoutePrep.Place.init)
+        let displayScale = UIScreen.main.scale
+
+        let prep = await Task.detached(priority: .userInitiated) {
+            TripShareRoutePrep.prepare(
+                points: points,
+                privacyRadiusMeters: privacyRadius,
+                places: placeInputs
+            )
+        }.value
 
         let mapHeight = size.height * 0.55
         let mapSize = CGSize(width: size.width, height: mapHeight)
+        let coordinates = prep.strokes.flatMap(\.coordinates)
 
         let mapImage: UIImage
         if coordinates.count >= 2 {
             mapImage = await renderMap(
-                pieces: pieces,
-                start: pieces.first?.first?.coordinate,
-                end: pieces.last?.last?.coordinate,
-                size: mapSize
+                strokes: prep.strokes,
+                start: prep.start.map {
+                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                },
+                end: prep.end.map {
+                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                },
+                size: mapSize,
+                displayScale: displayScale
             ) ?? UIImage()
         } else {
             mapImage = UIImage()
@@ -42,7 +53,8 @@ enum TripShareCardRenderer {
             trip: trip,
             places: places,
             privacyRadius: privacyRadius,
-            chartSamples: SpeedChartSeries.build(samples: samples),
+            chartSamples: prep.chartSeries,
+            chartMaxKmh: prep.chartMaxKmh,
             size: size
         )
     }
@@ -50,12 +62,13 @@ enum TripShareCardRenderer {
     // MARK: - Map
 
     private static func renderMap(
-        pieces: [[RouteSample]],
+        strokes: [TripShareRoutePrep.StrokeSegment],
         start: CLLocationCoordinate2D?,
         end: CLLocationCoordinate2D?,
-        size: CGSize
+        size: CGSize,
+        displayScale: CGFloat
     ) async -> UIImage? {
-        let coordinates = pieces.flatMap { $0.map(\.coordinate) }
+        let coordinates = strokes.flatMap(\.coordinates)
         guard !coordinates.isEmpty else { return nil }
 
         let options = MKMapSnapshotter.Options()
@@ -64,7 +77,7 @@ enum TripShareCardRenderer {
         options.mapType = .standard
         options.traitCollection = UITraitCollection { mutableTraits in
             mutableTraits.userInterfaceStyle = .dark
-            mutableTraits.displayScale = UIScreen.main.scale
+            mutableTraits.displayScale = displayScale
         }
 
         let snapshotter = MKMapSnapshotter(options: options)
@@ -75,12 +88,12 @@ enum TripShareCardRenderer {
             return nil
         }
 
-        return drawRoute(on: snapshot, pieces: pieces, start: start, end: end)
+        return drawRoute(on: snapshot, strokes: strokes, start: start, end: end)
     }
 
     private static func drawRoute(
         on snapshot: MKMapSnapshotter.Snapshot,
-        pieces: [[RouteSample]],
+        strokes: [TripShareRoutePrep.StrokeSegment],
         start: CLLocationCoordinate2D?,
         end: CLLocationCoordinate2D?
     ) -> UIImage {
@@ -88,8 +101,9 @@ enum TripShareCardRenderer {
         return renderer.image { _ in
             snapshot.image.draw(at: .zero)
 
-            for piece in pieces where piece.count >= 2 {
-                drawSpeedColoredPiece(piece, on: snapshot)
+            for stroke in strokes where stroke.coordinates.count >= 2 {
+                let points = stroke.coordinates.map { snapshot.point(for: $0) }
+                strokePolyline(points: points, color: uiColor(for: stroke.band))
             }
 
             if let start {
@@ -99,7 +113,7 @@ enum TripShareCardRenderer {
                     fill: .systemGreen
                 )
             }
-            if let end, pieces.flatMap({ $0 }).count > 1 {
+            if let end, strokes.contains(where: { $0.coordinates.count > 1 }) {
                 drawPin(
                     at: snapshot.point(for: end),
                     systemName: "mappin.circle.fill",
@@ -109,30 +123,6 @@ enum TripShareCardRenderer {
 
             drawLegend(in: CGRect(origin: .zero, size: snapshot.image.size))
         }
-    }
-
-    private static func drawSpeedColoredPiece(
-        _ piece: [RouteSample],
-        on snapshot: MKMapSnapshotter.Snapshot
-    ) {
-        var currentPoints = [snapshot.point(for: piece[0].coordinate)]
-        var currentBand = speedBand(for: TripSpeedSummary.effectiveSpeedMps(at: 0, in: piece))
-
-        for index in 1..<piece.count {
-            let band = speedBand(for: TripSpeedSummary.effectiveSpeedMps(at: index, in: piece))
-            let point = snapshot.point(for: piece[index].coordinate)
-            currentPoints.append(point)
-
-            guard band != currentBand else { continue }
-            strokePolyline(points: currentPoints, color: uiColor(for: currentBand))
-            currentPoints = [
-                snapshot.point(for: piece[index - 1].coordinate),
-                point
-            ]
-            currentBand = band
-        }
-
-        strokePolyline(points: currentPoints, color: uiColor(for: currentBand))
     }
 
     private static func strokePolyline(points: [CGPoint], color: UIColor) {
@@ -248,6 +238,7 @@ enum TripShareCardRenderer {
         places: [SavedPlace],
         privacyRadius: Double,
         chartSamples: SpeedChartSeries.Series,
+        chartMaxKmh: Double,
         size: CGSize
     ) -> UIImage {
         let viewModel = TripDetailViewModel(trip: trip, places: places, privacyRadius: privacyRadius)
@@ -305,7 +296,7 @@ enum TripShareCardRenderer {
                 y = drawSpeedChart(
                     series: chartSamples,
                     trip: trip,
-                    maxKmh: viewModel.speedChartMaxKmh,
+                    maxKmh: chartMaxKmh,
                     origin: CGPoint(x: contentX, y: y),
                     width: contentWidth
                 )
@@ -479,11 +470,14 @@ enum TripShareCardRenderer {
             width: cardRect.width - labelWidth - 36,
             height: chartHeight
         )
+        // Span the clipped series so the chart matches the privacy-trimmed map, not full trip times.
+        let chartStart = series.samples.first?.date ?? trip.startedAt
+        let chartEnd = series.samples.last?.date ?? trip.endedAt ?? trip.startedAt
         drawChartPath(
             samples: series.samples,
             medianInterval: series.medianIntervalSeconds,
-            tripStartedAt: trip.startedAt,
-            tripEndedAt: trip.endedAt ?? trip.startedAt,
+            tripStartedAt: chartStart,
+            tripEndedAt: chartEnd,
             maxKmh: maxKmh,
             in: plotRect
         )
@@ -561,23 +555,12 @@ enum TripShareCardRenderer {
 
     // MARK: - Helpers
 
-    private static func speedBand(for speedMps: Double?) -> SpeedBand {
-        let kmh = (speedMps ?? 0) * 3.6
-        if kmh < 50 { return .slow }
-        if kmh < 90 { return .medium }
-        return .fast
-    }
-
     private static func uiColor(for band: SpeedBand) -> UIColor {
         switch band {
         case .slow: return .systemGreen
         case .medium: return .systemYellow
         case .fast: return .systemRed
         }
-    }
-
-    private enum SpeedBand {
-        case slow, medium, fast
     }
 
     private static func regionFor(coordinates: [CLLocationCoordinate2D]) -> MKCoordinateRegion {

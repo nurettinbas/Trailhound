@@ -1,13 +1,57 @@
 import CoreLocation
 import Foundation
 
+/// Value snapshot of a saved place for privacy clipping — Sendable and free of SwiftData.
+struct RoutePrivacyPlace: Sendable, Equatable {
+    let latitude: Double
+    let longitude: Double
+    let radiusMeters: Double
+    let expandsClipRadius: Bool
+
+    init(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double,
+        expandsClipRadius: Bool
+    ) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.radiusMeters = radiusMeters
+        self.expandsClipRadius = expandsClipRadius
+    }
+
+    init(_ place: SavedPlace) {
+        latitude = place.latitude
+        longitude = place.longitude
+        radiusMeters = place.radiusMeters
+        expandsClipRadius = place.isPrivacyZone || place.kind == .home
+    }
+}
+
 enum RoutePrivacyClipper {
     static func clip(
         _ coordinates: [CLLocationCoordinate2D],
         privacyRadiusMeters: Double,
         places: [SavedPlace] = []
     ) -> [CLLocationCoordinate2D] {
-        let range = clippedRange(coordinates, privacyRadiusMeters: privacyRadiusMeters, places: places)
+        let range = clippedRange(
+            coordinates,
+            privacyRadiusMeters: privacyRadiusMeters,
+            places: places.map(RoutePrivacyPlace.init)
+        )
+        return Array(coordinates[range])
+    }
+
+    static func clip(
+        _ coordinates: [CLLocationCoordinate2D],
+        privacyRadiusMeters: Double,
+        places: [RoutePrivacyPlace]
+    ) -> [CLLocationCoordinate2D] {
+        let range = clippedRange(
+            coordinates,
+            privacyRadiusMeters: privacyRadiusMeters,
+            places: places
+        )
         return Array(coordinates[range])
     }
 
@@ -18,12 +62,28 @@ enum RoutePrivacyClipper {
         privacyRadiusMeters: Double,
         places: [SavedPlace] = []
     ) -> Range<Int> {
+        clippedRange(
+            coordinates,
+            privacyRadiusMeters: privacyRadiusMeters,
+            places: places.map(RoutePrivacyPlace.init)
+        )
+    }
+
+    static func clippedRange(
+        _ coordinates: [CLLocationCoordinate2D],
+        privacyRadiusMeters: Double,
+        places: [RoutePrivacyPlace]
+    ) -> Range<Int> {
         let full = coordinates.startIndex..<coordinates.endIndex
         guard coordinates.count >= 2 else { return full }
         guard let routeStart = coordinates.first, let routeEnd = coordinates.last else { return full }
 
         let startRadius = effectiveRadius(for: routeStart, places: places, defaultRadius: privacyRadiusMeters)
         let endRadius = effectiveRadius(for: routeEnd, places: places, defaultRadius: privacyRadiusMeters)
+        // Radius 0 (and no expanded home/privacy zone) means "do not clip".
+        // Using `distance <= 0` would otherwise drop the exact start/end vertices.
+        if startRadius <= 0 && endRadius <= 0 { return full }
+
         let startLocation = CLLocation(latitude: routeStart.latitude, longitude: routeStart.longitude)
         let endLocation = CLLocation(latitude: routeEnd.latitude, longitude: routeEnd.longitude)
 
@@ -49,12 +109,12 @@ enum RoutePrivacyClipper {
 
     private static func effectiveRadius(
         for coordinate: CLLocationCoordinate2D,
-        places: [SavedPlace],
+        places: [RoutePrivacyPlace],
         defaultRadius: Double
     ) -> Double {
         var radius = defaultRadius
         let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        for place in places where place.isPrivacyZone || place.kind == .home {
+        for place in places where place.expandsClipRadius {
             let center = CLLocation(latitude: place.latitude, longitude: place.longitude)
             if center.distance(from: target) <= max(place.radiusMeters, defaultRadius) {
                 radius = max(radius, place.radiusMeters, defaultRadius)

@@ -93,6 +93,7 @@ Signature open order (animated path only): muted map veil → `mapClear` → fro
 ## Share card
 
 - One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
+- Path prep (`TripShareRoutePrep`: privacy clip → decimate → chart series → `SpeedColoredSegmentBuilder`) runs off the main actor; points are faulted once before the hop. Map strokes and the speed chart share the same clipped samples.
 - Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
 - Brand logo is drawn into the raster at compose time; no ActivityKit / widget images.
 

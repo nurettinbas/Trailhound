@@ -88,6 +88,7 @@ enum RouteDisplayPath {
 
     /// Privacy-clipped drawable pieces for a stored trip. Clipping happens before decimation
     /// so the trimmed ends never reappear as display points.
+    /// Share card uses the same clip-then-decimate order via `TripShareRoutePrep`.
     static func displaySegmentCoordinates(
         trip: Trip,
         privacyRadiusMeters: Double,
@@ -97,7 +98,7 @@ enum RouteDisplayPath {
         let range = RoutePrivacyClipper.clippedRange(
             samples.map(\.coordinate),
             privacyRadiusMeters: privacyRadiusMeters,
-            places: places
+            places: places.map(RoutePrivacyPlace.init)
         )
         return displaySegmentCoordinates(samples: Array(samples[range]))
     }

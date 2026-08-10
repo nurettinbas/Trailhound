@@ -16,12 +16,12 @@ import Foundation
 /// 3. Never averages or smooths across a real recording gap, which would quietly erase the stop
 ///    sitting inside it.
 enum SpeedChartSeries {
-    struct Sample: Equatable {
+    struct Sample: Equatable, Sendable {
         let date: Date
         let speedKmh: Double
     }
 
-    struct Series: Equatable {
+    struct Series: Equatable, Sendable {
         var samples: [Sample] = []
         /// Typical spacing of the emitted samples; the canvas scales its own gap threshold off it.
         var medianIntervalSeconds: TimeInterval = 0

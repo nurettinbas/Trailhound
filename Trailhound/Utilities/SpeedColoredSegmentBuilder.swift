@@ -71,7 +71,7 @@ enum SpeedColoredSegmentBuilder {
                     SpeedColoredSegment(
                         id: all.count,
                         coordinates: segment.coordinates,
-                        color: segment.color
+                        band: segment.band
                     )
                 )
             }
@@ -111,7 +111,7 @@ enum SpeedColoredSegmentBuilder {
                     SpeedColoredSegment(
                         id: result.count,
                         coordinates: segment.coordinates,
-                        color: segment.color
+                        band: segment.band
                     )
                 )
                 consumed += newVertices
@@ -140,7 +140,7 @@ enum SpeedColoredSegmentBuilder {
                     SpeedColoredSegment(
                         id: result.count,
                         coordinates: coords,
-                        color: segment.color
+                        band: segment.band
                     )
                 )
             }
@@ -156,28 +156,27 @@ enum SpeedColoredSegmentBuilder {
         let firstKmh = (TripSpeedSummary.effectiveSpeedMps(at: 0, in: piece) ?? 0) * 3.6
         var band = SpeedBand.initial(kmh: firstKmh)
         var currentCoordinates = [piece[0].coordinate]
-        var currentColor = band.color
+        var currentBand = band
         var segments: [SpeedColoredSegment] = []
 
         for index in 1..<piece.count {
             let kmh = (TripSpeedSummary.effectiveSpeedMps(at: index, in: piece) ?? 0) * 3.6
             band.update(kmh: kmh)
-            let color = band.color
             currentCoordinates.append(piece[index].coordinate)
 
-            guard color != currentColor else { continue }
+            guard band != currentBand else { continue }
             if currentCoordinates.count >= 2 {
                 segments.append(
                     SpeedColoredSegment(
                         id: segments.count,
                         coordinates: currentCoordinates,
-                        color: currentColor
+                        band: currentBand
                     )
                 )
             }
             // Overlapping chord so MapKit paints a continuous stroke across the color join.
             currentCoordinates = [piece[index - 1].coordinate, piece[index].coordinate]
-            currentColor = color
+            currentBand = band
         }
 
         if currentCoordinates.count >= 2 {
@@ -185,7 +184,7 @@ enum SpeedColoredSegmentBuilder {
                 SpeedColoredSegment(
                     id: segments.count,
                     coordinates: currentCoordinates,
-                    color: currentColor
+                    band: currentBand
                 )
             )
         }
@@ -230,7 +229,7 @@ enum SpeedColoredSegmentBuilder {
                 result[result.count - 1] = SpeedColoredSegment(
                     id: last.id,
                     coordinates: merged,
-                    color: last.color
+                    band: last.band
                 )
             } else {
                 result.append(segment)
@@ -266,7 +265,7 @@ enum SpeedColoredSegmentBuilder {
                 SpeedColoredSegment(
                     id: result.count,
                     coordinates: coords,
-                    color: group[0].color
+                    band: group[0].band
                 )
             )
             index = cursor
@@ -314,7 +313,7 @@ enum SpeedColoredSegmentBuilder {
 
     private static func reindex(_ segments: [SpeedColoredSegment]) -> [SpeedColoredSegment] {
         segments.enumerated().map { index, segment in
-            SpeedColoredSegment(id: index, coordinates: segment.coordinates, color: segment.color)
+            SpeedColoredSegment(id: index, coordinates: segment.coordinates, band: segment.band)
         }
     }
 

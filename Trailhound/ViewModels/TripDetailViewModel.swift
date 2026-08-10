@@ -6,7 +6,15 @@ import SwiftUI
 struct SpeedColoredSegment: Identifiable {
     let id: Int
     let coordinates: [CLLocationCoordinate2D]
-    let color: Color
+    let band: SpeedBand
+
+    var color: Color { band.color }
+
+    init(id: Int, coordinates: [CLLocationCoordinate2D], band: SpeedBand) {
+        self.id = id
+        self.coordinates = coordinates
+        self.band = band
+    }
 }
 
 struct TripSummaryMetric: Identifiable {
