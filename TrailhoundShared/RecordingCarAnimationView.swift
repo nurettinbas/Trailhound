@@ -63,7 +63,8 @@ struct RecordingCarAnimationView<CarOverlay: View>: View {
             )
         }
         .id(markIdentity)
-        .frame(height: metrics.sceneHeight)
+        // Extra top chrome so service badge can sit above the mark without shrinking photos.
+        .frame(height: TrailhoundRoadVehicleMarkLayout.sceneFrameHeight(for: metrics))
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10))
         .drawingGroup(opaque: false, colorMode: .linear)
@@ -140,6 +141,84 @@ struct TrailhoundRoadSceneLayout: Equatable {
     var isPaused: Bool
 }
 
+/// How the vehicle mark is drawn on the road — opaque plates use a different sit-on-road layout.
+enum TrailhoundRoadVehicleMarkKind: Equatable, Sendable {
+    case symbol
+    case cutoutPhoto
+    case opaquePhoto
+}
+
+struct TrailhoundRoadVehicleMarkPlacement: Equatable, Sendable {
+    var size: CGFloat
+    var centerY: CGFloat
+}
+
+/// Pure geometry for road marks. Safe to call from TimelineView ticks (no pixel I/O).
+enum TrailhoundRoadVehicleMarkLayout {
+    /// Slight sink into the road so opaque plates feel grounded.
+    static let opaqueRoadOverlap: CGFloat = 3
+
+    /// Coverage below this (with real alpha) → cutout layout; at/above → opaque plate.
+    static let cutoutMaxOpaqueCoverage: Double = 0.92
+
+    /// Matches road-scene vertical bounce amplitude (`sin * 1.2`).
+    static let bounceAmplitude: CGFloat = 1.2
+
+    /// Top padding inside the clipped road scene.
+    static let sceneTopInset: CGFloat = 2
+
+    /// Space above the road band so the service badge can sit on top of the mark (not under a clip).
+    static func overlayChromeHeadroom(for carSize: CGFloat) -> CGFloat {
+        let diameter = max(15 as CGFloat, carSize * 0.68)
+        return carSize * 0.48 + diameter * 0.5 + sceneTopInset + bounceAmplitude
+    }
+
+    /// Full road-view height: road metrics + top chrome (badge lives above the mark).
+    static func sceneFrameHeight(for metrics: TrailhoundRoadSceneMetrics) -> CGFloat {
+        metrics.sceneHeight + overlayChromeHeadroom(for: metrics.carSize)
+    }
+
+    static func photoSize(for kind: TrailhoundRoadVehicleMarkKind, metrics: TrailhoundRoadSceneMetrics) -> CGFloat {
+        let carSize = metrics.carSize
+        switch kind {
+        case .symbol:
+            return carSize
+        case .cutoutPhoto:
+            // Photos read smaller than SF Symbols at the same point size — bump them up.
+            return min(carSize * 3.0, metrics.sceneHeight * 1.18)
+        case .opaquePhoto:
+            // Full plate on the road — do not shrink for badge; chrome headroom is in sceneFrameHeight.
+            return min(carSize * 1.65, metrics.sceneHeight * 0.72)
+        }
+    }
+
+    static func placement(
+        kind: TrailhoundRoadVehicleMarkKind,
+        metrics: TrailhoundRoadSceneMetrics,
+        roadTop: CGFloat,
+        bounce: CGFloat
+    ) -> TrailhoundRoadVehicleMarkPlacement {
+        let carSize = metrics.carSize
+        let size = photoSize(for: kind, metrics: metrics)
+        switch kind {
+        case .symbol, .cutoutPhoto:
+            // Historical formula — cutouts rely on bottom alpha padding looking correct.
+            let centerY = roadTop - carSize * 0.35 + bounce
+            return TrailhoundRoadVehicleMarkPlacement(size: size, centerY: centerY)
+        case .opaquePhoto:
+            // Sit on the road (above the asphalt), full plate size.
+            let centerY = roadTop - size * 0.5 + opaqueRoadOverlap + bounce
+            return TrailhoundRoadVehicleMarkPlacement(size: size, centerY: centerY)
+        }
+    }
+
+    /// Classify without pixel scan when `isCutout` is already known (cached off the animation clock).
+    static func kind(hasPhoto: Bool, isCutout: Bool) -> TrailhoundRoadVehicleMarkKind {
+        guard hasPhoto else { return .symbol }
+        return isCutout ? .cutoutPhoto : .opaquePhoto
+    }
+}
+
 /// Recording card = white car on dark road over brand glass.
 /// Atmosphere = no road slab; brand car + flowing lane dashes on the shell (light/dark).
 enum TrailhoundRoadScenePalette: Equatable {
@@ -159,6 +238,8 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
     var systemImage: String? = nil
     /// Pre-decoded vehicle thumb (app injects; no I/O on the animation clock).
     var vehiclePhoto: UIImage? = nil
+    /// Resolved off the animation clock (cached). Default `.symbol` when no photo.
+    var vehicleMarkKind: TrailhoundRoadVehicleMarkKind = .symbol
     /// Symbol horizontal scale so the vehicle faces right (`-1` for left-facing SF side cars).
     var symbolScaleX: CGFloat = -1
     var allowsVerticalBounce: Bool = true
@@ -175,24 +256,32 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
         GeometryReader { geo in
             let width = geo.size.width
             let height = geo.size.height
-            let carSize = metrics.carSize
+            let symbolSize = metrics.carSize
             let roadHeight = laneBandHeight
             let settledX = width * metrics.settledXFraction
-            let startX = -carSize * 0.8
+            let startX = -symbolSize * 0.8
             let eased = TrailhoundRoadSceneMetrics.easeOutCubic(min(1, max(0, driveInProgress)))
             let carCenterX = startX + (settledX - startX) * eased
             let roadTop = height - roadHeight
-            let carY = roadTop - carSize * 0.35
             let bounce: CGFloat = {
                 guard allowsVerticalBounce, !isPaused else { return 0 }
                 return sin(time * 8) * 1.2
             }()
-            let carCenter = CGPoint(x: carCenterX, y: carY + bounce)
+            let markKind = vehiclePhoto == nil ? TrailhoundRoadVehicleMarkKind.symbol : vehicleMarkKind
+            let placement = TrailhoundRoadVehicleMarkLayout.placement(
+                kind: markKind,
+                metrics: metrics,
+                roadTop: roadTop,
+                bounce: bounce
+            )
+            let carCenter = CGPoint(x: carCenterX, y: placement.centerY)
             let carOpacity = Double(0.35 + 0.65 * eased)
+            // Overlay chrome (service badge, etc.) scales from symbol size — never cutout
+            // photoSize (~3×), which would make badges overflow the road scene.
             let layout = TrailhoundRoadSceneLayout(
                 size: geo.size,
                 carCenter: carCenter,
-                carSize: carSize,
+                carSize: symbolSize,
                 roadHeight: roadHeight,
                 driveEased: eased,
                 isPaused: isPaused
@@ -206,21 +295,21 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                     width: width,
                     roadHeight: roadHeight,
                     carCenterX: carCenterX,
-                    carSize: carSize
+                    carSize: placement.size
                 )
                 exhaustSmoke(
-                    originX: carCenterX - carSize * 0.48,
-                    originY: carY + carSize * 0.08,
+                    originX: carCenterX - placement.size * 0.48,
+                    originY: placement.centerY + placement.size * 0.08,
                     strength: eased
                 )
-                carIcon(center: carCenter, size: carSize, opacity: carOpacity)
+                carIcon(center: carCenter, markSize: placement.size, opacity: carOpacity)
 
                 if showsPauseBadge, isPaused {
                     Image(systemName: "pause.circle.fill")
-                        .font(.system(size: carSize * 0.65, weight: .semibold))
+                        .font(.system(size: symbolSize * 0.65, weight: .semibold))
                         .foregroundStyle(.yellow.opacity(0.95))
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                        .position(x: carCenterX, y: carY)
+                        .position(x: carCenterX, y: placement.centerY)
                 }
 
                 overlay(layout)
@@ -327,7 +416,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
         }
     }
 
-    private func carIcon(center: CGPoint, size: CGFloat, opacity: Double) -> some View {
+    private func carIcon(center: CGPoint, markSize: CGFloat, opacity: Double) -> some View {
         let carColor: Color = {
             switch palette {
             case .recording:
@@ -341,22 +430,18 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
             ? TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.35 : 0.2)
             : Color.black.opacity(0.25)
         let shadowRadius: CGFloat = palette == .atmosphere ? 8 : 3
-        // Photos read smaller than SF Symbols at the same point size — bump them up, no chrome.
-        // Cap slightly above scene height so thumbs can grow (~+30%) without clipping to a tiny plate.
-        let photoSize = min(size * 3.0, metrics.sceneHeight * 1.18)
-        let markSize = vehiclePhoto == nil ? size : photoSize
 
         return Group {
             if let vehiclePhoto {
                 Image(uiImage: vehiclePhoto)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: photoSize, height: photoSize)
+                    .frame(width: markSize, height: markSize)
                     .opacity(isPaused ? 0.75 : 1)
                     .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
             } else {
                 Image(systemName: systemImage ?? "car.side.fill")
-                    .font(.system(size: size, weight: .semibold))
+                    .font(.system(size: metrics.carSize, weight: .semibold))
                     .foregroundStyle(carColor)
                     .symbolRenderingMode(palette == .atmosphere ? .hierarchical : .monochrome)
                     // Face right — symbols only; never mirror a photo.
@@ -424,6 +509,7 @@ extension TrailhoundRoadDrivingScene where Overlay == EmptyView {
         showsPauseBadge: Bool = false,
         systemImage: String? = nil,
         vehiclePhoto: UIImage? = nil,
+        vehicleMarkKind: TrailhoundRoadVehicleMarkKind = .symbol,
         symbolScaleX: CGFloat = -1,
         allowsVerticalBounce: Bool = true
     ) {
@@ -435,6 +521,7 @@ extension TrailhoundRoadDrivingScene where Overlay == EmptyView {
         self.showsPauseBadge = showsPauseBadge
         self.systemImage = systemImage
         self.vehiclePhoto = vehiclePhoto
+        self.vehicleMarkKind = vehicleMarkKind
         self.symbolScaleX = symbolScaleX
         self.allowsVerticalBounce = allowsVerticalBounce
         self.overlay = { _ in EmptyView() }
@@ -456,12 +543,24 @@ private struct RoadSceneDriver<CarOverlay: View>: View {
     @ViewBuilder var carOverlay: (TrailhoundRoadSceneLayout) -> CarOverlay
 
     @State private var frozenRoadTime: TimeInterval = Date.timeIntervalSinceReferenceDate
+    /// Default cutout so the first frame matches historical large-photo layout until classify finishes.
+    @State private var cachedMarkKind: TrailhoundRoadVehicleMarkKind = .cutoutPhoto
 
     private var sceneTime: TimeInterval {
         if shouldAnimate, let liveTime {
             return liveTime
         }
         return frozenRoadTime
+    }
+
+    private var markIdentity: ObjectIdentifier? {
+        vehiclePhoto.map { ObjectIdentifier($0) }
+    }
+
+    private var resolvedMarkKind: TrailhoundRoadVehicleMarkKind {
+        guard vehiclePhoto != nil else { return .symbol }
+        // `.symbol` in cache only appears between photo clear and re-classify; keep cutout optimistic.
+        return cachedMarkKind == .opaquePhoto ? .opaquePhoto : .cutoutPhoto
     }
 
     var body: some View {
@@ -473,11 +572,15 @@ private struct RoadSceneDriver<CarOverlay: View>: View {
             showsPauseBadge: showsPauseBadge,
             systemImage: systemImage,
             vehiclePhoto: vehiclePhoto,
+            vehicleMarkKind: resolvedMarkKind,
             symbolScaleX: symbolScaleX,
             allowsVerticalBounce: allowsVerticalBounce,
             overlay: carOverlay
         )
-        .frame(height: metrics.sceneHeight)
+        .frame(height: TrailhoundRoadVehicleMarkLayout.sceneFrameHeight(for: metrics))
+        .task(id: markIdentity) {
+            await classifyVehicleMark()
+        }
         .onAppear {
             if let liveTime {
                 frozenRoadTime = liveTime
@@ -493,5 +596,20 @@ private struct RoadSceneDriver<CarOverlay: View>: View {
                 frozenRoadTime = newTime
             }
         }
+    }
+
+    @MainActor
+    private func classifyVehicleMark() async {
+        guard let vehiclePhoto else {
+            cachedMarkKind = .symbol
+            return
+        }
+        // Optimistic cutout preserves historical large-photo layout until the scan finishes.
+        cachedMarkKind = .cutoutPhoto
+        let photo = vehiclePhoto
+        let isCutout = await Task.detached(priority: .utility) {
+            VehiclePhotoStore.isRoadCutoutMark(photo)
+        }.value
+        cachedMarkKind = isCutout ? .cutoutPhoto : .opaquePhoto
     }
 }

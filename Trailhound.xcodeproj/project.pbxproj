@@ -15,6 +15,7 @@
 		D46150AB794F43019F5AFB9F /* VehicleEditorDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FFC65F31BB34BC699B8F9AF /* VehicleEditorDraftTests.swift */; };
 		4CAC12E8350A44B7AC98958E /* VehiclePairingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EFB565543694FF7A152FF68 /* VehiclePairingServiceTests.swift */; };
 		9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF11406D5006463CBFA0BE27 /* RecordingAccessibilityTests.swift */; };
+		A1ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift */; };
 		BE3AFC9E07BB40388852765D /* RecordingAndTripStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE48011480424265BF06DB8A /* RecordingAndTripStoreTests.swift */; };
 		129AB149E7A744238CEDB118 /* RecordingDisplaySamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127F1AFD073D45CEB1B0DF12 /* RecordingDisplaySamplerTests.swift */; };
 		4822CA45D0DC47BF992E1511 /* RecordingMovementPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5ADC295672F49449069473E /* RecordingMovementPolicyTests.swift */; };
@@ -275,6 +276,7 @@
 		7FFC65F31BB34BC699B8F9AF /* VehicleEditorDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehicleEditorDraftTests.swift; sourceTree = SOURCE_ROOT; };
 		7EFB565543694FF7A152FF68 /* VehiclePairingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePairingServiceTests.swift; sourceTree = SOURCE_ROOT; };
 		CF11406D5006463CBFA0BE27 /* RecordingAccessibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingAccessibilityTests.swift; sourceTree = SOURCE_ROOT; };
+		A2ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RoadVehicleMarkLayoutTests.swift; sourceTree = SOURCE_ROOT; };
 		CE48011480424265BF06DB8A /* RecordingAndTripStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingAndTripStoreTests.swift; sourceTree = SOURCE_ROOT; };
 		127F1AFD073D45CEB1B0DF12 /* RecordingDisplaySamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingDisplaySamplerTests.swift; sourceTree = SOURCE_ROOT; };
 		D5ADC295672F49449069473E /* RecordingMovementPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/RecordingMovementPolicyTests.swift; sourceTree = SOURCE_ROOT; };
@@ -849,6 +851,7 @@
 				A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */,
 				7EFB565543694FF7A152FF68 /* VehiclePairingServiceTests.swift */,
 				CF11406D5006463CBFA0BE27 /* RecordingAccessibilityTests.swift */,
+				A2ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift */,
 				CE48011480424265BF06DB8A /* RecordingAndTripStoreTests.swift */,
 				127F1AFD073D45CEB1B0DF12 /* RecordingDisplaySamplerTests.swift */,
 				D5ADC295672F49449069473E /* RecordingMovementPolicyTests.swift */,
@@ -1047,6 +1050,7 @@
 				A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */,
 				A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */,
 				9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */,
+				A1ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift in Sources */,
 				BE3AFC9E07BB40388852765D /* RecordingAndTripStoreTests.swift in Sources */,
 				129AB149E7A744238CEDB118 /* RecordingDisplaySamplerTests.swift in Sources */,
 				4822CA45D0DC47BF992E1511 /* RecordingMovementPolicyTests.swift in Sources */,

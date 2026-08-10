@@ -315,6 +315,13 @@ final class VehiclePhotoStore {
         opaquePixelCoverage(image) < 0.02
     }
 
+    /// Road scene: cutout PNGs keep the large sit-on-road layout; full plates use the smaller sticker layout.
+    /// Call once when the thumb changes — never inside TimelineView ticks.
+    nonisolated static func isRoadCutoutMark(_ image: UIImage) -> Bool {
+        imageHasAlpha(image)
+            && opaquePixelCoverage(image) < TrailhoundRoadVehicleMarkLayout.cutoutMaxOpaqueCoverage
+    }
+
     /// Road / Live Activity mark: punch the light plate, but never hand back an unusable image.
     /// A light-coloured vehicle can be eaten by the punch — then the original photo is better
     /// than an empty frame (rule: photo when there is a photo, symbol only when there is none).
