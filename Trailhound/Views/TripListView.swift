@@ -486,7 +486,7 @@ struct TripListView: View {
                     .accessibilityLabel(L10n.string("trips.active_recording.show"))
                     .accessibilityIdentifier("trips.active_recording.nav")
                 } else if !recordingService.state.isActiveSession {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 4) {
                         if !vehicles.isEmpty {
                             RecordingVehiclePicker(
                                 vehicles: vehicles,
@@ -505,12 +505,10 @@ struct TripListView: View {
                                 coldOpenTripID = nil
                             }
                         } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "record.circle")
-                            Text(L10n.string("action.start"))
+                            TrailhoundRunningHoundIcon(reduceMotion: reduceMotion)
                         }
-                    }
-                    .transition(.opacity)
+                        .accessibilityLabel(L10n.string("action.start"))
+                        .transition(.opacity)
                     }
                 }
             }

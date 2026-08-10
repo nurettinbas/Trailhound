@@ -128,6 +128,7 @@
 		A1ONBOARDING00000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ONBOARDING00000000001 /* OnboardingView.swift */; };
 		A1ONBOARDHERO00000001 /* OnboardingHeroScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */; };
 		A1BRANDMARK0000000001 /* TrailhoundBrandMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */; };
+		A1RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */; };
 		A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERMBANNER00000000001 /* PermissionBanner.swift */; };
 		B10000000000000000000003 /* RecordingCarAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* RecordingCarAnimationView.swift */; };
 		B1LIVEBREADCRUMB00000001 /* LiveBreadcrumbCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */; };
@@ -389,6 +390,7 @@
 		A2ONBOARDING00000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingHeroScene.swift; sourceTree = "<group>"; };
 		A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundBrandMark.swift; sourceTree = "<group>"; };
+		A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundRunningHoundIcon.swift; sourceTree = "<group>"; };
 		A2PERMBANNER00000000001 /* PermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionBanner.swift; sourceTree = "<group>"; };
 		B20000000000000000000003 /* RecordingCarAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCarAnimationView.swift; sourceTree = "<group>"; };
 		A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBreadcrumbCanvas.swift; sourceTree = "<group>"; };
@@ -719,6 +721,7 @@
 				A2ONBOARDING00000000001 /* OnboardingView.swift */,
 				A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */,
 				A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */,
+				A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */,
 				A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */,
 				A2DEVLOGVIEW000000001 /* DevLogView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
@@ -1103,6 +1106,7 @@
 				A1ONBOARDING00000000001 /* OnboardingView.swift in Sources */,
 				A1ONBOARDHERO00000001 /* OnboardingHeroScene.swift in Sources */,
 				A1BRANDMARK0000000001 /* TrailhoundBrandMark.swift in Sources */,
+				A1RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift in Sources */,
 				A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */,
 				A10000000000000000000017 /* SettingsView.swift in Sources */,
 				A10000000000000000000018 /* DistanceCalculator.swift in Sources */,
