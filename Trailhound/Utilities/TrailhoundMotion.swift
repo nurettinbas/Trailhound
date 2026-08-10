@@ -283,22 +283,22 @@ private struct PhotoEntranceGlintModifier: ViewModifier {
     }
 }
 
-/// Sparse periodic diagonal glint for list avatars — overlay removed between sweeps.
+/// One-shot diagonal glint for list avatars — overlay removed after the sweep.
 private struct PhotoIdleShineModifier: ViewModifier {
     let cornerRadius: CGFloat
     let shineID: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: CGFloat = 0
-    @State private var isSweeping = false
+    @State private var finished = false
+    @State private var playedID: String?
 
     private let sweepDuration: TimeInterval = 0.75
-    private let idleDuration: TimeInterval = 4.5
 
     func body(content: Content) -> some View {
         content
             .overlay {
-                if !reduceMotion, isSweeping {
+                if !reduceMotion, !finished {
                     GeometryReader { geometry in
                         LinearGradient(
                             colors: [
@@ -318,38 +318,31 @@ private struct PhotoIdleShineModifier: ViewModifier {
                     .allowsHitTesting(false)
                 }
             }
-            .task(id: loopIdentity) {
-                isSweeping = false
+            .task(id: shineID) {
+                guard !reduceMotion else {
+                    finished = true
+                    return
+                }
+                guard playedID != shineID else { return }
+                playedID = shineID
+                finished = false
                 phase = 0
-                guard !reduceMotion else { return }
 
                 var hasher = Hasher()
                 hasher.combine(shineID)
-                let staggerMs = abs(hasher.finalize()) % 1200
+                let staggerMs = abs(hasher.finalize()) % 400
                 try? await Task.sleep(for: .milliseconds(staggerMs))
                 guard !Task.isCancelled else { return }
 
-                while !Task.isCancelled {
-                    phase = 0
-                    isSweeping = true
-                    withAnimation(.easeOut(duration: sweepDuration)) {
-                        phase = 1
-                    }
-                    try? await Task.sleep(for: .milliseconds(Int(sweepDuration * 1000) + 40))
-                    guard !Task.isCancelled else { break }
-
-                    isSweeping = false
-                    phase = 0
-                    try? await Task.sleep(for: .milliseconds(Int(idleDuration * 1000)))
+                withAnimation(.easeOut(duration: sweepDuration)) {
+                    phase = 1
                 }
+                try? await Task.sleep(for: .milliseconds(Int(sweepDuration * 1000) + 40))
+                guard !Task.isCancelled else { return }
 
-                isSweeping = false
+                finished = true
                 phase = 0
             }
-    }
-
-    private var loopIdentity: String {
-        "\(shineID)-\(reduceMotion)"
     }
 }
 
@@ -428,7 +421,7 @@ extension View {
         )
     }
 
-    /// Sparse periodic photo shine for list cells; overlay is removed between sweeps.
+    /// One-shot photo shine for list cells; overlay is removed after the sweep.
     func photoIdleShine(cornerRadius: CGFloat, id: String) -> some View {
         modifier(PhotoIdleShineModifier(cornerRadius: cornerRadius, shineID: id))
     }

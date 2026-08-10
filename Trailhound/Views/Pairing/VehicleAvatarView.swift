@@ -20,7 +20,7 @@ struct VehicleAvatarView: View {
     /// Keeps wide side-profile glyphs inside `size`; without it they bleed over neighbouring
     /// labels in tight rows (font-sized symbols only constrain height, not width).
     var symbolFitsFrame: Bool = false
-    /// Sparse periodic shine when a real photo is shown (list rows).
+    /// One-shot shine when a real photo first appears (list rows).
     var showsPhotoShine: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
