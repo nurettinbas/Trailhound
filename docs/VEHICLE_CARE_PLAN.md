@@ -36,9 +36,14 @@ Eski raw (`insurance`, `tax`, `parking`, `parts`) okumada map edilir; schema bum
 
 ## Bildirimler
 
-- Bakım / muayene: 30 / 7 / 1 gün kala  
-- Sigorta / kasko: 7 / 1 gün kala  
-- Overdue: in-app banner (kırmızı); push spam yok  
+Premium merdiven (her aşama en fazla bir kez; spam yok):
+
+- Bakım / muayene / özel: 30 gün kala → 1 hafta kala → vade günü → vade ertesi sabah (overdue, tek)
+- Sigorta / kasko: 1 hafta kala → vade günü → overdue (tek)
+- OS push + uygulama içi inbox; tıklanınca ilgili araç bakım ekranı
+- Overdue catch-up: uygulama açılışında vade çoktan geçmişse tek bildirim (UserDefaults ile tekrarlanmaz)
+- In-app banner (kırmızı) ayrıca acil vadeleri gösterir  
+
 
 ---
 

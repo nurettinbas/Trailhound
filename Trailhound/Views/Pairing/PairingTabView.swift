@@ -133,10 +133,15 @@ struct PairingTabView: View {
     }
 
     private func vehicleRow(_ vehicle: VehicleProfile) -> some View {
-        PairingCardContainer {
+        let urgent = urgentCareItem(for: vehicle)
+        return PairingCardContainer {
             PairingVehicleRow(
                 vehicle: vehicle,
-                subtitle: vehicleSubtitle(vehicle),
+                subtitle: fuelSubtitle(vehicle),
+                careTitle: urgent?.title,
+                careSystemImage: urgent?.kind.systemImage,
+                dueState: urgent?.state,
+                scheduleID: urgent?.scheduleID,
                 onOpen: { openDetail(for: vehicle.id) }
             )
             .padding(12)
@@ -146,11 +151,12 @@ struct PairingTabView: View {
         .listRowSeparator(.hidden)
     }
 
-    private func vehicleSubtitle(_ vehicle: VehicleProfile) -> String {
+    private func urgentCareItem(for vehicle: VehicleProfile) -> VehicleDueItem? {
         let vehicleSchedules = schedules.filter { $0.vehicle?.id == vehicle.id && $0.isEnabled }
-        if let urgent = VehicleCareDueCalculator.dueItems(from: vehicleSchedules, urgentOnly: true).first {
-            return VehicleCareDueCalculator.subtitle(for: urgent.state, title: urgent.title)
-        }
+        return VehicleCareDueCalculator.dueItems(from: vehicleSchedules, urgentOnly: true).first
+    }
+
+    private func fuelSubtitle(_ vehicle: VehicleProfile) -> String {
         let consumption = String(format: "%.1f %@", vehicle.consumption, vehicle.consumptionLabel)
         return [vehicle.fuelType.displayName, consumption].joined(separator: " · ")
     }

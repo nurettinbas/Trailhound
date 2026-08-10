@@ -12831,19 +12831,70 @@
         }
       }
     },
-    "vehicles.care.notification.body" : {
+    "vehicles.care.notification.body.early" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ in %d day(s)"
+            "value" : "%@: %@ — 30 days left"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@ — %d gün kaldı"
+            "value" : "%@: %@ — 30 gün kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.notification.body.week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — 1 week left"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — 1 hafta kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.notification.body.due_day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ is due today"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — bugün vadesi doluyor"
+          }
+        }
+      }
+    },
+    "vehicles.care.notification.body.overdue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ is overdue"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — vadesi geçti"
           }
         }
       }

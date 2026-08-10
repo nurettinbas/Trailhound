@@ -37,7 +37,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        if !isAlreadyRecordedInInbox(notification.request.content.userInfo) {
+        let userInfo = notification.request.content.userInfo
+        VehicleCareNotificationScheduler.markOverdueDeliveredIfNeeded(from: userInfo)
+        if !isAlreadyRecordedInInbox(userInfo) {
             let title = notification.request.content.title
             let body = notification.request.content.body
             let identifier = notification.request.identifier
@@ -56,6 +58,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+        VehicleCareNotificationScheduler.markOverdueDeliveredIfNeeded(from: userInfo)
         if !isAlreadyRecordedInInbox(userInfo) {
             let title = response.notification.request.content.title
             let body = response.notification.request.content.body

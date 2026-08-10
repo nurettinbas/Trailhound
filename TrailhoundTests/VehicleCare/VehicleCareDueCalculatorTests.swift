@@ -69,15 +69,26 @@ final class VehicleCareDueCalculatorTests: XCTestCase {
     }
 
     func testDefaultReminderOffsets() {
-        XCTAssertEqual(VehicleScheduleKind.service.defaultReminderOffsets, [30, 7, 1])
-        XCTAssertEqual(VehicleScheduleKind.inspection.defaultReminderOffsets, [30, 7, 1])
-        XCTAssertEqual(VehicleScheduleKind.trafficInsurance.defaultReminderOffsets, [7, 1])
-        XCTAssertEqual(VehicleScheduleKind.casco.defaultReminderOffsets, [7, 1])
+        XCTAssertEqual(VehicleScheduleKind.service.defaultReminderOffsets, [30, 7])
+        XCTAssertEqual(VehicleScheduleKind.inspection.defaultReminderOffsets, [30, 7])
+        XCTAssertEqual(VehicleScheduleKind.trafficInsurance.defaultReminderOffsets, [7])
+        XCTAssertEqual(VehicleScheduleKind.casco.defaultReminderOffsets, [7])
+    }
+
+    func testUrgencyBandMapping() {
+        XCTAssertEqual(VehicleCareUrgencyStyle.band(for: .overdue(days: 2)), .alert)
+        XCTAssertEqual(VehicleCareUrgencyStyle.band(for: .dueToday), .warning)
+        XCTAssertEqual(VehicleCareUrgencyStyle.band(for: .upcoming(daysLeft: 30)), .warning)
+        XCTAssertEqual(VehicleCareUrgencyStyle.band(for: .upcoming(daysLeft: 7)), .warning)
+        XCTAssertNil(VehicleCareUrgencyStyle.band(for: .upcoming(daysLeft: 31)))
+        XCTAssertNil(VehicleCareUrgencyStyle.band(for: .noDate))
+        XCTAssertNil(VehicleCareUrgencyStyle.chipText(for: .upcoming(daysLeft: 45)))
+        XCTAssertNotNil(VehicleCareUrgencyStyle.chipText(for: .upcoming(daysLeft: 5)))
     }
 
     func testEncodeDecodeOffsets() {
-        let raw = VehicleSchedule.encodeOffsets([1, 30, 7])
-        XCTAssertEqual(raw, "30,7,1")
-        XCTAssertEqual(VehicleSchedule.decodeOffsets(raw), [30, 7, 1])
+        let raw = VehicleSchedule.encodeOffsets([30, 7])
+        XCTAssertEqual(raw, "30,7")
+        XCTAssertEqual(VehicleSchedule.decodeOffsets(raw), [30, 7])
     }
 }

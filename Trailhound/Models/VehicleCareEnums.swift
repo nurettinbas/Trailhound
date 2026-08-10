@@ -19,13 +19,24 @@ enum VehicleScheduleKind: String, Codable, CaseIterable, Sendable {
 
     var defaultTitle: String { L10n.string(defaultTitleKey) }
 
-    /// Push reminder offsets in days before due date.
+    /// Positive day-before offsets stored on `VehicleSchedule` (legacy / editor sync).
+    /// Actual push stages come from `reminderStages`.
     var defaultReminderOffsets: [Int] {
         switch self {
         case .service, .inspection, .custom:
-            return [30, 7, 1]
+            return [30, 7]
         case .trafficInsurance, .casco:
-            return [7, 1]
+            return [7]
+        }
+    }
+
+    /// Premium push ladder: early / week / due day / single overdue.
+    var reminderStages: [CareReminderStage] {
+        switch self {
+        case .service, .inspection, .custom:
+            return [.early, .week, .dueDay, .overdue]
+        case .trafficInsurance, .casco:
+            return [.week, .dueDay, .overdue]
         }
     }
 

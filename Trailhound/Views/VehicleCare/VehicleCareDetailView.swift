@@ -225,46 +225,8 @@ struct VehicleDetailView: View {
 
     /// Matches Araçlar → vehicle card: glass card, leading icon tile, title, due date trailing.
     private func trackingCardRow(_ schedule: VehicleSchedule) -> some View {
-        let state = VehicleCareDueCalculator.dueState(nextDueDate: schedule.nextDueDate)
-        let subtitle = VehicleCareDueCalculator.shortSubtitle(for: state)
-            ?? L10n.string("vehicles.care.due.none")
-
-        return PairingCardContainer {
-            Button {
-                editingScheduleID = schedule.id
-            } label: {
-                HStack(alignment: .center, spacing: 10) {
-                    Image(systemName: schedule.kind.systemImage)
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(TrailhoundBrandColors.brandBottom)
-                        )
-
-                    Text(schedule.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Spacer(minLength: 8)
-
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(state.isOverdue ? Color.red : Color.secondary)
-                        .lineLimit(1)
-                        .multilineTextAlignment(.trailing)
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
-            .buttonStyle(.plain)
+        CareTrackingCardRow(schedule: schedule) {
+            editingScheduleID = schedule.id
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
@@ -354,6 +316,81 @@ struct VehicleDetailView: View {
         modelContext.delete(expense)
         try? modelContext.save()
         ToastPresenter.shared.show(.deleted)
+    }
+}
+
+/// Reminder row with urgency-tinted icon tile + due chip.
+private struct CareTrackingCardRow: View {
+    let schedule: VehicleSchedule
+    let onEdit: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var playChipEntrance = false
+
+    private var state: VehicleCareDueState {
+        VehicleCareDueCalculator.dueState(nextDueDate: schedule.nextDueDate)
+    }
+
+    private var band: VehicleCareUrgencyBand? {
+        VehicleCareUrgencyStyle.band(for: state)
+    }
+
+    private var plainSubtitle: String {
+        VehicleCareDueCalculator.shortSubtitle(for: state)
+            ?? L10n.string("vehicles.care.due.none")
+    }
+
+    var body: some View {
+        PairingCardContainer {
+            Button(action: onEdit) {
+                HStack(alignment: .center, spacing: 10) {
+                    VehicleCareUrgencyIconTile(
+                        systemImage: schedule.kind.systemImage,
+                        scheduleID: schedule.id,
+                        band: band
+                    )
+
+                    Text(schedule.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 8)
+
+                    if let band, let chipText = VehicleCareUrgencyStyle.chipText(for: state) {
+                        VehicleCareDueChip(
+                            text: chipText,
+                            band: band,
+                            playEntrance: playChipEntrance
+                        )
+                    } else {
+                        Text(plainSubtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+        }
+        .onAppear(perform: consumeChipEntranceIfNeeded)
+    }
+
+    private func consumeChipEntranceIfNeeded() {
+        guard let band, !reduceMotion else { return }
+        playChipEntrance = VehicleCareUrgencyEntranceStore.consume(
+            role: .chip,
+            scheduleID: schedule.id,
+            band: band
+        )
     }
 }
 

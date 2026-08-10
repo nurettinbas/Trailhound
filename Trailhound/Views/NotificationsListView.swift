@@ -209,7 +209,7 @@ struct NotificationsListView: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: kind.systemImage)
                 .font(.body)
-                .foregroundStyle(tint(for: kind))
+                .foregroundStyle(tint(for: kind, body: item.body))
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -238,7 +238,7 @@ struct NotificationsListView: View {
         }
     }
 
-    private func tint(for kind: AppNotificationKind) -> Color {
+    private func tint(for kind: AppNotificationKind, body: String = "") -> Color {
         switch kind {
         case .tripStarted: .green
         case .tripEnded: .blue
@@ -247,8 +247,14 @@ struct NotificationsListView: View {
         case .orphanStale: .orange
         case .recordingStopped: .red
         case .pairingSuggestion: .blue
-        case .vehicleCareReminder: .orange
+        case .vehicleCareReminder:
+            isVehicleCareOverdue(body) ? .red : .orange
         }
+    }
+
+    private func isVehicleCareOverdue(_ body: String) -> Bool {
+        let lower = body.lowercased()
+        return lower.contains("overdue") || lower.contains("vadesi geçti")
     }
 
     private func relativeDate(_ date: Date) -> String {
