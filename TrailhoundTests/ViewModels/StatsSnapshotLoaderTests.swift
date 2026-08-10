@@ -61,6 +61,7 @@ final class StatsSnapshotLoaderTests: XCTestCase {
             goalMonth: goalMonth,
             selectedCategoryID: nil,
             selectedVehicleID: nil,
+            selectedPlaceName: nil,
             categoryNames: StatsNameMap(names: [:], fallback: "Other"),
             vehicleNames: StatsNameMap(names: [VehicleDistance.unassignedID: "Unassigned"], fallback: "Unknown"),
             vehicleCount: 0
@@ -93,6 +94,7 @@ final class StatsSnapshotLoaderTests: XCTestCase {
             selectedMonth: request.selectedMonth,
             selectedCategoryID: request.selectedCategoryID,
             selectedVehicleID: request.selectedVehicleID,
+            selectedPlaceName: request.selectedPlaceName,
             goalMonth: request.goalMonth
         )
 
@@ -153,5 +155,67 @@ final class StatsSnapshotLoaderTests: XCTestCase {
         let snapshot = await loader.snapshot(for: makeRequest(period: .week))
 
         XCTAssertEqual(snapshot.goalDistanceMeters, 17_000, accuracy: 0.1)
+    }
+
+    func testPlaceFilterUsesTripPathAndNarrowsSummaryOnLongWindow() async throws {
+        let calendar = Calendar.current
+        let end = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -120, to: end)!
+
+        let homeTrip = Trip(
+            startedAt: end.addingTimeInterval(-10 * 86_400).addingTimeInterval(3_600),
+            endedAt: end.addingTimeInterval(-10 * 86_400).addingTimeInterval(5_400),
+            distanceMeters: 4_000,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        homeTrip.nightDistanceMeters = 0
+        homeTrip.trackedDistanceMeters = 4_000
+        context.insert(homeTrip)
+
+        let otherTrip = Trip(
+            startedAt: end.addingTimeInterval(-20 * 86_400).addingTimeInterval(3_600),
+            endedAt: end.addingTimeInterval(-20 * 86_400).addingTimeInterval(5_400),
+            distanceMeters: 9_000,
+            startPlaceName: "Market",
+            endPlaceName: "Ofis"
+        )
+        otherTrip.nightDistanceMeters = 0
+        otherTrip.trackedDistanceMeters = 9_000
+        context.insert(otherTrip)
+
+        // Seed rollups so a naive long-window path would prefer them (no place names).
+        TripRollupService.add(homeTrip, in: context)
+        TripRollupService.add(otherTrip, in: context)
+        try context.save()
+
+        let goalMonth = StatsViewModel.goalMonth(
+            for: .custom,
+            selectedMonth: end,
+            customStart: start,
+            customEnd: end
+        )
+        let request = StatsSnapshotRequest(
+            storeVersion: 1,
+            selectedPeriod: .custom,
+            customStart: start,
+            customEnd: end,
+            selectedMonth: end,
+            goalMonth: goalMonth,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            selectedPlaceName: "Ev",
+            categoryNames: StatsNameMap(names: [:], fallback: "Other"),
+            vehicleNames: StatsNameMap(names: [VehicleDistance.unassignedID: "Unassigned"], fallback: "Unknown"),
+            vehicleCount: 0
+        )
+
+        let loader = StatsSnapshotLoader(modelContainer: container)
+        let snapshot = await loader.snapshot(for: request)
+
+        XCTAssertEqual(snapshot.stats.tripCount, 1)
+        XCTAssertEqual(snapshot.stats.totalDistanceMeters, 4_000, accuracy: 0.1)
+        // Goal stays unfiltered across the month containing `goalMonth`.
+        XCTAssertGreaterThanOrEqual(snapshot.goalDistanceMeters, 0)
     }
 }

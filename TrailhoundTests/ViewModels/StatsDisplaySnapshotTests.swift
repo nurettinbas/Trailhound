@@ -138,6 +138,54 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         XCTAssertLessThanOrEqual(weekSnapshot.stats.totalDistanceMeters, 25_000)
     }
 
+    func testPlaceFilterNarrowsSummaryAndDailyChartsButNotGoal() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let interval = DateInterval(start: yesterday, end: Date())
+        let goalMonth = StatsViewModel.goalMonth(
+            for: .custom,
+            selectedMonth: today,
+            customStart: interval.start,
+            customEnd: interval.end
+        )
+
+        let homeTrip = Trip(
+            startedAt: today.addingTimeInterval(3_600),
+            endedAt: today.addingTimeInterval(7_200),
+            distanceMeters: 4_000,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        let otherTrip = Trip(
+            startedAt: yesterday.addingTimeInterval(3_600),
+            endedAt: yesterday.addingTimeInterval(7_200),
+            distanceMeters: 2_500,
+            startPlaceName: "Market",
+            endPlaceName: "Ofis"
+        )
+
+        let snapshot = StatsDisplaySnapshotBuilder.build(
+            completedTrips: [homeTrip, otherTrip],
+            categories: [],
+            vehicles: [],
+            selectedPeriod: .custom,
+            customStart: interval.start,
+            customEnd: interval.end,
+            selectedMonth: today,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            selectedPlaceName: "Ev",
+            goalMonth: goalMonth
+        )
+
+        XCTAssertEqual(snapshot.stats.tripCount, 1)
+        XCTAssertEqual(snapshot.stats.totalDistanceMeters, 4_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.dailyDistance.reduce(0) { $0 + $1.distanceMeters }, 4_000, accuracy: 0.1)
+        // Goal ring ignores place filter.
+        XCTAssertEqual(snapshot.goalDistanceMeters, 6_500, accuracy: 0.1)
+    }
+
     func testGoalMonthResolver() {
         let calendar = Calendar.current
         let now = Date()

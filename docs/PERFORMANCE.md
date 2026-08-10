@@ -144,10 +144,13 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `pageLimit + 1` rows so it can tell whether another page exists without a second count query.
   `ModelContext.didSave` stands in for the change tracking `@Query` would have provided, via the
   `onStoreSave` modifier — see "Reacting to saves" below.
-- What the store can answer exactly — completed-only, category, a date lower bound, and
-  `searchIndex` matching — lives in the `#Predicate`. What it cannot — exact date-section
-  boundaries, which move with the wall clock, plus the legacy search scan for trips still awaiting
-  a `searchIndex` — is refined in memory over the fetched page.
+- What the store can answer exactly — completed-only, category, a date lower bound,
+  favorite-place name (start or end), and `searchIndex` matching — lives in the `#Predicate`.
+  Place + full search + category in one macro overloads the type checker, so place-active
+  predicates keep place/vehicle/category/date in SQLite and re-apply search in memory over the
+  page. What the store still cannot answer exactly — date-section boundaries that move with the
+  wall clock, plus the legacy search scan for trips still awaiting a `searchIndex` — is also
+  refined in memory.
 - The list previously filtered entirely in memory to avoid `#Predicate` on `@Model` key paths, which
   warned under `SWIFT_STRICT_CONCURRENCY = complete` ("KeyPath<Trip, …> does not conform to
   Sendable"). That is a Swift 5 language-mode gap rather than a SwiftData limitation: key path
@@ -189,6 +192,9 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `@MainActor`, so that task would inherit the main actor and still block the UI.
 - Filter changes are debounced (~120 ms) after the first load, and the loader keeps an 8-entry
   request cache cleared whenever `storeVersion` bumps, so week ↔ month ↔ back is instant.
+- Category, vehicle, and favorite-place filters scope **summary and chart series** together.
+  The monthly goal ring stays unfiltered. Place filter forces the trip fetch path (daily rollups
+  have no place dimension); without a place filter the 92-day rollup path is unchanged.
 - **Pager charts mount lazily per slide.** `StatsDeferredChart` / `StatsDeferredContent` take an
   `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
   build all five Swift Charts when the section first appears — only the visible page (after the row

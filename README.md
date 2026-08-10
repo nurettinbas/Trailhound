@@ -34,6 +34,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Trip stops (dwell detection), route thumbnails
 - Swift Charts stats, trends, monthly goals
 - Frequent routes, category filters, trip merge/split
+- **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
 - **Reminders** — inspection, insurance, comprehensive cover, service due dates with local push (30/7/1 days for service; 7/1 for insurance)
@@ -194,6 +195,7 @@ Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik od
 - Siri: *Yolculuğu başlat*, *duraklat*, *sürdür*, *bitir*
 - Widget ve Live Activity
 - İş/kişisel kategori, yakıt/EV maliyet tahmini
+- **Favori yer filtresi** — Yolculuklar ve İstatistik’te (başlangıç veya bitiş eşleşmesi); özet ve grafikler sekme başına bağımsız filtreyle daralır
 - **Araç avatar fotoğrafı**: Galeri veya Kamera seçimi → uygulama içi ~%70 overlay → kadraj; kayıt / Live Activity’de görünür
 - **Araç bakım & hatırlatmalar** — vize, sigorta, kasko, bakım vadeleri + yerel bildirim
 - **Araç harcamaları** — yakıt, bakım, sigorta vb. gider kaydı (hatırlatmadan ayrı); maliyet grafikleri Stats’te

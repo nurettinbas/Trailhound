@@ -20,6 +20,7 @@ struct TripListView: View {
     @State private var selectedCategoryID: String?
     @State private var selectedDateSection: TripDateSection?
     @State private var selectedVehicleFilter: TripListPage.VehicleFilter?
+    @State private var selectedPlaceID: UUID?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
     @State private var isMerging = false
@@ -60,13 +61,19 @@ struct TripListView: View {
         pageFilters.isActive
     }
 
+    private var selectedPlaceName: String? {
+        guard let selectedPlaceID else { return nil }
+        return places.first(where: { $0.id == selectedPlaceID })?.name
+    }
+
     private var pageFilters: TripListPage.Filters {
         TripListPage.Filters(
             searchText: debouncedSearchText,
             categoryID: selectedCategoryID,
             dateSection: selectedDateSection,
             label: selectedLabel,
-            vehicleFilter: selectedVehicleFilter
+            vehicleFilter: selectedVehicleFilter,
+            placeName: selectedPlaceName
         )
     }
 
@@ -93,14 +100,24 @@ struct TripListView: View {
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
     /// the wall clock, labels are free text, and trips still awaiting a search index need the
-    /// legacy field scan.
+    /// legacy field scan. Place names are also re-checked so a renamed favorite stays consistent
+    /// with the chip's current `SavedPlace.name`. When a place chip is active the SQLite
+    /// predicate omits `searchIndex` (type-checker limit), so search is always verified here.
     private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
         if let label = filters.label, trip.label != label { return false }
         if let section = filters.dateSection,
            !TripDateGrouping.matches(section, date: trip.startedAt) {
             return false
         }
-        if trip.searchIndex == nil {
+        if !TripPlaceFilter.matches(
+            startPlaceName: trip.startPlaceName,
+            endPlaceName: trip.endPlaceName,
+            placeName: filters.placeName
+        ) {
+            return false
+        }
+        let needsSearchScan = trip.searchIndex == nil || filters.placeName != nil
+        if needsSearchScan {
             return TripListViewModel.matchesSearch(
                 trip,
                 searchText: filters.searchText,
@@ -293,7 +310,9 @@ struct TripListView: View {
                         selectedDateSection: $selectedDateSection,
                         selectedCategoryID: $selectedCategoryID,
                         selectedVehicleFilter: $selectedVehicleFilter,
+                        selectedPlaceID: $selectedPlaceID,
                         vehicles: vehicles,
+                        places: places,
                         weekSummaryText: weekSummary
                     )
                     .background {
@@ -763,15 +782,17 @@ struct TripListView: View {
     }
 
     private func resetTripFiltersToAll() {
-        guard selectedCategoryID != nil || selectedVehicleFilter != nil else { return }
+        guard selectedCategoryID != nil || selectedVehicleFilter != nil || selectedPlaceID != nil else { return }
 
         if reduceMotion {
             selectedCategoryID = nil
             selectedVehicleFilter = nil
+            selectedPlaceID = nil
         } else {
             withAnimation(TrailhoundMotion.recordingMorph) {
                 selectedCategoryID = nil
                 selectedVehicleFilter = nil
+                selectedPlaceID = nil
             }
         }
     }

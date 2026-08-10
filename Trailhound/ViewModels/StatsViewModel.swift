@@ -104,18 +104,35 @@ enum StatsPeriod: String, CaseIterable, Identifiable, Sendable {
 struct StatsViewModel {
     /// - Parameter includeNightRatio: Walking every GPS point is orders of magnitude more expensive
     ///   than the other aggregations. Callers that only read distance/duration must pass `false`.
+    /// Narrows completed trips by optional category, vehicle, and favorite-place name filters.
+    static func filtered<T: TripStatsAggregable>(
+        _ trips: [T],
+        categoryID: String? = nil,
+        vehicleID: UUID? = nil,
+        placeName: String? = nil
+    ) -> [T] {
+        trips.filter { trip in
+            guard trip.endedAt != nil else { return false }
+            if let categoryID, trip.categoryID != categoryID { return false }
+            if let vehicleID, trip.vehicleID != vehicleID { return false }
+            if !TripPlaceFilter.matches(trip, placeName: placeName) { return false }
+            return true
+        }
+    }
+
     static func stats<T: TripStatsAggregable>(
         for trips: [T],
         categoryID: String? = nil,
         vehicleID: UUID? = nil,
+        placeName: String? = nil,
         includeNightRatio: Bool = true
     ) -> TripStats {
-        let completed = trips.filter { trip in
-            guard trip.endedAt != nil else { return false }
-            if let categoryID, trip.categoryID != categoryID { return false }
-            if let vehicleID, trip.vehicleID != vehicleID { return false }
-            return true
-        }
+        let completed = filtered(
+            trips,
+            categoryID: categoryID,
+            vehicleID: vehicleID,
+            placeName: placeName
+        )
 
         let totalDistance = completed.reduce(0) { $0 + $1.distanceMeters }
         let totalDuration = completed.compactMap(\.duration).reduce(0, +)

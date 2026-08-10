@@ -133,6 +133,35 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(stats.totalDistanceMeters, 3000, accuracy: 0.1)
     }
 
+    func testStatsFiltersByPlaceNameMatchingStartOrEnd() {
+        let startHome = Trip(
+            startedAt: Date().addingTimeInterval(-7_200),
+            endedAt: Date().addingTimeInterval(-3_600),
+            distanceMeters: 3_000,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        let endHome = Trip(
+            startedAt: Date().addingTimeInterval(-1_800),
+            endedAt: Date(),
+            distanceMeters: 2_000,
+            startPlaceName: "Market",
+            endPlaceName: "Ev"
+        )
+        let other = Trip(
+            startedAt: Date().addingTimeInterval(-900),
+            endedAt: Date().addingTimeInterval(-300),
+            distanceMeters: 1_000,
+            startPlaceName: "Market",
+            endPlaceName: "Ofis"
+        )
+
+        let stats = StatsViewModel.stats(for: [startHome, endHome, other], placeName: "Ev")
+
+        XCTAssertEqual(stats.tripCount, 2)
+        XCTAssertEqual(stats.totalDistanceMeters, 5_000, accuracy: 0.1)
+    }
+
     func testDailyDistancesBucketsByDay() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())

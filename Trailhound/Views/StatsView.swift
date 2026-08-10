@@ -7,6 +7,7 @@ struct StatsView: View {
     // so it fetches that window instead of pulling the whole library into memory.
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
+    @Query private var places: [SavedPlace]
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -14,6 +15,7 @@ struct StatsView: View {
     @State private var selectedPeriod: StatsPeriod = .week
     @State private var selectedCategoryID: String?
     @State private var selectedVehicleID: UUID?
+    @State private var selectedPlaceID: UUID?
     @State private var selectedMonth = Calendar.current.date(
         from: Calendar.current.dateComponents([.year, .month], from: Date())
     ) ?? Date()
@@ -39,17 +41,31 @@ struct StatsView: View {
         snapshot ?? .empty
     }
 
+    private var selectedPlaceName: String? {
+        guard let selectedPlaceID else { return nil }
+        return places.first(where: { $0.id == selectedPlaceID })?.name
+    }
+
+    private var sortedPlaces: [SavedPlace] {
+        places.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
     private var snapshotInputs: StatsSnapshotInputs {
         StatsSnapshotInputs(
             storeVersion: storeVersion,
             categoryCount: categories.count,
             vehicleCount: vehicles.count,
+            placeCount: places.count,
             period: selectedPeriod,
             customStart: customStart,
             customEnd: customEnd,
             selectedMonth: selectedMonth,
             selectedCategoryID: selectedCategoryID,
-            selectedVehicleID: selectedVehicleID
+            selectedVehicleID: selectedVehicleID,
+            selectedPlaceID: selectedPlaceID,
+            selectedPlaceName: selectedPlaceName
         )
     }
 
@@ -97,7 +113,7 @@ struct StatsView: View {
         }
     }
 
-    /// Period plus any active category/vehicle filters — trip-based charts and summary.
+    /// Period plus any active category/vehicle/place filters — trip-based charts and summary.
     private var statsTripChartScopeLabel: String {
         var parts = [statsPeriodScopeLabel]
         if selectedCategoryID != nil {
@@ -105,6 +121,9 @@ struct StatsView: View {
         }
         if selectedVehicleID != nil {
             parts.append(selectedVehicleName)
+        }
+        if selectedPlaceID != nil {
+            parts.append(selectedPlaceDisplayName)
         }
         return parts.joined(separator: " · ")
     }
@@ -120,7 +139,9 @@ struct StatsView: View {
             String(customStart.timeIntervalSince1970),
             String(customEnd.timeIntervalSince1970),
             selectedCategoryID ?? "",
-            selectedVehicleID?.uuidString ?? ""
+            selectedVehicleID?.uuidString ?? "",
+            selectedPlaceID?.uuidString ?? "",
+            selectedPlaceName ?? ""
         ].joined(separator: "|")
     }
 
@@ -286,6 +307,11 @@ struct StatsView: View {
             dailyChartPage = 0
             vehicleChartPage = 0
         }
+        .onChange(of: selectedPlaceID) { _, _ in
+            dailyChartPage = 0
+            vehicleChartPage = 0
+            categoryChartPage = 0
+        }
         .onChange(of: selectedMonth) { _, _ in
             dailyChartPage = 0
             vehicleChartPage = 0
@@ -353,6 +379,7 @@ struct StatsView: View {
             goalMonth: goalMonth,
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
+            selectedPlaceName: selectedPlaceName,
             categoryNames: StatsViewModel.categoryNameMap(for: categories),
             vehicleNames: StatsViewModel.vehicleNameMap(for: vehicles),
             vehicleCount: vehicles.count
@@ -403,6 +430,10 @@ struct StatsView: View {
             return L10n.all
         }
         return category.name
+    }
+
+    private var selectedPlaceDisplayName: String {
+        selectedPlaceName ?? L10n.all
     }
 
     private var statsFilterCard: some View {
@@ -501,6 +532,29 @@ struct StatsView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(L10n.string("filter.vehicle"))
                 .accessibilityValue(selectedVehicleName)
+            }
+
+            if !sortedPlaces.isEmpty {
+                HStack(spacing: 12) {
+                    Text(L10n.filterPlace)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: 8)
+
+                    Picker(L10n.filterPlace, selection: $selectedPlaceID) {
+                        Text(L10n.all).tag(UUID?.none)
+                        ForEach(sortedPlaces, id: \.id) { place in
+                            Text(place.name).tag(Optional(place.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .labelsHidden()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(L10n.filterPlace)
+                .accessibilityValue(selectedPlaceDisplayName)
             }
         }
         .padding(.vertical, 6)
@@ -1421,12 +1475,15 @@ private struct StatsSnapshotInputs: Equatable {
     let storeVersion: Int
     let categoryCount: Int
     let vehicleCount: Int
+    let placeCount: Int
     let period: StatsPeriod
     let customStart: Date
     let customEnd: Date
     let selectedMonth: Date
     let selectedCategoryID: String?
     let selectedVehicleID: UUID?
+    let selectedPlaceID: UUID?
+    let selectedPlaceName: String?
 }
 
 private enum StatsChartPairTokens {

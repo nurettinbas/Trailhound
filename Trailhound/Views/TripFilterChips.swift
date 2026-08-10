@@ -1,18 +1,21 @@
 import SwiftData
 import SwiftUI
 
-/// Week summary + search + date/category/vehicle filters pinned above the trip rows.
+/// Week summary + search + date/category/vehicle/place filters pinned above the trip rows.
 struct TripListFiltersBar: View {
     @Binding var searchText: String
     @Binding var selectedDateSection: TripDateSection?
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
+    @Binding var selectedPlaceID: UUID?
     var vehicles: [VehicleProfile] = []
+    var places: [SavedPlace] = []
     /// Compact “This week” strip shown above search when non-empty.
     var weekSummaryText: String = ""
 
     @Namespace private var dateChipNamespace
     @Namespace private var vehicleChipNamespace
+    @Namespace private var placeChipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFiltersExpanded = false
 
@@ -26,6 +29,7 @@ struct TripListFiltersBar: View {
         if selectedDateSection != nil { count += 1 }
         if selectedCategoryID != nil { count += 1 }
         if selectedVehicleFilter != nil { count += 1 }
+        if selectedPlaceID != nil { count += 1 }
         return count
     }
 
@@ -68,6 +72,9 @@ struct TripListFiltersBar: View {
                     dateFilterRow
                     TripFilterChips(selectedCategoryID: $selectedCategoryID, usesCardInsets: false)
                     vehicleFilterRow
+                    if !sortedPlaces.isEmpty {
+                        placeFilterRow
+                    }
                 }
                 .transition(filtersRevealTransition)
             }
@@ -199,6 +206,7 @@ struct TripListFiltersBar: View {
             selectedDateSection = nil
             selectedCategoryID = nil
             selectedVehicleFilter = nil
+            selectedPlaceID = nil
         }
         if reduceMotion {
             clear()
@@ -207,6 +215,17 @@ struct TripListFiltersBar: View {
                 clear()
             }
         }
+    }
+
+    private var sortedPlaces: [SavedPlace] {
+        places.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private var placeSelectionKey: String {
+        if let selectedPlaceID { return "place:\(selectedPlaceID.uuidString)" }
+        return "place:all"
     }
 
     private var dateFilterRow: some View {
@@ -293,6 +312,39 @@ struct TripListFiltersBar: View {
         }
     }
 
+    private var placeFilterRow: some View {
+        filterChipRow(label: L10n.filterPlace) {
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        placeChip(
+                            title: L10n.all,
+                            key: "place:all",
+                            isSelected: selectedPlaceID == nil
+                        ) {
+                            selectedPlaceID = nil
+                        }
+                        ForEach(sortedPlaces, id: \.id) { place in
+                            let key = "place:\(place.id.uuidString)"
+                            placeChip(
+                                title: place.name,
+                                key: key,
+                                isSelected: selectedPlaceID == place.id
+                            ) {
+                                selectedPlaceID = selectedPlaceID == place.id ? nil : place.id
+                            }
+                        }
+                    }
+                    .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: placeSelectionKey)
+                }
+                .onChange(of: placeSelectionKey) { _, newKey in
+                    revealChip(withID: newKey, using: proxy)
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        }
+    }
+
     private func filterChipRow<Content: View>(
         label: String,
         @ViewBuilder chips: () -> Content
@@ -354,6 +406,31 @@ struct TripListFiltersBar: View {
             avatarSystemImage: avatarSystemImage,
             avatarPhotoFileName: avatarPhotoFileName,
             avatarIsElectric: avatarIsElectric,
+            action: {
+                if reduceMotion {
+                    action()
+                } else {
+                    withAnimation(TrailhoundMotion.cardSpring) {
+                        action()
+                    }
+                }
+            }
+        )
+        .id(key)
+    }
+
+    private func placeChip(
+        title: String,
+        key: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        GlassFilterChip(
+            title: title,
+            isSelected: isSelected,
+            namespace: placeChipNamespace,
+            highlightID: "tripPlaceFilterHighlight",
+            size: .compact,
             action: {
                 if reduceMotion {
                     action()

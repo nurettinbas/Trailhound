@@ -81,6 +81,7 @@
 		A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */; };
 		A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */; };
 		A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */; };
+		A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */; };
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
 		A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */; };
 		A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */; };
@@ -340,6 +341,7 @@
 		A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDisplayPath.swift; sourceTree = "<group>"; };
 		A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingAccessibility.swift; sourceTree = "<group>"; };
 		A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedSummary.swift; sourceTree = "<group>"; };
+		A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlaceFilter.swift; sourceTree = "<group>"; };
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
 		A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreChangeObserver.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundMotion.swift; sourceTree = "<group>"; };
@@ -751,6 +753,7 @@
 				A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */,
 				A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */,
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
+				A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */,
 				A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */,
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
 				A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */,
@@ -1117,6 +1120,7 @@
 				A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */,
 				A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */,
 				A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */,
+				A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */,
 				A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */,
 				A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */,
 				A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */,

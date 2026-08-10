@@ -155,3 +155,106 @@ final class TripListPageVehicleFilterTests: XCTestCase {
         XCTAssertFalse(TripListPage.Filters().isActive)
     }
 }
+
+@MainActor
+final class TripListPagePlaceFilterTests: XCTestCase {
+    func testDescriptorIncludesStartOrEndPlaceMatch() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let now = Date()
+
+        let startMatch = Trip(
+            startedAt: now.addingTimeInterval(-3_600),
+            endedAt: now.addingTimeInterval(-3_000),
+            distanceMeters: 1_000,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        let endMatch = Trip(
+            startedAt: now.addingTimeInterval(-2_400),
+            endedAt: now.addingTimeInterval(-1_800),
+            distanceMeters: 2_000,
+            startPlaceName: "Market",
+            endPlaceName: "Ev"
+        )
+        let neither = Trip(
+            startedAt: now.addingTimeInterval(-1_200),
+            endedAt: now.addingTimeInterval(-600),
+            distanceMeters: 500,
+            startPlaceName: "Market",
+            endPlaceName: "Ofis"
+        )
+        context.insert(startMatch)
+        context.insert(endMatch)
+        context.insert(neither)
+        try context.save()
+
+        let filtered = try context.fetch(
+            TripListPage.descriptor(
+                filters: TripListPage.Filters(placeName: "Ev"),
+                limit: TripListPage.pageSize
+            )
+        )
+
+        XCTAssertEqual(Set(filtered.map(\.id)), Set([startMatch.id, endMatch.id]))
+    }
+
+    func testDescriptorWithoutPlaceReturnsAllCompleted() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let now = Date()
+        let trip = Trip(
+            startedAt: now.addingTimeInterval(-1_200),
+            endedAt: now.addingTimeInterval(-600),
+            distanceMeters: 500,
+            startPlaceName: "Ev"
+        )
+        context.insert(trip)
+        try context.save()
+
+        let filtered = try context.fetch(
+            TripListPage.descriptor(
+                filters: TripListPage.Filters(),
+                limit: TripListPage.pageSize
+            )
+        )
+
+        XCTAssertEqual(filtered.map(\.id), [trip.id])
+    }
+
+    func testFiltersIsActiveWhenPlaceSelected() {
+        XCTAssertTrue(TripListPage.Filters(placeName: "Ev").isActive)
+        XCTAssertFalse(TripListPage.Filters().isActive)
+    }
+
+    func testTripPlaceFilterMatchesStartOrEnd() {
+        XCTAssertTrue(
+            TripPlaceFilter.matches(
+                startPlaceName: "Ev",
+                endPlaceName: "Ofis",
+                placeName: "Ev"
+            )
+        )
+        XCTAssertTrue(
+            TripPlaceFilter.matches(
+                startPlaceName: "Market",
+                endPlaceName: "Ev",
+                placeName: "Ev"
+            )
+        )
+        XCTAssertFalse(
+            TripPlaceFilter.matches(
+                startPlaceName: "Market",
+                endPlaceName: "Ofis",
+                placeName: "Ev"
+            )
+        )
+        XCTAssertTrue(
+            TripPlaceFilter.matches(
+                startPlaceName: "Market",
+                endPlaceName: "Ofis",
+                placeName: nil
+            )
+        )
+    }
+}

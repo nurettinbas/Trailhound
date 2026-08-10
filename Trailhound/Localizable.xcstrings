@@ -1279,6 +1279,23 @@
         }
       }
     },
+    "filter.place" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Place"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yer"
+          }
+        }
+      }
+    },
     "Filtreye uygun yolculuk yok" : {
       "extractionState" : "stale",
       "localizations" : {

@@ -70,6 +70,7 @@ enum L10n {
     static var filterDate: String { string("filter.date") }
     static var filterCategory: String { string("filter.category") }
     static var filterVehicle: String { string("filter.vehicle") }
+    static var filterPlace: String { string("filter.place") }
     static var duration: String { string("label.duration") }
     static var currentSpeed: String { string("label.current_speed") }
     static var maxAbbr: String { string("label.max_abbr") }

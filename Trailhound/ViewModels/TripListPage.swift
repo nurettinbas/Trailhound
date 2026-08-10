@@ -22,12 +22,15 @@ enum TripListPage {
         var dateSection: TripDateSection?
         var label: String?
         var vehicleFilter: VehicleFilter?
+        /// Exact `SavedPlace.name` matched against start or end place name. `nil` means All.
+        var placeName: String?
 
         var isActive: Bool {
             categoryID != nil
                 || dateSection != nil
                 || label != nil
                 || vehicleFilter != nil
+                || placeName != nil
                 || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
@@ -72,13 +75,16 @@ enum TripListPage {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         let categoryRawValues = filters.categoryID.map(acceptableCategoryRawValues(for:))
+        // Empty string means All — keeps `#Predicate` free of optional place comparisons.
+        let placeName = filters.placeName ?? ""
 
         var descriptor = FetchDescriptor<Trip>(
             predicate: listPredicate(
                 lowerBound: lowerBound,
                 needle: needle,
                 categoryRawValues: categoryRawValues,
-                vehicleFilter: filters.vehicleFilter
+                vehicleFilter: filters.vehicleFilter,
+                placeName: placeName
             ),
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
@@ -87,6 +93,31 @@ enum TripListPage {
     }
 
     private static func listPredicate(
+        lowerBound: Date,
+        needle: String,
+        categoryRawValues: [String]?,
+        vehicleFilter: VehicleFilter?,
+        placeName: String
+    ) -> Predicate<Trip> {
+        // Place branches omit searchIndex matching so `#Predicate` stays type-checkable; the list
+        // re-applies search in memory whenever `placeName` is set (see `TripListView`).
+        if placeName.isEmpty {
+            return vehiclePredicate(
+                lowerBound: lowerBound,
+                needle: needle,
+                categoryRawValues: categoryRawValues,
+                vehicleFilter: vehicleFilter
+            )
+        }
+        return vehiclePlacePredicate(
+            lowerBound: lowerBound,
+            categoryRawValues: categoryRawValues,
+            vehicleFilter: vehicleFilter,
+            placeName: placeName
+        )
+    }
+
+    private static func vehiclePredicate(
         lowerBound: Date,
         needle: String,
         categoryRawValues: [String]?,
@@ -111,6 +142,35 @@ enum TripListPage {
                 lowerBound: lowerBound,
                 needle: needle,
                 categoryRawValues: categoryRawValues
+            )
+        }
+    }
+
+    private static func vehiclePlacePredicate(
+        lowerBound: Date,
+        categoryRawValues: [String]?,
+        vehicleFilter: VehicleFilter?,
+        placeName: String
+    ) -> Predicate<Trip> {
+        switch vehicleFilter {
+        case .unassigned:
+            return unassignedVehiclePlacePredicate(
+                lowerBound: lowerBound,
+                categoryRawValues: categoryRawValues,
+                placeName: placeName
+            )
+        case .vehicle(let vehicleID):
+            return specificVehiclePlacePredicate(
+                lowerBound: lowerBound,
+                categoryRawValues: categoryRawValues,
+                vehicleID: vehicleID,
+                placeName: placeName
+            )
+        case nil:
+            return anyVehiclePlacePredicate(
+                lowerBound: lowerBound,
+                categoryRawValues: categoryRawValues,
+                placeName: placeName
             )
         }
     }
@@ -162,6 +222,49 @@ enum TripListPage {
                 && (needle.isEmpty
                     || trip.searchIndex == nil
                     || trip.searchIndex!.localizedStandardContains(needle))
+        }
+    }
+
+    private static func anyVehiclePlacePredicate(
+        lowerBound: Date,
+        categoryRawValues: [String]?,
+        placeName: String
+    ) -> Predicate<Trip> {
+        #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (trip.startPlaceName == placeName || trip.endPlaceName == placeName)
+        }
+    }
+
+    private static func specificVehiclePlacePredicate(
+        lowerBound: Date,
+        categoryRawValues: [String]?,
+        vehicleID: UUID,
+        placeName: String
+    ) -> Predicate<Trip> {
+        #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && trip.vehicleID == vehicleID
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (trip.startPlaceName == placeName || trip.endPlaceName == placeName)
+        }
+    }
+
+    private static func unassignedVehiclePlacePredicate(
+        lowerBound: Date,
+        categoryRawValues: [String]?,
+        placeName: String
+    ) -> Predicate<Trip> {
+        let unsetVehicleID: UUID? = nil
+        return #Predicate<Trip> { trip in
+            trip.endedAt != nil
+                && trip.startedAt >= lowerBound
+                && trip.vehicleID == unsetVehicleID
+                && (categoryRawValues == nil || categoryRawValues!.contains(trip.categoryRaw))
+                && (trip.startPlaceName == placeName || trip.endPlaceName == placeName)
         }
     }
 

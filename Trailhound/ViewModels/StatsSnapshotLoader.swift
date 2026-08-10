@@ -12,6 +12,8 @@ struct StatsSnapshotRequest: Sendable, Hashable {
     let goalMonth: Date
     let selectedCategoryID: String?
     let selectedVehicleID: UUID?
+    /// Exact `SavedPlace.name` for start-or-end matching. `nil` means All.
+    let selectedPlaceName: String?
     let categoryNames: StatsNameMap
     let vehicleNames: StatsNameMap
     let vehicleCount: Int
@@ -89,7 +91,7 @@ actor StatsSnapshotLoader {
             end: max(selected.end, previous.end, goalMonthInterval.end)
         )
 
-        let rows = fetchStatsRows(in: interval)
+        let rows = fetchStatsRows(in: interval, placeName: request.selectedPlaceName)
         return StatsDisplaySnapshotBuilder.build(
             completedTrips: rows,
             categoryNames: request.categoryNames,
@@ -101,12 +103,15 @@ actor StatsSnapshotLoader {
             selectedMonth: request.selectedMonth,
             selectedCategoryID: request.selectedCategoryID,
             selectedVehicleID: request.selectedVehicleID,
+            selectedPlaceName: request.selectedPlaceName,
             goalMonth: request.goalMonth
         )
     }
 
-    private func fetchStatsRows(in interval: DateInterval) -> [TripStatsRow] {
-        if interval.duration > Self.rollupThreshold {
+    /// Place filter forces the trip path: daily rollups have no place dimension.
+    private func fetchStatsRows(in interval: DateInterval, placeName: String?) -> [TripStatsRow] {
+        let placeFilterActive = !(placeName ?? "").isEmpty
+        if !placeFilterActive, interval.duration > Self.rollupThreshold {
             let rollupRows = fetchRollupRows(in: interval)
             if !rollupRows.isEmpty { return rollupRows }
         }

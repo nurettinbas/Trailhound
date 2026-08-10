@@ -28,6 +28,8 @@ protocol TripStatsAggregable {
     var maxSpeedMps: Double? { get }
     var categoryID: String { get }
     var vehicleID: UUID? { get }
+    var startPlaceName: String? { get }
+    var endPlaceName: String? { get }
     var resolvedFuelCost: Double { get }
     /// `nil` when the split is unknown, in which case the trip is left out of the ratio rather
     /// than counted as daytime.
@@ -51,6 +53,8 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
     let maxSpeedMps: Double?
     let categoryID: String
     let vehicleID: UUID?
+    let startPlaceName: String?
+    let endPlaceName: String?
     let resolvedFuelCost: Double
     let nightDistanceShare: NightDistanceShare?
     let tripCount: Int
@@ -71,6 +75,8 @@ extension TripStatsRow {
             maxSpeedMps: TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps),
             categoryID: trip.categoryID,
             vehicleID: trip.vehicleID,
+            startPlaceName: trip.startPlaceName,
+            endPlaceName: trip.endPlaceName,
             resolvedFuelCost: StatsViewModel.fuelCost(for: trip),
             nightDistanceShare: trip.nightDistanceShare,
             tripCount: 1
@@ -80,6 +86,9 @@ extension TripStatsRow {
     /// One day's worth of trips collapsed into a single row, so the same aggregations can run
     /// over pre-summarised data when a period covers too many trips to load individually.
     /// Call only from the actor that owns `rollup`.
+    ///
+    /// Place names are always `nil`: daily rollups have no place dimension. Callers that filter
+    /// by place must fetch individual trips instead.
     nonisolated init(rollup: TripDailyRollup) {
         self.init(
             id: UUID(),
@@ -90,6 +99,8 @@ extension TripStatsRow {
             maxSpeedMps: rollup.maxSpeedMps > 0 ? rollup.maxSpeedMps : nil,
             categoryID: rollup.categoryID,
             vehicleID: UUID(uuidString: rollup.vehicleKey),
+            startPlaceName: nil,
+            endPlaceName: nil,
             resolvedFuelCost: rollup.estimatedFuelCost,
             nightDistanceShare: NightDistanceShare(
                 nightMeters: rollup.nightDistanceMeters,

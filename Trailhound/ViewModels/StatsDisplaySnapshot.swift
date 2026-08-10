@@ -16,7 +16,7 @@ struct StatsDisplaySnapshot: Sendable {
     let vehicleDuration: [VehicleDuration]
     let vehicleFuelCost: [VehicleFuelCost]
     let showsVehicleBreakdownCharts: Bool
-    /// Distance driven in the goal calendar month (no category/vehicle filter). Drives the goal ring.
+    /// Distance driven in the goal calendar month (no category/vehicle/place filter). Drives the goal ring.
     let goalDistanceMeters: Double
 
     var hasAnyDailyChart: Bool {
@@ -114,6 +114,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedMonth: Date,
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
+        selectedPlaceName: String? = nil,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         build(
@@ -127,6 +128,7 @@ enum StatsDisplaySnapshotBuilder {
             selectedMonth: selectedMonth,
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
+            selectedPlaceName: selectedPlaceName,
             goalMonth: goalMonth
         )
     }
@@ -143,6 +145,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedMonth: Date,
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
+        selectedPlaceName: String? = nil,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         PerformanceSignposts.measure("StatsSnapshotBuild") {
@@ -157,6 +160,7 @@ enum StatsDisplaySnapshotBuilder {
                 selectedMonth: selectedMonth,
                 selectedCategoryID: selectedCategoryID,
                 selectedVehicleID: selectedVehicleID,
+                selectedPlaceName: selectedPlaceName,
                 goalMonth: goalMonth
             )
         }
@@ -173,6 +177,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedMonth: Date,
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
+        selectedPlaceName: String?,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         let selectedInterval = StatsViewModel.interval(
@@ -188,26 +193,26 @@ enum StatsDisplaySnapshotBuilder {
             return StatsViewModel.previousInterval(for: selectedInterval)
         }()
 
-        let periodTrips = StatsViewModel.trips(in: selectedInterval, from: completedTrips)
-        let previousTrips = StatsViewModel.trips(in: previousInterval, from: completedTrips)
+        // Summary + charts share the same category/vehicle/place scope. The goal ring stays
+        // unfiltered so monthly progress is never shrunk by a chip selection.
+        let scopedTrips = StatsViewModel.filtered(
+            completedTrips,
+            categoryID: selectedCategoryID,
+            vehicleID: selectedVehicleID,
+            placeName: selectedPlaceName
+        )
+        let periodTrips = StatsViewModel.trips(in: selectedInterval, from: scopedTrips)
+        let previousTrips = StatsViewModel.trips(in: previousInterval, from: scopedTrips)
 
-        let stats = StatsViewModel.stats(
-            for: periodTrips,
-            categoryID: selectedCategoryID,
-            vehicleID: selectedVehicleID
-        )
-        let previousStats = StatsViewModel.stats(
-            for: previousTrips,
-            categoryID: selectedCategoryID,
-            vehicleID: selectedVehicleID
-        )
+        let stats = StatsViewModel.stats(for: periodTrips)
+        let previousStats = StatsViewModel.stats(for: previousTrips)
 
         let vehicleDistance = StatsViewModel.vehicleBreakdown(for: periodTrips, vehicleNames: vehicleNames)
         let vehicleDuration = StatsViewModel.vehicleDurationBreakdown(for: periodTrips, vehicleNames: vehicleNames)
         let vehicleFuelCost = StatsViewModel.vehicleFuelBreakdown(for: periodTrips, vehicleNames: vehicleNames)
         let showsVehicle = !vehicleDistance.isEmpty && (vehicleCount > 1 || vehicleDistance.count > 1)
 
-        // Goal ring always tracks a full calendar month — never the week/custom window.
+        // Goal ring always tracks a full calendar month — never the week/custom window or filters.
         let goalMonthInterval = StatsViewModel.calendarMonthInterval(containing: goalMonth)
         let goalDistance = StatsViewModel.stats(
             for: StatsViewModel.trips(in: goalMonthInterval, from: completedTrips),
@@ -217,11 +222,11 @@ enum StatsDisplaySnapshotBuilder {
         return StatsDisplaySnapshot(
             stats: stats,
             previousStats: previousStats,
-            dailyDistance: StatsViewModel.dailyDistances(in: selectedInterval, from: completedTrips),
-            dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: completedTrips),
-            dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: completedTrips),
-            dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: completedTrips),
-            dailyFuelCost: StatsViewModel.dailyFuelCosts(in: selectedInterval, from: completedTrips),
+            dailyDistance: StatsViewModel.dailyDistances(in: selectedInterval, from: scopedTrips),
+            dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: scopedTrips),
+            dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: scopedTrips),
+            dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: scopedTrips),
+            dailyFuelCost: StatsViewModel.dailyFuelCosts(in: selectedInterval, from: scopedTrips),
             categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryFuelCost: StatsViewModel.categoryFuelBreakdown(for: periodTrips, categoryNames: categoryNames),
