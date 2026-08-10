@@ -19,6 +19,55 @@ final class TripListViewModelTests: XCTestCase {
         XCTAssertTrue(summary.contains("Office"))
     }
 
+    func testStartSummaryUsesSavedPlaceName() {
+        let office = SavedPlace(
+            name: "Office",
+            latitude: 41.05,
+            longitude: 29.0,
+            radiusMeters: 200,
+            kind: .work
+        )
+        let summary = TripListViewModel.startSummary(
+            coordinate: CLLocationCoordinate2D(latitude: 41.05, longitude: 29.0),
+            places: [office],
+            privacyRadius: 500
+        )
+        XCTAssertEqual(summary, "Office")
+    }
+
+    func testStartSummaryUsesNearNameForHomePrivacyZone() {
+        let home = SavedPlace(
+            name: "Home",
+            latitude: 41.0082,
+            longitude: 28.9784,
+            radiusMeters: 500,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let summary = TripListViewModel.startSummary(
+            coordinate: CLLocationCoordinate2D(latitude: 41.0082, longitude: 28.9784),
+            places: [home],
+            privacyRadius: 500
+        )
+        XCTAssertEqual(summary, L10n.placeNearName("Home"))
+    }
+
+    func testStartSummaryFallsBackWhenNoCoordinate() {
+        let summary = TripListViewModel.startSummary(
+            coordinate: nil,
+            places: [],
+            privacyRadius: 500
+        )
+        XCTAssertEqual(summary, "—")
+    }
+
+    func testStartedRichBodyUsesFromPrefix() {
+        let body = String(format: L10n.string("trip.started.rich.body"), "Home")
+        XCTAssertTrue(body.contains("Home"))
+        // EN: "From Home" — TR: "Home konumundan"
+        XCTAssertTrue(body.hasPrefix("From ") || body.hasSuffix(" konumundan"))
+    }
+
     func testRouteSummaryAppliesPrivacyDisplayName() {
         let home = SavedPlace(
             name: "Home",

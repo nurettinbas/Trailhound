@@ -1245,6 +1245,23 @@
         }
       }
     },
+    "filter.place" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Place"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yer"
+          }
+        }
+      }
+    },
     "filter.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1275,23 +1292,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Araç"
-          }
-        }
-      }
-    },
-    "filter.place" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Place"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yer"
           }
         }
       }
@@ -5250,23 +5250,6 @@
         }
       }
     },
-    "pairing.tab.vehicle.photo.tap_hint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to edit"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Düzenlemek için dokun"
-          }
-        }
-      }
-    },
     "pairing.tab.vehicle.photo.action.change" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5824,6 +5807,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aracının net bir karesi en iyisi"
+          }
+        }
+      }
+    },
+    "pairing.tab.vehicle.photo.tap_hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to edit"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Düzenlemek için dokun"
           }
         }
       }
@@ -11129,6 +11129,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trailhound sürüşünüzü kaydediyor."
+          }
+        }
+      }
+    },
+    "trip.started.rich.body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konumundan"
           }
         }
       }

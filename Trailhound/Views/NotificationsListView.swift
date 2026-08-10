@@ -10,6 +10,7 @@ struct NotificationsListView: View {
     @Query private var schedules: [VehicleSchedule]
     @Bindable private var store = AppNotificationStore.shared
     @State private var roadVehiclePhoto: UIImage?
+    @State private var openedTripID: UUID?
 
     var body: some View {
         Group {
@@ -29,16 +30,19 @@ struct NotificationsListView: View {
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     }
 
-                    ForEach(visibleItems) { item in
+                    ForEach(store.items) { item in
                         notificationRow(item)
-                            .background {
+                            .glassCard(contentInset: 8)
+                            // Unread tint on the full card — never as an inner content background
+                            // (that created a smaller second layer inside the glass).
+                            .overlay {
                                 if !item.isRead {
                                     RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous)
-                                        .fill(TrailhoundBrandColors.brandBottom.opacity(0.07))
+                                        .fill(TrailhoundBrandColors.brandBottom.opacity(0.10))
+                                        .allowsHitTesting(false)
                                 }
                             }
-                            .glassCard()
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -69,14 +73,17 @@ struct NotificationsListView: View {
                 }
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { openedTripID != nil },
+            set: { if !$0 { openedTripID = nil } }
+        )) {
+            if let openedTripID,
+               let trip = trips.first(where: { $0.id == openedTripID }) {
+                TripDetailView(trip: trip)
+            }
+        }
         .onAppear {
             store.reload()
-        }
-    }
-
-    private var visibleItems: [StoredAppNotification] {
-        store.items.filter { item in
-            !isLiveTripSession(item, kind: store.kind(for: item))
         }
     }
 
@@ -138,32 +145,27 @@ struct NotificationsListView: View {
         roadVehiclePhoto = image
     }
 
-    private func isLiveTripSession(_ item: StoredAppNotification, kind: AppNotificationKind) -> Bool {
-        kind == .tripStarted
-            && item.tripID == recordingService.activeTripID
-            && recordingService.state.isActiveSession
-    }
-
     @ViewBuilder
     private func notificationRow(_ item: StoredAppNotification) -> some View {
         let kind = store.kind(for: item)
-        let trip = item.tripID.flatMap { tripID in trips.first(where: { $0.id == tripID }) }
+        let trip = resolvedTrip(for: item)
         let showsOrphanActions = kind == .orphanStale
             && trip?.endedAt == nil
             && trip?.id != recordingService.activeTripID
+        // Open any finished trip (started/ended rows). Active/unfinished trips stay non-tappable.
+        let canOpenTrip = trip?.endedAt != nil && !showsOrphanActions
 
-        VStack(alignment: .leading, spacing: 8) {
-            if let trip, !showsOrphanActions {
-                NavigationLink {
-                    TripDetailView(trip: trip)
-                } label: {
-                    rowContent(item: item, kind: kind)
-                }
-                .simultaneousGesture(TapGesture().onEnded {
-                    store.markRead(item.id)
-                })
+        VStack(alignment: .leading, spacing: 6) {
+            if canOpenTrip, let trip {
+                rowContent(item: item, kind: kind, showsChevron: true)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        store.markRead(item.id)
+                        openedTripID = trip.id
+                    }
             } else {
-                rowContent(item: item, kind: kind)
+                rowContent(item: item, kind: kind, showsChevron: false)
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         store.markRead(item.id)
                     }
@@ -199,55 +201,41 @@ struct NotificationsListView: View {
         }
     }
 
-    private func rowContent(item: StoredAppNotification, kind: AppNotificationKind) -> some View {
-        let isLiveSession = isLiveTripSession(item, kind: kind)
+    private func rowContent(
+        item: StoredAppNotification,
+        kind: AppNotificationKind,
+        showsChevron: Bool
+    ) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: kind.systemImage)
+                .font(.body)
+                .foregroundStyle(tint(for: kind))
+                .frame(width: 24)
 
-        return HStack(alignment: .top, spacing: 12) {
-            Image(systemName: isLiveSession && recordingService.state == .paused ? "pause.circle.fill" : kind.systemImage)
-                .font(.title3)
-                .foregroundStyle(isLiveSession ? liveSessionTint : tint(for: kind))
-                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.subheadline.weight(item.isRead ? .regular : .semibold))
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(displayTitle(for: item, kind: kind, isLiveSession: isLiveSession))
-                        .font(.subheadline.weight(item.isRead ? .regular : .semibold))
-                    Spacer(minLength: 8)
-                    Text(relativeDate(item.createdAt))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(displayBody(for: item, kind: kind, isLiveSession: isLiveSession))
+                Text(item.body)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(3)
+                    .lineLimit(2)
                     .monospacedDigit()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(relativeDate(item.createdAt))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                // Vertically centered against the full row (title + body), not the title line.
+                .accessibilityLabel(relativeDate(item.createdAt))
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
         }
-        .padding(.vertical, 2)
-    }
-
-    private var liveSessionTint: Color {
-        recordingService.state == .paused ? .orange : .green
-    }
-
-    private func displayTitle(
-        for item: StoredAppNotification,
-        kind: AppNotificationKind,
-        isLiveSession: Bool
-    ) -> String {
-        guard isLiveSession else { return item.title }
-        return recordingService.state == .paused ? L10n.recordingPaused : L10n.recordingStarted
-    }
-
-    private func displayBody(
-        for item: StoredAppNotification,
-        kind: AppNotificationKind,
-        isLiveSession: Bool
-    ) -> String {
-        guard isLiveSession else { return item.body }
-        return liveSessionBody
     }
 
     private func tint(for kind: AppNotificationKind) -> Color {
@@ -268,6 +256,21 @@ struct NotificationsListView: View {
         formatter.locale = DateFormatters.currentLocale
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private func resolvedTrip(for item: StoredAppNotification) -> Trip? {
+        guard let tripID = item.tripID else { return nil }
+        if let match = trips.first(where: { $0.id == tripID }) {
+            return match
+        }
+        let targetID = tripID
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate<Trip> { trip in
+                trip.id == targetID
+            }
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 }
 

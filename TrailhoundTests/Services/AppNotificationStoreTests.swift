@@ -70,4 +70,30 @@ final class AppNotificationStoreTests: XCTestCase {
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].title, "Pair")
     }
+
+    func testRecordCapsAtOneHundred() {
+        for index in 0..<105 {
+            store.record(kind: .tripEnded, title: "T\(index)", body: "B\(index)")
+        }
+        XCTAssertEqual(store.items.count, 100)
+        XCTAssertEqual(store.items.first?.title, "T104")
+    }
+
+    func testUpdateTripStartedBodyPreservesIdentity() {
+        let tripID = UUID()
+        store.record(
+            kind: .tripStarted,
+            title: "Trip started",
+            body: "Recording",
+            tripID: tripID
+        )
+        let id = store.items[0].id
+
+        store.updateTripStartedBody(tripID: tripID, body: "From Home")
+
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(store.items[0].id, id)
+        XCTAssertEqual(store.items[0].body, "From Home")
+        XCTAssertEqual(store.items[0].tripID, tripID)
+    }
 }

@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 
 struct TripListViewModel {
@@ -19,7 +20,26 @@ struct TripListViewModel {
         return "\(start) → \(end)"
     }
 
-    private static func displayName(
+    /// Start-point label for trip-started notifications (favorite / Near Home / address / coords).
+    static func startSummary(
+        coordinate: CLLocationCoordinate2D?,
+        places: [SavedPlace],
+        privacyRadius: Double
+    ) -> String {
+        var placeName: String?
+        if let coordinate, let matched = places.first(where: { $0.contains(coordinate) }) {
+            placeName = matched.name
+        }
+        return displayName(
+            placeName: placeName,
+            address: nil,
+            coordinate: coordinate,
+            places: places,
+            privacyRadius: privacyRadius
+        )
+    }
+
+    static func displayName(
         placeName: String?,
         address: String?,
         coordinate: CLLocationCoordinate2D?,
@@ -120,5 +140,3 @@ struct TripListViewModel {
         }
     }
 }
-
-import CoreLocation

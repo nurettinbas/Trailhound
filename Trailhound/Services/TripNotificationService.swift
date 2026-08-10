@@ -15,14 +15,96 @@ enum TripNotificationService {
         }
     }
 
-    static func notifyTripStarted(tripID: UUID) {
-        deliver(
-            identifier: "trailhound.trip.started.\(tripID.uuidString)",
-            kind: .tripStarted,
+    static func notifyTripStarted(tripID: UUID, startSummary: String) {
+        let body = startedBody(startSummary: startSummary)
+        let identifier = startedNotificationID(tripID: tripID)
+        // Always land in the inbox immediately.
+        Task { @MainActor in
+            AppNotificationStore.shared.record(
+                kind: .tripStarted,
+                title: L10n.tripStartedTitle,
+                body: body,
+                tripID: tripID
+            )
+        }
+        // Prefer posting the system banner once we know "From …". If place is already
+        // known, post now; otherwise wait briefly for the first GPS/place refresh.
+        if body != L10n.tripStartedBody {
+            postSystemNotification(
+                identifier: identifier,
+                title: L10n.tripStartedTitle,
+                body: body
+            )
+        } else {
+            scheduleDeferredStartedPush(tripID: tripID)
+        }
+    }
+
+    /// Updates the inbox trip-started row when start place becomes available (first fix / trip end).
+    /// - Parameter postBanner: When true, posts/replaces the system banner so it matches inbox
+    ///   (used while recording). Pass false at trip end so we don't re-alert "Trip started".
+    @MainActor
+    static func refreshTripStartedBody(tripID: UUID, startSummary: String, postBanner: Bool = true) {
+        let body = startedBody(startSummary: startSummary)
+        guard body != L10n.tripStartedBody else { return }
+        AppNotificationStore.shared.updateTripStartedBody(tripID: tripID, body: body)
+        cancelDeferredStartedPush(tripID: tripID)
+        guard postBanner else { return }
+        postSystemNotification(
+            identifier: startedNotificationID(tripID: tripID),
             title: L10n.tripStartedTitle,
-            body: L10n.tripStartedBody,
-            tripID: tripID
+            body: body
         )
+    }
+
+    private static func startedBody(startSummary: String) -> String {
+        if startSummary.isEmpty || startSummary == "—" {
+            return L10n.tripStartedBody
+        }
+        return String(format: L10n.string("trip.started.rich.body"), startSummary)
+    }
+
+    private static func startedNotificationID(tripID: UUID) -> String {
+        "trailhound.trip.started.\(tripID.uuidString)"
+    }
+
+    private static func deferredStartedPushID(tripID: UUID) -> String {
+        "trailhound.trip.started.deferred.\(tripID.uuidString)"
+    }
+
+    /// Fallback: if place never resolves, still show the generic started banner after a short wait.
+    private static func scheduleDeferredStartedPush(tripID: UUID) {
+        let identifier = deferredStartedPushID(tripID: tripID)
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+
+        let content = UNMutableNotificationContent()
+        content.title = L10n.tripStartedTitle
+        content.body = L10n.tripStartedBody
+        content.sound = .default
+        content.userInfo = ["trailhound.inboxRecorded": true]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2.5, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    static func cancelDeferredStartedPush(tripID: UUID) {
+        let identifier = deferredStartedPushID(tripID: tripID)
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [identifier])
+    }
+
+    private static func postSystemNotification(identifier: String, title: String, body: String) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            content.userInfo = ["trailhound.inboxRecorded": true]
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        }
     }
 
     static func notifyTripEnded(

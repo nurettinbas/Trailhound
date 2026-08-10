@@ -246,6 +246,8 @@ final class TripRecordingService {
     /// Reuse last Live Activity mark while vehicle identity is unchanged (avoids PNG churn).
     private var lastLiveActivityMarkIdentity: String?
     private var lastLiveActivityMark: RecordingVehicleMarkSnapshot?
+    /// Ensures the trip-started inbox body is upgraded to "From …" once GPS/place is known.
+    private var didRefreshTripStartedPlaceBody = false
 
     private static weak var elapsedTimerService: TripRecordingService?
 
@@ -602,8 +604,25 @@ final class TripRecordingService {
         }
 
         applyDistanceSample(from: location, speed: speed)
+        refreshTripStartedPlaceBodyIfNeeded(coordinate: location.coordinate)
         refreshDisplaySnapshot()
         syncExternalState()
+    }
+
+    private func refreshTripStartedPlaceBodyIfNeeded(coordinate: CLLocationCoordinate2D) {
+        guard !didRefreshTripStartedPlaceBody,
+              !UITestSupport.isUnitTesting,
+              let tripID = activeTripID,
+              let modelContext else { return }
+        let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let startSummary = TripListViewModel.startSummary(
+            coordinate: coordinate,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
+        guard startSummary != "—", !startSummary.isEmpty else { return }
+        didRefreshTripStartedPlaceBody = true
+        TripNotificationService.refreshTripStartedBody(tripID: tripID, startSummary: startSummary)
     }
 
     /// Core Location's speed for this fix, or nil when the fix is too uncertain, too old or too
@@ -943,7 +962,13 @@ final class TripRecordingService {
                 vehiclePhotoJPEGData: mark.photoJPEGData
             )
             Task { await warmLiveActivityVehiclePhoto() }
-            TripNotificationService.notifyTripStarted(tripID: trip.id)
+            let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+            let startSummary = TripListViewModel.startSummary(
+                coordinate: locationService.lastLocation?.coordinate,
+                places: places,
+                privacyRadius: settings.privacyRadiusMeters
+            )
+            TripNotificationService.notifyTripStarted(tripID: trip.id, startSummary: startSummary)
         }
         syncExternalState(force: true)
         if announceStart, !UITestSupport.isUnitTesting {
@@ -1115,6 +1140,7 @@ final class TripRecordingService {
 
         if !UITestSupport.isUnitTesting {
             TripNotificationService.cancelOrphanStaleNotification(tripID: trip.id)
+            TripNotificationService.cancelDeferredStartedPush(tripID: trip.id)
         }
 
         let endedAt = Date()
@@ -1136,16 +1162,24 @@ final class TripRecordingService {
             TripDerivedMetrics.recomputeEndpoints(for: trip)
             let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
             PlaceMatchingService.matchPlaces(for: trip, places: places)
+            let privacyRadius = settings.privacyRadiusMeters
             let routeSummary = TripListViewModel.routeSummary(
                 for: trip,
                 places: places,
-                privacyRadius: settings.privacyRadiusMeters
+                privacyRadius: privacyRadius
+            )
+            let startSummary = TripListViewModel.displayName(
+                placeName: trip.startPlaceName,
+                address: trip.startAddress,
+                coordinate: trip.startCoordinate,
+                places: places,
+                privacyRadius: privacyRadius
             )
             TripDerivedMetrics.recomputeNightDistance(for: trip)
             TripDerivedMetrics.refreshSearchIndex(
                 for: trip,
                 places: places,
-                privacyRadius: settings.privacyRadiusMeters
+                privacyRadius: privacyRadius
             )
             TripRollupService.add(trip, in: modelContext)
 
@@ -1158,6 +1192,11 @@ final class TripRecordingService {
                 return
             }
             if !UITestSupport.isUnitTesting {
+                TripNotificationService.refreshTripStartedBody(
+                    tripID: trip.id,
+                    startSummary: startSummary,
+                    postBanner: false
+                )
                 TripNotificationService.notifyTripEnded(
                     tripID: trip.id,
                     distanceMeters: currentDistanceMeters,
@@ -1244,6 +1283,7 @@ final class TripRecordingService {
         currentStopCoordinate = nil
         liveBreadcrumbCoordinates = []
         liveBreadcrumbSegments = []
+        didRefreshTripStartedPlaceBody = false
         resetDisplaySnapshot()
     }
 
@@ -1349,16 +1389,6 @@ final class TripRecordingService {
             vehicleSymbolScaleX: vehicleMark.symbolScaleX,
             vehiclePhotoJPEGData: vehicleMark.photoJPEGData
         )
-
-        if state.isActiveSession, let tripID = activeTripID {
-            AppNotificationStore.shared.syncLiveTripNotification(
-                tripID: tripID,
-                isPaused: isPaused,
-                elapsed: elapsedTime,
-                distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: speedKmh
-            )
-        }
 
         // Never reload home-screen timelines on the 2s recording tick — the widget
         // extension also hosts Live Activity / Dynamic Island; thrashing timelines

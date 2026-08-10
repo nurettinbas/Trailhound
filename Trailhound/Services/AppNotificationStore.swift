@@ -85,37 +85,19 @@ final class AppNotificationStore {
         record(kind: kind, title: title, body: body, tripID: tripID)
     }
 
-    func syncLiveTripNotification(
-        tripID: UUID,
-        isPaused: Bool,
-        elapsed: TimeInterval,
-        distanceMeters: Double,
-        currentSpeedKmh: Int
-    ) {
-        let title = isPaused ? L10n.recordingPaused : L10n.recordingStarted
-        let duration = DateFormatters.formatDuration(elapsed)
-        let distance = DateFormatters.formatDistance(distanceMeters)
-        let body: String
-        if isPaused {
-            body = "\(duration) · \(distance)"
-        } else {
-            body = "\(duration) · \(distance) · \(L10n.formatSpeedKmh(Double(currentSpeedKmh)))"
-        }
-        updateTripStartedNotification(tripID: tripID, title: title, body: body)
-    }
-
-    private func updateTripStartedNotification(tripID: UUID, title: String, body: String) {
+    /// Refreshes an existing trip-started inbox row once the start place is known.
+    func updateTripStartedBody(tripID: UUID, body: String) {
         guard let index = items.firstIndex(where: {
             $0.tripID == tripID && kind(for: $0) == .tripStarted
         }) else { return }
 
         let existing = items[index]
-        guard existing.title != title || existing.body != body else { return }
+        guard existing.body != body else { return }
 
         items[index] = StoredAppNotification(
             id: existing.id,
             kind: existing.kind,
-            title: title,
+            title: existing.title,
             body: body,
             createdAt: existing.createdAt,
             tripID: existing.tripID,
