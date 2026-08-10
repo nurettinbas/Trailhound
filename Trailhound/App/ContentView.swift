@@ -35,8 +35,12 @@ struct ContentView: View {
                 }
                 .background(Color.clear)
                 .tabItem {
-                    Label(L10n.tabTrips, systemImage: "map.fill")
-                        .accessibilityIdentifier("tab.trips")
+                    TabBarItemLabel(
+                        title: L10n.tabTrips,
+                        systemImage: "map",
+                        isSelected: tabSelection.selectedTab == .trips
+                    )
+                    .accessibilityIdentifier("tab.trips")
                 }
                 .badge(isRecordingSession ? "" : nil)
                 .tag(AppTab.trips)
@@ -49,8 +53,12 @@ struct ContentView: View {
                     }
                 }
                 .tabItem {
-                    Label(L10n.string("vehicles.tab.title"), systemImage: "car.fill")
-                        .accessibilityIdentifier("tab.pairing")
+                    TabBarItemLabel(
+                        title: L10n.string("vehicles.tab.title"),
+                        systemImage: "car",
+                        isSelected: tabSelection.selectedTab == .pairing
+                    )
+                    .accessibilityIdentifier("tab.pairing")
                 }
                 .tag(AppTab.pairing)
 
@@ -63,8 +71,12 @@ struct ContentView: View {
                 }
                 .background(Color.clear)
                 .tabItem {
-                    Label(L10n.tabStats, systemImage: "chart.bar")
-                        .accessibilityIdentifier("tab.stats")
+                    TabBarItemLabel(
+                        title: L10n.tabStats,
+                        systemImage: "chart.bar",
+                        isSelected: tabSelection.selectedTab == .stats
+                    )
+                    .accessibilityIdentifier("tab.stats")
                 }
                 .tag(AppTab.stats)
 
@@ -77,8 +89,12 @@ struct ContentView: View {
                 }
                 .background(Color.clear)
                 .tabItem {
-                    Label(L10n.tabSettings, systemImage: "gearshape")
-                        .accessibilityIdentifier("tab.settings")
+                    TabBarItemLabel(
+                        title: L10n.tabSettings,
+                        systemImage: "gearshape",
+                        isSelected: tabSelection.selectedTab == .settings
+                    )
+                    .accessibilityIdentifier("tab.settings")
                 }
                 .tag(AppTab.settings)
 
@@ -91,7 +107,13 @@ struct ContentView: View {
                         }
                     }
                     .background(Color.clear)
-                    .tabItem { Label(L10n.string("Dev Log"), systemImage: "ladybug") }
+                    .tabItem {
+                        TabBarItemLabel(
+                            title: L10n.string("Dev Log"),
+                            systemImage: "ladybug",
+                            isSelected: tabSelection.selectedTab == .devLog
+                        )
+                    }
                     .tag(AppTab.devLog)
                 }
             }
@@ -172,6 +194,22 @@ struct ContentView: View {
         )
     }
 
+}
+
+/// Tab bar forces `.fill` via `symbolVariants`. Pin exact outline/fill names and clear the env.
+private struct TabBarItemLabel: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: isSelected ? "\(systemImage).fill" : systemImage)
+                .environment(\.symbolVariants, .none)
+        }
+    }
 }
 
 #Preview {
