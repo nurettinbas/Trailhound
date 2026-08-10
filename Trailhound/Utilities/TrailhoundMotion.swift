@@ -283,6 +283,76 @@ private struct PhotoEntranceGlintModifier: ViewModifier {
     }
 }
 
+/// Sparse periodic diagonal glint for list avatars — overlay removed between sweeps.
+private struct PhotoIdleShineModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let shineID: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = 0
+    @State private var isSweeping = false
+
+    private let sweepDuration: TimeInterval = 0.75
+    private let idleDuration: TimeInterval = 4.5
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if !reduceMotion, isSweeping {
+                    GeometryReader { geometry in
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0),
+                                Color.white.opacity(0.4),
+                                Color.white.opacity(0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(width: geometry.size.width * 0.42, height: geometry.size.height * 1.55)
+                        .rotationEffect(.degrees(22))
+                        .offset(x: -geometry.size.width + phase * geometry.size.width * 2.15)
+                        .allowsHitTesting(false)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .allowsHitTesting(false)
+                }
+            }
+            .task(id: loopIdentity) {
+                isSweeping = false
+                phase = 0
+                guard !reduceMotion else { return }
+
+                var hasher = Hasher()
+                hasher.combine(shineID)
+                let staggerMs = abs(hasher.finalize()) % 1200
+                try? await Task.sleep(for: .milliseconds(staggerMs))
+                guard !Task.isCancelled else { return }
+
+                while !Task.isCancelled {
+                    phase = 0
+                    isSweeping = true
+                    withAnimation(.easeOut(duration: sweepDuration)) {
+                        phase = 1
+                    }
+                    try? await Task.sleep(for: .milliseconds(Int(sweepDuration * 1000) + 40))
+                    guard !Task.isCancelled else { break }
+
+                    isSweeping = false
+                    phase = 0
+                    try? await Task.sleep(for: .milliseconds(Int(idleDuration * 1000)))
+                }
+
+                isSweeping = false
+                phase = 0
+            }
+    }
+
+    private var loopIdentity: String {
+        "\(shineID)-\(reduceMotion)"
+    }
+}
+
 /// Curtain wipe — reveals content by expanding a clip from an edge.
 struct ClipRevealEffect: ViewModifier, Animatable {
     var progress: CGFloat
@@ -356,6 +426,11 @@ extension View {
                 onFinished: onFinished
             )
         )
+    }
+
+    /// Sparse periodic photo shine for list cells; overlay is removed between sweeps.
+    func photoIdleShine(cornerRadius: CGFloat, id: String) -> some View {
+        modifier(PhotoIdleShineModifier(cornerRadius: cornerRadius, shineID: id))
     }
 
     func trailhoundCardTransition(reduceMotion: Bool) -> some View {

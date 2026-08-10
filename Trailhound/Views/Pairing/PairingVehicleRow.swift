@@ -13,7 +13,8 @@ struct PairingVehicleRow: View {
                     photoFileName: vehicle.photoFileName,
                     size: 36,
                     cornerRadius: 8,
-                    isElectricAccent: isElectricAccent
+                    isElectricAccent: isElectricAccent,
+                    showsPhotoShine: vehicle.photoFileName != nil
                 )
                 .id(vehicle.photoFileName ?? "none")
 

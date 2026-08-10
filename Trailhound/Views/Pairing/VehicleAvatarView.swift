@@ -20,6 +20,8 @@ struct VehicleAvatarView: View {
     /// Keeps wide side-profile glyphs inside `size`; without it they bleed over neighbouring
     /// labels in tight rows (font-sized symbols only constrain height, not width).
     var symbolFitsFrame: Bool = false
+    /// Sparse periodic shine when a real photo is shown (list rows).
+    var showsPhotoShine: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var loadedImage: UIImage?
@@ -43,12 +45,7 @@ struct VehicleAvatarView: View {
             }
 
             if let displayImage {
-                Image(uiImage: displayImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: size, height: size)
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                    .opacity(photoVisible || reduceMotion ? 1 : 0)
+                photoImage(displayImage)
             } else {
                 symbolMark
             }
@@ -65,6 +62,22 @@ struct VehicleAvatarView: View {
         .frame(width: size, height: size)
         .task(id: photoIdentity) {
             await loadPhoto()
+        }
+    }
+
+    @ViewBuilder
+    private func photoImage(_ image: UIImage) -> some View {
+        let base = Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .opacity(photoVisible || reduceMotion ? 1 : 0)
+
+        if showsPhotoShine, photoVisible || reduceMotion {
+            base.photoIdleShine(cornerRadius: cornerRadius, id: photoIdentity)
+        } else {
+            base
         }
     }
 
