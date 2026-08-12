@@ -1,27 +1,44 @@
 import SwiftUI
 
 /// Compact running-hound mark for the trip-list Start control.
-/// Transform-only gallop + two soft speed streaks — no TimelineView wake-ups.
+/// Timeline-driven gallop + speed streaks so theme / parent transactions
+/// cannot hijack mid-flight offsets (the classic “streak jump” on appearance change).
 struct TrailhoundRunningHoundIcon: View {
     var size: CGFloat = 30
     var reduceMotion: Bool = false
 
-    @State private var gallopPhase: CGFloat = 0
-    @State private var streakPhase: CGFloat = 0
-
     private var shouldAnimate: Bool {
         !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
-    }
-
-    private var taskID: String {
-        "\(shouldAnimate)"
     }
 
     private var accent: Color { TrailhoundBrandColors.start }
     /// Hound + speed streaks sit at 80% so the gallop lift clears the glass capsule edge.
     private let markScale: CGFloat = 0.968
 
+    /// Full gallop up/down cycle — matches original easeInOut(0.36) × 2.
+    private let gallopPeriod: TimeInterval = 0.72
+    /// One seamless lane-width scroll — original default speed.
+    private let streakPeriod: TimeInterval = 0.48
+    private var tickInterval: TimeInterval {
+        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
+    }
+
     var body: some View {
+        TimelineView(
+            .animation(
+                minimumInterval: tickInterval,
+                paused: !shouldAnimate
+            )
+        ) { context in
+            let phases = motionPhases(at: context.date)
+            mark(gallopPhase: phases.gallop, streakPhase: phases.streak)
+        }
+        .frame(minWidth: size)
+        .fixedSize()
+        .accessibilityHidden(true)
+    }
+
+    private func mark(gallopPhase: CGFloat, streakPhase: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .bottom) {
                 // Room above for gallop lift so the layout box doesn't grow/shrink.
@@ -45,7 +62,7 @@ struct TrailhoundRunningHoundIcon: View {
                         )
                         .foregroundStyle(accent)
 
-                    speedStreaks
+                    speedStreaks(phase: streakPhase)
                 }
                 .scaleEffect(markScale, anchor: .bottom)
             }
@@ -58,22 +75,16 @@ struct TrailhoundRunningHoundIcon: View {
                 .fixedSize(horizontal: true, vertical: true)
                 .padding(.top, 1)
         }
-        .frame(minWidth: size)
-        .fixedSize()
-        .accessibilityHidden(true)
-        .task(id: taskID) {
-            await runMotion()
-        }
     }
 
     /// Single dash under the hound; duplicated and scrolled for a seamless drift.
-    private var speedStreaks: some View {
+    private func speedStreaks(phase: CGFloat) -> some View {
         let laneWidth = size * 0.78
         return ZStack {
             streakDash
-                .offset(x: shouldAnimate ? -streakPhase * laneWidth : 0)
+                .offset(x: shouldAnimate ? -phase * laneWidth : 0)
             streakDash
-                .offset(x: shouldAnimate ? (1 - streakPhase) * laneWidth : laneWidth)
+                .offset(x: shouldAnimate ? (1 - phase) * laneWidth : laneWidth)
         }
         .frame(width: laneWidth, height: 2, alignment: .leading)
         .clipped()
@@ -94,31 +105,14 @@ struct TrailhoundRunningHoundIcon: View {
             .frame(width: size * 0.78, alignment: .leading)
     }
 
-    @MainActor
-    private func runMotion() async {
-        var reset = Transaction()
-        reset.disablesAnimations = true
-        withTransaction(reset) {
-            gallopPhase = 0
-            streakPhase = 0
-        }
-
-        guard shouldAnimate else { return }
-
-        let gallopCycle: Double = 0.36
-        withAnimation(.easeOut(duration: gallopCycle / 2)) {
-            gallopPhase = 1
-        }
-        try? await Task.sleep(for: .seconds(gallopCycle / 2))
-        guard !Task.isCancelled else { return }
-
-        withAnimation(.easeInOut(duration: gallopCycle).repeatForever(autoreverses: true)) {
-            gallopPhase = 0
-        }
-        // Linear 0→1 loop: twin streak pairs make the wrap seamless.
-        withAnimation(.linear(duration: 0.48).repeatForever(autoreverses: false)) {
-            streakPhase = 1
-        }
+    private func motionPhases(at date: Date) -> (gallop: CGFloat, streak: CGFloat) {
+        guard shouldAnimate else { return (0, 0) }
+        let t = date.timeIntervalSinceReferenceDate
+        // Ease in/out gallop via a raised cosine (0→1→0).
+        let gallopUnit = t.truncatingRemainder(dividingBy: gallopPeriod) / gallopPeriod
+        let gallop = CGFloat(0.5 - 0.5 * cos(gallopUnit * 2 * .pi))
+        let streak = CGFloat(t.truncatingRemainder(dividingBy: streakPeriod) / streakPeriod)
+        return (gallop, streak)
     }
 }
 
