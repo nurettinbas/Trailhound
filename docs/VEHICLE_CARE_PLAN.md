@@ -30,9 +30,9 @@ Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs)
 
 ## Expense categories (picker)
 
-Fuel · Casco · Service · Inspection · Repair · Accessory · Other
+Fuel · Traffic insurance · Casco · Service · Inspection · Repair · Accessory · Other
 
-Legacy raw values (`insurance`, `tax`, `parking`, `parts`) map on read; no schema bump.
+Legacy raw values (`insurance` → traffic insurance, `tax` / `parking` → other, `parts` → accessory) map on read; no schema bump.
 
 ---
 

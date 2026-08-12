@@ -36,7 +36,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Vehicle care & costs
 - **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue); mark done from the row (Done) to log cost and roll the next due date
-- **Expenses** — log fuel, service, insurance, and other vehicle costs separately from reminders
+- **Expenses** — log fuel, traffic insurance, casco, service, inspection, repair, accessory, and other costs separately from reminders
 - One vehicle detail screen under **Vehicles**: profile → reminders → expenses; cost charts live on **Stats**
 - Overdue care also shown as an in-app banner; push fires once when overdue (no daily spam)
 

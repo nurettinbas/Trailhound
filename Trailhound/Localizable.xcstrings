@@ -12395,13 +12395,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Insurance"
+            "value" : "Traffic insurance"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sigorta"
+            "value" : "Trafik sigortası"
           }
         }
       }
@@ -12606,6 +12606,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vergi"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.traffic_insurance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traffic insurance"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trafik sigortası"
           }
         }
       }

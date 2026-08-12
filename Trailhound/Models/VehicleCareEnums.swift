@@ -69,9 +69,10 @@ enum VehicleScheduleIntervalKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Picker / new entries use these seven cases. Legacy raw values still decode via `resolved`.
+/// Picker / new entries use these eight cases. Legacy raw values still decode via `resolved`.
 enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
     case fuel
+    case trafficInsurance
     case casco
     case service
     case inspection
@@ -88,6 +89,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
     var displayName: String {
         switch self {
         case .fuel: L10n.string("vehicles.care.expense.fuel")
+        case .trafficInsurance: L10n.string("vehicles.care.expense.traffic_insurance")
         case .casco: L10n.string("vehicles.care.expense.casco")
         case .service: L10n.string("vehicles.care.expense.service")
         case .inspection: L10n.string("vehicles.care.expense.inspection")
@@ -100,6 +102,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
     var systemImage: String {
         switch self {
         case .fuel: "fuelpump.fill"
+        case .trafficInsurance: "doc.text.fill"
         case .casco: "shield.fill"
         case .service: "wrench.and.screwdriver.fill"
         case .inspection: "seal.fill"
@@ -114,6 +117,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         switch self {
         case .fuel: .fuel
         case .service, .repair: .service
+        case .trafficInsurance: .insurance
         case .casco: .casco
         case .inspection, .accessory, .other: .other
         }
@@ -123,7 +127,8 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         if let direct = VehicleExpenseCategory(rawValue: raw) { return direct }
         switch raw {
         case legacyParts: return .accessory
-        case legacyInsurance, legacyTax, legacyParking: return .other
+        case legacyInsurance: return .trafficInsurance
+        case legacyTax, legacyParking: return .other
         default: return .other
         }
     }
@@ -132,7 +137,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         switch kind {
         case .service: .service
         case .inspection: .inspection
-        case .trafficInsurance: .other
+        case .trafficInsurance: .trafficInsurance
         case .casco: .casco
         case .custom: .other
         }

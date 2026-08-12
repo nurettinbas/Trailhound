@@ -117,6 +117,7 @@ enum StatsChartTheme {
         case .fuel: bucketColor(for: .fuel)
         case .service: bucketColor(for: .service)
         case .repair: Color(red: 0.98, green: 0.48, blue: 0.32)
+        case .trafficInsurance: bucketColor(for: .insurance)
         case .casco: bucketColor(for: .casco)
         case .inspection: Color(red: 0.45, green: 0.72, blue: 0.98)
         case .accessory: Color(red: 0.88, green: 0.52, blue: 0.92)
