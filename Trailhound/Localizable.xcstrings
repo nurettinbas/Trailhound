@@ -4525,13 +4525,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete this vehicle?"
+            "value" : "This deletes the vehicle, its expenses, care schedules, and related reminders. Trips stay in your history."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu araç silinsin mi?"
+            "value" : "Araç, harcamaları, bakım planları ve ilgili hatırlatmalar silinir. Geziler geçmişinizde kalır."
           }
         }
       }
@@ -4542,13 +4542,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete this vehicle? The active pairing will also be removed."
+            "value" : "This deletes the vehicle, its expenses, care schedules, and related reminders. Trips stay in your history. Active pairing is removed too."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu araç silinsin mi? Aktif eşleştirme de kaldırılır."
+            "value" : "Araç, harcamaları, bakım planları ve ilgili hatırlatmalar silinir. Geziler geçmişinizde kalır. Aktif eşleştirme de kaldırılır."
           }
         }
       }
