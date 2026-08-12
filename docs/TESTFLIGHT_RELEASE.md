@@ -1,71 +1,71 @@
-# TestFlight ve App Store yayın kontrol listesi
+# TestFlight and App Store release checklist
 
-## Ön koşullar
+## Prerequisites
 
-- Apple Developer Program üyeliği
-- Uygulama ikonu (1024x1024)
-- Gizlilik politikası URL'si (konum verisi cihazda kalır)
+- Apple Developer Program membership
+- App icon (1024×1024)
+- Privacy policy URL (location data stays on device)
 
-## Otomatik testler (CI / lokal)
+## Automated tests (CI / local)
 
-- [ ] `./scripts/run_tests.sh` yeşil (unit + UI smoke)
-- [ ] GitHub Actions `iOS Tests` workflow yeşil
+- [ ] `./scripts/run_tests.sh` green (unit + UI smoke)
+- [ ] GitHub Actions `iOS Tests` workflow green
 
-## Xcode hazırlığı
+## Xcode setup
 
 1. Bundle ID: `com.trailhound.app`
 2. Widget: `com.trailhound.app.widget`
-3. Signing: Automatic + Team seç
+3. Signing: Automatic + select Team
 4. Capabilities: App Groups, Background Modes (location)
 
 ## App Store Connect
 
-1. Yeni uygulama oluştur
-2. Gizlilik manifest: `PrivacyInfo.xcprivacy` dahil
-3. Konum kullanım açıklaması: yolculuk kaydı
-4. Ekran görüntüleri: liste, detay harita, istatistik, ayarlar
+1. Create a new app
+2. Include privacy manifest: `PrivacyInfo.xcprivacy`
+3. Location usage description: trip recording
+4. Screenshots: list, detail map, stats, settings
 
 ## TestFlight
 
 1. Archive → Distribute → App Store Connect
-2. Internal testing grubu
-3. Aşağıdaki **fiziksel cihaz** checklist'ini tamamla (CI'da otomatiklenemez)
+2. Internal testing group
+3. Complete the **physical device** checklist below (not automatable in CI)
 
-## Fiziksel cihaz test checklist
+## Physical device test checklist
 
-Bu maddeler `DeviceTestChecklist` enum'unda kod olarak da korunur (`DeviceTestChecklistTests`).
+These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestChecklistTests`).
 
-- [ ] **30+ dk gerçek sürüş** — km ve süre akıyor
-- [ ] **Arka plan** — uygulamayı arka plana at, 5 dk bekle: kayıt devam ediyor
-- [ ] **Kısayollar auto-start** — araca bağlanınca (Bluetooth / CarPlay / Wi‑Fi otomasyonu) kayıt başlar
-- [ ] **Kısayollar auto-stop** — araçtan ayrılınca kayıt durur
-- [ ] **Orphan recovery** — uygulamayı öldür → aç → orphan banner / recovery
-- [ ] **Harita** — detay haritada rota gerçekçi (denizden geçmiyor)
+- [ ] **30+ min real drive** — distance and duration advance
+- [ ] **Background** — background the app, wait 5 min: recording continues
+- [ ] **Shortcuts auto-start** — recording starts when connecting to the car (Bluetooth / CarPlay / Wi‑Fi automation)
+- [ ] **Shortcuts auto-stop** — recording stops when leaving the car
+- [ ] **Orphan recovery** — force-quit → reopen → orphan banner / recovery
+- [ ] **Map** — detail map route looks realistic (does not cross water)
 
-Ek smoke (opsiyonel):
+Optional smoke:
 
-- [ ] **Manuel kayıt** — uygulama içinden başlat / duraklat / bitir
-- [ ] **Widget / Siri** — widget veya Siri kısayolu ile kayıt başlatma / durdurma
-- [ ] **Export** — JSON, CSV, GPX veya KML dışa aktarma
+- [ ] **Manual recording** — start / pause / end from the app
+- [ ] **Widget / Siri** — start / stop recording via widget or Siri shortcut
+- [ ] **Export** — JSON, CSV, GPX, or KML
 
-## Araç bakım & masraf (V13)
+## Vehicle care & expenses (V13)
 
-- [ ] **Schema upgrade** — mevcut store ile açılış; trip/araç kaybı yok
-- [ ] **Vade ekle** — bakım (30/7/1), sigorta/kasko (7/1) hatırlatmaları planlanır
-- [ ] **Overdue banner** — Trips üstünde kırmızı uyarı; dismiss ertesi güne kadar
-- [ ] **Masraf ekle** — tutar + kategori; Stats → Araç maliyetleri grafiği güncellenir
-- [ ] **Araç sil** — schedule/expense cascade + care bildirimleri iptal
-- [ ] **Kayıt scroll** — aktif trip varken Trips kaydırma akıcı (banner regression yok)
+- [ ] **Schema upgrade** — open with an existing store; no trip/vehicle loss
+- [ ] **Add due date** — service (30/7/1) and insurance/casco (7/1) reminders are scheduled
+- [ ] **Overdue banner** — red warning above Trips; dismiss lasts until next day
+- [ ] **Add expense** — amount + category; Stats → Vehicle costs chart updates
+- [ ] **Delete vehicle** — schedule/expense cascade + care notifications cancelled
+- [ ] **Recording scroll** — Trips scrolling stays smooth while a trip is active (no banner regression)
 
-## Kısayollar ile otomatik kayıt
+## Auto-record with Shortcuts
 
-- Otomatik başlat/bitir **Shortcuts Personal Automations** ile kurulur (Pairing sekmesindeki rehber).
-- Uygulama içi Bluetooth ses-rotası eşleştirmesi kaldırıldı; ekstra Bluetooth entitlement gerekmez.
-- Konum + arka plan konum modu yalnızca aktif kayıt için kullanılır.
+- Auto start/stop is set up via **Shortcuts Personal Automations** (guide under the Pairing tab).
+- In-app Bluetooth audio-route matching was removed; no extra Bluetooth entitlement is required.
+- Location + background location mode are used only during an active recording.
 
-## Release sırası (özet)
+## Release order (summary)
 
-1. Otomatik testler yeşil
-2. TestFlight internal build yükle
-3. Fiziksel cihaz checklist (6 madde)
+1. Automated tests green
+2. Upload TestFlight internal build
+3. Physical device checklist (core 6 items)
 4. Archive → App Store Connect

@@ -1,29 +1,29 @@
-# Pil optimizasyonu notları
+# Battery optimization notes
 
-## Uygulanan stratejiler
+## Applied strategies
 
-1. **Idle:** Kayıt yokken `LocationService` kapalı (Shortcuts otomasyonu uygulama içinde sürekli GPS dinlemez).
-2. **Kayıt sırasında:** `startTracking()` — navigasyon doğruluğu, 5 m filtre.
-3. **Geocoding:** Yalnızca trip başlangıç/bitişinde; offline'da pending, ağ gelince retry.
-4. **Polyline:** 1000+ noktada Douglas-Peucker sadeleştirme.
-5. **Timer:** Yalnızca aktif kayıtta 1 sn elapsed timer.
-6. **Kayıt animasyonu:** Düşük güç modunda 15 FPS; `reduceMotion` desteklenir.
+1. **Idle:** `LocationService` is off when not recording (Shortcuts automation does not keep GPS listening inside the app).
+2. **While recording:** `startTracking()` — navigation accuracy, 5 m filter.
+3. **Geocoding:** Only at trip start/end; pending offline, retry when network returns.
+4. **Polyline:** Douglas–Peucker simplification at 1000+ points (display path only).
+5. **Timer:** 1 s elapsed timer only during an active recording.
+6. **Recording animation:** 15 FPS in Low Power Mode; respects `reduceMotion`.
 
-## Instruments ile doğrulama
+## Verify with Instruments
 
-1. Gerçek iPhone bağla.
+1. Connect a physical iPhone.
 2. Xcode → Product → Profile → Energy Log.
-3. Senaryolar: 30 dk sürüş kaydı, arka plan, Shortcuts ile başlat/bitir.
-4. Hedef: kayıt dışında Location Services sürekli aktif olmamalı.
+3. Scenarios: 30 min drive recording, background, Shortcuts start/stop.
+4. Goal: Location Services must not stay on continuously outside recording.
 
-## Arka plan görev denetimi
+## Background work audit
 
-- Otomatik başlat/bitir: **Shortcuts Personal Automations** (Bluetooth / CarPlay / Wi‑Fi). Uygulama içi Bluetooth ses-rotası dinleyicisi yok.
-- Live Activity: yalnızca kayıt sırasında.
+- Auto start/stop: **Shortcuts Personal Automations** (Bluetooth / CarPlay / Wi‑Fi). No in-app Bluetooth audio-route listener.
+- Live Activity: only while recording.
 
-## TestFlight öncesi kontrol listesi
+## Pre–TestFlight checklist
 
-- [ ] 2+ saat gerçek sürüşte pil tüketimi kabul edilebilir
-- [ ] Kayıt bitince GPS duruyor
-- [ ] Kısayollar otomasyonu: araca bağlanınca kayıt başlıyor, ayrılınca duruyor
-- [ ] Kayıt yokken arka planda sürekli GPS çekilmiyor
+- [ ] 2+ hour real drive: battery drain acceptable
+- [ ] GPS stops when recording ends
+- [ ] Shortcuts automation: recording starts on car connect, stops on disconnect
+- [ ] No continuous GPS in background when idle

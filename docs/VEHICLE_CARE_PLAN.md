@@ -1,55 +1,56 @@
-# Araç masraf & bakım takibi
+# Vehicle care & expenses
 
-> **Durum:** Uygulandı (schema V13) + UI ayrımı revizyonu  
-> **Yerleşim:** Araçlar sekmesi → tek detay ekranı
-
----
-
-## İki katman (karıştırmayın)
-
-| Katman | Ne için | UI |
-|--------|---------|-----|
-| **Takip & hatırlatmalar** | Vize, sigorta, kasko, bakım vadeleri + push | `VehicleSchedule` |
-| **Harcamalar** | Ödenen tutar kaydı (ayrı) | `VehicleExpense` |
-
-Hatırlatma eklemek harcama eklemek değildir. “Yaptırdım” takip section’ında vade kapatır ve isteğe bağlı masraf yazar; “Harcama ekle” yalnızca gider kaydıdır.
+> **Status:** Shipped (schema V13) + UI layering revision  
+> **Placement:** Vehicles tab → single detail screen
 
 ---
 
-## Tek ekran sırası
+## Two layers (do not mix)
 
-1. **Araç bilgileri** — profil draft + Kaydet (`PairingVehicleEditorForm` embedded)
-2. **Takip & hatırlatmalar** — vadeler, Hatırlatma ekle, Yaptırdım
-3. **Harcamalar** — liste + Harcama ekle
+| Layer | Purpose | UI |
+|-------|---------|-----|
+| **Tracking & reminders** | Inspection, insurance, casco, service due dates + push | `VehicleSchedule` |
+| **Expenses** | Amount paid (separate ledger) | `VehicleExpense` |
 
-Maliyet grafikleri yalnızca **Stats** sekmesinde (`VehicleCostSnapshotLoader` / Araç maliyetleri).
+Adding a reminder is not logging an expense. **Mark done** on a schedule closes/rolls the due date and writes an expense. **Add expense** only writes a cost row.
 
----
-
-## Harcama kategorileri (picker)
-
-Yakıt · Kasko · Bakım · Vize · Arıza · Aksesuar · Diğer
-
-Eski raw (`insurance`, `tax`, `parking`, `parts`) okumada map edilir; schema bump yok.
+**Mark done:** the visible checkmark (Done) on the reminder row opens the completion sheet; leading swipe is the same action as a shortcut.
 
 ---
 
-## Bildirimler
+## Screen order
 
-Premium merdiven (her aşama en fazla bir kez; spam yok):
+1. **Vehicle info** — profile draft + Save (`PairingVehicleEditorForm` embedded)
+2. **Tracking & reminders** — due list, Add reminder, Done on each row
+3. **Expenses** — list + Add expense
 
-- Bakım / muayene / özel: 30 gün kala → 1 hafta kala → vade günü → vade ertesi sabah (overdue, tek)
-- Sigorta / kasko: 1 hafta kala → vade günü → overdue (tek)
-- OS push + uygulama içi inbox; tıklanınca ilgili araç bakım ekranı
-- Overdue catch-up: uygulama açılışında vade çoktan geçmişse tek bildirim (UserDefaults ile tekrarlanmaz)
-- In-app banner (kırmızı) ayrıca acil vadeleri gösterir  
-
+Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs).
 
 ---
 
-## Performans
+## Expense categories (picker)
 
-- Profil: draft + Save  
-- Due: `VehicleCareSummaryStore`  
-- Mini chart: 120 ms debounce, trip points fault yok  
-- Glass / brand renkleri; rainbow chart yok  
+Fuel · Casco · Service · Inspection · Repair · Accessory · Other
+
+Legacy raw values (`insurance`, `tax`, `parking`, `parts`) map on read; no schema bump.
+
+---
+
+## Notifications
+
+Staged ladder (each stage at most once; no spam):
+
+- Service / inspection / custom: 30 days → 1 week → due day → morning after due (single overdue)
+- Insurance / casco: 1 week → due day → overdue (single)
+- OS push + in-app inbox; tap opens that vehicle’s care screen
+- Overdue catch-up: if the due date already passed when the app opens, one notification (UserDefaults prevents repeats)
+- Red in-app banner also surfaces urgent dues
+
+---
+
+## Performance
+
+- Profile: draft + Save
+- Due: `VehicleCareSummaryStore`
+- Mini chart: 120 ms debounce; do not fault trip GPS points
+- Glass / brand colors; no rainbow charts

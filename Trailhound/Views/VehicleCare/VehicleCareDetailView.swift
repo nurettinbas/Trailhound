@@ -223,11 +223,13 @@ struct VehicleDetailView: View {
         )
     }
 
-    /// Matches Araçlar → vehicle card: glass card, leading icon tile, title, due date trailing.
+    /// Matches Vehicles tab vehicle card: glass card, leading icon tile, title, due date trailing.
     private func trackingCardRow(_ schedule: VehicleSchedule) -> some View {
-        CareTrackingCardRow(schedule: schedule) {
-            editingScheduleID = schedule.id
-        }
+        CareTrackingCardRow(
+            schedule: schedule,
+            onEdit: { editingScheduleID = schedule.id },
+            onComplete: { completingScheduleID = schedule.id }
+        )
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
@@ -319,10 +321,11 @@ struct VehicleDetailView: View {
     }
 }
 
-/// Reminder row with urgency-tinted icon tile + due chip.
+/// Reminder row with urgency-tinted icon tile + due chip + visible Done.
 private struct CareTrackingCardRow: View {
     let schedule: VehicleSchedule
     let onEdit: () -> Void
+    let onComplete: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var playChipEntrance = false
@@ -342,44 +345,57 @@ private struct CareTrackingCardRow: View {
 
     var body: some View {
         PairingCardContainer {
-            Button(action: onEdit) {
-                HStack(alignment: .center, spacing: 10) {
-                    VehicleCareUrgencyIconTile(
-                        systemImage: schedule.kind.systemImage,
-                        scheduleID: schedule.id,
-                        band: band
-                    )
-
-                    Text(schedule.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Spacer(minLength: 8)
-
-                    if let band, let chipText = VehicleCareUrgencyStyle.chipText(for: state) {
-                        VehicleCareDueChip(
-                            text: chipText,
-                            band: band,
-                            playEntrance: playChipEntrance
+            HStack(alignment: .center, spacing: 8) {
+                Button(action: onEdit) {
+                    HStack(alignment: .center, spacing: 10) {
+                        VehicleCareUrgencyIconTile(
+                            systemImage: schedule.kind.systemImage,
+                            scheduleID: schedule.id,
+                            band: band
                         )
-                    } else {
-                        Text(plainSubtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .multilineTextAlignment(.trailing)
-                    }
 
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                        Text(schedule.title)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 8)
+
+                        if let band, let chipText = VehicleCareUrgencyStyle.chipText(for: state) {
+                            VehicleCareDueChip(
+                                text: chipText,
+                                band: band,
+                                playEntrance: playChipEntrance
+                            )
+                        } else {
+                            Text(plainSubtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .buttonStyle(.plain)
+
+                Button(action: onComplete) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(L10n.string("vehicles.care.complete"))
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
+            .padding(.leading, 12)
+            .padding(.trailing, 12)
+            .padding(.vertical, 8)
         }
         .onAppear(perform: consumeChipEntranceIfNeeded)
     }

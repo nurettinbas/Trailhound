@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// Trailhound has no analytics or crash reporting (the app is fully offline), so
 /// this is the only way to see what happened on a user's device — e.g. exact
 /// Bluetooth connect/disconnect timing around a false-stop report. Only shown
-/// once Developer Mode is enabled (tap the version number 5 times in Ayarlar).
+/// once Developer Mode is enabled (tap the version number 5 times in Settings).
 struct DevLogView: View {
     @State private var lines: [String] = []
     @State private var filter: DevLogCategory?

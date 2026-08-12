@@ -6,8 +6,6 @@
 
 Trailhound is a native SwiftUI app built with SwiftData. It records routes locally, works offline, and can start/stop automatically via **Shortcuts Personal Automations** (Bluetooth, CarPlay, or Wi‑Fi) — or manually from the app, widget, Live Activity, and Siri.
 
-[English](#features) · [Türkçe](#özellikler)
-
 ---
 
 ## Features
@@ -37,7 +35,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
-- **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue)
+- **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue); mark done from the row (Done) to log cost and roll the next due date
 - **Expenses** — log fuel, service, insurance, and other vehicle costs separately from reminders
 - One vehicle detail screen under **Vehicles**: profile → reminders → expenses; cost charts live on **Stats**
 - Overdue care also shown as an in-app banner; push fires once when overdue (no daily spam)
@@ -146,9 +144,7 @@ Requires **iOS 17+** and **Siri / Shortcuts** available. After first launch:
 2. Or open **Shortcuts** → search **Trailhound** and add: **Start trip**, **Pause trip**, **Resume trip**, **End trip**
 3. For hands-free start/stop: create Personal Automations (Bluetooth / CarPlay / Wi‑Fi connect & disconnect) that run those actions
 
-**English Siri examples:** *“Start trip in Trailhound”*, *“Pause trip in Trailhound”*
-
-**Turkish Siri examples:** *“Trailhound yolculuğu başlat”*, *“Trailhound yolculuğu duraklat”*, *“Trailhound yolculuğu sürdür”*, *“Trailhound yolculuğu bitir”*
+**Siri examples:** *“Start trip in Trailhound”*, *“Pause trip in Trailhound”* (Turkish phrases are also registered for TR Siri language)
 
 > Siri language and system language can differ. Shortcuts list follows system language; voice phrases follow Siri language.
 >
@@ -183,38 +179,6 @@ docs/                 # Battery, TestFlight, vehicle care notes
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, UI layout, notification rules
-
----
-
-## Özellikler (Türkçe)
-
-Trailhound, yolculuklarınızı **yalnızca cihazınızda** kaydeden gizlilik odaklı bir sürüş günlüğüdür.
-
-- GPS ile rota ve mesafe takibi
-- **Kısayollar otomasyonu** ile otomatik başlat-bitir (Bluetooth / CarPlay / Wi‑Fi; Pairing sekmesindeki rehber)
-- Siri: *Yolculuğu başlat*, *duraklat*, *sürdür*, *bitir*
-- Widget ve Live Activity
-- İş/kişisel kategori, yakıt/EV maliyet tahmini
-- **Favori yer filtresi** — Yolculuklar ve İstatistik’te (başlangıç veya bitiş eşleşmesi); özet ve grafikler sekme başına bağımsız filtreyle daralır
-- **Araç avatar fotoğrafı**: Galeri veya Kamera seçimi → uygulama içi ~%70 overlay → kadraj; kayıt / Live Activity’de görünür
-- **Araç bakım & hatırlatmalar** — vize, sigorta, kasko, bakım vadeleri; kademeli yerel bildirim + inbox (30 gün / 1 hafta / vade günü / tek gecikme)
-- **Araç harcamaları** — yakıt, bakım, sigorta vb. gider kaydı (hatırlatmadan ayrı); maliyet grafikleri Stats’te
-- JSON, CSV, GPX, KML, aylık iş PDF export
-- Türkçe ve İngilizce arayüz
-
-### Platform desteği
-
-| Platform | Minimum sürüm | Durum |
-|----------|---------------|-------|
-| **iPhone (iOS)** | **17.0** | ✅ Ana hedef |
-| **iPadOS** | 17.0 | ⚠️ iPhone uygulaması olarak çalışır |
-| **Widget + Live Activity** | iOS 17.0+ | ✅ Ana ekran ve kilit ekranı |
-| **Siri / Kısayollar** | iOS 17.0+ | ✅ App Intents + Kişisel Otomasyonlar |
-| **macOS / visionOS / tvOS** | — | ❌ Desteklenmiyor |
-
-**iOS 17 zorunlu** — SwiftData, App Intents ve Live Activity bu sürümü gerektirir. iOS 16 ve altı desteklenmez.
-
-Gerçek sürüş, arka plan kaydı ve Kısayollar otomasyonları için **fiziksel iPhone** önerilir.
 
 ---
 

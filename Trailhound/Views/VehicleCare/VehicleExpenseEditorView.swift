@@ -5,7 +5,7 @@ struct VehicleExpenseEditorView: View {
     let vehicleID: UUID
     var expenseID: UUID?
     var prefillCategory: VehicleExpenseCategory = .fuel
-    /// When set, save completes this schedule (tracking “Yaptırdım”) instead of a plain expense insert.
+    /// When set, save completes this schedule (tracking Mark done) instead of a plain expense insert.
     var completeScheduleID: UUID?
 
     @Environment(\.modelContext) private var modelContext

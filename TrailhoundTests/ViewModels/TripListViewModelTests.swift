@@ -64,7 +64,7 @@ final class TripListViewModelTests: XCTestCase {
     func testStartedRichBodyUsesFromPrefix() {
         let body = String(format: L10n.string("trip.started.rich.body"), "Home")
         XCTAssertTrue(body.contains("Home"))
-        // EN: "From Home" — TR: "Home konumundan"
+        // EN body: "From Home" — TR body ends with " konumundan"
         XCTAssertTrue(body.hasPrefix("From ") || body.hasSuffix(" konumundan"))
     }
 

@@ -34,15 +34,15 @@ final class PreviewData {
             startedAt: startedAt,
             endedAt: endedAt,
             distanceMeters: 14200,
-            startAddress: "Kadıköy, İstanbul",
-            endAddress: "Levent, İstanbul",
+            startAddress: "Kadikoy, Istanbul",
+            endAddress: "Levent, Istanbul",
             label: "İş",
             category: .business,
             geocodeStatus: .complete,
             maxSpeedMps: 22,
             estimatedFuelCost: 85,
-            startPlaceName: "Ev",
-            endPlaceName: "Ofis"
+            startPlaceName: "Home",
+            endPlaceName: "Office"
         )
 
         let points = [
