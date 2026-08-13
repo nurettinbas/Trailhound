@@ -18,6 +18,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
 - Optional confirmation before widget/shortcut/deep-link recording start
+- **Live follow map** (optional): open fades the MapKit view in while the road vehicle mark flies into the nav puck; close reverses that flight back to the list card — 3D/2D toggle and live breadcrumb; pause/resume/stop stay available; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)

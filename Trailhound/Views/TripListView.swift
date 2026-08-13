@@ -47,6 +47,9 @@ struct TripListView: View {
     @State private var scrollToTopToken = 0
     @State private var scrollToTopRequest: TripListScrollToTopRequest?
     @State private var isRecordingCardInViewport = true
+    @State private var showLiveFollowMap = false
+    @State private var liveFollowCardAnchor = RecordingCardAnchor()
+    @State private var liveFollowVehiclePhoto: UIImage?
 
     /// The pages fetched so far, newest first.
     @State private var loadedTrips: [Trip] = []
@@ -292,7 +295,21 @@ struct TripListView: View {
                         playEntranceReveal: coldOpenArmed && coldOpenTripID == activeTripID,
                         onEntranceFinished: finishColdOpen,
                         onStop: { anchor in beginEndCredits(cardAnchor: anchor) },
-                        isRecordingCardVisible: tabSelection.selectedTab == .trips && isRecordingCardInViewport
+                        onOpenLiveFollow: { anchor in
+                            liveFollowCardAnchor = anchor
+                            Task { @MainActor in
+                                await prepareLiveFollowVehiclePhoto()
+                                // Skip the system cover slide — LiveFollowMapView owns the expand.
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    showLiveFollowMap = true
+                                }
+                            }
+                        },
+                        isRecordingCardVisible: tabSelection.selectedTab == .trips
+                            && isRecordingCardInViewport
+                            && !showLiveFollowMap
                     )
                     .id(activeTripID)
                     .onAppear { isRecordingCardInViewport = true }
@@ -443,6 +460,11 @@ struct TripListView: View {
                 refreshOrphans()
                 coldOpenArmed = false
                 coldOpenTripID = nil
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    showLiveFollowMap = false
+                }
             }
         }
         .onChange(of: recordingService.state.isActiveSession) { wasActive, isActive in
@@ -624,6 +646,57 @@ struct TripListView: View {
                 .allowsHitTesting(false)
                 .zIndex(50)
             }
+        }
+        .fullScreenCover(isPresented: $showLiveFollowMap) {
+            LiveFollowMapView(
+                vehiclePhoto: liveFollowVehiclePhoto,
+                vehicleSystemImage: "car.fill",
+                cardAnchor: liveFollowCardAnchor,
+                onClose: {
+                    // Cover presentation itself stays silent; reverse morph already finished.
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showLiveFollowMap = false
+                    }
+                },
+                onStop: { anchor in
+                    // Instant dismiss — no reverse morph; end credits play on the list.
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showLiveFollowMap = false
+                    }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(280))
+                        beginEndCredits(cardAnchor: anchor)
+                    }
+                }
+            )
+            .presentationBackground(.clear)
+            .transaction { $0.disablesAnimations = true }
+            .environment(recordingService)
+            .environment(AppServices.runtime.locationService)
+            .environment(NetworkMonitor.shared)
+        }
+    }
+
+    @MainActor
+    private func prepareLiveFollowVehiclePhoto() async {
+        let vehicleID = recordingService.activeRecordingVehicleID(from: vehicles)
+        let fileName = vehicles.first(where: { $0.id == vehicleID })?.photoFileName
+        guard let fileName, !fileName.isEmpty else {
+            liveFollowVehiclePhoto = nil
+            return
+        }
+        if let synced = VehiclePhotoStore.shared.imageSync(fileName: fileName) {
+            liveFollowVehiclePhoto = VehiclePhotoStore.markImageForDisplay(synced)
+            return
+        }
+        if let loaded = await VehiclePhotoStore.shared.image(fileName: fileName) {
+            liveFollowVehiclePhoto = VehiclePhotoStore.markImageForDisplay(loaded)
+        } else {
+            liveFollowVehiclePhoto = nil
         }
     }
 

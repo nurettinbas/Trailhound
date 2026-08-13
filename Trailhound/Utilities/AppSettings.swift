@@ -66,6 +66,7 @@ final class AppSettings {
         static let preferredLanguageCode = "preferredLanguageCode"
         static let developerModeEnabled = "developerModeEnabled"
         static let recordingVehicleID = "recording.vehicleID"
+        static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -281,6 +282,15 @@ final class AppSettings {
     var developerModeEnabled: Bool {
         get { defaults.bool(forKey: Key.developerModeEnabled) }
         set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
+    }
+
+    /// Live follow map: pitched 3D camera + realistic buildings when true; flat overview when false.
+    var liveFollowMap3DEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.liveFollowMap3DEnabled) == nil { return true }
+            return defaults.bool(forKey: Key.liveFollowMap3DEnabled)
+        }
+        set { defaults.set(newValue, forKey: Key.liveFollowMap3DEnabled) }
     }
 
     private static func loadedTimeInterval(

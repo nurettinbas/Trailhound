@@ -23,6 +23,7 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 - Stop credits still use `LiveBreadcrumbCanvas` briefly.
 - The road animation pauses when another tab is selected or the card scrolls off-screen (`isRecordingCardInViewport`).
 - `TimelineView` runs only while the road animation is active (paused / off-screen = static frame).
+- **Live follow map** (`LiveFollowMapView`) writes the follow camera with animations disabled before Map mounts (avoids MapKit world→local fly-in), then fades map opacity + vehicle↔puck hero together (`liveFollowReveal`). Follow-camera easing only after open settles. Close fades map + reverse hero in lockstep. Breadcrumb polylines are decimated via `RouteDisplayPath` (max 1500). While the cover is open, the card’s road `TimelineView` stays paused (`!showLiveFollowMap`).
 
 ### Observation isolation
 
@@ -33,7 +34,7 @@ The card sits above a 40-row `List`, so anything that invalidates its body inval
 
 ### Scroll invalidation
 
-- The recording card's frame is only needed when Stop is pressed, so it lives in `RecordingCardAnchorBox`, a reference box outside the dependency graph. It was previously `@State` with a 12 pt threshold, which a fast scroll clears every frame — so the card was rebuilt every frame.
+- The recording card's frame is only needed when Stop or live-follow is pressed, so it lives in `RecordingCardAnchorBox`, a reference box outside the dependency graph. It was previously `@State` with a 12 pt threshold, which a fast scroll clears every frame — so the card was rebuilt every frame.
 - The filter bar's `.global` frame preference is only installed while `endCredits != nil`. Otherwise the preference chain ran on every scroll frame for an animation that was not playing.
 - `TripListView` computes `visibleTrips` and `firstTripID` once per body pass. `completedTrips` used to be re-filtered inside every row, making the list quadratic in trip count.
 

@@ -151,6 +151,34 @@ final class DeviceTestChecklistTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(DeviceTestChecklist.items.count, 9)
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("colorSegs") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("disk cache") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Live follow map") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Reduce Motion") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("3D/2D") }))
+    }
+}
+
+@MainActor
+final class AppSettingsLiveFollowMapTests: XCTestCase {
+    func testLiveFollowMap3DDefaultsOnAndPersists() {
+        let suiteName = "test.trailhound.liveFollowMap3D.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create test defaults")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AppSettings(userDefaults: defaults)
+        XCTAssertTrue(settings.liveFollowMap3DEnabled)
+
+        settings.liveFollowMap3DEnabled = false
+        XCTAssertFalse(settings.liveFollowMap3DEnabled)
+        XCTAssertEqual(defaults.object(forKey: "recording.liveFollowMap3DEnabled") as? Bool, false)
+
+        let reloaded = AppSettings(userDefaults: defaults)
+        XCTAssertFalse(reloaded.liveFollowMap3DEnabled)
+
+        reloaded.liveFollowMap3DEnabled = true
+        XCTAssertTrue(reloaded.liveFollowMap3DEnabled)
     }
 }
 

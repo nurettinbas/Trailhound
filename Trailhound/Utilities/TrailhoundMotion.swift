@@ -30,6 +30,10 @@ enum TrailhoundMotion {
     static let photoActionsReveal = Animation.spring(response: 0.34, dampingFraction: 0.86)
     /// Source dialog → camera/gallery: sheet stretches upward as one filled surface.
     static let photoSheetExpand = Animation.spring(response: 1.1, dampingFraction: 0.86)
+    /// Live follow open/close hero flight + map opacity (keep map + hero in lockstep).
+    static let liveFollowReveal = Animation.easeInOut(duration: 1.05)
+    /// Alias used by close / shared call sites.
+    static let liveFollowExpand = liveFollowReveal
     /// Gallery/camera fade inside the grown card.
     static let photoSheetReveal = Animation.easeOut(duration: 0.56)
     /// Pure fade — no offset (offset reads as a new sheet rising).

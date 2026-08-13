@@ -118,7 +118,9 @@ struct ActiveTripView: View {
     var playEntranceReveal: Bool = false
     var onEntranceFinished: (() -> Void)?
     var onStop: ((RecordingCardAnchor) -> Void)?
-    /// When false, pauses the road animation while another tab is selected.
+    /// Opens the optional full-screen live follow map (trips list owns presentation).
+    var onOpenLiveFollow: ((RecordingCardAnchor) -> Void)?
+    /// When false, pauses the road animation while another tab is selected or live map is open.
     var isRecordingCardVisible: Bool = true
 
     @Environment(TripRecordingService.self) private var recordingService
@@ -143,6 +145,7 @@ struct ActiveTripView: View {
         playEntranceReveal: Bool = false,
         onEntranceFinished: (() -> Void)? = nil,
         onStop: ((RecordingCardAnchor) -> Void)? = nil,
+        onOpenLiveFollow: ((RecordingCardAnchor) -> Void)? = nil,
         isRecordingCardVisible: Bool = true
     ) {
         self.morphNamespace = morphNamespace
@@ -150,6 +153,7 @@ struct ActiveTripView: View {
         self.playEntranceReveal = playEntranceReveal
         self.onEntranceFinished = onEntranceFinished
         self.onStop = onStop
+        self.onOpenLiveFollow = onOpenLiveFollow
         self.isRecordingCardVisible = isRecordingCardVisible
         let settled = !self.playEntranceReveal
         _cardReveal = State(initialValue: settled ? 1 : 0)
@@ -235,7 +239,17 @@ struct ActiveTripView: View {
                     namespace: morphNamespace,
                     isSource: true
                 )
-                    .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
+                .background {
+                    GeometryReader { geo in
+                        let frame = geo.frame(in: .global)
+                        Color.clear
+                            .onAppear { updateCarAnchor(frame) }
+                            .onChange(of: frame.origin.y) { _, _ in updateCarAnchor(frame) }
+                            .onChange(of: frame.size.width) { _, _ in updateCarAnchor(frame) }
+                            .onChange(of: frame.size.height) { _, _ in updateCarAnchor(frame) }
+                    }
+                }
             }
             .frame(height: 72)
             .opacity(detailsReveal)
@@ -270,6 +284,7 @@ struct ActiveTripView: View {
                     .onAppear { updateCardAnchor(frame) }
                     .onChange(of: frame.origin.y) { _, _ in updateCardAnchor(frame) }
                     .onChange(of: frame.size.width) { _, _ in updateCardAnchor(frame) }
+                    .onChange(of: frame.size.height) { _, _ in updateCardAnchor(frame) }
             }
         }
         .accessibilityElement(children: .combine)
@@ -332,6 +347,22 @@ struct ActiveTripView: View {
 
             Spacer(minLength: 4)
 
+            if onOpenLiveFollow != nil {
+                Button {
+                    TrailhoundHaptics.selection()
+                    onOpenLiveFollow?(anchorBox.value)
+                } label: {
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .frame(width: 28, height: 28)
+                        .background(Color.white.opacity(0.16), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.string("recording.live_map.open"))
+                .accessibilityIdentifier("recording.live_map.open")
+            }
+
             if !vehicles.isEmpty {
                 RecordingVehiclePicker(
                     vehicles: vehicles,
@@ -386,11 +417,22 @@ struct ActiveTripView: View {
     /// needed — Stop now sees the card's exact current frame.
     private func updateCardAnchor(_ frame: CGRect) {
         guard frame.width > 0 else { return }
-        anchorBox.value = RecordingCardAnchor(
-            minX: frame.minX,
-            minY: frame.minY,
-            width: frame.width
-        )
+        var next = anchorBox.value
+        next.minX = frame.minX
+        next.minY = frame.minY
+        next.width = frame.width
+        next.height = frame.height
+        anchorBox.value = next
+    }
+
+    private func updateCarAnchor(_ frame: CGRect) {
+        guard frame.width > 0 else { return }
+        var next = anchorBox.value
+        next.carMinX = frame.minX
+        next.carMinY = frame.minY
+        next.carWidth = frame.width
+        next.carHeight = frame.height
+        anchorBox.value = next
     }
 
     @MainActor
@@ -554,7 +596,10 @@ private struct RecordingLocationChromeRow: View {
 }
 
 /// Live duration / speed / distance — only this subtree tracks display sampler (~4 Hz).
-private struct ActiveTripLiveStats: View {
+struct ActiveTripLiveStats: View {
+    /// Tighter pills for the live-follow HUD (more room for outer padding).
+    var compact: Bool = false
+
     @Environment(TripRecordingService.self) private var recordingService
 
     private var speedText: String {
@@ -570,7 +615,7 @@ private struct ActiveTripLiveStats: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .top, spacing: compact ? 5 : 6) {
             statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
             statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
             statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
@@ -578,28 +623,28 @@ private struct ActiveTripLiveStats: View {
     }
 
     private func statPill(icon: String, label: String, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: compact ? 1 : 2) {
             HStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: compact ? 8 : 9, weight: .semibold))
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: compact ? 9 : 10, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
             }
             .foregroundStyle(.white.opacity(0.75))
             Text(text)
-                .font(.caption.weight(.bold))
+                .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .numericTextAnimation(value: text)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
+        .padding(.horizontal, compact ? 6 : 8)
+        .padding(.vertical, compact ? 5 : 7)
         .background(.white.opacity(0.14))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(text)")
     }
