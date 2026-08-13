@@ -217,7 +217,7 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarSaveButton(title: L10n.placePickerSave)
         }
-        .buttonStyle(.plain)
+        .glassToolbarSaveControl()
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
       }

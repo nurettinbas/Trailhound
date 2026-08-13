@@ -683,6 +683,9 @@ struct LiveFollowVehicleHero: View {
                 .frame(width: side + 10, height: side + 10)
 
             ZStack {
+                Circle()
+                    .fill(LiveFollowMapView.routeBlue)
+
                 if let vehiclePhoto {
                     Image(uiImage: vehiclePhoto)
                         .resizable()
@@ -698,7 +701,7 @@ struct LiveFollowVehicleHero: View {
             .padding(LiveFollowPresentation.lerp(0, 8, t))
             .background {
                 Circle()
-                    .fill(Color.black.opacity(0.15 * (1 - puckChrome)))
+                    .fill(LiveFollowMapView.routeBlue)
             }
             .overlay {
                 Circle()
@@ -862,6 +865,9 @@ struct LiveFollowPuckMark: View {
 
     private var photoBadge: some View {
         ZStack {
+            Circle()
+                .fill(LiveFollowMapView.routeBlue)
+
             photoContent
                 .padding(photoBorder + photoGap)
                 .clipShape(Circle())

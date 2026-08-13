@@ -406,18 +406,23 @@ struct GlassFilterChip: View {
     }
 }
 
-/// Navigation bar save control — icon + title only; toolbar supplies the glass pill.
+/// Navigation bar save control — title only; toolbar supplies the glass chip.
 struct GlassToolbarSaveButton: View {
     let title: String
-    var systemImage: String = "square.and.arrow.down"
 
     var body: some View {
-        HStack(spacing: 2) {
-            Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .semibold))
-            Text(title)
-        }
-        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+        Text(title)
+            .padding(.horizontal, 8)
+            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+    }
+}
+
+extension View {
+    /// Rounded-rect chrome instead of the default circular/capsule toolbar glass.
+    func glassToolbarSaveControl() -> some View {
+        self
+            .buttonStyle(.plain)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
     }
 }
 

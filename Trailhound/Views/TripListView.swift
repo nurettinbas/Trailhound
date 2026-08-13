@@ -689,12 +689,13 @@ struct TripListView: View {
             liveFollowVehiclePhoto = nil
             return
         }
+        // Same asset as the recording card — no backdrop punch (that eats white vehicles).
         if let synced = VehiclePhotoStore.shared.imageSync(fileName: fileName) {
-            liveFollowVehiclePhoto = VehiclePhotoStore.markImageForDisplay(synced)
+            liveFollowVehiclePhoto = synced
             return
         }
         if let loaded = await VehiclePhotoStore.shared.image(fileName: fileName) {
-            liveFollowVehiclePhoto = VehiclePhotoStore.markImageForDisplay(loaded)
+            liveFollowVehiclePhoto = loaded
         } else {
             liveFollowVehiclePhoto = nil
         }

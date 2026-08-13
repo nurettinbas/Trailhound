@@ -58,7 +58,7 @@ struct VehicleDetailView: View {
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .buttonStyle(.plain)
+                .glassToolbarSaveControl()
                 .disabled(vehicleSaveDisabled)
                 .opacity(vehicleSaveDisabled ? 0.45 : 1)
             }

@@ -40,7 +40,7 @@ struct PairingVehicleEditorView: View {
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .buttonStyle(.plain)
+                .glassToolbarSaveControl()
                 .disabled(saveDisabled)
                 .opacity(saveDisabled ? 0.45 : 1)
             }
