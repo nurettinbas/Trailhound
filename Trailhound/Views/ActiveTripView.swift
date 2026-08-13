@@ -325,6 +325,22 @@ struct ActiveTripView: View {
 
     private var statusRow: some View {
         HStack(spacing: 6) {
+            if onOpenLiveFollow != nil {
+                Button {
+                    TrailhoundHaptics.selection()
+                    onOpenLiveFollow?(anchorBox.value)
+                } label: {
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .frame(width: 28, height: 28)
+                        .background(Color.white, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.string("recording.live_map.open"))
+                .accessibilityIdentifier("recording.live_map.open")
+            }
+
             HStack(spacing: 4) {
                 Image(systemName: statusIcon)
                     .font(.caption.weight(.semibold))
@@ -346,22 +362,6 @@ struct ActiveTripView: View {
             ))
 
             Spacer(minLength: 4)
-
-            if onOpenLiveFollow != nil {
-                Button {
-                    TrailhoundHaptics.selection()
-                    onOpenLiveFollow?(anchorBox.value)
-                } label: {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.92))
-                        .frame(width: 28, height: 28)
-                        .background(Color.white.opacity(0.16), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.string("recording.live_map.open"))
-                .accessibilityIdentifier("recording.live_map.open")
-            }
 
             if !vehicles.isEmpty {
                 RecordingVehiclePicker(
