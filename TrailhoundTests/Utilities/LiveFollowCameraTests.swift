@@ -199,6 +199,23 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertGreaterThan(pose.center.longitude, 29.0)
     }
 
+    func testSnapDimensionModeJumpsWithoutLerp() {
+        var camera = LiveFollowCamera()
+        camera.uses3D = true
+        camera.ingest(
+            location: location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5),
+            isPaused: false,
+            now: baseDate
+        )
+        _ = camera.tick(dt: frame, now: baseDate)
+        XCTAssertEqual(camera.pose?.pitchDegrees ?? -1, LiveFollowCamera.pitch3D, accuracy: 0.5)
+
+        camera.uses3D = false
+        camera.snapDimensionMode()
+        XCTAssertEqual(camera.pose?.pitchDegrees ?? -1, LiveFollowCamera.pitch2D, accuracy: 0.01)
+        XCTAssertEqual(camera.pose?.distanceMeters ?? -1, LiveFollowCamera.distance2D, accuracy: 0.01)
+    }
+
     func testModeLerpBlendsPitchWhenSwitching2D3D() {
         var camera = LiveFollowCamera()
         camera.uses3D = true

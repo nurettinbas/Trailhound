@@ -78,6 +78,18 @@ final class LiveFollowSession {
         }
     }
 
+    /// Flip 2D/3D. While following, pitch eases via display ticks; otherwise snap immediately
+    /// so the switch still works after the user breaks follow by panning.
+    func applyDimensionMode(_ uses3D: Bool) {
+        self.uses3D = uses3D
+        camera.uses3D = uses3D
+        guard !isFollowing || !openSettled else { return }
+        camera.snapDimensionMode()
+        if let pose = camera.pose {
+            onPoseWrite?(pose, camera.center)
+        }
+    }
+
     func bootstrap(uses3D: Bool, reduceMotion: Bool, location: CLLocation?, tip: CLLocationCoordinate2D?) {
         self.uses3D = uses3D
         self.reduceMotion = reduceMotion

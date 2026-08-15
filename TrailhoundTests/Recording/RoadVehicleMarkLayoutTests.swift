@@ -78,8 +78,41 @@ final class RoadVehicleMarkLayoutTests: XCTestCase {
         XCTAssertEqual(opaque.size, expectedSize, accuracy: 0.001)
 
         let diameter = max(15 as CGFloat, metrics.carSize * 0.68)
-        let badgeTop = opaque.centerY - metrics.carSize * 0.48 - diameter * 0.5
+        let badgeOffsetY = RecordingVehicleServiceBadgeLayout.offsetY(
+            for: metrics.carSize,
+            markSize: opaque.size
+        )
+        let badgeTop = opaque.centerY + badgeOffsetY - diameter * 0.5
         XCTAssertGreaterThanOrEqual(badgeTop, 0, "badge sits above mark inside expanded frame")
+    }
+
+    func testServiceBadgeLiftsAboveLargeCutoutPhotoWithoutClipping() {
+        let metrics = TrailhoundRoadSceneMetrics.compact
+        let frameHeight = TrailhoundRoadVehicleMarkLayout.sceneFrameHeight(for: metrics)
+        let roadTop = frameHeight - metrics.roadHeight
+        let cutout = TrailhoundRoadVehicleMarkLayout.placement(
+            kind: .cutoutPhoto,
+            metrics: metrics,
+            roadTop: roadTop,
+            bounce: TrailhoundRoadVehicleMarkLayout.bounceAmplitude
+        )
+        let diameter = max(15 as CGFloat, metrics.carSize * 0.68)
+        let symbolOffset = RecordingVehicleServiceBadgeLayout.offsetY(
+            for: metrics.carSize,
+            markSize: metrics.carSize
+        )
+        let photoOffset = RecordingVehicleServiceBadgeLayout.offsetY(
+            for: metrics.carSize,
+            markSize: cutout.size
+        )
+        XCTAssertLessThan(photoOffset, symbolOffset, "large photos lift the wrench above the mark")
+
+        let badgeTop = cutout.centerY + photoOffset - diameter * 0.5
+        XCTAssertGreaterThanOrEqual(badgeTop, 0, "lifted badge stays inside chrome headroom")
+
+        let markTop = cutout.centerY - cutout.size * 0.5
+        let badgeCenterY = cutout.centerY + photoOffset
+        XCTAssertLessThanOrEqual(badgeCenterY, markTop + 1, "badge sits on/above the photo, not on the body")
     }
 
     func testKindHelperMapsPhotoFlags() {

@@ -4,19 +4,23 @@ import UIKit
 
 /// MapKit host for live follow — display-link camera writes, incremental polylines, pins + puck.
 struct LiveFollowMapKitView: UIViewRepresentable {
+    /// Recording track: solid core + faint white casing (halo overlay).
+    private enum RouteStroke {
+        static let solidWidth: CGFloat = 7.8
+        static let casingWidth: CGFloat = 10.2
+        static let solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
+        static let casingColor = UIColor.white.withAlphaComponent(0.45)
+    }
+
     var session: LiveFollowSession
     var isFollowing: Bool
     var interactionEnabled: Bool
-    var uses3DElevation: Bool
     var segments: [LiveFollowPolylineSegment]
     var pins: [LiveFollowMapPin]
     var vehiclePhoto: UIImage?
     var vehicleSystemImage: String
     var puckRevealed: Bool
     var isMoving: Bool
-    /// Matches recording-card service wrench (urgent service only).
-    var showsServiceDue: Bool = false
-    var serviceIsOverdue: Bool = false
     var onUserBreakFollow: () -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -34,7 +38,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         map.isPitchEnabled = true
         map.isZoomEnabled = true
         map.isScrollEnabled = true
-        map.pointOfInterestFilter = .includingAll
+        // Fewer labels = faster first paint while following.
+        map.pointOfInterestFilter = .excludingAll
         if #available(iOS 16.0, *) {
             // Flat tiles + camera pitch. Realistic elevation re-meshes on every
             // heading tick and is the usual source of follow hitch.
@@ -73,8 +78,6 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             photo: vehiclePhoto,
             systemImage: vehicleSystemImage,
             isMoving: isMoving,
-            showsServiceDue: showsServiceDue,
-            serviceIsOverdue: serviceIsOverdue,
             updateCoordinate: false,
             on: mapView
         )
@@ -91,7 +94,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private var puckAnnotation: LiveFollowPuckAnnotation?
         private var gestureRecognizersInstalled = false
 
-        init(session: LiveFollowSession, onUserBreakFollow: @escaping () -> Void) {
+        init(
+            session: LiveFollowSession,
+            onUserBreakFollow: @escaping () -> Void
+        ) {
             self.session = session
             self.onUserBreakFollow = onUserBreakFollow
         }
@@ -99,8 +105,13 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         func bindSession() {
             session.onPoseWrite = { [weak self] pose, vehicle in
                 guard let self, let map = self.mapView else { return }
-                if self.isFollowing {
+                // Prefer session flag so recenter (which sets session.isFollowing first) applies
+                // a full pose before SwiftUI's updateUIView refreshes the coordinator.
+                if self.session.isFollowing || self.isFollowing {
                     self.applyCamera(pose, on: map)
+                } else {
+                    // Dimension-mode writes while panned: keep user's center & heading.
+                    self.applyCamera(pose, on: map, preserveCenter: true)
                 }
                 if let vehicle, let puck = self.puckAnnotation {
                     puck.coordinate = vehicle
@@ -129,12 +140,17 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             onUserBreakFollow()
         }
 
-        func applyCamera(_ pose: LiveFollowCamera.Pose, on map: MKMapView) {
+        func applyCamera(
+            _ pose: LiveFollowCamera.Pose,
+            on map: MKMapView,
+            preserveCenter: Bool = false
+        ) {
+            let center = preserveCenter ? map.camera.centerCoordinate : pose.center
             let camera = MKMapCamera(
-                lookingAtCenter: pose.center,
+                lookingAtCenter: center,
                 fromDistance: pose.distanceMeters,
                 pitch: pose.pitchDegrees,
-                heading: pose.headingDegrees
+                heading: preserveCenter ? map.camera.heading : pose.headingDegrees
             )
             isApplyingCamera = true
             CATransaction.begin()
@@ -145,7 +161,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func syncPolylines(_ segments: [LiveFollowPolylineSegment], on map: MKMapView) {
-            // Halo + solid overlays share the same coordinate run (two IDs per segment).
+            // White casing + solid overlays share the same coordinate run (two IDs per segment).
             var nextIDs = Set<String>()
             for segment in segments {
                 nextIDs.insert(Self.haloID(segment.id))
@@ -221,8 +237,6 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             photo: UIImage?,
             systemImage: String,
             isMoving: Bool,
-            showsServiceDue: Bool,
-            serviceIsOverdue: Bool,
             updateCoordinate: Bool = true,
             on map: MKMapView
         ) {
@@ -240,8 +254,6 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 puckAnnotation.vehiclePhoto = photo
                 puckAnnotation.vehicleSystemImage = systemImage
                 puckAnnotation.isMoving = isMoving
-                puckAnnotation.showsServiceDue = showsServiceDue
-                puckAnnotation.serviceIsOverdue = serviceIsOverdue
                 if let view = map.view(for: puckAnnotation) as? LiveFollowPuckAnnotationView {
                     view.apply(puckAnnotation)
                 }
@@ -250,9 +262,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                     coordinate: coordinate,
                     vehiclePhoto: photo,
                     vehicleSystemImage: systemImage,
-                    isMoving: isMoving,
-                    showsServiceDue: showsServiceDue,
-                    serviceIsOverdue: serviceIsOverdue
+                    isMoving: isMoving
                 )
                 puckAnnotation = annotation
                 map.addAnnotation(annotation)
@@ -266,11 +276,11 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             let isHalo = polylineByID.first(where: { $0.value === polyline })?.key.hasSuffix("#halo") == true
             let renderer = MKPolylineRenderer(polyline: polyline)
             if isHalo {
-                renderer.strokeColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 0.35)
-                renderer.lineWidth = 14
+                renderer.strokeColor = RouteStroke.casingColor
+                renderer.lineWidth = RouteStroke.casingWidth
             } else {
-                renderer.strokeColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
-                renderer.lineWidth = 6
+                renderer.strokeColor = RouteStroke.solidColor
+                renderer.lineWidth = RouteStroke.solidWidth
             }
             renderer.lineCap = .round
             renderer.lineJoin = .round
@@ -313,23 +323,17 @@ final class LiveFollowPuckAnnotation: NSObject, MKAnnotation {
     var vehiclePhoto: UIImage?
     var vehicleSystemImage: String
     var isMoving: Bool
-    var showsServiceDue: Bool
-    var serviceIsOverdue: Bool
 
     init(
         coordinate: CLLocationCoordinate2D,
         vehiclePhoto: UIImage?,
         vehicleSystemImage: String,
-        isMoving: Bool,
-        showsServiceDue: Bool = false,
-        serviceIsOverdue: Bool = false
+        isMoving: Bool
     ) {
         self.coordinate = coordinate
         self.vehiclePhoto = vehiclePhoto
         self.vehicleSystemImage = vehicleSystemImage
         self.isMoving = isMoving
-        self.showsServiceDue = showsServiceDue
-        self.serviceIsOverdue = serviceIsOverdue
     }
 }
 
@@ -349,18 +353,14 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     private let chevronOverlap: CGFloat = 18
     private let photoBorder: CGFloat = 5
     private let photoGap: CGFloat = 3
-    /// Matches recording-card wrench scale (~0.68 of road-car size → ~0.38 of 56pt puck).
-    private let serviceBadgeSize: CGFloat = 22
-    /// Lighter plate than route line blue so the vehicle mark reads more open.
-    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1)
+    /// Lighter plate than route line blue; ~50% transparent so the map shows through.
+    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 0.5)
 
     private let badge = UIView()
     private let photoView = UIImageView()
     private let symbolView = UIImageView()
     private let chevron = UIImageView()
     private let pulse = UIView()
-    private let serviceBadgeView = UIView()
-    private let serviceIconView = UIImageView()
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -378,11 +378,10 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     }
 
     private func setup() {
-        let serviceOverhangTop = serviceBadgeSize * 0.35
-        let serviceOverhangTrailing = serviceBadgeSize * 0.45
-        let frameHeight = circleSize + chevronSize.height - chevronOverlap + 14 + serviceOverhangTop
-        let frameWidth = max(circleSize, chevronSize.width) + 24 + serviceOverhangTrailing
+        let frameHeight = circleSize + chevronSize.height - chevronOverlap + 14
+        let frameWidth = max(circleSize, chevronSize.width) + 24
         frame = CGRect(x: 0, y: 0, width: frameWidth, height: frameHeight)
+        centerOffset = CGPoint(x: 0, y: -circleSize / 2 + 8)
 
         pulse.backgroundColor = Self.plateBlue.withAlphaComponent(0.28)
         pulse.layer.cornerRadius = (circleSize + 22) / 2
@@ -407,33 +406,15 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         chevron.image = Self.makeChevronImage(size: chevronSize)
         addSubview(chevron)
 
-        serviceBadgeView.isHidden = true
-        serviceBadgeView.backgroundColor = .clear
-        serviceBadgeView.layer.shadowColor = UIColor.black.cgColor
-        serviceBadgeView.layer.shadowOpacity = 0.35
-        serviceBadgeView.layer.shadowRadius = 1.5
-        serviceBadgeView.layer.shadowOffset = CGSize(width: 0, height: 0.5)
-        addSubview(serviceBadgeView)
-
-        serviceIconView.contentMode = .scaleAspectFit
-        let iconConfig = UIImage.SymbolConfiguration(pointSize: serviceBadgeSize * 0.92, weight: .bold)
-        serviceIconView.image = UIImage(
-            systemName: VehicleScheduleKind.service.systemImage,
-            withConfiguration: iconConfig
-        )?.withRenderingMode(.alwaysTemplate)
-        serviceBadgeView.addSubview(serviceIconView)
-
         let side = circleSize
-        // Keep the blue circle optically centered; extra width/height is for the service badge.
-        let badgeX = (frameWidth - serviceOverhangTrailing - side) / 2
-        badge.frame = CGRect(x: badgeX, y: serviceOverhangTop, width: side, height: side)
+        badge.frame = CGRect(x: (frameWidth - side) / 2, y: 0, width: side, height: side)
         let inset = photoBorder + photoGap
         photoView.frame = badge.bounds.insetBy(dx: inset, dy: inset)
         photoView.layer.cornerRadius = photoView.bounds.width / 2
         symbolView.frame = photoView.frame
         chevron.frame = CGRect(
-            x: badge.frame.midX - chevronSize.width / 2,
-            y: badge.frame.maxY - chevronOverlap,
+            x: (frameWidth - chevronSize.width) / 2,
+            y: side - chevronOverlap,
             width: chevronSize.width,
             height: chevronSize.height
         )
@@ -444,21 +425,6 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             height: side + 22
         )
         pulse.isHidden = true
-
-        // Top-right of the vehicle photo/icon — bare orange/red wrench, no circular plate.
-        let contentFrame = photoView.frame.offsetBy(dx: badge.frame.minX, dy: badge.frame.minY)
-        let badgeOrigin = CGPoint(
-            x: contentFrame.maxX - serviceBadgeSize * 0.55,
-            y: contentFrame.minY - serviceBadgeSize * 0.35
-        )
-        serviceBadgeView.frame = CGRect(origin: badgeOrigin, size: CGSize(width: serviceBadgeSize, height: serviceBadgeSize))
-        serviceIconView.frame = serviceBadgeView.bounds
-
-        // Map coordinate sits near the bottom of the blue circle (same as pre-badge puck).
-        centerOffset = CGPoint(
-            x: frameWidth / 2 - badge.frame.midX,
-            y: frameHeight / 2 - (badge.frame.maxY + 8)
-        )
     }
 
     func apply(_ annotation: LiveFollowPuckAnnotation) {
@@ -475,13 +441,6 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             symbolView.image = UIImage(systemName: annotation.vehicleSystemImage, withConfiguration: config)
         }
         setMoving(annotation.isMoving)
-        applyServiceBadge(shows: annotation.showsServiceDue, isOverdue: annotation.serviceIsOverdue)
-    }
-
-    private func applyServiceBadge(shows: Bool, isOverdue: Bool) {
-        serviceBadgeView.isHidden = !shows
-        guard shows else { return }
-        serviceIconView.tintColor = isOverdue ? .systemRed : .systemOrange
     }
 
     private func setMoving(_ moving: Bool) {

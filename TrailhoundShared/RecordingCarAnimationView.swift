@@ -136,6 +136,8 @@ struct TrailhoundRoadSceneLayout: Equatable {
     var size: CGSize
     var carCenter: CGPoint
     var carSize: CGFloat
+    /// Drawn mark size (cutout/opaque photos can be larger than `carSize`).
+    var markSize: CGFloat
     var roadHeight: CGFloat
     var driveEased: CGFloat
     var isPaused: Bool
@@ -282,6 +284,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                 size: geo.size,
                 carCenter: carCenter,
                 carSize: symbolSize,
+                markSize: placement.size,
                 roadHeight: roadHeight,
                 driveEased: eased,
                 isPaused: isPaused

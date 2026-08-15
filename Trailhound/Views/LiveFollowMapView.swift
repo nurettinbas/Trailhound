@@ -1,6 +1,5 @@
 import CoreLocation
 import MapKit
-import SwiftData
 import SwiftUI
 import UIKit
 
@@ -20,8 +19,6 @@ struct LiveFollowMapView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Query private var vehicles: [VehicleProfile]
-    @Query private var schedules: [VehicleSchedule]
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -45,13 +42,13 @@ struct LiveFollowMapView: View {
     @State private var pausePinCoordinates: [CLLocationCoordinate2D] = []
     @State private var wasPaused = false
     @State private var idleLockHeld = false
+    /// Local 2D/3D mirror — avoids rebuilding the MapKit host on every settings write.
+    @State private var uses3DLocal = true
+
+    private var uses3D: Bool { uses3DLocal }
 
     private var isPaused: Bool {
         recordingService.state == .paused
-    }
-
-    private var uses3D: Bool {
-        settings.liveFollowMap3DEnabled
     }
 
     private var statusText: String {
@@ -78,14 +75,6 @@ struct LiveFollowMapView: View {
             pauseCoordinates: pausePinCoordinates,
             tripStopCoordinates: tripStopCoordinates
         )
-    }
-
-    /// Same urgency band as the recording-card wrench badge.
-    private var urgentServiceDue: VehicleDueItem? {
-        guard let vehicleID = recordingService.activeRecordingVehicleID(from: vehicles) else {
-            return nil
-        }
-        return VehicleCareDueCalculator.urgentServiceDue(for: vehicleID, from: schedules)
     }
 
     /// Hero overlay while flying / crossfading onto the map puck.
@@ -168,6 +157,7 @@ struct LiveFollowMapView: View {
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isPaused)
         .statusBarHidden(false)
         .onAppear {
+            uses3DLocal = settings.liveFollowMap3DEnabled
             retainIdleLock()
             wasPaused = isPaused
             runOpenSequence()
@@ -211,8 +201,9 @@ struct LiveFollowMapView: View {
         }
         .onChange(of: settings.liveFollowMap3DEnabled) { _, enabled in
             guard mapMounted else { return }
-            session.uses3D = enabled
-            session.camera.uses3D = enabled
+            guard uses3DLocal != enabled else { return }
+            uses3DLocal = enabled
+            session.applyDimensionMode(enabled)
         }
         .accessibilityAddTraits(.isModal)
     }
@@ -231,7 +222,7 @@ struct LiveFollowMapView: View {
                 .containerRelativeFrame(
                     .horizontal,
                     count: 12,
-                    span: 8,
+                    span: 10,
                     spacing: 0,
                     alignment: .center
                 )
@@ -251,20 +242,16 @@ struct LiveFollowMapView: View {
     }
 
     private var mapLayer: some View {
-        let serviceDue = urgentServiceDue
-        return LiveFollowMapKitView(
+        LiveFollowMapKitView(
             session: session,
             isFollowing: isFollowing && openSettled && !isClosing,
             interactionEnabled: !isPaused,
-            uses3DElevation: uses3D,
             segments: displaySegments,
             pins: mapPins,
             vehiclePhoto: vehiclePhoto,
             vehicleSystemImage: vehicleSystemImage,
             puckRevealed: puckRevealed,
             isMoving: !isPaused,
-            showsServiceDue: serviceDue != nil,
-            serviceIsOverdue: serviceDue?.state.isOverdue ?? false,
             onUserBreakFollow: {
                 guard isFollowing else { return }
                 isFollowing = false
@@ -342,21 +329,22 @@ struct LiveFollowMapView: View {
 
     /// 2D/3D, recenter, and close — white-on-blue chips matching the recording-card pills.
     private var mapToolsRail: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             mapDimensionToggle
 
             Button {
                 TrailhoundHaptics.selection()
                 isFollowing = true
-                session.camera.uses3D = uses3D
+                session.isFollowing = true
+                session.applyDimensionMode(uses3DLocal)
                 if let location = locationService.lastLocation {
                     session.forceRecenter(location: location)
                 }
             } label: {
                 Image(systemName: isFollowing ? "location.north.line.fill" : "location.north.line")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 32)
+                    .frame(width: 44, height: 44)
                     .background(.white.opacity(isFollowing ? 0.26 : 0.14), in: Capsule())
             }
             .buttonStyle(.plain)
@@ -369,10 +357,10 @@ struct LiveFollowMapView: View {
                 beginClose()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 32)
-                    .background(.white.opacity(0.14), in: Capsule())
+                    .frame(width: 44, height: 44)
+                    .background(Color(red: 0.52, green: 0.08, blue: 0.12), in: Capsule())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.string("recording.live_map.close"))
@@ -382,14 +370,15 @@ struct LiveFollowMapView: View {
 
     private var mapDimensionToggle: some View {
         HStack(spacing: 0) {
-            mapDimensionSegment(title: "2D", selected: !uses3D) {
-                settings.liveFollowMap3DEnabled = false
+            mapDimensionSegment(title: "2D", selected: !uses3DLocal) {
+                setDimensionMode(false)
             }
-            mapDimensionSegment(title: "3D", selected: uses3D) {
-                settings.liveFollowMap3DEnabled = true
+            mapDimensionSegment(title: "3D", selected: uses3DLocal) {
+                setDimensionMode(true)
             }
         }
-        .padding(2)
+        .padding(3)
+        .frame(height: 44)
         .background(.white.opacity(0.12), in: Capsule())
     }
 
@@ -404,9 +393,9 @@ struct LiveFollowMapView: View {
             action()
         } label: {
             Text(title)
-                .font(.caption.weight(.bold))
+                .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
-                .frame(width: 34, height: 28)
+                .frame(width: 44, height: 38)
                 .background {
                     if selected {
                         Capsule().fill(.white.opacity(0.28))
@@ -420,6 +409,12 @@ struct LiveFollowMapView: View {
                 : L10n.string("recording.live_map.switch_3d")
         )
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func setDimensionMode(_ enabled3D: Bool) {
+        uses3DLocal = enabled3D
+        settings.liveFollowMap3DEnabled = enabled3D
+        session.applyDimensionMode(enabled3D)
     }
 
     private func bottomHUD(useGlass: Bool) -> some View {
@@ -666,6 +661,8 @@ struct LiveFollowMapView: View {
 
     /// Apple Maps navigation blue — traveled breadcrumb.
     static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
+    /// Matches MapKit puck plate (~50% transparent).
+    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0).opacity(0.5)
 
     /// Decimate each gap-split live segment for MapKit cost; never rewrite stored points.
     static func polylineSegments(
@@ -729,7 +726,7 @@ struct LiveFollowVehicleHero: View {
 
             ZStack {
                 Circle()
-                    .fill(LiveFollowMapView.routeBlue)
+                    .fill(LiveFollowMapView.puckPlateBlue)
 
                 if let vehiclePhoto {
                     Image(uiImage: vehiclePhoto)
@@ -746,7 +743,7 @@ struct LiveFollowVehicleHero: View {
             .padding(LiveFollowPresentation.lerp(0, 8, t))
             .background {
                 Circle()
-                    .fill(LiveFollowMapView.routeBlue)
+                    .fill(LiveFollowMapView.puckPlateBlue)
             }
             .overlay {
                 Circle()
@@ -911,7 +908,7 @@ struct LiveFollowPuckMark: View {
     private var photoBadge: some View {
         ZStack {
             Circle()
-                .fill(LiveFollowMapView.routeBlue)
+                .fill(LiveFollowMapView.puckPlateBlue)
 
             photoContent
                 .padding(photoBorder + photoGap)

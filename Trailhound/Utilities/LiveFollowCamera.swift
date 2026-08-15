@@ -218,6 +218,12 @@ struct LiveFollowCamera {
         snapPublished(to: location.coordinate)
     }
 
+    /// Instantly match published pitch/distance to the current 2D/3D mode (no lerp).
+    mutating func snapDimensionMode() {
+        publishedPitchDegrees = uses3D ? Self.pitch3D : Self.pitch2D
+        publishedDistanceMeters = uses3D ? Self.distance3D : Self.distance2D
+    }
+
     mutating func reset() {
         center = nil
         headingDegrees = 0

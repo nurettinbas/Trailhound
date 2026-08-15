@@ -22,6 +22,15 @@ private enum TripMapStyle {
     }
 }
 
+/// Trip detail map route: solid core + faint white casing under every color.
+private enum TripRouteMapStroke {
+    static let solidWidth: CGFloat = 7.2
+    static let casingWidth: CGFloat = 9.6
+    static let casingColor = Color.white.opacity(0.45)
+    static let lineCap: CGLineCap = .round
+    static let lineJoin: CGLineJoin = .round
+}
+
 private struct RevealedRouteSegment: Identifiable {
     let id: String
     let coordinates: [CLLocationCoordinate2D]
@@ -1221,20 +1230,19 @@ struct TripDetailView: View {
                 color: segment.color
             )
         }
-        // Glow doubles overlay count; skip it once we are at the segment budget.
-        let useGlow = !useCheapReveal
-            && revealedItems.count < SpeedColoredSegmentBuilder.maxColorSegments
-
+        // Casing + solid doubles overlay count; always draw casing so every color has a white edge.
         Map(position: $cameraPosition, interactionModes: interactive ? .all : []) {
-            if useGlow {
-                ForEach(revealedItems) { segment in
-                    MapPolyline(coordinates: segment.coordinates)
-                        .stroke(
-                            segment.color.opacity(0.38),
-                            style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round)
+            ForEach(revealedItems) { segment in
+                MapPolyline(coordinates: segment.coordinates)
+                    .stroke(
+                        TripRouteMapStroke.casingColor,
+                        style: StrokeStyle(
+                            lineWidth: TripRouteMapStroke.casingWidth,
+                            lineCap: TripRouteMapStroke.lineCap,
+                            lineJoin: TripRouteMapStroke.lineJoin
                         )
-                        .mapOverlayLevel(level: .aboveRoads)
-                }
+                    )
+                    .mapOverlayLevel(level: .aboveRoads)
             }
 
             ForEach(revealedItems) { segment in
@@ -1242,21 +1250,33 @@ struct TripDetailView: View {
                     .stroke(
                         segment.color,
                         style: StrokeStyle(
-                            lineWidth: 4.5,
-                            lineCap: .round,
-                            lineJoin: .round
+                            lineWidth: TripRouteMapStroke.solidWidth,
+                            lineCap: TripRouteMapStroke.lineCap,
+                            lineJoin: TripRouteMapStroke.lineJoin
                         )
                     )
                     .mapOverlayLevel(level: .aboveRoads)
             }
 
             if revealedItems.isEmpty, revealedFallback.count >= 2 {
-                if useGlow {
-                    MapPolyline(coordinates: revealedFallback)
-                        .stroke(Color.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
-                }
                 MapPolyline(coordinates: revealedFallback)
-                    .stroke(.cyan, lineWidth: 4.5)
+                    .stroke(
+                        TripRouteMapStroke.casingColor,
+                        style: StrokeStyle(
+                            lineWidth: TripRouteMapStroke.casingWidth,
+                            lineCap: TripRouteMapStroke.lineCap,
+                            lineJoin: TripRouteMapStroke.lineJoin
+                        )
+                    )
+                MapPolyline(coordinates: revealedFallback)
+                    .stroke(
+                        .cyan,
+                        style: StrokeStyle(
+                            lineWidth: TripRouteMapStroke.solidWidth,
+                            lineCap: TripRouteMapStroke.lineCap,
+                            lineJoin: TripRouteMapStroke.lineJoin
+                        )
+                    )
             }
 
             // All stops stay visible. MapKit's SwiftUI Map has no real z-index for point

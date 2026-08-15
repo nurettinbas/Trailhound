@@ -284,7 +284,7 @@ final class AppSettings {
         set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
     }
 
-    /// Live follow map: pitched 3D camera + realistic buildings when true; flat overview when false.
+    /// Live follow map: pitched 3D camera when true; flat overview when false.
     var liveFollowMap3DEnabled: Bool {
         get {
             if defaults.object(forKey: Key.liveFollowMap3DEnabled) == nil { return true }

@@ -34,13 +34,16 @@ struct RecordingVehicleServiceBadge: View {
 }
 
 enum RecordingVehicleServiceBadgeLayout {
-    /// Horizontal offset from car center toward the nose (+40% vs original).
-    static func offsetX(for carSize: CGFloat) -> CGFloat {
-        carSize * 0.52
+    /// Horizontal offset from car center toward the nose. Large photos use
+    /// `markSize` so the wrench sits above the front, not the roof.
+    static func offsetX(for carSize: CGFloat, markSize: CGFloat) -> CGFloat {
+        max(carSize * 0.52, markSize * 0.42)
     }
 
-    static func offsetY(for carSize: CGFloat) -> CGFloat {
-        -carSize * 0.48
+    /// Sit just above the drawn mark. Large vehicle photos use `markSize` so the
+    /// wrench does not cover the scooter/car; small SF Symbols keep the old nose height.
+    static func offsetY(for carSize: CGFloat, markSize: CGFloat) -> CGFloat {
+        -max(carSize * 0.48, markSize * 0.52)
     }
 
     /// Overlay offset for the compact brake scene (matches road-scene proportions).
@@ -54,13 +57,19 @@ enum RecordingVehicleServiceBadgeLayout {
 }
 
 extension View {
-    /// Positions a badge at the car mark's nose (moves with bounce/drive-in).
+    /// Positions a badge just above the car mark's nose (moves with bounce/drive-in).
     func recordingVehicleServiceBadgePosition(
         layout: TrailhoundRoadSceneLayout
     ) -> some View {
         position(
-            x: layout.carCenter.x + RecordingVehicleServiceBadgeLayout.offsetX(for: layout.carSize),
-            y: layout.carCenter.y + RecordingVehicleServiceBadgeLayout.offsetY(for: layout.carSize)
+            x: layout.carCenter.x + RecordingVehicleServiceBadgeLayout.offsetX(
+                for: layout.carSize,
+                markSize: layout.markSize
+            ),
+            y: layout.carCenter.y + RecordingVehicleServiceBadgeLayout.offsetY(
+                for: layout.carSize,
+                markSize: layout.markSize
+            )
         )
     }
 }
