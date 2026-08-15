@@ -968,7 +968,11 @@ final class TripRecordingService {
                 places: places,
                 privacyRadius: settings.privacyRadiusMeters
             )
-            TripNotificationService.notifyTripStarted(tripID: trip.id, startSummary: startSummary)
+            if TripNotificationService.notifyTripStarted(tripID: trip.id, startSummary: startSummary) {
+                // Rich banner already posted from lastLocation — don't let the
+                // initial-fix replay fire a second "Trip started" alert.
+                didRefreshTripStartedPlaceBody = true
+            }
         }
         syncExternalState(force: true)
         if announceStart, !UITestSupport.isUnitTesting {

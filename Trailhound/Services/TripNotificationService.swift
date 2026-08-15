@@ -15,7 +15,9 @@ enum TripNotificationService {
         }
     }
 
-    static func notifyTripStarted(tripID: UUID, startSummary: String) {
+    /// - Returns: `true` when the rich system banner was posted immediately (start place already known).
+    @discardableResult
+    static func notifyTripStarted(tripID: UUID, startSummary: String) -> Bool {
         let body = startedBody(startSummary: startSummary)
         let identifier = startedNotificationID(tripID: tripID)
         // Always land in the inbox immediately.
@@ -35,9 +37,10 @@ enum TripNotificationService {
                 title: L10n.tripStartedTitle,
                 body: body
             )
-        } else {
-            scheduleDeferredStartedPush(tripID: tripID)
+            return true
         }
+        scheduleDeferredStartedPush(tripID: tripID)
+        return false
     }
 
     /// Updates the inbox trip-started row when start place becomes available (first fix / trip end).
@@ -47,9 +50,10 @@ enum TripNotificationService {
     static func refreshTripStartedBody(tripID: UUID, startSummary: String, postBanner: Bool = true) {
         let body = startedBody(startSummary: startSummary)
         guard body != L10n.tripStartedBody else { return }
-        AppNotificationStore.shared.updateTripStartedBody(tripID: tripID, body: body)
+        let bodyChanged = AppNotificationStore.shared.updateTripStartedBody(tripID: tripID, body: body)
         cancelDeferredStartedPush(tripID: tripID)
-        guard postBanner else { return }
+        // Same body as notifyTripStarted (or inbox row not written yet) — don't re-alert.
+        guard postBanner, bodyChanged else { return }
         postSystemNotification(
             identifier: startedNotificationID(tripID: tripID),
             title: L10n.tripStartedTitle,

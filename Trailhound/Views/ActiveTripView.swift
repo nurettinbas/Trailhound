@@ -79,35 +79,43 @@ enum RecordingMorphID {
     static let car = "recording.car"
 }
 
-/// Pause / Resume / Stop label: glyph matches the title color (never the blue accent tint).
+/// Pause / Resume / Stop label: glyph and title crossfade as one (no laggy SF replace).
 struct RecordingActionLabel: View {
     let title: String
     let systemImage: String
     var tint: Color = .white
-    /// When false, the glyph swaps instantly (no SF Symbol replace morph).
+    /// When false, the glyph and title swap instantly.
     var animatedSymbolSwap: Bool = true
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .modifier(RecordingActionSymbolTransition(enabled: animatedSymbolSwap))
-            Text(title)
+        ZStack {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                Text(title)
+            }
+            .id(labelIdentity)
+            .transition(labelTransition)
         }
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(tint)
         .frame(maxWidth: .infinity)
+        .animation(shouldAnimate ? TrailhoundMotion.recordingToggle : nil, value: labelIdentity)
     }
-}
 
-private struct RecordingActionSymbolTransition: ViewModifier {
-    var enabled: Bool
+    private var labelIdentity: String { "\(systemImage)|\(title)" }
 
-    func body(content: Content) -> some View {
-        if enabled {
-            content.contentTransition(.symbolEffect(.replace))
-        } else {
-            content
-        }
+    private var shouldAnimate: Bool {
+        animatedSymbolSwap && !reduceMotion
+    }
+
+    private var labelTransition: AnyTransition {
+        guard shouldAnimate else { return .identity }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.88)),
+            removal: .opacity.combined(with: .scale(scale: 1.06))
+        )
     }
 }
 
@@ -136,6 +144,8 @@ struct ActiveTripView: View {
     @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
     @State private var anchorBox = RecordingCardAnchorBox()
+    /// Optimistic pause chrome — icon + title stay in lockstep before service work finishes.
+    @State private var displayedPaused = false
     /// Decoded thumb for the road scene — injected so TimelineView never hits disk.
     @State private var roadVehiclePhoto: UIImage?
 
@@ -162,7 +172,7 @@ struct ActiveTripView: View {
     }
 
     private var isPaused: Bool {
-        recordingService.state == .paused
+        displayedPaused
     }
 
     private var cardVisible: Bool {
@@ -299,6 +309,16 @@ struct ActiveTripView: View {
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+        .onAppear {
+            displayedPaused = recordingService.state == .paused
+        }
+        .onChange(of: recordingService.state) { _, newState in
+            if newState.isActiveSession {
+                applyRecordingPauseChrome(newState == .paused, animate: true)
+            } else {
+                displayedPaused = false
+            }
+        }
         .onChange(of: playEntranceReveal) { wasPlaying, shouldPlay in
             guard shouldPlay, !wasPlaying else { return }
             prepareEntranceReplay()
@@ -345,6 +365,7 @@ struct ActiveTripView: View {
                 Image(systemName: statusIcon)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(statusColor)
+                    .contentTransition(.opacity)
                     .symbolEffect(
                         .pulse,
                         options: .repeating,
@@ -355,7 +376,9 @@ struct ActiveTripView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
+                    .contentTransition(.opacity)
             }
+            .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: isPaused)
             .layoutPriority(1)
             .modifier(RecordingStatusChipMorphModifier(
                 morphNamespace: morphNamespace
@@ -382,13 +405,7 @@ struct ActiveTripView: View {
 
     private var actionsRow: some View {
         HStack(spacing: 8) {
-            Button {
-                if isPaused {
-                    recordingService.resumeRecording()
-                } else {
-                    recordingService.pauseRecording()
-                }
-            } label: {
+            Button(action: togglePlayback) {
                 RecordingActionLabel(
                     title: isPaused ? L10n.resume : L10n.pause,
                     systemImage: isPaused ? "play.fill" : "pause.fill"
@@ -503,6 +520,27 @@ struct ActiveTripView: View {
 
     private var statusColor: Color {
         isPaused ? .yellow : .red
+    }
+
+    private func togglePlayback() {
+        let nextPaused = !displayedPaused
+        applyRecordingPauseChrome(nextPaused, animate: true)
+        if nextPaused {
+            recordingService.pauseRecording()
+        } else {
+            recordingService.resumeRecording()
+        }
+    }
+
+    private func applyRecordingPauseChrome(_ paused: Bool, animate: Bool) {
+        guard paused != displayedPaused else { return }
+        if animate, !reduceMotion {
+            withAnimation(TrailhoundMotion.recordingToggle) {
+                displayedPaused = paused
+            }
+        } else {
+            displayedPaused = paused
+        }
     }
 }
 

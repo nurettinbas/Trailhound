@@ -89,11 +89,26 @@ final class AppNotificationStoreTests: XCTestCase {
         )
         let id = store.items[0].id
 
-        store.updateTripStartedBody(tripID: tripID, body: "From Home")
+        XCTAssertTrue(store.updateTripStartedBody(tripID: tripID, body: "From Home"))
 
         XCTAssertEqual(store.items.count, 1)
         XCTAssertEqual(store.items[0].id, id)
         XCTAssertEqual(store.items[0].body, "From Home")
         XCTAssertEqual(store.items[0].tripID, tripID)
+    }
+
+    func testUpdateTripStartedBodyReturnsFalseWhenUnchangedOrMissing() {
+        let tripID = UUID()
+        store.record(
+            kind: .tripStarted,
+            title: "Trip started",
+            body: "From Home",
+            tripID: tripID
+        )
+
+        XCTAssertFalse(store.updateTripStartedBody(tripID: tripID, body: "From Home"))
+        XCTAssertFalse(store.updateTripStartedBody(tripID: UUID(), body: "From Work"))
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(store.items[0].body, "From Home")
     }
 }

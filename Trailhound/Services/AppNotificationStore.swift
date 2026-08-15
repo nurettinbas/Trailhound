@@ -86,13 +86,15 @@ final class AppNotificationStore {
     }
 
     /// Refreshes an existing trip-started inbox row once the start place is known.
-    func updateTripStartedBody(tripID: UUID, body: String) {
+    /// - Returns: `true` when the stored body changed.
+    @discardableResult
+    func updateTripStartedBody(tripID: UUID, body: String) -> Bool {
         guard let index = items.firstIndex(where: {
             $0.tripID == tripID && kind(for: $0) == .tripStarted
-        }) else { return }
+        }) else { return false }
 
         let existing = items[index]
-        guard existing.body != body else { return }
+        guard existing.body != body else { return false }
 
         items[index] = StoredAppNotification(
             id: existing.id,
@@ -104,6 +106,7 @@ final class AppNotificationStore {
             isRead: existing.isRead
         )
         persist()
+        return true
     }
 
     nonisolated static func enqueueSystemNotification(

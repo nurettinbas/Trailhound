@@ -303,6 +303,7 @@ struct LiveFollowMapView: View {
                 Image(systemName: isPaused ? "pause.circle.fill" : "record.circle.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(isPaused ? Color.yellow : Color.red)
+                    .contentTransition(.opacity)
                     .symbolEffect(
                         .pulse,
                         options: .repeating,
@@ -312,6 +313,7 @@ struct LiveFollowMapView: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                    .contentTransition(.opacity)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -384,10 +386,19 @@ struct LiveFollowMapView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    if isPaused {
-                        recordingService.resumeRecording()
+                    let toggle = {
+                        if isPaused {
+                            recordingService.resumeRecording()
+                        } else {
+                            recordingService.pauseRecording()
+                        }
+                    }
+                    if reduceMotion {
+                        toggle()
                     } else {
-                        recordingService.pauseRecording()
+                        withAnimation(TrailhoundMotion.recordingToggle) {
+                            toggle()
+                        }
                     }
                 } label: {
                     RecordingActionLabel(
