@@ -358,11 +358,11 @@
 		A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapView.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowCamera.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowPresentation.swift; sourceTree = "<group>"; };
-		A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/LiveFollowSession.swift; sourceTree = SOURCE_ROOT; };
-		A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Views/LiveFollowMapKitView.swift; sourceTree = SOURCE_ROOT; };
-		A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/LiveFollowMapPin.swift; sourceTree = SOURCE_ROOT; };
-		A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/ScreenIdleLock.swift; sourceTree = SOURCE_ROOT; };
-		A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/DisplayLinkClock.swift; sourceTree = SOURCE_ROOT; };
+		A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowSession.swift; sourceTree = "<group>"; };
+		A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapKitView.swift; sourceTree = "<group>"; };
+		A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapPin.swift; sourceTree = "<group>"; };
+		A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenIdleLock.swift; sourceTree = "<group>"; };
+		A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLinkClock.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowCameraTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowPresentationTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapViewTests.swift; sourceTree = SOURCE_ROOT; };

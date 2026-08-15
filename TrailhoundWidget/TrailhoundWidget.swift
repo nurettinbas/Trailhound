@@ -18,6 +18,7 @@ private enum WidgetL10n {
     static var tripActive: String { text("live_activity.trip_active") }
     static var tripPaused: String { text("live_activity.trip_paused") }
     static var distance: String { text("label.distance") }
+    static var duration: String { text("label.duration") }
     static var speed: String { text("live_activity.speed") }
     static var noRecording: String { text("widget.no_recording") }
     static var thisWeek: String { text("section.this_week") }
@@ -718,169 +719,59 @@ private struct LiveActivityIslandMetricRow: View {
     }
 }
 
-struct TrailhoundLiveActivity: Widget {
-    var body: some WidgetConfiguration {
-        ActivityConfiguration(for: TripRecordingAttributes.self) { context in
-            HStack(alignment: .center, spacing: 12) {
-                liveActivityCarIcon(for: context.state, side: 54, symbolTint: WidgetPalette.brandBottom)
+/// Lock Screen / StandBy banner — pause/stop controls stay interactive here.
+private struct LiveActivityLockScreenBanner: View {
+    let state: TripRecordingAttributes.ContentState
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .foregroundStyle(.primary)
-                        .minimumScaleFactor(0.8)
-                        .lineLimit(1)
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.recording)
-                            .frame(width: 6, height: 6)
-                        Text(context.state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(context.state.isPaused ? WidgetPalette.paused : .secondary)
-                            .lineLimit(1)
-                            .contentTransition(.opacity)
-                    }
-                    Text(liveActivityBannerMeta(context.state))
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                liveActivityControls(isPaused: context.state.isPaused)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .activityBackgroundTint(
-                (context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.10)
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            LiveActivityCarIcon(
+                side: 54,
+                photoRevision: state.vehiclePhotoRevision,
+                symbolTint: WidgetPalette.brandBottom
             )
-        } dynamicIsland: { context in
-            DynamicIsland {
-                // Vehicle mark + duration share one row height; status copy lives in `.bottom`.
-                DynamicIslandExpandedRegion(.leading) {
-                    let markSide: CGFloat = 40
-                    HStack(alignment: .center, spacing: 10) {
-                        liveActivityCarIcon(
-                            for: context.state,
-                            side: markSide,
-                            symbolTint: .white
-                        )
 
-                        Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                            .font(.system(size: markSide * 0.92, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(height: markSide)
-                }
-
-                DynamicIslandExpandedRegion(.trailing) {
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        VStack(alignment: .leading, spacing: 6) {
-                            LiveActivityIslandMetricRow(
-                                systemImage: "road.lanes",
-                                label: WidgetL10n.distance,
-                                value: DateFormatters.formatDistance(context.state.distanceMeters)
-                            )
-                            LiveActivityIslandMetricRow(
-                                systemImage: "gauge.with.dots.needle.67percent",
-                                label: WidgetL10n.speed,
-                                value: context.state.isPaused
-                                    ? "—"
-                                    : "\(context.state.currentSpeedKmh) km/s"
-                            )
-                        }
-                    }
-                }
-
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack(alignment: .center, spacing: 10) {
-                        HStack(spacing: 7) {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.75))
-                                .frame(width: 26, height: 26)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.white.opacity(0.10))
-                                )
-                            Circle()
-                                .fill(context.state.isPaused ? WidgetPalette.paused : Color.green)
-                                .frame(width: 6, height: 6)
-                            Text(context.state.isPaused ? WidgetL10n.tripPaused : WidgetL10n.tripActive)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.72))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-
-                        Spacer(minLength: 8)
-
-                        liveActivityIslandControls(isPaused: context.state.isPaused)
-                    }
-                    .padding(.top, 2)
-                }
-            } compactLeading: {
-                liveActivityCarIcon(for: context.state, side: 18, symbolTint: .white)
-            } compactTrailing: {
-                Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                    .font(.caption2.weight(.bold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds)))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
-            } minimal: {
-                liveActivityCarIcon(for: context.state, side: 15, symbolTint: .white)
+                    .contentTransition(.numericText())
+                    .foregroundStyle(.primary)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(state.isPaused ? WidgetPalette.paused : WidgetPalette.recording)
+                        .frame(width: 6, height: 6)
+                    Text(state.isPaused ? WidgetL10n.paused : WidgetL10n.recording)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(state.isPaused ? WidgetPalette.paused : .secondary)
+                        .lineLimit(1)
+                        .contentTransition(.opacity)
+                }
+                Text(liveActivityBannerMeta(state))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
             }
-            .keylineTint(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
-        }
-    }
 
-    private func liveActivityCarIcon(
-        for state: TripRecordingAttributes.ContentState,
-        side: CGFloat,
-        symbolTint: Color
-    ) -> LiveActivityCarIcon {
-        LiveActivityCarIcon(
-            side: side,
-            photoRevision: state.vehiclePhotoRevision,
-            symbolTint: symbolTint
-        )
-    }
+            Spacer(minLength: 8)
 
-    @ViewBuilder
-    private func liveActivityControls(isPaused: Bool) -> some View {
-        HStack(spacing: 10) {
-            LiveActivityPlaybackControl(isPaused: isPaused, size: 40)
-            LiveActivityIslandButton(
-                title: WidgetL10n.stop,
-                systemImage: "stop.fill",
-                tint: WidgetPalette.stop,
-                intent: WidgetStopRecordingIntent(),
-                size: 40
-            )
+            HStack(spacing: 10) {
+                LiveActivityPlaybackControl(isPaused: state.isPaused, size: 40)
+                LiveActivityIslandButton(
+                    title: WidgetL10n.stop,
+                    systemImage: "stop.fill",
+                    tint: WidgetPalette.stop,
+                    intent: WidgetStopRecordingIntent(),
+                    size: 40
+                )
+            }
         }
-    }
-
-    @ViewBuilder
-    private func liveActivityIslandControls(isPaused: Bool) -> some View {
-        HStack(spacing: 10) {
-            LiveActivityPlaybackControl(isPaused: isPaused, size: 36)
-            LiveActivityIslandButton(
-                title: WidgetL10n.stop,
-                systemImage: "stop.fill",
-                tint: WidgetPalette.stop,
-                intent: WidgetStopRecordingIntent(),
-                size: 36
-            )
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     private func liveActivityBannerMeta(_ state: TripRecordingAttributes.ContentState) -> String {
@@ -892,12 +783,216 @@ struct TrailhoundLiveActivity: Widget {
     }
 }
 
+/// CarPlay Dashboard + watchOS Smart Stack — glanceable, non-interactive (CarPlay strips buttons).
+private struct LiveActivitySmallFamilyBanner: View {
+    let state: TripRecordingAttributes.ContentState
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 6) {
+            iconColumn
+            metricColumn(
+                value: DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds)),
+                label: WidgetL10n.duration
+            )
+            metricColumn(
+                value: DateFormatters.formatDistance(state.distanceMeters),
+                label: WidgetL10n.distance
+            )
+            metricColumn(
+                value: state.isPaused ? "—" : "\(state.currentSpeedKmh) km/s",
+                label: WidgetL10n.speed
+            )
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private var iconColumn: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            LiveActivityCarIcon(
+                side: side,
+                photoRevision: state.vehiclePhotoRevision,
+                symbolTint: WidgetPalette.brandBottom
+            )
+            .frame(width: side, height: side)
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityHidden(true)
+    }
+
+    private func metricColumn(value: String, label: String) -> some View {
+        VStack(alignment: .center, spacing: 2) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
+    }
+}
+
+/// Picks Lock Screen (medium) vs CarPlay / Smart Stack (small) layouts.
+@available(iOS 18.0, *)
+private struct LiveActivityBannerRoot: View {
+    @Environment(\.activityFamily) private var activityFamily
+    let state: TripRecordingAttributes.ContentState
+
+    var body: some View {
+        Group {
+            switch activityFamily {
+            case .small:
+                LiveActivitySmallFamilyBanner(state: state)
+            case .medium:
+                LiveActivityLockScreenBanner(state: state)
+            @unknown default:
+                LiveActivityLockScreenBanner(state: state)
+            }
+        }
+        .activityBackgroundTint(
+            (state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.10)
+        )
+    }
+}
+
+/// Live Activity for Lock Screen, Dynamic Island, and CarPlay Dashboard.
+///
+/// Requires iOS 18 so we can declare `activityFamily.small` (CarPlay 4-column tile).
+/// Home Screen / Lock Screen widgets still load on iOS 17 via the other widgets in this bundle.
+@available(iOS 18.0, *)
+struct TrailhoundLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: TripRecordingAttributes.self) { context in
+            LiveActivityBannerRoot(state: context.state)
+        } dynamicIsland: { context in
+            liveActivityDynamicIsland(context: context)
+        }
+        .supplementalActivityFamilies([.small])
+    }
+}
+
+@MainActor
+private func liveActivityDynamicIsland(
+    context: ActivityViewContext<TripRecordingAttributes>
+) -> DynamicIsland {
+    DynamicIsland {
+        // Vehicle mark + duration share one row height; status copy lives in `.bottom`.
+        DynamicIslandExpandedRegion(.leading) {
+            let markSide: CGFloat = 40
+            HStack(alignment: .center, spacing: 10) {
+                LiveActivityCarIcon(
+                    side: markSide,
+                    photoRevision: context.state.vehiclePhotoRevision,
+                    symbolTint: .white
+                )
+
+                Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
+                    .font(.system(size: markSide * 0.92, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(height: markSide)
+        }
+
+        DynamicIslandExpandedRegion(.trailing) {
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 6) {
+                    LiveActivityIslandMetricRow(
+                        systemImage: "road.lanes",
+                        label: WidgetL10n.distance,
+                        value: DateFormatters.formatDistance(context.state.distanceMeters)
+                    )
+                    LiveActivityIslandMetricRow(
+                        systemImage: "gauge.with.dots.needle.67percent",
+                        label: WidgetL10n.speed,
+                        value: context.state.isPaused
+                            ? "—"
+                            : "\(context.state.currentSpeedKmh) km/s"
+                    )
+                }
+            }
+        }
+
+        DynamicIslandExpandedRegion(.bottom) {
+            HStack(alignment: .center, spacing: 10) {
+                HStack(spacing: 7) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .frame(width: 26, height: 26)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.white.opacity(0.10))
+                        )
+                    Circle()
+                        .fill(context.state.isPaused ? WidgetPalette.paused : Color.green)
+                        .frame(width: 6, height: 6)
+                    Text(context.state.isPaused ? WidgetL10n.tripPaused : WidgetL10n.tripActive)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 10) {
+                    LiveActivityPlaybackControl(isPaused: context.state.isPaused, size: 36)
+                    LiveActivityIslandButton(
+                        title: WidgetL10n.stop,
+                        systemImage: "stop.fill",
+                        tint: WidgetPalette.stop,
+                        intent: WidgetStopRecordingIntent(),
+                        size: 36
+                    )
+                }
+            }
+            .padding(.top, 2)
+        }
+    } compactLeading: {
+        LiveActivityCarIcon(
+            side: 18,
+            photoRevision: context.state.vehiclePhotoRevision,
+            symbolTint: .white
+        )
+    } compactTrailing: {
+        Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+    } minimal: {
+        LiveActivityCarIcon(
+            side: 15,
+            photoRevision: context.state.vehiclePhotoRevision,
+            symbolTint: .white
+        )
+    }
+    .keylineTint(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
+}
+
 @main
 struct TrailhoundWidgetBundle: WidgetBundle {
     var body: some Widget {
         TrailhoundWidget()
         TrailhoundLockScreenWidget()
-        TrailhoundLiveActivity()
+        if #available(iOS 18.0, *) {
+            TrailhoundLiveActivity()
+        }
     }
 }
 

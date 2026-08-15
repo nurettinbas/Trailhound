@@ -17,6 +17,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
+- **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows vehicle icon, duration, distance, and speed in four equal columns (non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
 - **Live follow map** (optional): Maps-style 3D/2D follow with smooth camera (display-link + MapKit), screen stays awake while open, live breadcrumb, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
 
@@ -55,13 +56,14 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 |----------|-----------------|--------|
 | **iPhone (iOS)** | **17.0** | ✅ Primary target |
 | **iPadOS** | 17.0 | ⚠️ Runs as iPhone app (not optimized for iPad) |
-| **Widget + Live Activity** | iOS 17.0+ | ✅ Home Screen & Lock Screen |
+| **Widget (Home / Lock)** | iOS 17.0+ | ✅ Home Screen & Lock Screen widgets |
+| **Live Activity + CarPlay tile** | iOS 18.0+ | ✅ Lock Screen, Dynamic Island, CarPlay Dashboard (4-column stats) |
 | **Siri / Shortcuts** | iOS 17.0+ | ✅ App Intents + Personal Automations |
 | **macOS / visionOS / tvOS** | — | ❌ Not supported |
 
 ### Why iOS 17?
 
-Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern **WidgetKit** APIs that require iOS 17. The project does not build for iOS 16 or earlier.
+Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern **WidgetKit** APIs that require iOS 17. The project does not build for iOS 16 or earlier. The **CarPlay Dashboard Live Activity** layout (four equal columns: icon, duration, distance, speed) needs **iOS 18** (`activityFamily.small`); on iOS 17 the Home Screen widgets still work, but the Live Activity presentation targets iOS 18+.
 
 ### Device & permissions
 

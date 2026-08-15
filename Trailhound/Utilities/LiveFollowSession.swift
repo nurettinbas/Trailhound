@@ -1,6 +1,5 @@
 import CoreLocation
 import Foundation
-import Observation
 
 /// Mutable follow session shared by the display-link loop and the MapKit host.
 /// Keeps 60 fps camera writes off the SwiftUI dependency graph; only quality badge
@@ -9,8 +8,6 @@ import Observation
 @MainActor
 final class LiveFollowSession {
     var camera = LiveFollowCamera()
-
-    init() {}
     /// MapKit coordinator installs this to receive pose writes without SwiftUI rebuilds.
     @ObservationIgnored
     var onPoseWrite: ((LiveFollowCamera.Pose, CLLocationCoordinate2D?) -> Void)?
