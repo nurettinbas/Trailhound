@@ -2,7 +2,7 @@ import ActivityKit
 import Foundation
 import UIKit
 
-// Vehicle mark is passed as systemImage / scaleX / photoJPEG primitives only.
+// Vehicle mark is passed as systemImage / scaleX / App Group revision token only.
 @MainActor
 enum RecordingLiveActivityService {
     private static let logCategory: DevLogCategory = .widget
@@ -20,7 +20,7 @@ enum RecordingLiveActivityService {
         var isPaused: Bool
         var vehicleSystemImage: String
         var vehicleSymbolScaleX: Double
-        var vehiclePhotoJPEGData: Data?
+        var vehiclePhotoRevision: String?
     }
 
     private static var pendingRestart: PendingRestart?
@@ -44,7 +44,7 @@ enum RecordingLiveActivityService {
         isPaused: Bool = false,
         vehicleSystemImage: String = "car.side.fill",
         vehicleSymbolScaleX: Double = -1,
-        vehiclePhotoJPEGData: Data? = nil
+        vehiclePhotoRevision: String? = nil
     ) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         clearPendingRestart()
@@ -58,7 +58,7 @@ enum RecordingLiveActivityService {
                 isPaused: isPaused,
                 vehicleSystemImage: vehicleSystemImage,
                 vehicleSymbolScaleX: vehicleSymbolScaleX,
-                vehiclePhotoJPEGData: vehiclePhotoJPEGData,
+                vehiclePhotoRevision: vehiclePhotoRevision,
                 logMessage: "Live Activity started"
             )
             lastUpdateAt = nil
@@ -79,7 +79,7 @@ enum RecordingLiveActivityService {
         isPaused: Bool = false,
         vehicleSystemImage: String = "car.side.fill",
         vehicleSymbolScaleX: Double = -1,
-        vehiclePhotoJPEGData: Data? = nil
+        vehiclePhotoRevision: String? = nil
     ) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         clearPendingRestart()
@@ -94,7 +94,7 @@ enum RecordingLiveActivityService {
             isPaused: isPaused,
             vehicleSystemImage: vehicleSystemImage,
             vehicleSymbolScaleX: vehicleSymbolScaleX,
-            vehiclePhotoJPEGData: vehiclePhotoJPEGData,
+            vehiclePhotoRevision: vehiclePhotoRevision,
             logMessage: "Live Activity started (intent)"
         )
         lastUpdateAt = nil
@@ -111,7 +111,7 @@ enum RecordingLiveActivityService {
         isPaused: Bool,
         vehicleSystemImage: String = "car.side.fill",
         vehicleSymbolScaleX: Double = -1,
-        vehiclePhotoJPEGData: Data? = nil
+        vehiclePhotoRevision: String? = nil
     ) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         enqueue {
@@ -129,7 +129,7 @@ enum RecordingLiveActivityService {
                 isPaused: isPaused,
                 vehicleSystemImage: vehicleSystemImage,
                 vehicleSymbolScaleX: vehicleSymbolScaleX,
-                vehiclePhotoJPEGData: vehiclePhotoJPEGData
+                vehiclePhotoRevision: vehiclePhotoRevision
             )
 
             guard UIApplication.shared.applicationState == .active else {
@@ -146,7 +146,7 @@ enum RecordingLiveActivityService {
                 isPaused: snapshot.isPaused,
                 vehicleSystemImage: snapshot.vehicleSystemImage,
                 vehicleSymbolScaleX: snapshot.vehicleSymbolScaleX,
-                vehiclePhotoJPEGData: snapshot.vehiclePhotoJPEGData,
+                vehiclePhotoRevision: snapshot.vehiclePhotoRevision,
                 logMessage: "Live Activity restarted"
             )
             clearPendingRestart()
@@ -178,7 +178,7 @@ enum RecordingLiveActivityService {
                 isPaused: snapshot.isPaused,
                 vehicleSystemImage: snapshot.vehicleSystemImage,
                 vehicleSymbolScaleX: snapshot.vehicleSymbolScaleX,
-                vehiclePhotoJPEGData: snapshot.vehiclePhotoJPEGData,
+                vehiclePhotoRevision: snapshot.vehiclePhotoRevision,
                 logMessage: "Live Activity restarted"
             )
             clearPendingRestart()
@@ -195,7 +195,7 @@ enum RecordingLiveActivityService {
         force: Bool = false,
         vehicleSystemImage: String = "car.side.fill",
         vehicleSymbolScaleX: Double = -1,
-        vehiclePhotoJPEGData: Data? = nil
+        vehiclePhotoRevision: String? = nil
     ) {
         let pauseStateChanged = lastPublishedIsPaused != isPaused
         let now = Date()
@@ -215,10 +215,9 @@ enum RecordingLiveActivityService {
             isPaused: isPaused,
             vehicleSystemImage: vehicleSystemImage,
             vehicleSymbolScaleX: vehicleSymbolScaleX,
-            vehiclePhotoJPEGData: vehiclePhotoJPEGData
+            vehiclePhotoRevision: vehiclePhotoRevision
         )
-        let safeState = payloadSafe(state)
-        let content = ActivityContent(state: safeState, staleDate: nil)
+        let content = ActivityContent(state: state, staleDate: nil)
 
         enqueue {
             await dedupeActivitiesIfNeeded()
@@ -226,7 +225,7 @@ enum RecordingLiveActivityService {
             for activity in Activity<TripRecordingAttributes>.activities {
                 // Live Activity intent already painted pause/resume; a second near-identical
                 // update restarts the control morph and reads as stutter.
-                if Self.isRedundantPublish(current: activity.content.state, next: safeState) {
+                if Self.isRedundantPublish(current: activity.content.state, next: state) {
                     continue
                 }
                 await activity.update(content)
@@ -244,7 +243,7 @@ enum RecordingLiveActivityService {
               current.currentSpeedKmh == next.currentSpeedKmh,
               current.vehicleSystemImage == next.vehicleSystemImage,
               current.vehicleSymbolScaleX == next.vehicleSymbolScaleX,
-              current.vehiclePhotoJPEGData == next.vehiclePhotoJPEGData,
+              current.vehiclePhotoRevision == next.vehiclePhotoRevision,
               abs(current.distanceMeters - next.distanceMeters) < 0.5 else {
             return false
         }
@@ -255,6 +254,8 @@ enum RecordingLiveActivityService {
         lastUpdateAt = nil
         lastPublishedIsPaused = nil
         clearPendingRestart()
+        LiveActivityVehicleMarkStore.clear()
+        RecordingVehicleMarkSnapshot.clearCompactPNGCache()
         enqueue {
             await endAllImmediately()
         }
@@ -298,7 +299,7 @@ enum RecordingLiveActivityService {
         isPaused: Bool,
         vehicleSystemImage: String,
         vehicleSymbolScaleX: Double,
-        vehiclePhotoJPEGData: Data?,
+        vehiclePhotoRevision: String?,
         logMessage: String
     ) async {
         let attributes = TripRecordingAttributes(startedAt: startedAt)
@@ -309,10 +310,10 @@ enum RecordingLiveActivityService {
             isPaused: isPaused,
             vehicleSystemImage: vehicleSystemImage,
             vehicleSymbolScaleX: vehicleSymbolScaleX,
-            vehiclePhotoJPEGData: vehiclePhotoJPEGData
+            vehiclePhotoRevision: vehiclePhotoRevision
         )
         do {
-            _ = try Activity.request(attributes: attributes, content: .init(state: payloadSafe(state), staleDate: nil))
+            _ = try Activity.request(attributes: attributes, content: .init(state: state, staleDate: nil))
             DevLog.shared.log(logCategory, logMessage)
             await dedupeActivitiesIfNeeded()
         } catch {
@@ -327,24 +328,6 @@ enum RecordingLiveActivityService {
                 level: level
             )
         }
-    }
-
-    private static func payloadSafe(
-        _ state: TripRecordingAttributes.ContentState
-    ) -> TripRecordingAttributes.ContentState {
-        guard let photoData = state.vehiclePhotoJPEGData,
-              !RecordingVehicleMarkSnapshot.fitsLiveActivityPayload(photoData),
-              let encoded = try? JSONEncoder().encode(state) else {
-            return state
-        }
-        var trimmed = state
-        trimmed.vehiclePhotoJPEGData = nil
-        DevLog.shared.log(
-            logCategory,
-            "Live Activity payload \(encoded.count) B over budget; vehicle photo dropped",
-            level: .warning
-        )
-        return trimmed
     }
 
     private static func dedupeActivitiesIfNeeded() async {

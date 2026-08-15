@@ -11,8 +11,8 @@ struct TripRecordingAttributes: ActivityAttributes {
         var vehicleSystemImage: String
         /// `scaleEffect(x:)` so the symbol faces right.
         var vehicleSymbolScaleX: Double
-        /// Optional tiny JPEG thumb; omit when using the SF Symbol.
-        var vehiclePhotoJPEGData: Data?
+        /// App Group mark revision; omit when using the SF Symbol. Bytes are not in ContentState.
+        var vehiclePhotoRevision: String?
 
         init(
             elapsedSeconds: Int,
@@ -21,7 +21,7 @@ struct TripRecordingAttributes: ActivityAttributes {
             isPaused: Bool,
             vehicleSystemImage: String = "car.side.fill",
             vehicleSymbolScaleX: Double = -1,
-            vehiclePhotoJPEGData: Data? = nil
+            vehiclePhotoRevision: String? = nil
         ) {
             self.elapsedSeconds = elapsedSeconds
             self.distanceMeters = distanceMeters
@@ -29,7 +29,7 @@ struct TripRecordingAttributes: ActivityAttributes {
             self.isPaused = isPaused
             self.vehicleSystemImage = vehicleSystemImage
             self.vehicleSymbolScaleX = vehicleSymbolScaleX
-            self.vehiclePhotoJPEGData = vehiclePhotoJPEGData
+            self.vehiclePhotoRevision = vehiclePhotoRevision
         }
     }
 

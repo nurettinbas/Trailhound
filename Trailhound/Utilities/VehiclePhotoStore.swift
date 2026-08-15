@@ -207,7 +207,7 @@ final class VehiclePhotoStore {
         return thumb.data
     }
 
-    /// Display helper for road / Live Activity: punch near-white studio plates to clear.
+    /// Display helper for road scene: punch near-white studio plates to clear.
     nonisolated static func markImageByRemovingLightBackdrop(_ image: UIImage) -> UIImage {
         guard let cgImage = image.cgImage else { return image }
         let width = cgImage.width
@@ -322,9 +322,10 @@ final class VehiclePhotoStore {
             && opaquePixelCoverage(image) < TrailhoundRoadVehicleMarkLayout.cutoutMaxOpaqueCoverage
     }
 
-    /// Road / Live Activity mark: punch the light plate, but never hand back an unusable image.
+    /// Road scene mark: punch the light plate, but never hand back an unusable image.
     /// A light-coloured vehicle can be eaten by the punch — then the original photo is better
     /// than an empty frame (rule: photo when there is a photo, symbol only when there is none).
+    /// Do not use for Live Activity — punch turns light cars into silhouettes on lock screen blur.
     nonisolated static func markImageForDisplay(_ image: UIImage) -> UIImage {
         let punched = markImageByRemovingLightBackdrop(image)
         return markImageIsVisuallyEmpty(punched) ? image : punched

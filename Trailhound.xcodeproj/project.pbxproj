@@ -142,6 +142,8 @@
 		B10000000000000000000003 /* RecordingCarAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* RecordingCarAnimationView.swift */; };
 		B1LIVEBREADCRUMB00000001 /* LiveBreadcrumbCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */; };
 		B10000000000000000000004 /* TripRecordingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* TripRecordingAttributes.swift */; };
+		B1LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift */; };
+		B1LIVEACTMARK000000002 /* LiveActivityVehicleMarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift */; };
 		B10000000000000000000008 /* RecordingControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* RecordingControlBridge.swift */; };
 		B10000000000000000000009 /* RecordingControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* RecordingControlBridge.swift */; };
 		A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */; };
@@ -417,6 +419,7 @@
 		A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBreadcrumbCanvas.swift; sourceTree = "<group>"; };
 		A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardStyle.swift; sourceTree = "<group>"; };
 		B20000000000000000000004 /* TripRecordingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecordingAttributes.swift; sourceTree = "<group>"; };
+		B2LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityVehicleMarkStore.swift; sourceTree = "<group>"; };
 		A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationStore.swift; sourceTree = "<group>"; };
 		A2DEVLOGVIEW000000001 /* DevLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevLogView.swift; sourceTree = "<group>"; };
 		A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsListView.swift; sourceTree = "<group>"; };
@@ -830,6 +833,7 @@
 				B20000000000000000000021 /* SharedL10n.swift */,
 				B20000000000000000000022 /* TrailhoundBrandColors.swift */,
 				B20000000000000000000004 /* TripRecordingAttributes.swift */,
+				B2LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift */,
 				B20000000000000000000003 /* RecordingCarAnimationView.swift */,
 				A2LIVEBREADCRUMB000001 /* LiveBreadcrumbCanvas.swift */,
 				B20000000000000000000009 /* RecordingControlBridge.swift */,
@@ -1290,6 +1294,7 @@
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
 				A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */,
 				B10000000000000000000004 /* TripRecordingAttributes.swift in Sources */,
+				B1LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift in Sources */,
 				B10000000000000000000008 /* RecordingControlBridge.swift in Sources */,
 				B10000000000000000000011 /* AppNotificationArchive.swift in Sources */,
 				B1DEVLOG0000000000001 /* DevLog.swift in Sources */,
@@ -1307,6 +1312,7 @@
 				B10000000000000000000017 /* SharedL10n.swift in Sources */,
 				B10000000000000000000019 /* TrailhoundBrandColors.swift in Sources */,
 				B10000000000000000000007 /* TripRecordingAttributes.swift in Sources */,
+				B1LIVEACTMARK000000002 /* LiveActivityVehicleMarkStore.swift in Sources */,
 				B10000000000000000000009 /* RecordingControlBridge.swift in Sources */,
 				B10000000000000000000012 /* AppNotificationArchive.swift in Sources */,
 				B1DEVLOG0000000000002 /* DevLog.swift in Sources */,

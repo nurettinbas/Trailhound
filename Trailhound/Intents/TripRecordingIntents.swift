@@ -41,7 +41,7 @@ struct StartTripRecordingIntent: LiveActivityIntent {
                 isPaused: recording.state == .paused,
                 vehicleSystemImage: mark.systemImage,
                 vehicleSymbolScaleX: mark.symbolScaleX,
-                vehiclePhotoJPEGData: mark.photoJPEGData
+                vehiclePhotoRevision: mark.photoRevision
             )
         }
         return .result(dialog: IntentDialog("shortcut.start.success"))

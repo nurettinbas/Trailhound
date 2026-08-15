@@ -543,7 +543,7 @@ struct TrailhoundWidget: Widget {
 
 private struct LiveActivityCarIcon: View {
     var side: CGFloat = 22
-    var photoJPEGData: Data? = nil
+    var photoRevision: String? = nil
     /// Island chrome is black — white symbols read cleaner than brand blue.
     var symbolTint: Color = .white
 
@@ -554,11 +554,9 @@ private struct LiveActivityCarIcon: View {
 
     @ViewBuilder
     private var markContent: some View {
-        // Photo wins when ActivityKit payload carries a usable thumb; otherwise fixed
+        // Photo wins when App Group carries a usable thumb for this revision; otherwise fixed
         // right-facing `car.side.fill`.
-        if let photoJPEGData,
-           photoJPEGData.count > 32,
-           let image = UIImage(data: photoJPEGData) {
+        if let image = LiveActivityVehicleMarkStore.image(revision: photoRevision) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -852,7 +850,7 @@ struct TrailhoundLiveActivity: Widget {
     ) -> LiveActivityCarIcon {
         LiveActivityCarIcon(
             side: side,
-            photoJPEGData: state.vehiclePhotoJPEGData,
+            photoRevision: state.vehiclePhotoRevision,
             symbolTint: symbolTint
         )
     }

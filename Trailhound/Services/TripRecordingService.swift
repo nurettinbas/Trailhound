@@ -8,180 +8,66 @@ import WidgetKit
 struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
     var systemImage: String
     var symbolScaleX: Double
-    /// PNG when the thumb has alpha; JPEG for opaque plates. Field name kept for ContentState compatibility.
-    var photoJPEGData: Data?
+    /// App Group mark revision written before ActivityKit publish; nil → SF Symbol.
+    var photoRevision: String?
 
     static let fallback = RecordingVehicleMarkSnapshot(
         systemImage: "car.side.fill",
         symbolScaleX: -1,
-        photoJPEGData: nil
+        photoRevision: nil
     )
 
-    /// Encoded mark bytes by disk file name — encode once per session photo.
-    @MainActor private static var compactMarkByFileName: [String: Data] = [:]
+    /// Revision by source photo file name — write App Group mark once per session photo.
+    @MainActor private static var revisionByFileName: [String: String] = [:]
 
     @MainActor
     static func makeCached(for vehicle: VehicleProfile?) -> RecordingVehicleMarkSnapshot {
-        let photoJPEGData = compactMarkData(fileName: vehicle?.photoFileName)
+        let photoRevision = publishMarkRevision(fileName: vehicle?.photoFileName)
         return RecordingVehicleMarkSnapshot(
             systemImage: fallback.systemImage,
             symbolScaleX: fallback.symbolScaleX,
-            photoJPEGData: photoJPEGData
+            photoRevision: photoRevision
         )
     }
 
     @MainActor
     static func clearCompactPNGCache(fileName: String? = nil) {
         if let fileName {
-            compactMarkByFileName.removeValue(forKey: fileName)
+            revisionByFileName.removeValue(forKey: fileName)
         } else {
-            compactMarkByFileName.removeAll()
+            revisionByFileName.removeAll()
+            LiveActivityVehicleMarkStore.clear()
         }
     }
 
-    /// ActivityKit rejects `ContentState` near 4 KB. Data fields become base64 in JSON (~4/3×),
-    /// so the mark budget must be checked against the *encoded* state, not raw bytes.
-    nonisolated static let maxLiveActivityContentStateBytes = 3_800
-    nonisolated private static let markCandidateSides: [CGFloat] = [96, 80, 64, 52, 40, 28]
-    nonisolated private static let markJPEGQualities: [CGFloat] = [0.72, 0.58, 0.45, 0.32]
-
+    /// Writes the vehicle thumb into the App Group (full size, no studio punch) and returns the revision.
+    /// Punch (`markImageForDisplay`) is road-scene only — on Live Activity it turns light cars into silhouettes.
     @MainActor
-    private static func compactMarkData(fileName: String?) -> Data? {
+    private static func publishMarkRevision(fileName: String?) -> String? {
         guard let fileName, !fileName.isEmpty else { return nil }
-        if let cached = compactMarkByFileName[fileName] { return cached }
+        if let cached = revisionByFileName[fileName] { return cached }
         guard let image = VehiclePhotoStore.shared.imageSync(fileName: fileName) else {
             DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk (\(fileName))", level: .warning)
             return nil
         }
-        guard let data = compactMarkData(from: image) else {
+        if VehiclePhotoStore.markImageIsVisuallyEmpty(image) {
             DevLog.shared.log(
                 .widget,
-                "Live Activity mark: photo unusable after encode; using SF Symbol",
+                "Live Activity mark: photo unusable; using SF Symbol",
                 level: .warning
             )
             return nil
         }
-        compactMarkByFileName[fileName] = data
-        DevLog.shared.log(.widget, "Live Activity mark: photo attached (\(data.count) B)")
-        return data
-    }
-
-    /// Thumb that fits inside the full JSON-encoded Live Activity `ContentState`.
-    nonisolated static func compactMarkData(from image: UIImage) -> Data? {
-        // Prefer the same asset as the recording picker — no punch (eats light vehicles).
-        if let data = encodeMarkForLiveActivity(image) { return data }
-        // Studio plates and other opaque thumbs only shrink enough after backdrop removal.
-        let displayMark = VehiclePhotoStore.markImageForDisplay(image)
-        guard ObjectIdentifier(displayMark) != ObjectIdentifier(image) else { return nil }
-        return encodeMarkForLiveActivity(displayMark)
-    }
-
-    /// Back-compat alias for tests.
-    nonisolated static func compactMarkPNG(from image: UIImage) -> Data? {
-        compactMarkData(from: image)
-    }
-
-    nonisolated static func fitsLiveActivityPayload(_ photoData: Data) -> Bool {
-        payloadEncodedSize(photoData) <= maxLiveActivityContentStateBytes
-    }
-
-    nonisolated private static func encodeMarkForLiveActivity(_ image: UIImage) -> Data? {
-        if VehiclePhotoStore.markImageIsVisuallyEmpty(image) { return nil }
-
-        var bestOversized: Data?
-        var bestPayloadBytes = Int.max
-        // PNG first — punched alpha marks compress far below UIKit JPEG (~5 KB floor).
-        for side in markCandidateSides {
-            if let data = pngData(from: image, maxSide: side) {
-                let payload = payloadEncodedSize(data)
-                if payload <= maxLiveActivityContentStateBytes { return data }
-                if payload < bestPayloadBytes {
-                    bestPayloadBytes = payload
-                    bestOversized = data
-                }
-            }
-        }
-        // JPEG only for fully opaque thumbs when PNG cannot fit the payload budget.
-        if !VehiclePhotoStore.imageHasAlpha(image) {
-            for side in markCandidateSides {
-                for quality in markJPEGQualities {
-                    guard let data = jpegData(from: image, maxSide: side, quality: quality) else { continue }
-                    let payload = payloadEncodedSize(data)
-                    if payload <= maxLiveActivityContentStateBytes { return data }
-                    if payload < bestPayloadBytes {
-                        bestPayloadBytes = payload
-                        bestOversized = data
-                    }
-                }
-            }
-        }
-        if bestPayloadBytes <= maxLiveActivityContentStateBytes {
-            return bestOversized
-        }
-        return nil
-    }
-
-    nonisolated private static func payloadEncodedSize(_ photoData: Data) -> Int {
-        guard let encoded = try? JSONEncoder().encode(
-            TripRecordingAttributes.ContentState(
-                elapsedSeconds: 99_999,
-                distanceMeters: 999_999,
-                currentSpeedKmh: 999,
-                isPaused: true,
-                vehicleSystemImage: fallback.systemImage,
-                vehicleSymbolScaleX: fallback.symbolScaleX,
-                vehiclePhotoJPEGData: photoData
+        guard let revision = LiveActivityVehicleMarkStore.write(image) else {
+            DevLog.shared.log(
+                .widget,
+                "Live Activity mark: App Group write failed; using SF Symbol",
+                level: .warning
             )
-        ) else {
-            return .max
-        }
-        return encoded.count
-    }
-
-    nonisolated private static func jpegData(
-        from image: UIImage,
-        maxSide: CGFloat,
-        quality: CGFloat
-    ) -> Data? {
-        guard let rendered = downscaledImage(from: image, maxSide: maxSide, opaque: true) else { return nil }
-        return rendered.jpegData(compressionQuality: quality)
-    }
-
-    nonisolated private static func pngData(from image: UIImage, maxSide: CGFloat) -> Data? {
-        guard let output = downscaledImage(from: image, maxSide: maxSide) else { return nil }
-        if VehiclePhotoStore.markImageIsVisuallyEmpty(output),
-           VehiclePhotoStore.opaquePixelCoverage(output) < 0.005 {
             return nil
         }
-        return output.pngData()
-    }
-
-    nonisolated private static func downscaledImage(
-        from image: UIImage,
-        maxSide: CGFloat,
-        opaque: Bool = false
-    ) -> UIImage? {
-        let pixelW = image.size.width * image.scale
-        let pixelH = image.size.height * image.scale
-        let longest = max(pixelW, pixelH)
-        guard longest > 0 else { return nil }
-
-        let scale = min(1, maxSide / longest)
-        let size = CGSize(
-            width: max(1, (pixelW * scale).rounded()),
-            height: max(1, (pixelH * scale).rounded())
-        )
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        format.opaque = opaque
-        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        return renderer.image { context in
-            if opaque {
-                UIColor.black.setFill()
-                context.fill(CGRect(origin: .zero, size: size))
-            }
-            image.draw(in: CGRect(origin: .zero, size: size))
-        }
+        revisionByFileName[fileName] = revision
+        return revision
     }
 }
 
@@ -325,12 +211,12 @@ final class TripRecordingService {
            let lastLiveActivityMark,
            // Never reuse a symbol-only mark while the vehicle still has a photo file —
            // a concurrent sync can race ahead of thumb warm and stick on nil forever.
-           lastLiveActivityMark.photoJPEGData != nil || vehicle?.photoFileName == nil {
+           lastLiveActivityMark.photoRevision != nil || vehicle?.photoFileName == nil {
             return lastLiveActivityMark
         }
         let mark = RecordingVehicleMarkSnapshot.makeCached(for: vehicle)
         // Only pin the cache when complete (photo attached or no photo expected).
-        if mark.photoJPEGData != nil || vehicle?.photoFileName == nil {
+        if mark.photoRevision != nil || vehicle?.photoFileName == nil {
             lastLiveActivityMarkIdentity = identity
             lastLiveActivityMark = mark
         }
@@ -566,7 +452,7 @@ final class TripRecordingService {
                 distanceMeters: currentDistanceMeters,
                 vehicleSystemImage: mark.systemImage,
                 vehicleSymbolScaleX: mark.symbolScaleX,
-                vehiclePhotoJPEGData: mark.photoJPEGData
+                vehiclePhotoRevision: mark.photoRevision
             )
             Task { await warmLiveActivityVehiclePhoto() }
         }
@@ -959,7 +845,7 @@ final class TripRecordingService {
                 startedAt: resolvedStartedAt,
                 vehicleSystemImage: mark.systemImage,
                 vehicleSymbolScaleX: mark.symbolScaleX,
-                vehiclePhotoJPEGData: mark.photoJPEGData
+                vehiclePhotoRevision: mark.photoRevision
             )
             Task { await warmLiveActivityVehiclePhoto() }
             let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
@@ -1380,7 +1266,7 @@ final class TripRecordingService {
                 isPaused: isPaused,
                 vehicleSystemImage: vehicleMark.systemImage,
                 vehicleSymbolScaleX: vehicleMark.symbolScaleX,
-                vehiclePhotoJPEGData: vehicleMark.photoJPEGData
+                vehiclePhotoRevision: vehicleMark.photoRevision
             )
         }
         RecordingLiveActivityService.update(
@@ -1391,7 +1277,7 @@ final class TripRecordingService {
             force: force,
             vehicleSystemImage: vehicleMark.systemImage,
             vehicleSymbolScaleX: vehicleMark.symbolScaleX,
-            vehiclePhotoJPEGData: vehicleMark.photoJPEGData
+            vehiclePhotoRevision: vehicleMark.photoRevision
         )
 
         // Never reload home-screen timelines on the 2s recording tick — the widget

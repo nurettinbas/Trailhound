@@ -113,18 +113,58 @@ final class VehiclePhotoStoreTests: XCTestCase {
         XCTAssertFalse(VehiclePhotoStore.markImageIsVisuallyEmpty(mark))
     }
 
-    /// Oversized marks make ActivityKit reject the whole `ContentState`, so the Island shows nothing.
-    func testLiveActivityMarkFitsPayloadBudget() throws {
+    func testLiveActivityMarkStoreWriteReadRoundTripPreservesAlpha() throws {
+        let markDir = tempDirectory.appendingPathComponent("LiveActivityMark", isDirectory: true)
+        try FileManager.default.createDirectory(at: markDir, withIntermediateDirectories: true)
+        LiveActivityVehicleMarkStore.directoryOverride = markDir
+        defer {
+            LiveActivityVehicleMarkStore.clear()
+            LiveActivityVehicleMarkStore.directoryOverride = nil
+        }
+
+        let source = makeTransparentImage(size: VehiclePhotoStore.maxPixelSize)
+        let revision = try XCTUnwrap(LiveActivityVehicleMarkStore.write(source))
+        XCTAssertFalse(revision.isEmpty)
+
+        // Second write refreshes the file and memory cache; asking for the prior revision
+        // forces a disk read (cache miss) while still loading the same PNG bytes.
+        let revision2 = try XCTUnwrap(LiveActivityVehicleMarkStore.write(source))
+        XCTAssertNotEqual(revision, revision2)
+        let loaded = try XCTUnwrap(LiveActivityVehicleMarkStore.image(revision: revision))
+        XCTAssertTrue(VehiclePhotoStore.imageHasAlpha(loaded))
+        let longest = max(loaded.size.width * loaded.scale, loaded.size.height * loaded.scale)
+        XCTAssertEqual(longest, VehiclePhotoStore.maxPixelSize, accuracy: 1)
+    }
+
+    func testLiveActivityMarkStoreKeepsStudioPlateOpaque() throws {
+        let markDir = tempDirectory.appendingPathComponent("LiveActivityMarkOpaque", isDirectory: true)
+        try FileManager.default.createDirectory(at: markDir, withIntermediateDirectories: true)
+        LiveActivityVehicleMarkStore.directoryOverride = markDir
+        defer {
+            LiveActivityVehicleMarkStore.clear()
+            LiveActivityVehicleMarkStore.directoryOverride = nil
+        }
+
         let source = makeCarOnWhitePlate(size: VehiclePhotoStore.maxPixelSize)
-        let data = try XCTUnwrap(RecordingVehicleMarkSnapshot.compactMarkData(from: source))
-        XCTAssertTrue(RecordingVehicleMarkSnapshot.fitsLiveActivityPayload(data))
+        // Road punch would eat most of a light plate; Live Activity must keep the filled thumb.
+        let punched = VehiclePhotoStore.markImageByRemovingLightBackdrop(source)
+        XCTAssertLessThan(VehiclePhotoStore.opaquePixelCoverage(punched), 0.5)
+
+        let revision = try XCTUnwrap(LiveActivityVehicleMarkStore.write(source))
+        let loaded = try XCTUnwrap(LiveActivityVehicleMarkStore.image(revision: revision))
+        XCTAssertGreaterThan(VehiclePhotoStore.opaquePixelCoverage(loaded), 0.9)
+    }
+
+    func testLiveActivityMarkStoreNilRevisionReturnsNil() {
+        XCTAssertNil(LiveActivityVehicleMarkStore.image(revision: nil))
+        XCTAssertNil(LiveActivityVehicleMarkStore.image(revision: ""))
     }
 
     func testMakeCachedWithoutPhotoUsesFixedFallback() {
         let mark = RecordingVehicleMarkSnapshot.makeCached(for: nil)
         XCTAssertEqual(mark.systemImage, RecordingVehicleMarkSnapshot.fallback.systemImage)
         XCTAssertEqual(mark.symbolScaleX, RecordingVehicleMarkSnapshot.fallback.symbolScaleX)
-        XCTAssertNil(mark.photoJPEGData)
+        XCTAssertNil(mark.photoRevision)
     }
 
     func testMakeCachedIgnoresVehicleIconName() {
@@ -135,7 +175,7 @@ final class VehiclePhotoStoreTests: XCTestCase {
         let mark = RecordingVehicleMarkSnapshot.makeCached(for: vehicle)
         XCTAssertEqual(mark.systemImage, "car.side.fill")
         XCTAssertEqual(mark.symbolScaleX, -1)
-        XCTAssertNil(mark.photoJPEGData)
+        XCTAssertNil(mark.photoRevision)
     }
 
     func testDisplayMarkKeepsPunchWhenVehicleSurvives() {
