@@ -23,7 +23,7 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 - Stop credits still use `LiveBreadcrumbCanvas` briefly.
 - The road animation pauses when another tab is selected or the card scrolls off-screen (`isRecordingCardInViewport`).
 - `TimelineView` runs only while the road animation is active (paused / off-screen = static frame).
-- **Live follow map** (`LiveFollowMapView`) writes the follow camera with animations disabled before Map mounts (avoids MapKit world→local fly-in), then fades map opacity + vehicle↔puck hero together (`liveFollowReveal`). Follow-camera easing only after open settles. Close fades map + reverse hero in lockstep. Breadcrumb polylines are decimated via `RouteDisplayPath` (max 1500). While the cover is open, the card’s road `TimelineView` stays paused (`!showLiveFollowMap`).
+- **Live follow map** (`LiveFollowMapView` + `LiveFollowMapKitView`): `CADisplayLink` drives `LiveFollowCamera` (dead-reckon + time-constant heading) and writes `MKMapView.setCamera(animated: false)` each frame — no overlapping SwiftUI `easeOut` jumps. Pose session is a reference type so 60 fps writes stay off the SwiftUI graph. Breadcrumb polylines update incrementally via `RouteDisplayPath` (max 1500). `ScreenIdleLock` keeps the display awake only while the cover is open. Start / pause / trip-stop pins render on the live map. While the cover is open, the card’s road `TimelineView` stays paused (`!showLiveFollowMap`).
 
 ### Observation isolation
 

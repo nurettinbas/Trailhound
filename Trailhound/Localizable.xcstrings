@@ -6792,6 +6792,40 @@
         }
       }
     },
+    "recording.live_map.start_pin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trip start"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk başlangıcı"
+          }
+        }
+      }
+    },
+    "recording.live_map.pause_pin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused here"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Burada duraklandı"
+          }
+        }
+      }
+    },
     "recording.location.always_required" : {
       "extractionState" : "manual",
       "localizations" : {

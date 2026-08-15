@@ -93,6 +93,8 @@ final class TripRecordingService {
     private(set) var liveBreadcrumbCoordinates: [CLLocationCoordinate2D] = []
     /// Breadcrumb polylines split at GPS gaps (no straight chords over missing data).
     private(set) var liveBreadcrumbSegments: [[CLLocationCoordinate2D]] = []
+    /// Parking / user-pause stops for the active session (live follow map pins).
+    private(set) var liveStopCoordinates: [CLLocationCoordinate2D] = []
 
     /// Throttled snapshots for on-screen recording UI (see `RecordingDisplaySampler`).
     private(set) var displayElapsedTime: TimeInterval = 0
@@ -120,6 +122,9 @@ final class TripRecordingService {
     private var lastTrustedSpeedMps: Double?
     private var currentStopStartedAt: Date?
     private var currentStopCoordinate: CLLocationCoordinate2D?
+    /// Manual pause pin — persisted as `TripStop` on resume when long enough.
+    private var userPauseStartedAt: Date?
+    private var userPauseCoordinate: CLLocationCoordinate2D?
 
     private var stopSpeedMps: Double {
         RecordingConfiguration.stopDetectionSpeedKmh / 3.6
@@ -352,13 +357,7 @@ final class TripRecordingService {
         // sync rewrite App Group `isPaused=false` while we were still `.recording`, so the
         // home-screen widget kept showing Pause after a successful pause tap.
         if state == .recording {
-            updateElapsedTime()
-            state = .paused
-            RecordingDiagnostics.logPaused(tripID: activeTrip?.id)
-            stopElapsedTimer()
-            settings.pendingPauseRecordingRequest = false
-            syncExternalState(force: true)
-            TrailhoundHaptics.recordingPaused()
+            pauseRecording()
         } else if state == .paused {
             settings.pendingPauseRecordingRequest = false
             syncExternalState(force: true)
@@ -369,13 +368,7 @@ final class TripRecordingService {
 
     func processExternalResumeRequest() {
         if state == .paused {
-            recordingStartedAt = Date().addingTimeInterval(-elapsedTime)
-            state = .recording
-            RecordingDiagnostics.logResumed(tripID: activeTrip?.id, orphanResume: false)
-            startElapsedTimer()
-            settings.pendingResumeRecordingRequest = false
-            syncExternalState(force: true)
-            TrailhoundHaptics.recordingResumed()
+            resumeRecording()
         } else if state == .recording {
             settings.pendingResumeRecordingRequest = false
             syncExternalState(force: true)
@@ -387,6 +380,14 @@ final class TripRecordingService {
     func pauseRecording() {
         guard state == .recording else { return }
         updateElapsedTime()
+        // Close out an open dwell stop if it already qualifies; otherwise drop it so
+        // the user-pause pin does not double with a short standstill.
+        finalizeStopIfNeeded()
+        currentStopStartedAt = nil
+        currentStopCoordinate = nil
+        userPauseStartedAt = Date()
+        userPauseCoordinate = locationService.lastLocation?.coordinate
+            ?? liveBreadcrumbCoordinates.last
         state = .paused
         RecordingDiagnostics.logPaused(tripID: activeTrip?.id)
         stopElapsedTimer()
@@ -397,6 +398,7 @@ final class TripRecordingService {
 
     func resumeRecording() {
         guard state == .paused else { return }
+        persistUserPauseStopIfNeeded()
         recordingStartedAt = Date().addingTimeInterval(-elapsedTime)
         state = .recording
         RecordingDiagnostics.logResumed(tripID: activeTrip?.id, orphanResume: false)
@@ -425,9 +427,12 @@ final class TripRecordingService {
         lastRecordedLocation = trip.sortedPoints.last?.location
         liveBreadcrumbCoordinates = trip.coordinates
         liveBreadcrumbSegments = Self.breadcrumbSegments(from: trip.sortedPoints)
+        liveStopCoordinates = trip.stops.map(\.coordinate)
         refreshDisplaySnapshot(force: true)
         currentStopStartedAt = nil
         currentStopCoordinate = nil
+        userPauseStartedAt = nil
+        userPauseCoordinate = nil
         pointsSinceLastSave = 0
 
         locationService.requestPermission()
@@ -751,8 +756,43 @@ final class TripRecordingService {
         )
         trip.stops.append(stop)
         modelContext.insert(stop)
+        liveStopCoordinates.append(coordinate)
         currentStopStartedAt = nil
         currentStopCoordinate = nil
+    }
+
+    /// Writes a `TripStop` for a manual pause so trip detail shows the same pin.
+    private func persistUserPauseStopIfNeeded() {
+        guard let trip = activeTrip,
+              let modelContext,
+              let startedAt = userPauseStartedAt,
+              let coordinate = userPauseCoordinate else {
+            userPauseStartedAt = nil
+            userPauseCoordinate = nil
+            return
+        }
+        let duration = Date().timeIntervalSince(startedAt)
+        userPauseStartedAt = nil
+        userPauseCoordinate = nil
+        // Skip accidental taps; still keep the live-map session pin from LiveFollowMapView.
+        guard duration >= 5 else { return }
+
+        let alreadyMarked = liveStopCoordinates.contains {
+            abs($0.latitude - coordinate.latitude) < 0.00005
+                && abs($0.longitude - coordinate.longitude) < 0.00005
+        }
+        guard !alreadyMarked else { return }
+
+        let stop = TripStop(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            startedAt: startedAt,
+            durationSeconds: duration,
+            trip: trip
+        )
+        trip.stops.append(stop)
+        modelContext.insert(stop)
+        liveStopCoordinates.append(coordinate)
     }
 
     private func beginRecording(trigger: RecordingTrigger) {
@@ -800,8 +840,11 @@ final class TripRecordingService {
         lastTrustedSpeedMps = nil
         currentStopStartedAt = nil
         currentStopCoordinate = nil
+        userPauseStartedAt = nil
+        userPauseCoordinate = nil
         liveBreadcrumbCoordinates = []
         liveBreadcrumbSegments = []
+        liveStopCoordinates = []
         resetDisplaySnapshot()
 
         let trip = Trip(startedAt: resolvedStartedAt)
@@ -1171,8 +1214,11 @@ final class TripRecordingService {
         lastTrustedSpeedMps = nil
         currentStopStartedAt = nil
         currentStopCoordinate = nil
+        userPauseStartedAt = nil
+        userPauseCoordinate = nil
         liveBreadcrumbCoordinates = []
         liveBreadcrumbSegments = []
+        liveStopCoordinates = []
         didRefreshTripStartedPlaceBody = false
         resetDisplaySnapshot()
     }

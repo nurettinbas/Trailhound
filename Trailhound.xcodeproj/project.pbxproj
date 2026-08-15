@@ -78,9 +78,16 @@
 		A1LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */; };
 		A1LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */; };
 		A1LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift */; };
+		A1LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */; };
+		A1LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */; };
+		A1LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */; };
+		A1SCREENIDLELOCK000001 /* ScreenIdleLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */; };
+		A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */; };
 		A1LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */; };
 		A1LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */; };
 		A1LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */; };
+		A1SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */; };
+		A1LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */; };
 		A1RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift */; };
 		A1RECENDCREDITS00000001 /* RecordingEndCreditsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECENDCREDITS00000001 /* RecordingEndCreditsView.swift */; };
 		A10000000000000000000017 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* SettingsView.swift */; };
@@ -351,9 +358,16 @@
 		A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapView.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowCamera.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowPresentation.swift; sourceTree = "<group>"; };
+		A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/LiveFollowSession.swift; sourceTree = SOURCE_ROOT; };
+		A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Views/LiveFollowMapKitView.swift; sourceTree = SOURCE_ROOT; };
+		A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/LiveFollowMapPin.swift; sourceTree = SOURCE_ROOT; };
+		A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/ScreenIdleLock.swift; sourceTree = SOURCE_ROOT; };
+		A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trailhound/Utilities/DisplayLinkClock.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowCameraTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowPresentationTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapViewTests.swift; sourceTree = SOURCE_ROOT; };
+		A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/ScreenIdleLockTests.swift; sourceTree = SOURCE_ROOT; };
+		A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapPinTests.swift; sourceTree = SOURCE_ROOT; };
 		A2RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingColdOpenOverlay.swift; sourceTree = "<group>"; };
 		A2RECENDCREDITS00000001 /* RecordingEndCreditsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingEndCreditsView.swift; sourceTree = "<group>"; };
 		A20000000000000000000017 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -750,6 +764,7 @@
 				A20000000000000000000015 /* TripDetailView.swift */,
 				A20000000000000000000016 /* ActiveTripView.swift */,
 				A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */,
+				A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */,
 				A2RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift */,
 				A2RECENDCREDITS00000001 /* RecordingEndCreditsView.swift */,
 				A2ONBOARDING00000000001 /* OnboardingView.swift */,
@@ -792,6 +807,10 @@
 				A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */,
 				A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */,
 				A2LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift */,
+				A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */,
+				A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */,
+				A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */,
+				A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
 				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
@@ -896,6 +915,8 @@
 				A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */,
 				A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */,
 				A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */,
+				A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */,
+				A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */,
 				D5ADC295672F49449069473E /* RecordingMovementPolicyTests.swift */,
 				2CBDBEE49462477FBF036E37 /* RecordingSpeedTrustTests.swift */,
 				F252B64BE4F147579798FBDA /* AppNotificationStoreTests.swift */,
@@ -1101,6 +1122,8 @@
 				A1LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift in Sources */,
 				A1LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift in Sources */,
 				A1LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift in Sources */,
+				A1SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift in Sources */,
+				A1LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift in Sources */,
 				4822CA45D0DC47BF992E1511 /* RecordingMovementPolicyTests.swift in Sources */,
 				92468C6A18F64E4AA6DD57DE /* RecordingSpeedTrustTests.swift in Sources */,
 				F9BE17E986CA4B1A9A47EB1C /* AppNotificationStoreTests.swift in Sources */,
@@ -1155,6 +1178,7 @@
 				A10000000000000000000015 /* TripDetailView.swift in Sources */,
 				A10000000000000000000016 /* ActiveTripView.swift in Sources */,
 				A1LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift in Sources */,
+				A1LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift in Sources */,
 				A1RECCOLDOPEN0000000001 /* RecordingColdOpenOverlay.swift in Sources */,
 				A1RECENDCREDITS00000001 /* RecordingEndCreditsView.swift in Sources */,
 				A1ONBOARDING00000000001 /* OnboardingView.swift in Sources */,
@@ -1175,6 +1199,10 @@
 				A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */,
 				A1LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift in Sources */,
 				A1LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift in Sources */,
+				A1LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift in Sources */,
+				A1LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift in Sources */,
+				A1SCREENIDLELOCK000001 /* ScreenIdleLock.swift in Sources */,
+				A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
 				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
 				A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */,

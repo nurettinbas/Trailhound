@@ -21,8 +21,7 @@ struct LiveFollowMapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var followCamera = LiveFollowCamera()
+    @State private var session = LiveFollowSession()
     @State private var isFollowing = true
     @State private var mapClarity: Double = 0
     @State private var chromeReveal: Double = 0
@@ -34,14 +33,15 @@ struct LiveFollowMapView: View {
     @State private var puckRevealed = false
     @State private var mapMounted = false
     @State private var isClosing = false
-    /// After open fade finishes — only then may follow-camera writes animate.
+    /// After open fade finishes — follow camera may advance from GPS.
     @State private var openSettled = false
     @State private var displaySegments: [LiveFollowPolylineSegment] = []
     @State private var lastBreadcrumbPointCount = -1
-    @State private var displayedGPSQuality: LocationService.GPSQuality = .lost
-    /// Suppresses follow-break while we write the camera ourselves.
-    @State private var ignoreNextCameraChange = false
     @State private var hudAnchorBox = RecordingCardAnchorBox()
+    @State private var displayLink = DisplayLinkClock()
+    @State private var pausePinCoordinates: [CLLocationCoordinate2D] = []
+    @State private var wasPaused = false
+    @State private var idleLockHeld = false
 
     private var isPaused: Bool {
         recordingService.state == .paused
@@ -56,9 +56,25 @@ struct LiveFollowMapView: View {
     }
 
     private var tipCoordinate: CLLocationCoordinate2D? {
-        followCamera.center
+        session.vehicleCoordinate
             ?? locationService.lastLocation?.coordinate
             ?? recordingService.liveBreadcrumbCoordinates.last
+    }
+
+    private var startPinCoordinate: CLLocationCoordinate2D? {
+        recordingService.liveBreadcrumbCoordinates.first
+    }
+
+    private var tripStopCoordinates: [CLLocationCoordinate2D] {
+        recordingService.liveStopCoordinates
+    }
+
+    private var mapPins: [LiveFollowMapPin] {
+        LiveFollowMapPinBuilder.pins(
+            startCoordinate: startPinCoordinate,
+            pauseCoordinates: pausePinCoordinates,
+            tripStopCoordinates: tripStopCoordinates
+        )
     }
 
     /// Hero overlay while flying / crossfading onto the map puck.
@@ -141,11 +157,36 @@ struct LiveFollowMapView: View {
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isPaused)
         .statusBarHidden(false)
         .onAppear {
+            retainIdleLock()
+            wasPaused = isPaused
             runOpenSequence()
         }
-        .task(id: mapMounted) {
-            guard mapMounted else { return }
-            await runFollowLoop()
+        .onDisappear {
+            stopDisplayLink()
+            releaseIdleLock()
+        }
+        .onChange(of: mapMounted) { _, mounted in
+            if mounted {
+                startDisplayLink()
+            } else {
+                stopDisplayLink()
+            }
+        }
+        .onChange(of: isFollowing) { _, value in
+            session.isFollowing = value
+        }
+        .onChange(of: openSettled) { _, value in
+            session.openSettled = value
+        }
+        .onChange(of: isClosing) { _, value in
+            session.isClosing = value
+        }
+        .onChange(of: isPaused) { _, paused in
+            session.isPaused = paused
+            handlePauseChromeChange(paused)
+        }
+        .onChange(of: reduceMotion) { _, value in
+            session.reduceMotion = value
         }
         .onChange(of: recordingService.state.isActiveSession) { _, isActive in
             if !isActive {
@@ -159,10 +200,8 @@ struct LiveFollowMapView: View {
         }
         .onChange(of: settings.liveFollowMap3DEnabled) { _, enabled in
             guard mapMounted else { return }
-            followCamera.uses3D = enabled
-            if isFollowing {
-                applyCamera(animated: true)
-            }
+            session.uses3D = enabled
+            session.camera.uses3D = enabled
         }
         .accessibilityAddTraits(.isModal)
     }
@@ -207,51 +246,22 @@ struct LiveFollowMapView: View {
     }
 
     private var mapLayer: some View {
-        Map(position: $cameraPosition, interactionModes: isPaused ? [] : .all) {
-            ForEach(displaySegments) { segment in
-                // Apple Maps–style traveled path: soft halo + solid blue route.
-                MapPolyline(coordinates: segment.coordinates)
-                    .stroke(
-                        Self.routeBlue.opacity(0.35),
-                        style: StrokeStyle(lineWidth: 14, lineCap: .round, lineJoin: .round)
-                    )
-                    .mapOverlayLevel(level: .aboveRoads)
-                MapPolyline(coordinates: segment.coordinates)
-                    .stroke(
-                        Self.routeBlue,
-                        style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-                    )
-                    .mapOverlayLevel(level: .aboveRoads)
+        LiveFollowMapKitView(
+            session: session,
+            isFollowing: isFollowing && openSettled && !isClosing,
+            interactionEnabled: !isPaused,
+            uses3DElevation: uses3D,
+            segments: displaySegments,
+            pins: mapPins,
+            vehiclePhoto: vehiclePhoto,
+            vehicleSystemImage: vehicleSystemImage,
+            puckRevealed: puckRevealed,
+            isMoving: !isPaused,
+            onUserBreakFollow: {
+                guard isFollowing else { return }
+                isFollowing = false
             }
-
-            if let tip = tipCoordinate, puckRevealed {
-                // Empty title — MapKit must not draw “Current position” under the puck.
-                // Hidden until the open hero flight lands.
-                Annotation("", coordinate: tip, anchor: .center) {
-                    LiveFollowPuckMark(
-                        vehiclePhoto: vehiclePhoto,
-                        vehicleSystemImage: vehicleSystemImage,
-                        isMoving: !isPaused,
-                        reduceMotion: reduceMotion
-                    )
-                    .accessibilityLabel(L10n.string("recording.live_map.vehicle"))
-                }
-            }
-        }
-        .mapStyle(
-            .standard(elevation: uses3D ? .realistic : .flat)
         )
-        .mapControls {
-            // Empty — we own chrome; avoid system compass / scale crowding the HUD.
-        }
-        .onMapCameraChange(frequency: .onEnd) { _ in
-            if ignoreNextCameraChange {
-                ignoreNextCameraChange = false
-                return
-            }
-            guard isFollowing else { return }
-            isFollowing = false
-        }
     }
 
     /// Full-screen amber wash + centered pause callout. Pass-through so Resume/Stop stay tappable.
@@ -331,7 +341,7 @@ struct LiveFollowMapView: View {
                     .minimumScaleFactor(0.75)
             }
 
-            GPSQualityBadge(quality: displayedGPSQuality, compact: true)
+            GPSQualityBadge(quality: session.displayedGPSQuality, compact: true)
         }
     }
 
@@ -360,10 +370,9 @@ struct LiveFollowMapView: View {
                 Button {
                     TrailhoundHaptics.selection()
                     isFollowing = true
-                    followCamera.uses3D = uses3D
+                    session.camera.uses3D = uses3D
                     if let location = locationService.lastLocation {
-                        followCamera.forceRecenter(location: location)
-                        applyCamera(animated: true)
+                        session.forceRecenter(location: location)
                     }
                 } label: {
                     Image(systemName: "location.north.line.fill")
@@ -499,7 +508,6 @@ struct LiveFollowMapView: View {
     @MainActor
     private func prepareMapMount() {
         guard !isClosing, !mapMounted else { return }
-        followCamera.uses3D = uses3D
         bootstrapCamera()
         refreshDisplaySegments(force: true)
         mapMounted = true
@@ -509,6 +517,8 @@ struct LiveFollowMapView: View {
     private func beginClose() {
         guard !isClosing else { return }
         isClosing = true
+        stopDisplayLink()
+        releaseIdleLock()
         // Reverse of open: hero at puck landing spot → fly back to list card.
         showHeroOverlay = true
         heroOpacity = 1
@@ -548,78 +558,63 @@ struct LiveFollowMapView: View {
     }
 
     private func bootstrapCamera() {
-        followCamera.uses3D = uses3D
-        if let location = locationService.lastLocation {
-            _ = followCamera.update(
-                location: location,
-                isPaused: isPaused,
-                now: Date()
-            )
-            // First frame should show immediately even if sampler would wait.
-            followCamera.forceRecenter(location: location)
-            applyCamera(animated: false)
-        } else if let tip = recordingService.liveBreadcrumbCoordinates.last {
-            writeCamera(
-                MapCamera(
-                    centerCoordinate: tip,
-                    distance: uses3D ? LiveFollowCamera.distance3D : LiveFollowCamera.distance2D,
-                    heading: 0,
-                    pitch: uses3D ? LiveFollowCamera.pitch3D : LiveFollowCamera.pitch2D
-                ),
-                animated: false
-            )
-        }
-        displayedGPSQuality = locationService.gpsQuality
+        session.locationService = locationService
+        session.isPaused = isPaused
+        session.isFollowing = isFollowing
+        session.openSettled = openSettled
+        session.isClosing = isClosing
+        session.bootstrap(
+            uses3D: uses3D,
+            reduceMotion: reduceMotion,
+            location: locationService.lastLocation,
+            tip: recordingService.liveBreadcrumbCoordinates.last
+        )
+        session.setDisplayedGPSQuality(locationService.gpsQuality)
     }
 
     @MainActor
-    private func runFollowLoop() async {
-        while !Task.isCancelled, mapMounted {
-            displayedGPSQuality = locationService.gpsQuality
-            followCamera.uses3D = uses3D
-            if isFollowing, let location = locationService.lastLocation {
-                let changed = followCamera.update(
-                    location: location,
-                    isPaused: isPaused,
-                    now: Date()
-                )
-                if changed {
-                    // No camera animation during open fade — that reads as a world fly-in.
-                    applyCamera(animated: openSettled && !isClosing)
-                }
-            }
-            // Prefer live segment count — path must grow with the drive, not only camera ticks.
-            refreshDisplaySegments(force: false)
-            try? await Task.sleep(for: .milliseconds(200))
+    private func startDisplayLink() {
+        syncSessionFlags()
+        displayLink.onTick = { [session] dt in
+            session.handleDisplayTick(dt: dt)
+        }
+        displayLink.start()
+    }
+
+    @MainActor
+    private func stopDisplayLink() {
+        displayLink.stop()
+        displayLink.onTick = nil
+    }
+
+    private func syncSessionFlags() {
+        session.locationService = locationService
+        session.isPaused = isPaused
+        session.isFollowing = isFollowing
+        session.openSettled = openSettled
+        session.isClosing = isClosing
+        session.uses3D = uses3D
+        session.reduceMotion = reduceMotion
+    }
+
+    private func handlePauseChromeChange(_ paused: Bool) {
+        defer { wasPaused = paused }
+        guard paused, !wasPaused else { return }
+        if let coordinate = tipCoordinate {
+            pausePinCoordinates.append(coordinate)
         }
     }
 
-    private func applyCamera(animated: Bool) {
-        guard let pose = followCamera.pose else { return }
-        writeCamera(
-            MapCamera(
-                centerCoordinate: pose.center,
-                distance: pose.distanceMeters,
-                heading: pose.headingDegrees,
-                pitch: pose.pitchDegrees
-            ),
-            animated: animated
-        )
+    private func retainIdleLock() {
+        guard !idleLockHeld else { return }
+        ScreenIdleLock.shared.retain()
+        idleLockHeld = true
     }
 
-    private func writeCamera(_ camera: MapCamera, animated: Bool) {
-        ignoreNextCameraChange = true
-        if animated, !reduceMotion, openSettled, !isClosing {
-            withAnimation(.easeOut(duration: 0.28)) {
-                cameraPosition = .camera(camera)
-            }
-        } else {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                cameraPosition = .camera(camera)
-            }
-        }
+    private func releaseIdleLock() {
+        guard idleLockHeld else { return }
+        ScreenIdleLock.shared.release()
+        idleLockHeld = false
     }
 
     private func refreshDisplaySegments(force: Bool) {
