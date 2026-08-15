@@ -216,6 +216,7 @@
 		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
 		A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */; };
 		A1VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */; };
+		A1VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift */; };
 		A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */; };
 		A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */; };
 		A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */; };
@@ -463,6 +464,7 @@
 		A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDetailView.swift; sourceTree = "<group>"; };
 		A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCareDueCalculatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseCategoryTests.swift; sourceTree = SOURCE_ROOT; };
+		A2VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseEditorDraftTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCareMigrationTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCostSnapshotLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingConfiguration.swift; sourceTree = "<group>"; };
@@ -861,6 +863,7 @@
 				A2VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift */,
 				A2CAREREMINDTEST00001 /* CareReminderPlannerTests.swift */,
 				A2VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift */,
+				A2VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift */,
 				A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */,
 				A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */,
 			);
@@ -1088,6 +1091,7 @@
 				A1VCAREDUETEST000001 /* VehicleCareDueCalculatorTests.swift in Sources */,
 				A1CAREREMINDTEST00001 /* CareReminderPlannerTests.swift in Sources */,
 				A1VEXPCATTEST00000001 /* VehicleExpenseCategoryTests.swift in Sources */,
+				A1VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift in Sources */,
 				A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */,
 				A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */,
 				9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */,

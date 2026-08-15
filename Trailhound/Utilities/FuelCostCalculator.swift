@@ -58,16 +58,20 @@ enum FuelCostCalculator {
         return FuelCurrency.default.rawValue
     }
 
-    static func formatCost(_ amount: Double, currencyCode: String? = nil) -> String {
+    static func formatCost(
+        _ amount: Double,
+        currencyCode: String? = nil,
+        locale: Locale? = nil
+    ) -> String {
         let code = currencyCode ?? resolvedCurrencyCode()
         let formatter = NumberFormatter()
-        formatter.locale = DateFormatters.currentLocale
+        formatter.locale = locale ?? DateFormatters.currentLocale
         formatter.numberStyle = .currency
         formatter.currencyCode = code
         formatter.maximumFractionDigits = 0
         if let symbol = FuelCurrency(rawValue: code)?.symbol {
             formatter.currencySymbol = "\(symbol) "
         }
-        return formatter.string(from: NSNumber(value: amount)) ?? "\(Int(amount))"
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(Int(amount.rounded()))"
     }
 }

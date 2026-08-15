@@ -30,7 +30,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
-- Trip stops (dwell detection), route thumbnails
+- Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
 - Swift Charts stats, trends, monthly goals
 - Frequent routes, category filters, trip merge/split
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab

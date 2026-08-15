@@ -207,7 +207,7 @@ struct LiveFollowMapView: View {
     }
 
     private var mapLayer: some View {
-        Map(position: $cameraPosition, interactionModes: .all) {
+        Map(position: $cameraPosition, interactionModes: isPaused ? [] : .all) {
             ForEach(displaySegments) { segment in
                 // Apple Maps–style traveled path: soft halo + solid blue route.
                 MapPolyline(coordinates: segment.coordinates)

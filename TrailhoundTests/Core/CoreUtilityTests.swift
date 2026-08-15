@@ -230,6 +230,20 @@ final class FuelCostCalculatorTests: XCTestCase {
         let text = FuelCostCalculator.formatCost(42)
         XCTAssertTrue(text.contains("€") || text.contains("EUR"))
     }
+
+    func testFormatCostTurkishLocaleUsesGroupingWithoutFraction() {
+        let tr = Locale(identifier: "tr_TR")
+        let tenThousand = FuelCostCalculator.formatCost(10_000, currencyCode: "TRY", locale: tr)
+        let hundredThousand = FuelCostCalculator.formatCost(100_000, currencyCode: "TRY", locale: tr)
+        let million = FuelCostCalculator.formatCost(1_000_000, currencyCode: "TRY", locale: tr)
+
+        XCTAssertTrue(tenThousand.contains("10.000"), tenThousand)
+        XCTAssertTrue(hundredThousand.contains("100.000"), hundredThousand)
+        XCTAssertTrue(million.contains("1.000.000"), million)
+        XCTAssertTrue(tenThousand.contains("₺"), tenThousand)
+        XCTAssertFalse(tenThousand.contains(","), tenThousand)
+        XCTAssertFalse(tenThousand.contains(".50"), tenThousand)
+    }
 }
 
 @MainActor

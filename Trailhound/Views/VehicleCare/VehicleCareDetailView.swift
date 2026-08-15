@@ -279,7 +279,13 @@ struct VehicleDetailView: View {
 
                     Spacer(minLength: 8)
 
-                    Text(formatAmount(expense.amount))
+                    Text(
+                        FuelCostCalculator.formatCost(
+                            expense.amount,
+                            currencyCode: settings.fuelCurrency.rawValue,
+                            locale: Locale(identifier: "tr_TR")
+                        )
+                    )
                         .font(.caption.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(.primary)
@@ -298,10 +304,6 @@ struct VehicleDetailView: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-    }
-
-    private func formatAmount(_ amount: Double) -> String {
-        String(format: "%.2f %@", amount, settings.fuelCurrency.symbol)
     }
 
     private func deleteSchedule(_ schedule: VehicleSchedule) {

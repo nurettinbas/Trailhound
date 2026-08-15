@@ -4,6 +4,8 @@ struct TripRowView: View {
     let trip: Trip
     var places: [SavedPlace] = []
     var privacyRadius: Double = 500
+    /// Resolved from `trip.vehicleID` upstream — relationship is not populated on list rows.
+    var vehicle: VehicleProfile? = nil
     var morphNamespace: Namespace.ID?
     var morphID: UUID?
     /// Soft-lands the map thumbnail after stop→row morph.
@@ -13,6 +15,9 @@ struct TripRowView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: UIImage?
     @State private var thumbnailLoaded = false
+
+    private static let thumbnailSize: CGFloat = 45
+    private static let vehicleBadgeSize: CGFloat = 16
 
     private var routeSummary: String {
         TripListViewModel.routeSummary(for: trip, places: places, privacyRadius: privacyRadius)
@@ -137,6 +142,9 @@ struct TripRowView: View {
         var parts = [routeSummary, TripListViewModel.durationText(for: trip)]
         parts.append(TripListViewModel.dateText(for: trip))
         parts.append(TripListViewModel.distanceText(for: trip))
+        if let vehicle {
+            parts.append(vehicle.name)
+        }
         if let label = trip.label, !label.isEmpty {
             parts.append(label)
         }
@@ -161,13 +169,37 @@ struct TripRowView: View {
                 }
             }
         }
-        .frame(width: 52, height: 52)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(width: Self.thumbnailSize, height: Self.thumbnailSize)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
         }
+        .overlay(alignment: .topTrailing) {
+            if let vehicle {
+                vehicleBadge(for: vehicle)
+                    .padding(2)
+            }
+        }
         .accessibilityHidden(true)
+    }
+
+    private func vehicleBadge(for vehicle: VehicleProfile) -> some View {
+        let size = Self.vehicleBadgeSize
+        return VehicleAvatarView(
+            systemImage: VehicleIconOption.default.rawValue,
+            photoFileName: vehicle.photoFileName,
+            size: size,
+            cornerRadius: size * 0.28,
+            isElectricAccent: vehicle.fuelType == .electric,
+            showsSymbolPlate: true,
+            symbolFitsFrame: true
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.85), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.28), radius: 1.5, y: 0.5)
     }
 
     private func metricChip(icon: String, text: String, tint: Color = .secondary) -> some View {

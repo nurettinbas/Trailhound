@@ -704,6 +704,7 @@ struct TripListView: View {
     @ViewBuilder
     private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
+        let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
         Group {
             if isMergeMode {
                 Button {
@@ -716,6 +717,7 @@ struct TripListView: View {
                             trip: trip,
                             places: places,
                             privacyRadius: settings.privacyRadiusMeters,
+                            vehicle: vehicle,
                             morphNamespace: tripMorphNamespace,
                             morphID: morphingTripID,
                             emphasizeLanding: isMorphing
@@ -730,6 +732,7 @@ struct TripListView: View {
                         trip: trip,
                         places: places,
                         privacyRadius: settings.privacyRadiusMeters,
+                        vehicle: vehicle,
                         morphNamespace: tripMorphNamespace,
                         morphID: morphingTripID,
                         emphasizeLanding: isMorphing

@@ -64,7 +64,7 @@ struct VehicleExpenseEditorView: View {
                 GlassFieldLabel(title: L10n.string("vehicles.care.expense.amount")) {
                     HStack {
                         TextField("", text: draftBinding(\.amountText))
-                            .keyboardType(.decimalPad)
+                            .keyboardType(.numberPad)
                         Text(settings.fuelCurrency.symbol)
                             .foregroundStyle(.secondary)
                     }

@@ -88,21 +88,25 @@ struct VehicleExpenseEditorDraft: Equatable {
 
     init(from expense: VehicleExpense) {
         category = expense.category
-        amountText = expense.amount > 0 ? String(format: "%.2f", expense.amount) : ""
+        amountText = expense.amount > 0 ? String(Int(expense.amount.rounded())) : ""
         occurredAt = expense.occurredAt
         note = expense.note ?? ""
     }
 
+    /// Whole currency units only (no kuruş / cents). Digits-only text → Int → Double.
     var amount: Double? {
-        let normalized = amountText.replacingOccurrences(of: ",", with: ".")
-        return Double(normalized)
+        let trimmed = amountText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.allSatisfy(\.isNumber), let value = Int(trimmed), value >= 0 else {
+            return nil
+        }
+        return Double(value)
     }
 
     @MainActor
     func apply(to expense: VehicleExpense, in context: ModelContext) throws {
-        guard let amount, amount >= 0 else { throw VehicleCareError.invalidAmount }
+        guard let amount else { throw VehicleCareError.invalidAmount }
         expense.category = category
-        expense.amount = amount
+        expense.amount = amount.rounded()
         expense.occurredAt = occurredAt
         expense.note = note.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         try context.save()
@@ -110,10 +114,10 @@ struct VehicleExpenseEditorDraft: Equatable {
 
     @MainActor
     func insert(for vehicle: VehicleProfile, in context: ModelContext) throws -> VehicleExpense {
-        guard let amount, amount >= 0 else { throw VehicleCareError.invalidAmount }
+        guard let amount else { throw VehicleCareError.invalidAmount }
         let expense = VehicleExpense(
             category: category,
-            amount: amount,
+            amount: amount.rounded(),
             occurredAt: occurredAt,
             note: note.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             source: .manual,
