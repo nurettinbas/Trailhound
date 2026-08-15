@@ -109,21 +109,42 @@ enum TrailhoundSchemaV13: VersionedSchema {
     }
 }
 
+/// Adds optional installment fields on `VehicleExpense` (`installmentGroupID`, index, count, total).
+/// Additive only: existing one-shot rows stay `nil` and keep their amount/date.
+enum TrailhoundSchemaV14: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(14, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V13); V11/V12 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V14); V11–V13 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV13.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV14.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV13]
+        [migrateV5toV14]
     }
 
-    static let migrateV5toV13 = MigrationStage.lightweight(
+    static let migrateV5toV14 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV13.self
+        toVersion: TrailhoundSchemaV14.self
     )
 }

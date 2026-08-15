@@ -202,6 +202,9 @@
 		A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPENSE00000000001 /* VehicleExpense.swift */; };
 		A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */; };
 		A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */; };
+		A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */; };
+		A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */; };
+		A1VEXPINSTTEST000001 /* VehicleExpenseInstallmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTTEST000001 /* VehicleExpenseInstallmentTests.swift */; };
 		A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */; };
 		A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */; };
 		A1CAREREMINDTEST00001 /* CareReminderPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAREREMINDTEST00001 /* CareReminderPlannerTests.swift */; };
@@ -457,6 +460,9 @@
 		A2VEXPENSE00000000001 /* VehicleExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpense.swift; sourceTree = "<group>"; };
 		A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDueCalculator.swift; sourceTree = "<group>"; };
 		A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleCompletionService.swift; sourceTree = "<group>"; };
+		A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentPlan.swift; sourceTree = "<group>"; };
+		A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentService.swift; sourceTree = "<group>"; };
+		A2VEXPINSTTEST000001 /* VehicleExpenseInstallmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseInstallmentTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderPlanner.swift; sourceTree = "<group>"; };
 		A2CAREREMINDTEST00001 /* CareReminderPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/CareReminderPlannerTests.swift; sourceTree = SOURCE_ROOT; };
@@ -665,6 +671,7 @@
 				A2VEHPAIRING00000001 /* VehiclePairingService.swift */,
 				A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */,
 				A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */,
+				A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */,
 				A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */,
 				A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */,
 				A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */,
@@ -813,6 +820,7 @@
 				A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
 				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
+				A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
 				A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */,
 				A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */,
@@ -885,6 +893,7 @@
 				A2VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift */,
 				A2VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift */,
 				A2VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift */,
+				A2VEXPINSTTEST000001 /* VehicleExpenseInstallmentTests.swift */,
 			);
 			path = TrailhoundTests/VehicleCare;
 			sourceTree = SOURCE_ROOT;
@@ -1115,6 +1124,7 @@
 				A1VEXPDRFTTEST0000001 /* VehicleExpenseEditorDraftTests.swift in Sources */,
 				A1VCAREMIGTEST000001 /* VehicleCareMigrationTests.swift in Sources */,
 				A1VCOSTSNAPTEST00001 /* VehicleCostSnapshotLoaderTests.swift in Sources */,
+				A1VEXPINSTTEST000001 /* VehicleExpenseInstallmentTests.swift in Sources */,
 				9270D1837B8542D39D0E9768 /* RecordingAccessibilityTests.swift in Sources */,
 				A1ROADMARKLAYOUTTEST0001 /* RoadVehicleMarkLayoutTests.swift in Sources */,
 				BE3AFC9E07BB40388852765D /* RecordingAndTripStoreTests.swift in Sources */,
@@ -1277,6 +1287,8 @@
 				A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */,
 				A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */,
 				A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */,
+				A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */,
+				A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */,
 				A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */,
 				A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */,
 				A1VCARESUMMARY000001 /* VehicleCareSummaryStore.swift in Sources */,

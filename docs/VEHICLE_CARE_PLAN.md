@@ -1,6 +1,6 @@
 # Vehicle care & expenses
 
-> **Status:** Shipped (schema V13) + UI layering revision  
+> **Status:** Shipped (schema V14) — installments + UI layering  
 > **Placement:** Vehicles tab → single detail screen
 
 ---
@@ -12,7 +12,25 @@
 | **Tracking & reminders** | Inspection, insurance, casco, service due dates + push | `VehicleSchedule` |
 | **Expenses** | Amount paid (separate ledger) | `VehicleExpense` |
 
-Adding a reminder is not logging an expense. **Mark done** on a schedule closes/rolls the due date and writes an expense. **Add expense** only writes a cost row.
+Adding a reminder is not logging an expense. **Mark done** on a schedule closes/rolls the due date and writes an expense (optionally split into installments). **Add expense** only writes a cost row.
+
+---
+
+## Installments (cash-basis)
+
+A purchase can be **pay in full** or **2–24 monthly installments**.
+
+| Rule | Behavior |
+|------|----------|
+| Amount | Total of the purchase. Trailhound splits it into equal monthly shares (leftover kuruş on the last slice). |
+| Date | First payment. Later slices are the same calendar day in following months (31 Jan → 28/29 Feb). |
+| Ledger | Each slice is a real `VehicleExpense` on its due date, sharing `installmentGroupID`. |
+| Expenses list | Due/past slices only. Future slices sit under **Upcoming installments** until that day. |
+| Stats | Existing `occurredAt` aggregation — August shows only August’s share; a longer range shows every month in range. |
+| Edit | Opening any slice edits the whole plan (total, count, first date). |
+| Delete | One slice, or the entire plan. |
+
+Existing V13 expenses stay one-shot (`installment*` fields `nil`). Additive V14 only — no store reset.
 
 **Mark done:** the visible checkmark (Done) on the reminder row opens the completion sheet; leading swipe is the same action as a shortcut.
 

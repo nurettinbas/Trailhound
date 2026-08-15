@@ -17,6 +17,7 @@ struct VehicleExpenseEditorView: View {
 
     @State private var draft: VehicleExpenseEditorDraft?
     @State private var isSaving = false
+    @State private var showDeletePlanConfirm = false
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -40,11 +41,7 @@ struct VehicleExpenseEditorView: View {
 
     var body: some View {
         Form {
-            Section(
-                isCompletingSchedule
-                    ? L10n.string("vehicles.care.complete")
-                    : L10n.string("vehicles.care.expense.section")
-            ) {
+            Section {
                 if isCompletingSchedule, let schedule = completeSchedule {
                     LabeledContent(L10n.string("vehicles.care.schedule.title")) {
                         Text(schedule.title)
@@ -61,7 +58,7 @@ struct VehicleExpenseEditorView: View {
                     .glassRow(position: .first)
                 }
 
-                GlassFieldLabel(title: L10n.string("vehicles.care.expense.amount")) {
+                GlassFieldLabel(title: amountFieldTitle) {
                     HStack {
                         TextField("", text: draftBinding(\.amountText))
                             .keyboardType(.numberPad)
@@ -71,8 +68,23 @@ struct VehicleExpenseEditorView: View {
                 }
                 .glassRow(position: .middle)
 
+                Stepper(
+                    value: draftBinding(\.installmentCount),
+                    in: VehicleExpenseInstallmentPlan.minCount...VehicleExpenseInstallmentPlan.maxCount
+                ) {
+                    Text(installmentStepperLabel)
+                }
+                .glassRow(position: .middle)
+
+                if activeDraft.isInstallmentPlan, let preview = installmentPreviewText {
+                    Text(preview)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .glassRow(position: .middle)
+                }
+
                 DatePicker(
-                    L10n.string("vehicles.care.expense.date"),
+                    dateFieldTitle,
                     selection: draftBinding(\.occurredAt),
                     displayedComponents: .date
                 )
@@ -83,16 +95,46 @@ struct VehicleExpenseEditorView: View {
                         .lineLimit(2...4)
                 }
                 .glassRow(position: .last)
+            } header: {
+                Text(
+                    isCompletingSchedule
+                        ? L10n.string("vehicles.care.complete")
+                        : L10n.string("vehicles.care.expense.section")
+                )
+            } footer: {
+                if activeDraft.isInstallmentPlan {
+                    Text(
+                        expense?.isInstallment == true
+                            ? L10n.string("vehicles.care.expense.installments.edit_footer")
+                            : L10n.string("vehicles.care.expense.installments.preview_footer")
+                    )
+                }
             }
 
             if expense != nil {
                 Section {
-                    Button(L10n.delete, role: .destructive) {
-                        deleteExpense()
+                    if expense?.isInstallment == true {
+                        Button(L10n.string("vehicles.care.expense.delete_this"), role: .destructive) {
+                            deleteThisInstallment()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .destructiveTint()
+                        .glassRow(position: .first)
+
+                        Button(deletePlanLabel, role: .destructive) {
+                            showDeletePlanConfirm = true
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .destructiveTint()
+                        .glassRow(position: .last)
+                    } else {
+                        Button(L10n.delete, role: .destructive) {
+                            deleteExpense()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .destructiveTint()
+                        .glassRow(position: .only)
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .destructiveTint()
-                    .glassRow(position: .only)
                 }
             }
         }
@@ -108,10 +150,21 @@ struct VehicleExpenseEditorView: View {
                     .disabled(isSaving || activeDraft.amount == nil)
             }
         }
+        .confirmationDialog(
+            L10n.string("vehicles.care.expense.delete_plan_title"),
+            isPresented: $showDeletePlanConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(deletePlanLabel, role: .destructive) {
+                deletePlan()
+            }
+            Button(L10n.cancel, role: .cancel) {}
+        }
         .onAppear {
             if draft == nil {
                 if let expense {
-                    draft = VehicleExpenseEditorDraft(from: expense)
+                    let siblings = VehicleExpenseInstallmentService.siblings(of: expense, in: modelContext)
+                    draft = VehicleExpenseEditorDraft(from: expense, siblings: siblings)
                 } else if let schedule = completeSchedule {
                     draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
                 } else {
@@ -128,6 +181,53 @@ struct VehicleExpenseEditorView: View {
         return expenseID == nil
             ? L10n.string("vehicles.care.expense.add")
             : L10n.string("vehicles.care.expense.edit")
+    }
+
+    private var amountFieldTitle: String {
+        activeDraft.isInstallmentPlan
+            ? L10n.string("vehicles.care.expense.total")
+            : L10n.string("vehicles.care.expense.amount")
+    }
+
+    private var dateFieldTitle: String {
+        activeDraft.isInstallmentPlan
+            ? L10n.string("vehicles.care.expense.first_payment")
+            : L10n.string("vehicles.care.expense.date")
+    }
+
+    private var installmentStepperLabel: String {
+        if activeDraft.installmentCount <= 1 {
+            return L10n.string("vehicles.care.expense.installments.one")
+        }
+        return String(
+            format: L10n.string("vehicles.care.expense.installments.count"),
+            activeDraft.installmentCount
+        )
+    }
+
+    private var deletePlanLabel: String {
+        let count = expense?.installmentCount ?? activeDraft.installmentCount
+        return String(format: L10n.string("vehicles.care.expense.delete_plan"), count)
+    }
+
+    private var installmentPreviewText: String? {
+        guard let amount = activeDraft.amount, activeDraft.installmentCount > 1 else { return nil }
+        let slices = VehicleExpenseInstallmentPlan.slices(
+            total: amount,
+            count: activeDraft.installmentCount,
+            start: activeDraft.occurredAt
+        )
+        guard let first = slices.first, let last = slices.last else { return nil }
+        let monthly = String(format: "%.2f %@", first.amount, settings.fuelCurrency.symbol)
+        let start = DateFormatters.monthYear.string(from: first.dueDate)
+        let end = DateFormatters.monthYear.string(from: last.dueDate)
+        return String(
+            format: L10n.string("vehicles.care.expense.installments.preview"),
+            slices.count,
+            monthly,
+            start,
+            end
+        )
     }
 
     private func draftBinding<Value>(_ keyPath: WritableKeyPath<VehicleExpenseEditorDraft, Value>) -> Binding<Value> {
@@ -152,6 +252,7 @@ struct VehicleExpenseEditorView: View {
                     schedule: schedule,
                     amount: amount,
                     occurredAt: activeDraft.occurredAt,
+                    installmentCount: activeDraft.installmentCount,
                     note: activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? nil
                         : activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -174,8 +275,20 @@ struct VehicleExpenseEditorView: View {
 
     private func deleteExpense() {
         guard let expense else { return }
-        modelContext.delete(expense)
-        try? modelContext.save()
+        VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
+        dismiss()
+        Task { @MainActor in
+            ToastPresenter.shared.show(.deleted)
+        }
+    }
+
+    private func deleteThisInstallment() {
+        deleteExpense()
+    }
+
+    private func deletePlan() {
+        guard let expense else { return }
+        VehicleExpenseInstallmentService.deleteGroup(of: expense, in: modelContext)
         dismiss()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)

@@ -12482,6 +12482,57 @@
         }
       }
     },
+    "vehicles.care.expense.delete_plan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all %lld installments"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm %lld taksiti sil"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.delete_plan_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete installment plan?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taksit planı silinsin mi?"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.delete_this" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this installment"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu taksiti sil"
+          }
+        }
+      }
+    },
     "vehicles.care.expense.edit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12495,6 +12546,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Masrafı düzenle"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.first_payment" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First payment"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlk taksit"
           }
         }
       }
@@ -12529,6 +12597,125 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vize"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installments"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taksit"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.badge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.count" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld installments"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld taksit"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.edit_footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving updates every installment in this plan."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydetmek bu plandaki tüm taksitleri günceller."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.one" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pay in full"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peşin"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.preview" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld × %@ · %@ – %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld × %@ · %@ – %@"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.installments.preview_footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each installment is recorded on its due date and appears on Stats in that month."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her taksit vadesinde kayda geçer ve o ayın grafiğine yansır."
           }
         }
       }
@@ -12754,6 +12941,23 @@
         }
       }
     },
+    "vehicles.care.expense.total" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toplam"
+          }
+        }
+      }
+    },
     "vehicles.care.expense.traffic_insurance" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12794,13 +12998,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Record spending separately from reminders. Categories: fuel, casco, service, inspection, repair, accessory, other."
+            "value" : "Record spending separately from reminders. Split a purchase into monthly installments — each month’s share lands on Stats in that month."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Harcamaları hatırlatmalardan ayrı kaydedin. Kategoriler: yakıt, kasko, bakım, vize, arıza, aksesuar, diğer."
+            "value" : "Harcamaları hatırlatmalardan ayrı kaydedin. Taksitli alışverişte tutar aylara bölünür; her pay kendi ayının grafiğine yansır."
           }
         }
       }
@@ -12818,6 +13022,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Masraflar"
+          }
+        }
+      }
+    },
+    "vehicles.care.expenses.upcoming" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upcoming installments"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yaklaşan taksitler"
+          }
+        }
+      }
+    },
+    "vehicles.care.expenses.upcoming.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They move into Expenses on the due date and count on Stats in that month."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vadesi gelince Harcamalar’a düşer; grafikte kendi ayında sayılır."
           }
         }
       }

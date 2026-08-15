@@ -10,6 +10,7 @@ enum VehicleScheduleCompletionService {
         amount: Double,
         occurredAt: Date = Date(),
         odometerKm: Int? = nil,
+        installmentCount: Int = 1,
         note: String? = nil,
         in context: ModelContext,
         rescheduleNotifications: Bool = true
@@ -18,17 +19,18 @@ enum VehicleScheduleCompletionService {
             throw VehicleCareError.missingVehicle
         }
 
-        let expense = VehicleExpense(
+        let expense = try VehicleExpenseInstallmentService.insert(
             category: .suggested(for: schedule.kind),
-            amount: amount,
-            occurredAt: occurredAt,
-            odometerKm: odometerKm,
+            totalAmount: amount,
+            startDate: occurredAt,
+            installmentCount: installmentCount,
             note: note,
             linkedScheduleID: schedule.id,
+            odometerKm: odometerKm,
             source: .manual,
-            vehicle: vehicle
+            vehicle: vehicle,
+            in: context
         )
-        context.insert(expense)
 
         schedule.lastCompletedAt = occurredAt
         if let odometerKm {

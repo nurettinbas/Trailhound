@@ -37,8 +37,25 @@ struct VehicleDetailView: View {
             }
     }
 
+    private var startOfTomorrow: Date {
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        return calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? startOfToday
+    }
+
+    /// Due or already paid — future installment slices stay in Upcoming until their date.
     private var expenses: [VehicleExpense] {
-        Array(allExpenses.filter { $0.vehicle?.id == vehicleID }.prefix(100))
+        Array(
+            allExpenses
+                .filter { $0.vehicle?.id == vehicleID && $0.occurredAt < startOfTomorrow }
+                .prefix(100)
+        )
+    }
+
+    private var upcomingInstallments: [VehicleExpense] {
+        allExpenses
+            .filter { $0.vehicle?.id == vehicleID && $0.occurredAt >= startOfTomorrow && $0.isInstallment }
+            .sorted { $0.occurredAt < $1.occurredAt }
     }
 
     var body: some View {
@@ -208,6 +225,28 @@ struct VehicleDetailView: View {
                 Text(L10n.string("vehicles.care.expenses.footer"))
                     .font(.caption)
             }
+
+            if !upcomingInstallments.isEmpty {
+                Section {
+                    ForEach(Array(upcomingInstallments.enumerated()), id: \.element.id) { index, expense in
+                        expenseCardRow(expense)
+                            .listRowInsets(cardRowInsets(index: index))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    deleteExpense(expense)
+                                } label: {
+                                    Label(L10n.delete, systemImage: "trash")
+                                }
+                                .destructiveTint()
+                            }
+                    }
+                } header: {
+                    Text(L10n.string("vehicles.care.expenses.upcoming"))
+                } footer: {
+                    Text(L10n.string("vehicles.care.expenses.upcoming.footer"))
+                        .font(.caption)
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .glassListChrome()
@@ -267,6 +306,15 @@ struct VehicleDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
+                            if let badge = installmentBadge(for: expense) {
+                                Text("·")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Text(badge)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                    .lineLimit(1)
+                            }
                         }
 
                         if hasNote, let note {
@@ -304,6 +352,14 @@ struct VehicleDetailView: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
+    }
+
+    private func installmentBadge(for expense: VehicleExpense) -> String? {
+        guard expense.isInstallment,
+              let index = expense.installmentIndex,
+              let count = expense.installmentCount
+        else { return nil }
+        return String(format: L10n.string("vehicles.care.expense.installments.badge"), index, count)
     }
 
     private func deleteSchedule(_ schedule: VehicleSchedule) {

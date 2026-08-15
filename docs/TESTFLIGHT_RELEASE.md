@@ -59,6 +59,14 @@ Optional smoke:
 - [ ] **Delete vehicle** — schedule/expense cascade + care notifications cancelled
 - [ ] **Recording scroll** — Trips scrolling stays smooth while a trip is active (no banner regression)
 
+## Installments (V14)
+
+- [ ] **Schema upgrade** — existing one-shot expenses stay one-shot; no trip/vehicle/expense loss
+- [ ] **Six installments** — add a 1 200 expense as 6; list shows this month’s 200 + Upcoming for the rest
+- [ ] **Stats month** — current month Vehicle costs shows only that month’s share
+- [ ] **Edit plan** — change total or count from any slice; all siblings update
+- [ ] **Delete** — delete one installment vs delete entire plan
+
 ## Auto-record with Shortcuts
 
 - Auto start/stop is set up via **Shortcuts Personal Automations** (guide under the Pairing tab).

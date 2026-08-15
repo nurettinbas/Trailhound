@@ -78,19 +78,32 @@ struct VehicleExpenseEditorDraft: Equatable {
     var amountText: String
     var occurredAt: Date
     var note: String
+    var installmentCount: Int
 
     init(category: VehicleExpenseCategory = .fuel) {
         self.category = category
         self.amountText = ""
         self.occurredAt = Date()
         self.note = ""
+        self.installmentCount = 1
     }
 
-    init(from expense: VehicleExpense) {
+    init(from expense: VehicleExpense, siblings: [VehicleExpense] = []) {
         category = expense.category
-        amountText = expense.amount > 0 ? String(Int(expense.amount.rounded())) : ""
-        occurredAt = expense.occurredAt
         note = expense.note ?? ""
+        if expense.isInstallment {
+            let plan = siblings.isEmpty ? [expense] : siblings
+            let total = expense.installmentTotalAmount ?? plan.reduce(0) { $0 + $1.amount }
+            installmentCount = VehicleExpenseInstallmentPlan.clampedCount(
+                expense.installmentCount ?? plan.count
+            )
+            amountText = total > 0 ? String(Int(total.rounded())) : ""
+            occurredAt = plan.map(\.occurredAt).min() ?? expense.occurredAt
+        } else {
+            installmentCount = 1
+            amountText = expense.amount > 0 ? String(Int(expense.amount.rounded())) : ""
+            occurredAt = expense.occurredAt
+        }
     }
 
     /// Whole currency units only (no kuruş / cents). Digits-only text → Int → Double.
@@ -102,30 +115,35 @@ struct VehicleExpenseEditorDraft: Equatable {
         return Double(value)
     }
 
+    var isInstallmentPlan: Bool { installmentCount > 1 }
+
     @MainActor
     func apply(to expense: VehicleExpense, in context: ModelContext) throws {
         guard let amount else { throw VehicleCareError.invalidAmount }
-        expense.category = category
-        expense.amount = amount.rounded()
-        expense.occurredAt = occurredAt
-        expense.note = note.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        try context.save()
+        _ = try VehicleExpenseInstallmentService.replace(
+            existing: expense,
+            category: category,
+            totalAmount: amount.rounded(),
+            startDate: occurredAt,
+            installmentCount: installmentCount,
+            note: note.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            in: context
+        )
     }
 
     @MainActor
     func insert(for vehicle: VehicleProfile, in context: ModelContext) throws -> VehicleExpense {
         guard let amount else { throw VehicleCareError.invalidAmount }
-        let expense = VehicleExpense(
+        return try VehicleExpenseInstallmentService.insert(
             category: category,
-            amount: amount.rounded(),
-            occurredAt: occurredAt,
+            totalAmount: amount.rounded(),
+            startDate: occurredAt,
+            installmentCount: installmentCount,
             note: note.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             source: .manual,
-            vehicle: vehicle
+            vehicle: vehicle,
+            in: context
         )
-        context.insert(expense)
-        try context.save()
-        return expense
     }
 }
 

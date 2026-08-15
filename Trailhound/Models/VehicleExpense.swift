@@ -12,6 +12,11 @@ final class VehicleExpense {
     var note: String?
     var linkedScheduleID: UUID?
     var sourceRaw: String
+    /// Shared by every monthly slice of one purchase. Nil = one-shot expense.
+    var installmentGroupID: UUID?
+    var installmentIndex: Int?
+    var installmentCount: Int?
+    var installmentTotalAmount: Double?
 
     var vehicle: VehicleProfile?
 
@@ -25,7 +30,11 @@ final class VehicleExpense {
         note: String? = nil,
         linkedScheduleID: UUID? = nil,
         source: VehicleExpenseSource = .manual,
-        vehicle: VehicleProfile? = nil
+        vehicle: VehicleProfile? = nil,
+        installmentGroupID: UUID? = nil,
+        installmentIndex: Int? = nil,
+        installmentCount: Int? = nil,
+        installmentTotalAmount: Double? = nil
     ) {
         self.id = id
         self.categoryRaw = category.rawValue
@@ -37,6 +46,10 @@ final class VehicleExpense {
         self.linkedScheduleID = linkedScheduleID
         self.sourceRaw = source.rawValue
         self.vehicle = vehicle
+        self.installmentGroupID = installmentGroupID
+        self.installmentIndex = installmentIndex
+        self.installmentCount = installmentCount
+        self.installmentTotalAmount = installmentTotalAmount
     }
 
     var category: VehicleExpenseCategory {
@@ -47,5 +60,9 @@ final class VehicleExpense {
     var source: VehicleExpenseSource {
         get { VehicleExpenseSource(rawValue: sourceRaw) ?? .manual }
         set { sourceRaw = newValue.rawValue }
+    }
+
+    var isInstallment: Bool {
+        installmentGroupID != nil && (installmentCount ?? 1) > 1
     }
 }

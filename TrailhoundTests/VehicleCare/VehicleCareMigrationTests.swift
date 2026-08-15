@@ -52,7 +52,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleSchedule>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 13)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 14)
     }
 
     func testTripDataSurvivesAlongsideCareModels() throws {
@@ -77,5 +77,25 @@ final class VehicleCareMigrationTests: XCTestCase {
         XCTAssertEqual(trips.count, 1)
         XCTAssertEqual(trips.first?.distanceMeters, 12_500)
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleExpense>()).count, 1)
+    }
+
+    func testV14KeepsExistingExpensesAsOneShot() throws {
+        let container = try ModelContainer(
+            for: Schema(versionedSchema: TrailhoundSchemaV14.self),
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let vehicle = VehicleProfile(name: "Legacy Expense")
+        context.insert(vehicle)
+        context.insert(VehicleExpense(category: .fuel, amount: 90, vehicle: vehicle))
+        try context.save()
+
+        let expense = try XCTUnwrap(context.fetch(FetchDescriptor<VehicleExpense>()).first)
+        XCTAssertNil(expense.installmentGroupID)
+        XCTAssertNil(expense.installmentIndex)
+        XCTAssertNil(expense.installmentCount)
+        XCTAssertNil(expense.installmentTotalAmount)
+        XCTAssertFalse(expense.isInstallment)
+        XCTAssertEqual(expense.amount, 90)
     }
 }
