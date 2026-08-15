@@ -1239,7 +1239,7 @@ final class TripRecordingService {
     }
 
     func syncExternalState(force: Bool = false) {
-        guard force || RecordingSyncCoordinator.shouldSync() else { return }
+        let shouldWriteDefaults = force || RecordingSyncCoordinator.shouldSync()
 
         // Live Activity / widget controls already wrote optimistic App Group
         // state (and may have ended the activity). Don't clobber that while the
@@ -1247,41 +1247,47 @@ final class TripRecordingService {
         // Use in-process settings flags — CFPreferences refresh here previously
         // re-introduced stale widget stop/pause bits and blocked LA updates.
         if settings.pendingStopRecordingRequest {
-            settings.syncRecordingState(
-                isRecording: false,
-                isPaused: false,
-                elapsed: elapsedTime,
-                distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: 0,
-                activeTripID: activeTripID
-            )
+            if shouldWriteDefaults {
+                settings.syncRecordingState(
+                    isRecording: false,
+                    isPaused: false,
+                    elapsed: elapsedTime,
+                    distanceMeters: currentDistanceMeters,
+                    currentSpeedKmh: 0,
+                    activeTripID: activeTripID
+                )
+            }
             return
         }
         if settings.pendingPauseRecordingRequest {
-            settings.syncRecordingState(
-                isRecording: true,
-                isPaused: true,
-                elapsed: elapsedTime,
-                distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: 0,
-                activeTripID: activeTripID
-            )
+            if shouldWriteDefaults {
+                settings.syncRecordingState(
+                    isRecording: true,
+                    isPaused: true,
+                    elapsed: elapsedTime,
+                    distanceMeters: currentDistanceMeters,
+                    currentSpeedKmh: 0,
+                    activeTripID: activeTripID
+                )
+            }
             if force {
                 RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
             }
             return
         }
         if settings.pendingResumeRecordingRequest {
-            let speedKmh = Int(max(0, currentSpeedMps) * 3.6)
-            settings.syncRecordingState(
-                isRecording: true,
-                isPaused: false,
-                elapsed: elapsedTime,
-                distanceMeters: currentDistanceMeters,
-                currentSpeedKmh: speedKmh,
-                recordingStartedAt: state == .recording ? recordingStartedAt : nil,
-                activeTripID: activeTripID
-            )
+            if shouldWriteDefaults {
+                let speedKmh = Int(max(0, currentSpeedMps) * 3.6)
+                settings.syncRecordingState(
+                    isRecording: true,
+                    isPaused: false,
+                    elapsed: elapsedTime,
+                    distanceMeters: currentDistanceMeters,
+                    currentSpeedKmh: speedKmh,
+                    recordingStartedAt: state == .recording ? recordingStartedAt : nil,
+                    activeTripID: activeTripID
+                )
+            }
             if force {
                 RecordingControlBridge.reloadHomeScreenWidgetTimelinesImmediately()
             }
@@ -1291,17 +1297,21 @@ final class TripRecordingService {
         let speedKmh = Int(max(0, currentSpeedMps) * 3.6)
         let isPaused = state == .paused
         let isRecording = state == .recording
-        settings.syncRecordingState(
-            isRecording: isRecording || isPaused,
-            isPaused: isPaused,
-            elapsed: elapsedTime,
-            distanceMeters: currentDistanceMeters,
-            currentSpeedKmh: speedKmh,
-            recordingStartedAt: isRecording ? recordingStartedAt : nil,
-            activeTripID: (isRecording || isPaused) ? activeTripID : nil
-        )
+        if shouldWriteDefaults {
+            settings.syncRecordingState(
+                isRecording: isRecording || isPaused,
+                isPaused: isPaused,
+                elapsed: elapsedTime,
+                distanceMeters: currentDistanceMeters,
+                currentSpeedKmh: speedKmh,
+                recordingStartedAt: isRecording ? recordingStartedAt : nil,
+                activeTripID: (isRecording || isPaused) ? activeTripID : nil
+            )
+        }
         guard !UITestSupport.isUnitTesting else { return }
 
+        // App Group stays on the 2s coordinator. Live Activity has its own 3s
+        // throttle — do not gate it behind shouldSync or updates land at 4s (2+3).
         let vehicleMark = liveActivityVehicleMark()
         if state.isActiveSession, let recordingStartedAt {
             RecordingLiveActivityService.ensureActiveIfNeeded(
@@ -1326,7 +1336,7 @@ final class TripRecordingService {
             vehiclePhotoRevision: vehicleMark.photoRevision
         )
 
-        // Never reload home-screen timelines on the 2s recording tick — the widget
+        // Never reload home-screen timelines on the recording tick — the widget
         // extension also hosts Live Activity / Dynamic Island; thrashing timelines
         // kills Island presentation. Timer ticks via pre-scheduled entries; distance
         // refreshes when force == true (pause/resume/stop/start/vehicle change).

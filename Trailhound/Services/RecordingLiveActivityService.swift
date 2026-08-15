@@ -215,7 +215,8 @@ enum RecordingLiveActivityService {
             isPaused: isPaused,
             vehicleSystemImage: vehicleSystemImage,
             vehicleSymbolScaleX: vehicleSymbolScaleX,
-            vehiclePhotoRevision: vehiclePhotoRevision
+            vehiclePhotoRevision: vehiclePhotoRevision,
+            effectiveStartedAt: Date().addingTimeInterval(-elapsed)
         )
         let content = ActivityContent(state: state, staleDate: nil)
 
@@ -310,7 +311,8 @@ enum RecordingLiveActivityService {
             isPaused: isPaused,
             vehicleSystemImage: vehicleSystemImage,
             vehicleSymbolScaleX: vehicleSymbolScaleX,
-            vehiclePhotoRevision: vehiclePhotoRevision
+            vehiclePhotoRevision: vehiclePhotoRevision,
+            effectiveStartedAt: startedAt
         )
         do {
             _ = try Activity.request(attributes: attributes, content: .init(state: state, staleDate: nil))

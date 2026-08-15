@@ -784,11 +784,27 @@ private struct LiveActivityLockScreenBanner: View {
 }
 
 /// CarPlay Dashboard + watchOS Smart Stack — glanceable, non-interactive (CarPlay strips buttons).
+///
+/// If the system tags a wide Lock Screen / notification banner as `.small`, show the
+/// original lock layout instead of stretching the 4-column CarPlay tile.
 private struct LiveActivitySmallFamilyBanner: View {
     let state: TripRecordingAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 6) {
+        GeometryReader { geo in
+            Group {
+                if geo.size.width >= 300 {
+                    LiveActivityLockScreenBanner(state: state)
+                } else {
+                    carPlayColumns
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    private var carPlayColumns: some View {
+        HStack(alignment: .center, spacing: 4) {
             iconColumn
             metricColumn(
                 value: DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds)),
@@ -803,8 +819,8 @@ private struct LiveActivitySmallFamilyBanner: View {
                 label: WidgetL10n.speed
             )
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
     }
 
     private var iconColumn: some View {
@@ -823,23 +839,33 @@ private struct LiveActivitySmallFamilyBanner: View {
     }
 
     private func metricColumn(value: String, label: String) -> some View {
-        VStack(alignment: .center, spacing: 2) {
+        metricColumn(label: label, accessibilityValue: value) {
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.55)
+                .minimumScaleFactor(0.5)
+        }
+    }
+
+    private func metricColumn<Value: View>(
+        label: String,
+        accessibilityValue: String,
+        @ViewBuilder value: () -> Value
+    ) -> some View {
+        VStack(alignment: .center, spacing: 2) {
             Text(label)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            value()
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value)")
+        .accessibilityLabel("\(label): \(accessibilityValue)")
     }
 }
 

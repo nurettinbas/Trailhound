@@ -17,7 +17,8 @@ struct LiveFollowCamera {
     /// Legacy per-sample blend factor (tests / helpers). Prefer `headingTauSeconds` at runtime.
     static let headingSmoothing: Double = 0.34
     /// Time constant for heading (and 2D/3D) exponential approach toward the target.
-    static let headingTauSeconds: TimeInterval = 0.20
+    static let headingTauSeconds: TimeInterval = 0.28
+    static let positionTauSeconds: TimeInterval = 0.16
     static let modeTauSeconds: TimeInterval = 0.20
     /// Cap dead-reckoning so a lost fix does not fly the puck forever.
     static let maxDeadReckonSeconds: TimeInterval = 1.2
@@ -65,6 +66,8 @@ struct LiveFollowCamera {
     private var targetHeadingDegrees: CLLocationDirection = 0
     private var targetSpeedMps: Double = 0
     private var lastFixAt: Date?
+    private var lastSampleTimestamp: Date?
+    private var lastSampleCoordinate: CLLocationCoordinate2D?
     private var hasAcceptedHeading = false
     private var publishedPitchDegrees: Double = pitch3D
     private var publishedDistanceMeters: CLLocationDistance = distance3D
@@ -92,16 +95,30 @@ struct LiveFollowCamera {
         isPaused: Bool,
         now: Date = Date()
     ) {
+        let wasFrozen = isFrozen
         if isPaused {
             isFrozen = true
             return
         }
         isFrozen = false
 
+        // Display-link re-feeds `lastLocation` every frame. Re-ingesting the same fix
+        // must not reset the dead-reckon clock — that pins the puck to 1 Hz GPS snaps.
+        if isSameSample(as: location) {
+            return
+        }
+
         let isFirstFix = center == nil
+        let stampAdvanced = lastSampleTimestamp.map { location.timestamp > $0 } ?? true
+        lastSampleTimestamp = location.timestamp
+        lastSampleCoordinate = location.coordinate
         targetCoordinate = location.coordinate
         targetSpeedMps = max(0, location.speed)
-        lastFixAt = now
+        if stampAdvanced, abs(now.timeIntervalSince(location.timestamp)) <= 5 {
+            lastFixAt = location.timestamp
+        } else {
+            lastFixAt = now
+        }
 
         if shouldAcceptCourse(from: location) {
             let raw = Self.normalizedHeading(location.course)
@@ -112,7 +129,7 @@ struct LiveFollowCamera {
             }
         }
 
-        if isFirstFix {
+        if isFirstFix || wasFrozen {
             snapPublished(to: location.coordinate)
         }
     }
@@ -136,15 +153,20 @@ struct LiveFollowCamera {
         let age = max(0, now.timeIntervalSince(fixAt))
         let reckonAge = min(age, Self.maxDeadReckonSeconds)
 
-        var vehicle = target
+        var predicted = target
         if targetSpeedMps > 0.5, hasAcceptedHeading, reckonAge > 0 {
-            vehicle = Self.coordinate(
+            predicted = Self.coordinate(
                 from: target,
-                headingDegrees: targetHeadingDegrees,
+                headingDegrees: headingDegrees,
                 distanceMeters: targetSpeedMps * reckonAge
             )
         }
-        center = vehicle
+        let positionAlpha = 1 - exp(-clampedDt / Self.positionTauSeconds)
+        if let current = center {
+            center = Self.lerpCoordinate(from: current, toward: predicted, factor: positionAlpha)
+        } else {
+            center = predicted
+        }
 
         if hasAcceptedHeading {
             let alpha = 1 - exp(-clampedDt / Self.headingTauSeconds)
@@ -185,6 +207,8 @@ struct LiveFollowCamera {
         targetCoordinate = location.coordinate
         targetSpeedMps = max(0, location.speed)
         lastFixAt = now
+        lastSampleTimestamp = location.timestamp
+        lastSampleCoordinate = location.coordinate
         if shouldAcceptCourse(from: location) {
             let raw = Self.normalizedHeading(location.course)
             targetHeadingDegrees = raw
@@ -203,8 +227,20 @@ struct LiveFollowCamera {
         targetHeadingDegrees = 0
         targetSpeedMps = 0
         lastFixAt = nil
+        lastSampleTimestamp = nil
+        lastSampleCoordinate = nil
         publishedPitchDegrees = Self.pitch3D
         publishedDistanceMeters = Self.distance3D
+    }
+
+    private func isSameSample(as location: CLLocation) -> Bool {
+        guard let stamp = lastSampleTimestamp, let coordinate = lastSampleCoordinate else {
+            return false
+        }
+        let sameStamp = abs(location.timestamp.timeIntervalSince(stamp)) < 0.000_1
+        let sameCoord = abs(coordinate.latitude - location.coordinate.latitude) < 1e-12
+            && abs(coordinate.longitude - location.coordinate.longitude) < 1e-12
+        return sameStamp && sameCoord
     }
 
     private mutating func snapPublished(to coordinate: CLLocationCoordinate2D) {
@@ -224,6 +260,18 @@ struct LiveFollowCamera {
     static func normalizedHeading(_ degrees: CLLocationDirection) -> CLLocationDirection {
         let wrapped = degrees.truncatingRemainder(dividingBy: 360)
         return wrapped < 0 ? wrapped + 360 : wrapped
+    }
+
+    static func lerpCoordinate(
+        from: CLLocationCoordinate2D,
+        toward: CLLocationCoordinate2D,
+        factor: Double
+    ) -> CLLocationCoordinate2D {
+        let t = min(1, max(0, factor))
+        return CLLocationCoordinate2D(
+            latitude: from.latitude + (toward.latitude - from.latitude) * t,
+            longitude: from.longitude + (toward.longitude - from.longitude) * t
+        )
     }
 
     /// Shortest-arc blend between two compass headings.

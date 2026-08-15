@@ -204,6 +204,8 @@ public enum RecordingControlBridge {
             // (avoids a second paint that restarts the pause/resume morph).
             if isPaused {
                 state.currentSpeedKmh = 0
+            } else {
+                state.effectiveStartedAt = Date().addingTimeInterval(-TimeInterval(state.elapsedSeconds))
             }
             await activity.update(ActivityContent(state: state, staleDate: nil))
         }

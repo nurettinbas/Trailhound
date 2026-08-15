@@ -111,11 +111,15 @@ final class LiveFollowCameraTests: XCTestCase {
         camera.ingest(location: fix, isPaused: false, now: baseDate)
 
         let atCap = baseDate.addingTimeInterval(LiveFollowCamera.maxDeadReckonSeconds)
-        _ = camera.tick(dt: frame, now: atCap)
+        for _ in 0..<90 {
+            _ = camera.tick(dt: frame, now: atCap)
+        }
         let latAtCap = camera.center?.latitude ?? -1
 
         let later = baseDate.addingTimeInterval(LiveFollowCamera.maxDeadReckonSeconds + 2)
-        _ = camera.tick(dt: frame, now: later)
+        for _ in 0..<30 {
+            _ = camera.tick(dt: frame, now: later)
+        }
         XCTAssertEqual(camera.center?.latitude ?? -1, latAtCap, accuracy: 0.000_000_1)
     }
 
@@ -282,7 +286,43 @@ final class LiveFollowCameraTests: XCTestCase {
         camera.ingest(location: unavailable, isPaused: false, now: later)
         _ = camera.tick(dt: frame, now: later)
         XCTAssertEqual(camera.headingDegrees, 45, accuracy: 0.01)
-        XCTAssertEqual(camera.center?.latitude ?? -1, 41.0002, accuracy: 0.0001)
+        let lat = camera.center?.latitude ?? -1
+        XCTAssertGreaterThan(lat, 41.0)
+        XCTAssertLessThanOrEqual(lat, 41.0002)
+    }
+
+    func testReingestSameFixDoesNotResetDeadReckon() {
+        var camera = LiveFollowCamera()
+        let fix = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
+        camera.ingest(location: fix, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+        let afterFirst = camera.center?.latitude ?? -1
+
+        for step in 1...30 {
+            let now = baseDate.addingTimeInterval(Double(step) * frame)
+            camera.ingest(location: fix, isPaused: false, now: now)
+            _ = camera.tick(dt: frame, now: now)
+        }
+        let afterReplay = camera.center?.latitude ?? -1
+        XCTAssertGreaterThan(afterReplay, afterFirst)
+    }
+
+    func testPublishedCenterEasesTowardNewFix() {
+        var camera = LiveFollowCamera()
+        camera.ingest(
+            location: location(lat: 41.0, lon: 29.0, speedMps: 0.2, course: 0, courseAccuracy: 5),
+            isPaused: false,
+            now: baseDate
+        )
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        let jumped = location(lat: 41.01, lon: 29.0, speedMps: 0.2, course: 0, courseAccuracy: 5)
+        let later = baseDate.addingTimeInterval(1)
+        camera.ingest(location: jumped, isPaused: false, now: later)
+        _ = camera.tick(dt: frame, now: later)
+        let mid = camera.center?.latitude ?? -1
+        XCTAssertGreaterThan(mid, 41.0)
+        XCTAssertLessThan(mid, 41.01)
     }
 
     func testForceRecenterAtLowSpeedKeepsHeading() {

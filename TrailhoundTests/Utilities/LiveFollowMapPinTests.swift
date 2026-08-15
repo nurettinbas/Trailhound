@@ -51,4 +51,26 @@ final class LiveFollowMapPinTests: XCTestCase {
         )
         XCTAssertTrue(pins.isEmpty)
     }
+
+    func testRouteMapPinKindsMatchTripDetailSymbols() {
+        XCTAssertEqual(RouteMapPinKind.start.systemName, "flag.fill")
+        XCTAssertEqual(RouteMapPinKind.end.systemName, "mappin.circle.fill")
+        XCTAssertEqual(RouteMapPinKind.stop.systemName, "pause.circle.fill")
+        XCTAssertTrue(RouteMapPinKind.start.isEndpoint)
+        XCTAssertTrue(RouteMapPinKind.end.isEndpoint)
+        XCTAssertFalse(RouteMapPinKind.stop.isEndpoint)
+    }
+
+    @MainActor
+    func testRouteMapPinImageProducesNonEmptyBitmaps() {
+        for kind in [RouteMapPinKind.start, .end, .stop] {
+            let image = RouteMapPinImage.uiImage(for: kind)
+            XCTAssertGreaterThan(image.size.width, 1, "\(kind) width")
+            XCTAssertGreaterThan(image.size.height, 1, "\(kind) height")
+        }
+        // Endpoints larger than stops (matching trip detail prominence).
+        let start = RouteMapPinImage.uiImage(for: .start)
+        let stop = RouteMapPinImage.uiImage(for: .stop)
+        XCTAssertGreaterThan(start.size.width, stop.size.width)
+    }
 }

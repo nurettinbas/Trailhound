@@ -7,6 +7,8 @@ import Foundation
 @Observable
 @MainActor
 final class LiveFollowSession {
+    /// Pose ticks at display rate — must not invalidate SwiftUI.
+    @ObservationIgnored
     var camera = LiveFollowCamera()
     /// MapKit coordinator installs this to receive pose writes without SwiftUI rebuilds.
     @ObservationIgnored

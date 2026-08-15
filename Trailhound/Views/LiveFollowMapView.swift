@@ -1,5 +1,6 @@
 import CoreLocation
 import MapKit
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -19,6 +20,8 @@ struct LiveFollowMapView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Query private var vehicles: [VehicleProfile]
+    @Query private var schedules: [VehicleSchedule]
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -75,6 +78,14 @@ struct LiveFollowMapView: View {
             pauseCoordinates: pausePinCoordinates,
             tripStopCoordinates: tripStopCoordinates
         )
+    }
+
+    /// Same urgency band as the recording-card wrench badge.
+    private var urgentServiceDue: VehicleDueItem? {
+        guard let vehicleID = recordingService.activeRecordingVehicleID(from: vehicles) else {
+            return nil
+        }
+        return VehicleCareDueCalculator.urgentServiceDue(for: vehicleID, from: schedules)
     }
 
     /// Hero overlay while flying / crossfading onto the map puck.
@@ -216,12 +227,6 @@ struct LiveFollowMapView: View {
 
             Spacer(minLength: 0)
 
-            trailingControls
-                .padding(.trailing, GlassTokens.panelHorizontalInset)
-                .padding(.bottom, 10)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .opacity(chromeReveal)
-
             bottomHUD(useGlass: true)
                 .containerRelativeFrame(
                     .horizontal,
@@ -246,7 +251,8 @@ struct LiveFollowMapView: View {
     }
 
     private var mapLayer: some View {
-        LiveFollowMapKitView(
+        let serviceDue = urgentServiceDue
+        return LiveFollowMapKitView(
             session: session,
             isFollowing: isFollowing && openSettled && !isClosing,
             interactionEnabled: !isPaused,
@@ -257,6 +263,8 @@ struct LiveFollowMapView: View {
             vehicleSystemImage: vehicleSystemImage,
             puckRevealed: puckRevealed,
             isMoving: !isPaused,
+            showsServiceDue: serviceDue != nil,
+            serviceIsOverdue: serviceDue?.state.isOverdue ?? false,
             onUserBreakFollow: {
                 guard isFollowing else { return }
                 isFollowing = false
@@ -296,19 +304,6 @@ struct LiveFollowMapView: View {
 
     private var topChrome: some View {
         HStack(spacing: 8) {
-            Button {
-                TrailhoundHaptics.selection()
-                beginClose()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .background(.ultraThinMaterial, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L10n.string("recording.live_map.close"))
-
             HStack(spacing: 4) {
                 Image(systemName: isPaused ? "pause.circle.fill" : "record.circle.fill")
                     .font(.caption.weight(.semibold))
@@ -345,52 +340,96 @@ struct LiveFollowMapView: View {
         }
     }
 
-    private var trailingControls: some View {
-        VStack(spacing: 10) {
+    /// 2D/3D, recenter, and close — white-on-blue chips matching the recording-card pills.
+    private var mapToolsRail: some View {
+        HStack(spacing: 8) {
+            mapDimensionToggle
+
             Button {
                 TrailhoundHaptics.selection()
-                settings.liveFollowMap3DEnabled.toggle()
+                isFollowing = true
+                session.camera.uses3D = uses3D
+                if let location = locationService.lastLocation {
+                    session.forceRecenter(location: location)
+                }
             } label: {
-                // Label = mode you switch into (Maps-style), not the current mode.
-                Text(uses3D ? "2D" : "3D")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    .frame(width: 44, height: 44)
-                    .glassChrome(cornerRadius: 22)
+                Image(systemName: isFollowing ? "location.north.line.fill" : "location.north.line")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 32)
+                    .background(.white.opacity(isFollowing ? 0.26 : 0.14), in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(
-                uses3D
-                    ? L10n.string("recording.live_map.switch_2d")
-                    : L10n.string("recording.live_map.switch_3d")
-            )
-            .accessibilityValue(uses3D ? "3D" : "2D")
+            .accessibilityLabel(L10n.string("recording.live_map.recenter"))
 
-            if !isFollowing {
-                Button {
-                    TrailhoundHaptics.selection()
-                    isFollowing = true
-                    session.camera.uses3D = uses3D
-                    if let location = locationService.lastLocation {
-                        session.forceRecenter(location: location)
-                    }
-                } label: {
-                    Image(systemName: "location.north.line.fill")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        .frame(width: 44, height: 44)
-                        .glassChrome(cornerRadius: 22)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.string("recording.live_map.recenter"))
-                .transition(TrailhoundMotion.softRiseFromBottomTransition)
+            Spacer(minLength: 8)
+
+            Button {
+                TrailhoundHaptics.selection()
+                beginClose()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 32)
+                    .background(.white.opacity(0.14), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.string("recording.live_map.close"))
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var mapDimensionToggle: some View {
+        HStack(spacing: 0) {
+            mapDimensionSegment(title: "2D", selected: !uses3D) {
+                settings.liveFollowMap3DEnabled = false
+            }
+            mapDimensionSegment(title: "3D", selected: uses3D) {
+                settings.liveFollowMap3DEnabled = true
             }
         }
-        .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isFollowing)
+        .padding(2)
+        .background(.white.opacity(0.12), in: Capsule())
+    }
+
+    private func mapDimensionSegment(
+        title: String,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            guard !selected else { return }
+            TrailhoundHaptics.selection()
+            action()
+        } label: {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
+                .frame(width: 34, height: 28)
+                .background {
+                    if selected {
+                        Capsule().fill(.white.opacity(0.28))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            title == "2D"
+                ? L10n.string("recording.live_map.switch_2d")
+                : L10n.string("recording.live_map.switch_3d")
+        )
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func bottomHUD(useGlass: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
+            mapToolsRail
+
+            Rectangle()
+                .fill(.white.opacity(0.16))
+                .frame(height: 1)
+
             ActiveTripLiveStats(compact: true)
 
             HStack(spacing: 10) {
@@ -626,7 +665,7 @@ struct LiveFollowMapView: View {
     }
 
     /// Apple Maps navigation blue — traveled breadcrumb.
-    static let routeBlue = Color(red: 0.05, green: 0.48, blue: 1.0)
+    static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
 
     /// Decimate each gap-split live segment for MapKit cost; never rewrite stored points.
     static func polylineSegments(
@@ -719,9 +758,9 @@ struct LiveFollowVehicleHero: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(red: 0.32, green: 0.70, blue: 1.0),
+                            Color(red: 0.42, green: 0.76, blue: 1.0),
                             LiveFollowMapView.routeBlue,
-                            Color(red: 0.04, green: 0.36, blue: 0.90)
+                            Color(red: 0.12, green: 0.48, blue: 0.95)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -803,7 +842,7 @@ struct LiveFollowPuckMark: View {
         ZStack(alignment: .top) {
             if isMoving, !reduceMotion {
                 SoftPulseRing(
-                    color: UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1),
+                    color: UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1),
                     isActive: true,
                     reduceMotion: false
                 )
@@ -852,9 +891,9 @@ struct LiveFollowPuckMark: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.32, green: 0.70, blue: 1.0),
+                        Color(red: 0.42, green: 0.76, blue: 1.0),
                         LiveFollowMapView.routeBlue,
-                        Color(red: 0.04, green: 0.36, blue: 0.90)
+                        Color(red: 0.12, green: 0.48, blue: 0.95)
                     ],
                     startPoint: .top,
                     endPoint: .bottom

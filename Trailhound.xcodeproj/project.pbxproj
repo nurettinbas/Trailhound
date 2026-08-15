@@ -81,6 +81,7 @@
 		A1LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */; };
 		A1LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */; };
 		A1LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */; };
+		A1ROUTEMAPPINMARK00001 /* RouteMapPinMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEMAPPINMARK00001 /* RouteMapPinMark.swift */; };
 		A1SCREENIDLELOCK000001 /* ScreenIdleLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */; };
 		A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */; };
 		A1LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */; };
@@ -364,6 +365,7 @@
 		A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowSession.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapKitView.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapPin.swift; sourceTree = "<group>"; };
+		A2ROUTEMAPPINMARK00001 /* RouteMapPinMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapPinMark.swift; sourceTree = "<group>"; };
 		A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenIdleLock.swift; sourceTree = "<group>"; };
 		A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLinkClock.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowCameraTests.swift; sourceTree = SOURCE_ROOT; };
@@ -816,6 +818,7 @@
 				A2LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift */,
 				A2LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift */,
 				A2LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift */,
+				A2ROUTEMAPPINMARK00001 /* RouteMapPinMark.swift */,
 				A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */,
 				A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
@@ -1211,6 +1214,7 @@
 				A1LIVEFOLLOWPRES0000001 /* LiveFollowPresentation.swift in Sources */,
 				A1LIVEFOLLOWSESSION00001 /* LiveFollowSession.swift in Sources */,
 				A1LIVEFOLLOWMAPPIN00001 /* LiveFollowMapPin.swift in Sources */,
+				A1ROUTEMAPPINMARK00001 /* RouteMapPinMark.swift in Sources */,
 				A1SCREENIDLELOCK000001 /* ScreenIdleLock.swift in Sources */,
 				A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
