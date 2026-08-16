@@ -16,7 +16,6 @@ struct TripListView: View {
     @Bindable private var notificationStore = AppNotificationStore.shared
     @Bindable private var careSummary = VehicleCareSummaryStore.shared
 
-    @State private var selectedLabel: String?
     @State private var selectedCategoryID: String?
     @State private var selectedDateSection: TripDateSection?
     @State private var selectedVehicleFilter: TripListPage.VehicleFilter?
@@ -75,7 +74,6 @@ struct TripListView: View {
             searchText: debouncedSearchText,
             categoryID: selectedCategoryID,
             dateSection: selectedDateSection,
-            label: selectedLabel,
             vehicleFilter: selectedVehicleFilter,
             placeName: selectedPlaceName
         )
@@ -103,12 +101,11 @@ struct TripListView: View {
     }
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
-    /// the wall clock, labels are free text, and trips still awaiting a search index need the
+    /// the wall clock, and trips still awaiting a search index need the
     /// legacy field scan. Place names are also re-checked so a renamed favorite stays consistent
     /// with the chip's current `SavedPlace.name`. When a place chip is active the SQLite
     /// predicate omits `searchIndex` (type-checker limit), so search is always verified here.
     private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
-        if let label = filters.label, trip.label != label { return false }
         if let section = filters.dateSection,
            !TripDateGrouping.matches(section, date: trip.startedAt) {
             return false

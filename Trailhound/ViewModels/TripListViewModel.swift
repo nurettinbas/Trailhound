@@ -130,7 +130,6 @@ struct TripListViewModel {
 
         let candidates = [
             routeSummary(for: trip, places: places, privacyRadius: privacyRadius),
-            trip.label,
             trip.note,
             trip.startAddress,
             trip.endAddress,

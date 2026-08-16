@@ -35,9 +35,9 @@ final class LiveFollowPresentationTests: XCTestCase {
     }
 
     func testSettledHUDRectCenteredBottom() {
-        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 148)
+        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 112)
         XCTAssertEqual(settled.width, 390 * 8 / 12, accuracy: 0.01)
-        XCTAssertEqual(settled.height, 148, accuracy: 0.01)
+        XCTAssertEqual(settled.height, 112, accuracy: 0.01)
         XCTAssertEqual(settled.midX, container.midX, accuracy: 0.01)
         XCTAssertEqual(
             settled.maxY,
@@ -161,7 +161,7 @@ final class LiveFollowPresentationTests: XCTestCase {
     }
 
     func testCloseHudExpandsAtBottomThenRises() {
-        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 148)
+        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 112)
         let start = LiveFollowPresentation.closeHudRect(
             source: source,
             settled: settled,
@@ -201,7 +201,7 @@ final class LiveFollowPresentationTests: XCTestCase {
     }
 
     func testExpandedAtBottomPinsMaxY() {
-        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 148)
+        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 112)
         let expanded = LiveFollowPresentation.expandedAtBottomRect(source: source, settled: settled)
         XCTAssertEqual(expanded.width, source.width, accuracy: 0.01)
         XCTAssertEqual(expanded.height, source.height, accuracy: 0.01)
@@ -232,7 +232,7 @@ final class LiveFollowPresentationTests: XCTestCase {
     }
 
     func testCloseHudClampsOutOfRangeProgress() {
-        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 148)
+        let settled = LiveFollowPresentation.settledHUDRect(in: container, hudHeight: 112)
         XCTAssertEqual(
             LiveFollowPresentation.closeHudRect(
                 source: source,

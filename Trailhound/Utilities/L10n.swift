@@ -97,9 +97,7 @@ enum L10n {
     }
     static var a11ySelected: String { string("a11y.selected") }
     static var a11yNotSelected: String { string("a11y.not_selected") }
-    static var tripEditCategoryAndLabel: String { string("trip.edit.category_and_label") }
     static var tripEditCategory: String { string("trip.edit.category") }
-    static var tripEditLabel: String { string("trip.edit.label") }
     static var tripEditNote: String { string("trip.edit.note") }
     static var tripEditNotePlaceholder: String { string("trip.edit.note_placeholder") }
     static var tripEditFieldPrevious: String { string("trip.edit.field.previous") }
@@ -116,7 +114,6 @@ enum L10n {
 
     static var fuelUnitCostPerLiter: String { string("fuel.unit.cost_per_liter") }
     static var fuelUnitCostPerKWh: String { string("fuel.unit.cost_per_kwh") }
-    static var labelNone: String { string("label.none") }
     static var actionClose: String { string("action.close") }
     static var actionAdd: String { string("action.add") }
     static var mapStylePicker: String { string("map.style.picker") }
@@ -129,10 +126,6 @@ enum L10n {
     static var categoryNewPlaceholder: String { string("category.new_placeholder") }
     static var fuelUnitKWhPer100km: String { string("fuel.unit.kwh_per_100km") }
     static var fuelUnitLPer100km: String { string("fuel.unit.l_per_100km") }
-    static var labelWork: String { string("label.work") }
-    static var labelMarket: String { string("label.market") }
-    static var labelHoliday: String { string("label.holiday") }
-    static var labelOther: String { string("label.other") }
     static var sectionToday: String { string("section.today") }
     static var sectionYesterday: String { string("section.yesterday") }
     static var sectionThisWeek: String { string("section.this_week") }

@@ -229,7 +229,7 @@ struct LiveFollowMapView: View {
                 .containerRelativeFrame(
                     .horizontal,
                     count: 12,
-                    span: 10,
+                    span: 8,
                     spacing: 0,
                     alignment: .center
                 )
@@ -288,22 +288,22 @@ struct LiveFollowMapView: View {
             Color.yellow.opacity(0.38)
                 .ignoresSafeArea()
 
-            VStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 44, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.yellow, .black.opacity(0.85))
                 Text(L10n.recordingPaused)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .strokeBorder(Color.yellow.opacity(0.75), lineWidth: 1.5)
-                    }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(Color.yellow.opacity(0.75), lineWidth: 1.5)
             }
             .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
             .accessibilityElement(children: .combine)
@@ -330,8 +330,8 @@ struct LiveFollowMapView: View {
                     .lineLimit(1)
                     .contentTransition(.opacity)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .glassChrome(cornerRadius: 14)
 
             Spacer(minLength: 4)
@@ -339,8 +339,8 @@ struct LiveFollowMapView: View {
             if !networkMonitor.isConnected {
                 Text(L10n.tripMapOfflineHint)
                     .font(.caption2)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
                     .glassChrome(cornerRadius: 14)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -352,7 +352,7 @@ struct LiveFollowMapView: View {
 
     /// 2D/3D, recenter, and close — white-on-blue chips matching the recording-card pills.
     private var mapToolsRail: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             mapDimensionToggle
 
             Button {
@@ -365,9 +365,9 @@ struct LiveFollowMapView: View {
                 }
             } label: {
                 Image(systemName: isFollowing ? "location.north.line.fill" : "location.north.line")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 33, height: 33)
                     .background(.white.opacity(isFollowing ? 0.26 : 0.14), in: Capsule())
             }
             .buttonStyle(.plain)
@@ -380,9 +380,9 @@ struct LiveFollowMapView: View {
                 beginClose()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 33, height: 33)
                     .background(Color(red: 0.52, green: 0.08, blue: 0.12), in: Capsule())
             }
             .buttonStyle(.plain)
@@ -400,8 +400,8 @@ struct LiveFollowMapView: View {
                 setDimensionMode(true)
             }
         }
-        .padding(3)
-        .frame(height: 44)
+        .padding(2)
+        .frame(height: 33)
         .background(.white.opacity(0.12), in: Capsule())
     }
 
@@ -416,9 +416,9 @@ struct LiveFollowMapView: View {
             action()
         } label: {
             Text(title)
-                .font(.subheadline.weight(.bold))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
-                .frame(width: 44, height: 38)
+                .frame(width: 33, height: 29)
                 .background {
                     if selected {
                         Capsule().fill(.white.opacity(0.28))
@@ -441,7 +441,7 @@ struct LiveFollowMapView: View {
     }
 
     private func bottomHUD(useGlass: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 9) {
             mapToolsRail
 
             Rectangle()
@@ -450,7 +450,7 @@ struct LiveFollowMapView: View {
 
             ActiveTripLiveStats(compact: true)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Button {
                     let toggle = {
                         if isPaused {
@@ -469,29 +469,30 @@ struct LiveFollowMapView: View {
                 } label: {
                     RecordingActionLabel(
                         title: isPaused ? L10n.resume : L10n.pause,
-                        systemImage: isPaused ? "play.fill" : "pause.fill"
+                        systemImage: isPaused ? "play.fill" : "pause.fill",
+                        compact: true
                     )
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
                 }
                 .buttonStyle(SoftPressBorderedButtonStyle(reduceMotion: reduceMotion))
-                .controlSize(.regular)
+                .controlSize(.small)
                 .tint(.white)
 
                 Button(role: .destructive) {
                     // No reverse morph — parent dismisses instantly then plays end credits.
                     onStop(hudAnchorBox.value.width > 0 ? hudAnchorBox.value : cardAnchor)
                 } label: {
-                    RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill")
+                    RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill", compact: true)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 2)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
+                .controlSize(.small)
                 .tint(.red)
             }
         }
-        .padding(14)
+        .padding(10)
         // Width fills the HUD slot; height stays intrinsic so settled layout does not
         // stretch into the Spacer (morphing phase applies an explicit height separately).
         .frame(maxWidth: .infinity, alignment: .topLeading)

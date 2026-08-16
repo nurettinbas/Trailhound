@@ -7,6 +7,10 @@ final class ExportServiceTests: XCTestCase {
         let csv = ExportService.exportCSV(trips: [])
         XCTAssertTrue(csv.contains("distanceKm"))
         XCTAssertTrue(csv.contains("dynamicFuelCost"))
+        XCTAssertTrue(csv.contains("category"))
+        XCTAssertFalse(csv.contains(",label,"))
+        XCTAssertFalse(csv.hasPrefix("label,"))
+        XCTAssertFalse(csv.contains("start,end,label,"))
     }
 
     func testGPXContainsTrackTag() {
@@ -61,5 +65,6 @@ final class ExportServiceTests: XCTestCase {
 
         XCTAssertTrue(kml.contains("<Placemark>"))
         XCTAssertTrue(kml.contains("<LineString>"))
+        XCTAssertFalse(kml.contains("İş"), "KML name must not use retired trip labels")
     }
 }

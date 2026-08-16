@@ -11,6 +11,7 @@ final class Trip {
     var startAddress: String?
     var endAddress: String?
     var note: String?
+    /// Unused by product UI/search/export; retained so existing stores open without a schema bump.
     var label: String?
     var categoryRaw: String
     var geocodeStatusRaw: String

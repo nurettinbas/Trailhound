@@ -52,7 +52,6 @@ struct TripDetailEditPanel: View {
     @Bindable private var settings = AppSettings.shared
 
     @State private var noteText: String = ""
-    @State private var selectedLabel: String = ""
     @State private var selectedCategoryID: String = BuiltInCategory.personalID.uuidString
     @State private var selectedVehicleID: UUID?
     @State private var editedFuelConsumption: Double = 7.5
@@ -239,7 +238,6 @@ struct TripDetailEditPanel: View {
     private func loadEditStateFromTrip() {
         noteText = trip.note ?? ""
         originalNoteText = noteText
-        selectedLabel = trip.label ?? ""
         selectedCategoryID = trip.categoryID
         selectedVehicleID = trip.vehicleID
         loadFuelEditDefaults(for: selectedVehicleID, preferTripSnapshot: true)
@@ -351,8 +349,8 @@ struct TripDetailEditPanel: View {
                 )
             }
 
-            detailSection(title: L10n.tripEditCategoryAndLabel) {
-                HStack(alignment: .top, spacing: 10) {
+            if vehicles.isEmpty {
+                detailSection(title: L10n.tripEditCategory) {
                     detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
                         ForEach(categories) { category in
                             Label(category.name, systemImage: category.systemImage)
@@ -362,19 +360,19 @@ struct TripDetailEditPanel: View {
                     .onChange(of: selectedCategoryID) { _, _ in
                         dismissKeyboard()
                     }
-
-                    detailMenuPicker(title: L10n.tripEditLabel, selection: $selectedLabel) {
-                        Text(L10n.labelNone).tag("")
-                        ForEach(TripLabelOption.allCases, id: \.rawValue) { option in
-                            Text(option.displayName).tag(option.rawValue)
+                }
+            } else {
+                detailSplitSection(title: L10n.tripEditCategory) {
+                    detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
+                        ForEach(categories) { category in
+                            Label(category.name, systemImage: category.systemImage)
+                                .tag(category.id.uuidString)
                         }
                     }
-                    .onChange(of: selectedLabel) { _, _ in
+                    .onChange(of: selectedCategoryID) { _, _ in
                         dismissKeyboard()
                     }
-                }
-
-                if !vehicles.isEmpty {
+                } right: {
                     detailMenuPicker(
                         title: L10n.string("trip.edit.vehicle"),
                         selection: $selectedVehicleID,
@@ -921,7 +919,6 @@ struct TripDetailEditPanel: View {
         let previousRollup = TripRollupService.snapshot(of: trip)
 
         trip.note = noteText.isEmpty ? nil : noteText
-        trip.label = selectedLabel.isEmpty ? nil : selectedLabel
         trip.categoryID = selectedCategoryID
         let vehicle = selectedVehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
         VehicleResolver.assign(vehicle: vehicle, to: trip)

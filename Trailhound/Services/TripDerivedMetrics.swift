@@ -92,7 +92,6 @@ enum TripDerivedMetrics {
     static func refreshSearchIndex(for trip: Trip, places: [SavedPlace], privacyRadius: Double) {
         let components = [
             TripListViewModel.routeSummary(for: trip, places: places, privacyRadius: privacyRadius),
-            trip.label,
             trip.note,
             trip.startAddress,
             trip.endAddress,

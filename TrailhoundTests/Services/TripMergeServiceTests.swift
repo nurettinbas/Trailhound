@@ -88,8 +88,7 @@ final class TripMergeServiceTests: XCTestCase {
         XCTAssertEqual(merged.points.count, expectedPointCount)
         XCTAssertTrue(merged.note?.contains("First leg") == true)
         XCTAssertTrue(merged.note?.contains("Second leg") == true)
-        XCTAssertTrue(merged.label?.contains("Morning") == true)
-        XCTAssertTrue(merged.label?.contains("Evening") == true)
+        XCTAssertNil(merged.label, "product no longer copies labels on merge")
     }
 
     func testMergeRecomputesDynamicFuelFromSnapshots() throws {

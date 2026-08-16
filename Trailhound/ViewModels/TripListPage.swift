@@ -20,7 +20,6 @@ enum TripListPage {
         var searchText: String = ""
         var categoryID: String?
         var dateSection: TripDateSection?
-        var label: String?
         var vehicleFilter: VehicleFilter?
         /// Exact `SavedPlace.name` matched against start or end place name. `nil` means All.
         var placeName: String?
@@ -28,7 +27,6 @@ enum TripListPage {
         var isActive: Bool {
             categoryID != nil
                 || dateSection != nil
-                || label != nil
                 || vehicleFilter != nil
                 || placeName != nil
                 || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

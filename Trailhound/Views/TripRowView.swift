@@ -82,16 +82,6 @@ struct TripRowView: View {
                         metricChip(icon: "gauge.with.dots.needle.33percent", text: avgLabel)
                     }
                 }
-
-                if let label = trip.label, !label.isEmpty {
-                    Text(label)
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(Color(.tertiarySystemFill))
-                        .clipShape(Capsule())
-                }
             }
         }
         .padding(.vertical, 6)
@@ -144,9 +134,6 @@ struct TripRowView: View {
         parts.append(TripListViewModel.distanceText(for: trip))
         if let vehicle {
             parts.append(vehicle.name)
-        }
-        if let label = trip.label, !label.isEmpty {
-            parts.append(label)
         }
         return parts.joined(separator: ", ")
     }

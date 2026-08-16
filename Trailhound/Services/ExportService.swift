@@ -10,7 +10,6 @@ enum ExportService {
         let startAddress: String?
         let endAddress: String?
         let note: String?
-        let label: String?
         let category: String
         let estimatedFuelCost: Double?
         let dynamicFuelCost: Double?
@@ -33,7 +32,6 @@ enum ExportService {
         let startAddress: String?
         let endAddress: String?
         let note: String?
-        let label: String?
         let categoryRaw: String
         let estimatedFuelCost: Double?
         let dynamicFuelCost: Double?
@@ -76,7 +74,6 @@ enum ExportService {
                 startAddress: trip.startAddress,
                 endAddress: trip.endAddress,
                 note: trip.note,
-                label: trip.label,
                 categoryRaw: trip.categoryRaw,
                 estimatedFuelCost: trip.estimatedFuelCost,
                 dynamicFuelCost: trip.dynamicFuelCost,
@@ -87,7 +84,7 @@ enum ExportService {
                     places: places,
                     privacyRadius: privacyRadius
                 ),
-                kmlName: trip.label ?? DateFormatters.tripDate.string(from: trip.startedAt),
+                kmlName: DateFormatters.tripDate.string(from: trip.startedAt),
                 points: points
             )
         }
@@ -128,7 +125,6 @@ enum ExportService {
                 startAddress: snapshot.startAddress,
                 endAddress: snapshot.endAddress,
                 note: snapshot.note,
-                label: snapshot.label,
                 category: snapshot.categoryRaw,
                 estimatedFuelCost: snapshot.estimatedFuelCost,
                 dynamicFuelCost: snapshot.dynamicFuelCost,
@@ -146,7 +142,7 @@ enum ExportService {
     }
 
     nonisolated static func exportCSV(snapshots: [TripExportSnapshot]) -> String {
-        var lines = ["id,startedAt,endedAt,distanceKm,start,end,label,category,note,fuelCost,dynamicFuelCost"]
+        var lines = ["id,startedAt,endedAt,distanceKm,start,end,category,note,fuelCost,dynamicFuelCost"]
         let formatter = ISO8601DateFormatter()
         for snapshot in snapshots {
             let distanceKm = String(format: "%.2f", snapshot.distanceMeters / 1000)
@@ -159,7 +155,6 @@ enum ExportService {
                 distanceKm,
                 csvEscape(snapshot.displayStartName),
                 csvEscape(snapshot.displayEndName),
-                csvEscape(snapshot.label ?? ""),
                 snapshot.categoryRaw,
                 csvEscape(snapshot.note ?? ""),
                 fuel,
@@ -183,7 +178,7 @@ enum ExportService {
 
         for snapshot in snapshots {
             lines.append(#"<trk>"#)
-            lines.append(#"<name>\#(xmlEscape(snapshot.label ?? snapshot.id.uuidString))</name>"#)
+            lines.append(#"<name>\#(xmlEscape(snapshot.kmlName))</name>"#)
             if let note = snapshot.note, !note.isEmpty {
                 lines.append(#"<desc>\#(xmlEscape(note))</desc>"#)
             }
@@ -256,14 +251,13 @@ enum ExportService {
             startAddress: trip.startAddress,
             endAddress: trip.endAddress,
             note: trip.note,
-            label: trip.label,
             categoryRaw: trip.categoryRaw,
             estimatedFuelCost: trip.estimatedFuelCost,
             dynamicFuelCost: trip.dynamicFuelCost,
             displayStartName: trip.displayStartName,
             displayEndName: trip.displayEndName,
             routeSummary: "\(trip.displayStartName) → \(trip.displayEndName)",
-            kmlName: trip.label ?? DateFormatters.tripDate.string(from: trip.startedAt),
+            kmlName: DateFormatters.tripDate.string(from: trip.startedAt),
             points: points
         )
     }

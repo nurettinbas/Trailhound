@@ -109,19 +109,3 @@ enum VehicleIconOption: String, CaseIterable, Identifiable {
     }
 
 }
-
-enum TripLabelOption: String, CaseIterable {
-    case work = "İş"
-    case market = "Market"
-    case holiday = "Tatil"
-    case other = "Diğer"
-
-    var displayName: String {
-        switch self {
-        case .work: L10n.labelWork
-        case .market: L10n.labelMarket
-        case .holiday: L10n.labelHoliday
-        case .other: L10n.labelOther
-        }
-    }
-}

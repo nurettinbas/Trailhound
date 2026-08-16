@@ -95,12 +95,12 @@ final class TripListViewModelTests: XCTestCase {
         XCTAssertTrue(summary.contains("Office") || summary.contains("→"))
     }
 
-    func testMatchesSearchByLabel() {
+    func testMatchesSearchByNote() {
         let trip = Trip(
             startedAt: Date().addingTimeInterval(-3600),
             endedAt: Date(),
             distanceMeters: 1000,
-            label: "Commute"
+            note: "Commute"
         )
 
         XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "comm"))

@@ -126,7 +126,7 @@ trip into memory. `Trip` now stores those answers directly:
 |-------|----------|
 | `nightDistanceMeters` / `trackedDistanceMeters` | walking every GPS segment in `nightDrivingRatio` |
 | `startLatitude` / `startLongitude` / `endLatitude` / `endLongitude` | `sortedPoints.first` / `.last` |
-| `searchIndex` | the per-keystroke scan over route summary, label, note, addresses and place names |
+| `searchIndex` | the per-keystroke scan over route summary, note, addresses and place names |
 
 All of them are optional and additive, so existing rows open as `nil` and nothing a user recorded is
 touched. Rules for working with them:

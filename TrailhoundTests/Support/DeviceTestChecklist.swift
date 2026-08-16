@@ -24,7 +24,7 @@ enum DeviceTestChecklist {
         "Trip with tunnel/signal loss keeps a broken route (no bird-flight fill)",
         "Start-side Select: photo/icon + chevron only; no name text overflow",
         "Recording card: large vehicle photo; Stop uses stop.fill",
-        "Live follow map: open — map already at follow pose (no world fly-in); map fade + vehicle→puck hero sync; HUD at bottom",
+        "Live follow map: open — map already at follow pose (no world fly-in); map fade + vehicle→puck hero sync; compact HUD at bottom (Pause/Stop TR single-line; 2D/3D tappable)",
         "Live follow map: X reverses (map fades out while nav puck flies back to list-card vehicle); Stop skips reverse and plays end credits",
         "Live follow map: Reduce Motion opens/closes instantly settled",
         "Live follow map: pan/recenter → pause/stop; 3D/2D toggle; chevron + vehicle puck aims with heading and sits at screen center",

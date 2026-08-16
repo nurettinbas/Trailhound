@@ -163,7 +163,6 @@ enum TripMergeCore {
         merged.endAddress = last.endAddress
         merged.endPlaceName = last.endPlaceName
         merged.note = mergedNotes(from: completed)
-        merged.label = mergedLabels(from: completed)
         // Insert before copying points so inverse relationships resolve against a registered trip.
         context.insert(merged)
         return merged
@@ -245,13 +244,6 @@ enum TripMergeCore {
         let notes = trips.compactMap(\.note).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         guard !notes.isEmpty else { return nil }
         return notes.joined(separator: "\n\n")
-    }
-
-    private static func mergedLabels(from trips: [Trip]) -> String? {
-        let labels = trips.compactMap(\.label).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        let unique = Array(NSOrderedSet(array: labels)) as? [String] ?? labels
-        guard !unique.isEmpty else { return nil }
-        return unique.joined(separator: ", ")
     }
 }
 

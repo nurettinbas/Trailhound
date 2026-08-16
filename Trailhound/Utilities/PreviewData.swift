@@ -36,7 +36,6 @@ final class PreviewData {
             distanceMeters: 14200,
             startAddress: "Kadikoy, Istanbul",
             endAddress: "Levent, Istanbul",
-            label: "İş",
             category: .business,
             geocodeStatus: .complete,
             maxSpeedMps: 22,

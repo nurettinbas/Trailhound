@@ -84,6 +84,8 @@ struct RecordingActionLabel: View {
     let title: String
     let systemImage: String
     var tint: Color = .white
+    /// Tighter type for the live-follow HUD (~0.75 scale).
+    var compact: Bool = false
     /// When false, the glyph and title swap instantly.
     var animatedSymbolSwap: Bool = true
 
@@ -91,14 +93,16 @@ struct RecordingActionLabel: View {
 
     var body: some View {
         ZStack {
-            HStack(spacing: 6) {
+            HStack(spacing: compact ? 4 : 6) {
                 Image(systemName: systemImage)
                 Text(title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(compact ? 0.85 : 1)
             }
             .id(labelIdentity)
             .transition(labelTransition)
         }
-        .font(.subheadline.weight(.semibold))
+        .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
         .foregroundStyle(tint)
         .frame(maxWidth: .infinity)
         .animation(shouldAnimate ? TrailhoundMotion.recordingToggle : nil, value: labelIdentity)
@@ -653,7 +657,7 @@ struct ActiveTripLiveStats: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: compact ? 5 : 6) {
+        HStack(alignment: .top, spacing: compact ? 4 : 6) {
             statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
             statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
             statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
@@ -662,27 +666,27 @@ struct ActiveTripLiveStats: View {
 
     private func statPill(icon: String, label: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: compact ? 1 : 2) {
-            HStack(spacing: 3) {
+            HStack(spacing: compact ? 2 : 3) {
                 Image(systemName: icon)
-                    .font(.system(size: compact ? 8 : 9, weight: .semibold))
+                    .font(.system(size: compact ? 6 : 9, weight: .semibold))
                 Text(label)
-                    .font(.system(size: compact ? 9 : 10, weight: .medium))
+                    .font(.system(size: compact ? 7 : 10, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
             }
             .foregroundStyle(.white.opacity(0.75))
             Text(text)
-                .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
+                .font(compact ? .system(size: 10, weight: .bold) : .caption.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .numericTextAnimation(value: text)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, compact ? 6 : 8)
-        .padding(.vertical, compact ? 5 : 7)
+        .padding(.horizontal, compact ? 4 : 8)
+        .padding(.vertical, compact ? 4 : 7)
         .background(.white.opacity(0.14))
-        .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: compact ? 6 : 10, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(text)")
     }

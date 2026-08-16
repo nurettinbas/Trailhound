@@ -2357,7 +2357,7 @@
       }
     },
     "label.none": {
-      "extractionState": "manual",
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -11053,7 +11053,7 @@
       }
     },
     "trip.edit.category_and_label": {
-      "extractionState": "manual",
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -11104,7 +11104,7 @@
       }
     },
     "trip.edit.label": {
-      "extractionState": "manual",
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {

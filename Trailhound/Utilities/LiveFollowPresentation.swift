@@ -7,7 +7,7 @@ import CoreGraphics
 /// Keeps MapKit out of the animation path: callers interpolate cheap rects only.
 enum LiveFollowPresentation {
     /// Compact HUD height estimate (stats + actions + padding) when intrinsic size is unknown.
-    static let estimatedSettledHUDHeight: CGFloat = 148
+    static let estimatedSettledHUDHeight: CGFloat = 112
     static let settledBottomPadding: CGFloat = 12
     /// Matches `containerRelativeFrame(..., count: 12, span: 8)`.
     static let settledWidthSpan: CGFloat = 8
