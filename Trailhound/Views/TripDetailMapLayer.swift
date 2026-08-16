@@ -54,15 +54,15 @@ enum TripDetailMapStyle: Equatable {
     }
 }
 
-/// Camera box so panel drag can rebuild the parent without rewriting MapKit camera bindings.
+/// Camera box so the parent can rebuild without rewriting MapKit camera bindings.
 @MainActor
 @Observable
 final class TripDetailMapCameraBox {
     var position: MapCameraPosition = .automatic
 }
 
-/// Isolated MapKit host for trip detail. Inputs exclude panel height / drag translation so
-/// resizing the bottom sheet does not force MapKit to relayout or rebuild overlays.
+/// Isolated MapKit host for trip detail. Inputs exclude panel height so overlay
+/// motion does not force MapKit to relayout or rebuild overlays.
 /// Camera updates go through `cameraBox` only — never remount the Map (that flashes black).
 struct TripDetailMapLayer: View, Equatable {
     let style: TripDetailMapStyle

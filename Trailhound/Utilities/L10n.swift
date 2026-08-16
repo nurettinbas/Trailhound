@@ -56,10 +56,6 @@ enum L10n {
     static var tripStartedAt: String { string("trip.started_at") }
     static var tripEndedAt: String { string("trip.ended_at") }
     static var tripDetailTitle: String { string("trip.detail.title") }
-    static var tripDetailPanelResize: String { string("trip.detail.panel.resize") }
-    static var tripDetailPanelResizeHint: String { string("trip.detail.panel.resize.hint") }
-    static var tripDetailPanelMoreMap: String { string("trip.detail.panel.more_map") }
-    static var tripDetailPanelMoreDetails: String { string("trip.detail.panel.more_details") }
     static var tripPointStart: String { string("trip.point.start") }
     static var tripPointEnd: String { string("trip.point.end") }
     static var tripPointStop: String { string("trip.point.stop") }

@@ -1,3 +1,4 @@
+import CoreGraphics
 import CoreLocation
 import Foundation
 
@@ -80,6 +81,66 @@ enum SpeedChartSeries {
             samples: output,
             medianIntervalSeconds: median(of: intervals(of: output.map(\.date))) ?? 0
         )
+    }
+
+    static func gapBreakSeconds(medianIntervalSeconds: TimeInterval) -> TimeInterval {
+        max(minimumGapSeconds, medianIntervalSeconds * gapIntervalMultiple)
+    }
+
+    /// Reveal walks sample index, not clock time. Crossing a recording gap must stay on the
+    /// floor — a speed lerp would draw a diagonal through the hole.
+    static func revealedSamples(
+        from samples: [(date: Date, speedKmh: Double)],
+        progress: Double,
+        gapBreakSeconds: TimeInterval
+    ) -> [(date: Date, speedKmh: Double)] {
+        guard samples.count >= 2 else { return samples }
+
+        let clamped = min(1, max(0, progress))
+        if clamped <= 0 { return [samples[0]] }
+        if clamped >= 1 { return samples }
+
+        let segmentCount = samples.count - 1
+        let exact = Double(segmentCount) * clamped
+        let index = min(segmentCount - 1, Int(exact))
+        let fraction = exact - Double(index)
+        var result = Array(samples.prefix(index + 1))
+        let start = samples[index]
+        let end = samples[index + 1]
+        let startTime = start.date.timeIntervalSince1970
+        let endTime = end.date.timeIntervalSince1970
+        let span = endTime - startTime
+        result.append((
+            date: Date(timeIntervalSince1970: startTime + span * fraction),
+            speedKmh: span > gapBreakSeconds
+                ? 0
+                : start.speedKmh + (end.speedKmh - start.speedKmh) * fraction
+        ))
+        return result
+    }
+
+    /// A recording gap is a valley at zero, not a hole: drop to the baseline, run along it,
+    /// then climb back so the stroke stays one line.
+    static func strokePoints(
+        samples: [(date: Date, speedKmh: Double)],
+        gapBreakSeconds: TimeInterval,
+        project: (_ date: Date, _ speedKmh: Double) -> CGPoint,
+        baselineY: CGFloat
+    ) -> [CGPoint] {
+        guard let first = samples.first else { return [] }
+
+        var points = [project(first.date, first.speedKmh)]
+        for index in 1..<samples.count {
+            let previous = samples[index - 1]
+            let sample = samples[index]
+            let projected = project(sample.date, sample.speedKmh)
+            if sample.date.timeIntervalSince(previous.date) > gapBreakSeconds {
+                points.append(CGPoint(x: points[points.count - 1].x, y: baselineY))
+                points.append(CGPoint(x: projected.x, y: baselineY))
+            }
+            points.append(projected)
+        }
+        return points
     }
 
     // MARK: - Stages

@@ -41,41 +41,9 @@ private enum TripDetailRevealSession {
     }
 }
 
-/// Bottom panel snap points — grabber drag switches between more map / balanced / more details.
-private enum TripDetailPanelDetent: CaseIterable, Equatable {
-    case mapFocused
-    case balanced
-    case details
-
-    var fraction: CGFloat {
-        switch self {
-        case .mapFocused: 0.28
-        case .balanced: 0.52
-        case .details: 0.78
-        }
-    }
-
-    var lower: TripDetailPanelDetent? {
-        switch self {
-        case .mapFocused: nil
-        case .balanced: .mapFocused
-        case .details: .balanced
-        }
-    }
-
-    var higher: TripDetailPanelDetent? {
-        switch self {
-        case .mapFocused: .balanced
-        case .balanced: .details
-        case .details: nil
-        }
-    }
-
-    static func nearest(height: CGFloat, containerHeight: CGFloat) -> TripDetailPanelDetent {
-        guard containerHeight > 0 else { return .balanced }
-        let fraction = height / containerHeight
-        return allCases.min(by: { abs($0.fraction - fraction) < abs($1.fraction - fraction) }) ?? .balanced
-    }
+/// Fixed overlay height — the details card is not user-resizable.
+private enum TripDetailPanelLayout {
+    static let heightFraction: CGFloat = 0.52
 }
 
 struct TripDetailView: View {
@@ -94,7 +62,7 @@ struct TripDetailView: View {
     @State private var mapTopChromePoints: CGFloat = 96
     /// Tab bar + home-indicator band the map draws under (`.ignoresSafeArea(.bottom)`).
     @State private var mapBottomChromePoints: CGFloat = 83
-    /// Last laid-out panel height — refit uses this, not only detent.fraction.
+    /// Last laid-out panel height — refit uses this, not only the layout fraction.
     @State private var lastLivePanelHeight: CGFloat = 0
     @State private var mapRefitTask: Task<Void, Never>?
     @State private var noteText: String = ""
@@ -132,9 +100,6 @@ struct TripDetailView: View {
     @State private var didStartDetailReveal = false
     @State private var detailRevealTask: Task<Void, Never>?
     @State private var panelRisen = false
-    /// Bottom panel height detent — drag the grabber to resize map vs details.
-    @State private var panelDetent: TripDetailPanelDetent = .balanced
-    @State private var panelDragTranslation: CGFloat = 0
     /// 0 = muted settle veil, 1 = map clear. Held muted until the route path is ready.
     @State private var mapClarity: Double = 0
     @State private var showSharePreview = false
@@ -146,7 +111,7 @@ struct TripDetailView: View {
     @State private var routeLoadTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var glassFrozen: Bool { panelDragTranslation != 0 || isMapExpandTransitioning }
+    private var glassFrozen: Bool { isMapExpandTransitioning }
 
     private var panelVisible: Bool { panelRisen && !isMapExpanded }
 
@@ -229,7 +194,7 @@ struct TripDetailView: View {
                     )
                     .allowsHitTesting(false)
 
-                    detailPanel(containerHeight: containerHeight)
+                    detailPanel()
                         .frame(height: panelHeight)
                         .frame(maxWidth: .infinity)
                         .background {
@@ -251,7 +216,6 @@ struct TripDetailView: View {
                         .offset(y: panelVisible ? 0 : panelHeight + 24)
                         .opacity(panelVisible ? 1 : 0)
                         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
-                        .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelDetent)
                         .animation(
                             reduceMotion ? nil : (isMapExpanded
                                 ? TrailhoundMotion.mapExpand
@@ -416,7 +380,7 @@ struct TripDetailView: View {
             endPinVisible = false
 
             // Frame endpoints immediately so MapKit never sits on .automatic (blank/world flash).
-            if let region = fittedMapRegion(panelHeight: mapViewportSize.height * panelDetent.fraction) {
+            if let region = fittedMapRegion(panelHeight: mapViewportSize.height * TripDetailPanelLayout.heightFraction) {
                 applyFittedCamera(region: region, animated: false)
             }
 
@@ -498,7 +462,7 @@ struct TripDetailView: View {
         )
         speedChartRevealProgress = 0
 
-        if let region = fittedMapRegion(panelHeight: mapViewportSize.height * panelDetent.fraction) {
+        if let region = fittedMapRegion(panelHeight: mapViewportSize.height * TripDetailPanelLayout.heightFraction) {
             applyFittedCamera(region: region, animated: false)
         }
 
@@ -520,7 +484,7 @@ struct TripDetailView: View {
                 panelRisen = true
             }
 
-            scheduleMapRefit(panelHeight: mapViewportSize.height * panelDetent.fraction)
+            scheduleMapRefit(panelHeight: mapViewportSize.height * TripDetailPanelLayout.heightFraction)
 
             try? await Task.sleep(for: .milliseconds(160))
             guard !Task.isCancelled else { return }
@@ -589,9 +553,9 @@ struct TripDetailView: View {
         )
         speedChartRevealProgress = 1
         TripDetailRevealSession.markCompleted(trip.id)
-        // Full-screen map: frame the route into the gap above the live panel detent.
+        // Full-screen map: frame the route into the gap above the live panel.
         scheduleMapRefit(
-            panelHeight: mapViewportSize.height * panelDetent.fraction,
+            panelHeight: mapViewportSize.height * TripDetailPanelLayout.heightFraction,
             animated: false,
             delayMilliseconds: 80
         )
@@ -603,11 +567,7 @@ struct TripDetailView: View {
     }
 
     private func livePanelHeight(containerHeight: CGFloat) -> CGFloat {
-        let minHeight = containerHeight * TripDetailPanelDetent.mapFocused.fraction
-        let maxHeight = containerHeight * TripDetailPanelDetent.details.fraction
-        let base = containerHeight * panelDetent.fraction
-        // Drag down → smaller panel (more map); drag up → taller panel.
-        return min(maxHeight, max(minHeight, base - panelDragTranslation))
+        containerHeight * TripDetailPanelLayout.heightFraction
     }
 
     /// `GeometryReader` under `.ignoresSafeArea(.bottom)` reports a zero bottom inset.
@@ -689,12 +649,12 @@ struct TripDetailView: View {
         let height = panelHeight
             ?? (lastLivePanelHeight > 0
                 ? lastLivePanelHeight
-                : size.height * panelDetent.fraction)
+                : size.height * TripDetailPanelLayout.heightFraction)
         guard let region = fittedMapRegion(panelHeight: height) else { return }
         applyFittedCamera(region: region, animated: animated, animation: animation)
     }
 
-    /// One camera settle after sheet/detent motion — avoid double-apply flash.
+    /// One camera settle after the sheet rises — avoid double-apply flash.
     private func scheduleMapRefit(
         panelHeight: CGFloat? = nil,
         animated: Bool = true,
@@ -703,32 +663,13 @@ struct TripDetailView: View {
         let height = panelHeight
             ?? (lastLivePanelHeight > 0
                 ? lastLivePanelHeight
-                : mapViewportSize.height * panelDetent.fraction)
+                : mapViewportSize.height * TripDetailPanelLayout.heightFraction)
         mapRefitTask?.cancel()
         mapRefitTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(delayMilliseconds))
             guard !Task.isCancelled else { return }
             refitMapToVisibleGap(panelHeight: height, animated: animated)
         }
-    }
-
-    private func snapPanelDetent(containerHeight: CGFloat, velocityY: CGFloat) {
-        guard !isMapExpanded else { return }
-        let live = livePanelHeight(containerHeight: containerHeight)
-        var target = TripDetailPanelDetent.nearest(height: live, containerHeight: containerHeight)
-        // Fling: downward velocity favors more map; upward favors more details.
-        if velocityY > 900 {
-            target = target.lower ?? target
-        } else if velocityY < -900 {
-            target = target.higher ?? target
-        }
-        let targetHeight = containerHeight * target.fraction
-        withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
-            panelDetent = target
-            panelDragTranslation = 0
-        }
-        lastLivePanelHeight = targetHeight
-        scheduleMapRefit(panelHeight: targetHeight)
     }
 
     private func toggleMapExpanded() {
@@ -743,7 +684,7 @@ struct TripDetailView: View {
         let chromeFadeInMs: UInt64 = 750
         let restorePanelHeight = lastLivePanelHeight > 0
             ? lastLivePanelHeight
-            : mapViewportSize.height * panelDetent.fraction
+            : mapViewportSize.height * TripDetailPanelLayout.heightFraction
 
         if reduceMotion {
             isMapExpandTransitioning = false
@@ -800,20 +741,10 @@ struct TripDetailView: View {
         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
     }
 
-    private func refitMapForPanelDetent(_ detent: TripDetailPanelDetent, animated: Bool = true) {
-        let height = mapViewportSize.height * detent.fraction
-        lastLivePanelHeight = height
-        if animated {
-            scheduleMapRefit(panelHeight: height, animated: true)
-        } else {
-            refitMapToVisibleGap(panelHeight: height, animated: false)
-        }
-    }
-
     @ViewBuilder
-    private func detailPanel(containerHeight: CGFloat) -> some View {
+    private func detailPanel() -> some View {
         VStack(spacing: 0) {
-            panelGrabber(containerHeight: containerHeight)
+            panelGrabber
 
             if panelRisen {
                 ScrollView(.vertical, showsIndicators: true) {
@@ -996,48 +927,14 @@ struct TripDetailView: View {
         .padding(.bottom, 88)
     }
 
-    private func panelGrabber(containerHeight: CGFloat) -> some View {
+    private var panelGrabber: some View {
         Capsule()
             .fill(Color.secondary.opacity(0.35))
             .frame(width: 36, height: 5)
             .padding(.top, 10)
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 4, coordinateSpace: .global)
-                    .onChanged { value in
-                        dismissNoteKeyboard()
-                        panelDragTranslation = value.translation.height
-                    }
-                    .onEnded { value in
-                        snapPanelDetent(
-                            containerHeight: containerHeight,
-                            velocityY: value.predictedEndTranslation.height - value.translation.height
-                        )
-                    }
-            )
-            .accessibilityLabel(L10n.tripDetailPanelResize)
-            .accessibilityHint(L10n.tripDetailPanelResizeHint)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityActions {
-                Button(L10n.tripDetailPanelMoreMap) {
-                    guard let lower = panelDetent.lower else { return }
-                    withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
-                        panelDetent = lower
-                        panelDragTranslation = 0
-                    }
-                    refitMapForPanelDetent(lower)
-                }
-                Button(L10n.tripDetailPanelMoreDetails) {
-                    guard let higher = panelDetent.higher else { return }
-                    withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
-                        panelDetent = higher
-                        panelDragTranslation = 0
-                    }
-                    refitMapForPanelDetent(higher)
-                }
-            }
+            .accessibilityHidden(true)
     }
 
     private var tripHeader: some View {
@@ -1783,71 +1680,74 @@ private struct SpeedChartRouteCanvas: View {
     /// Typical spacing between plotted samples; the gap threshold scales off it.
     let sampleMedianIntervalSeconds: TimeInterval
 
-    private static let minimumGapBreakSeconds: TimeInterval = 90
-
-    /// A fixed threshold breaks the line on sparsely sampled trips, where six times the normal
-    /// spacing is what actually signals a recording gap.
     private var gapBreakSeconds: TimeInterval {
-        max(Self.minimumGapBreakSeconds, sampleMedianIntervalSeconds * 6)
+        SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: sampleMedianIntervalSeconds)
     }
 
     private var brandColor: Color { TrailhoundBrandColors.brandBottom }
 
     var body: some View {
         Canvas { context, size in
-            let revealed = revealedSamples(progress: progress)
-            let pointGroups = projectedPointGroups(for: revealed, in: size)
-            guard !pointGroups.isEmpty else { return }
+            let inset: CGFloat = 2
+            let baselineY = size.height - inset
+            let revealed = SpeedChartSeries.revealedSamples(
+                from: samples.map { ($0.date, $0.speedKmh) },
+                progress: progress,
+                gapBreakSeconds: gapBreakSeconds
+            )
+            let points = SpeedChartSeries.strokePoints(
+                samples: revealed,
+                gapBreakSeconds: gapBreakSeconds,
+                project: { date, speedKmh in
+                    projectedPoint(date: date, speedKmh: speedKmh, in: size, inset: inset)
+                },
+                baselineY: baselineY
+            )
+            guard !points.isEmpty else { return }
 
-            let baselineY = size.height - 2
-
-            for points in pointGroups {
-                guard points.count >= 1 else { continue }
-
-                if points.count == 1 {
-                    var dot = Path()
-                    dot.addEllipse(in: CGRect(x: points[0].x - 2, y: points[0].y - 2, width: 4, height: 4))
-                    context.fill(dot, with: .color(brandColor))
-                    continue
-                }
-
-                var line = Path()
-                line.move(to: points[0])
-                for point in points.dropFirst() {
-                    line.addLine(to: point)
-                }
-
-                var area = Path()
-                area.move(to: CGPoint(x: points[0].x, y: baselineY))
-                area.addLine(to: points[0])
-                for point in points.dropFirst() {
-                    area.addLine(to: point)
-                }
-                area.addLine(to: CGPoint(x: points[points.count - 1].x, y: baselineY))
-                area.closeSubpath()
-
-                context.fill(
-                    area,
-                    with: .linearGradient(
-                        Gradient(colors: [brandColor.opacity(0.28), brandColor.opacity(0.04)]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: 0, y: size.height)
-                    )
-                )
-
-                context.stroke(
-                    line,
-                    with: .color(brandColor.opacity(0.35)),
-                    style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round)
-                )
-                context.stroke(
-                    line,
-                    with: .color(brandColor),
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
-                )
+            if points.count == 1 {
+                var dot = Path()
+                dot.addEllipse(in: CGRect(x: points[0].x - 2, y: points[0].y - 2, width: 4, height: 4))
+                context.fill(dot, with: .color(brandColor))
+                return
             }
 
-            if progress < 0.995, let tip = pointGroups.last?.last {
+            var line = Path()
+            line.move(to: points[0])
+            for point in points.dropFirst() {
+                line.addLine(to: point)
+            }
+
+            var area = Path()
+            area.move(to: CGPoint(x: points[0].x, y: baselineY))
+            area.addLine(to: points[0])
+            for point in points.dropFirst() {
+                area.addLine(to: point)
+            }
+            area.addLine(to: CGPoint(x: points[points.count - 1].x, y: baselineY))
+            area.closeSubpath()
+
+            context.fill(
+                area,
+                with: .linearGradient(
+                    Gradient(colors: [brandColor.opacity(0.28), brandColor.opacity(0.04)]),
+                    startPoint: CGPoint(x: 0, y: 0),
+                    endPoint: CGPoint(x: 0, y: size.height)
+                )
+            )
+
+            context.stroke(
+                line,
+                with: .color(brandColor.opacity(0.35)),
+                style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round)
+            )
+            context.stroke(
+                line,
+                with: .color(brandColor),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+
+            if progress < 0.995, let tip = points.last {
                 var glow = Path()
                 glow.addEllipse(in: CGRect(x: tip.x - 4.5, y: tip.y - 4.5, width: 9, height: 9))
                 context.fill(glow, with: .color(brandColor.opacity(0.28)))
@@ -1861,80 +1761,18 @@ private struct SpeedChartRouteCanvas: View {
         .accessibilityHidden(true)
     }
 
-    private func revealedSamples(progress: Double) -> [(date: Date, speedKmh: Double)] {
-        guard samples.count >= 2 else {
-            return samples.map { ($0.date, $0.speedKmh) }
-        }
-
-        let clamped = min(1, max(0, progress))
-        if clamped <= 0 {
-            return [(samples[0].date, samples[0].speedKmh)]
-        }
-        if clamped >= 1 {
-            return samples.map { ($0.date, $0.speedKmh) }
-        }
-
-        let segmentCount = samples.count - 1
-        let exact = Double(segmentCount) * clamped
-        let index = min(segmentCount - 1, Int(exact))
-        let fraction = exact - Double(index)
-        var result = samples.prefix(index + 1).map { ($0.date, $0.speedKmh) }
-        let start = samples[index]
-        let end = samples[index + 1]
-        let startTime = start.date.timeIntervalSince1970
-        let endTime = end.date.timeIntervalSince1970
-        result.append((
-            date: Date(timeIntervalSince1970: startTime + (endTime - startTime) * fraction),
-            speedKmh: start.speedKmh + (end.speedKmh - start.speedKmh) * fraction
-        ))
-        return result
-    }
-
-    private func projectedPointGroups(
-        for samples: [(date: Date, speedKmh: Double)],
-        in size: CGSize
-    ) -> [[CGPoint]] {
-        let points = projectedPoints(for: samples, in: size)
-        guard points.count >= 2 else {
-            return points.isEmpty ? [] : [points]
-        }
-
-        var groups: [[CGPoint]] = []
-        var current = [points[0]]
-        for index in 1..<points.count {
-            let gap = samples[index].date.timeIntervalSince(samples[index - 1].date)
-            if gap > gapBreakSeconds {
-                groups.append(current)
-                current = [points[index]]
-            } else {
-                current.append(points[index])
-            }
-        }
-        groups.append(current)
-        return groups
-    }
-
-    private func projectedPoints(
-        for samples: [(date: Date, speedKmh: Double)],
-        in size: CGSize
-    ) -> [CGPoint] {
-        guard !samples.isEmpty else { return [] }
-
+    private func projectedPoint(date: Date, speedKmh: Double, in size: CGSize, inset: CGFloat) -> CGPoint {
         let dateSpan = max(tripEndedAt.timeIntervalSince(tripStartedAt), 1)
-        let inset: CGFloat = 2
         let drawWidth = max(size.width - inset * 2, 1)
         let drawHeight = max(size.height - inset * 2, 1)
         let baselineY = size.height - inset
         let speedMax = max(maxKmh, 1)
-
-        return samples.map { sample in
-            let xFraction = sample.date.timeIntervalSince(tripStartedAt) / dateSpan
-            let yFraction = min(1, max(0, sample.speedKmh / speedMax))
-            return CGPoint(
-                x: inset + CGFloat(xFraction) * drawWidth,
-                y: baselineY - CGFloat(yFraction) * drawHeight
-            )
-        }
+        let xFraction = date.timeIntervalSince(tripStartedAt) / dateSpan
+        let yFraction = min(1, max(0, speedKmh / speedMax))
+        return CGPoint(
+            x: inset + CGFloat(xFraction) * drawWidth,
+            y: baselineY - CGFloat(yFraction) * drawHeight
+        )
     }
 }
 

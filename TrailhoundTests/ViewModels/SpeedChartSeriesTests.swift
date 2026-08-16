@@ -101,6 +101,86 @@ final class SpeedChartSeriesTests: XCTestCase {
         XCTAssertEqual(SpeedChartSeries.build(samples: drive(speedsMps: [14])).samples.count, 1)
     }
 
+    /// A merge seam or lost-signal hole must not leave a dashed chart: the stroke drops to
+    /// y=0, runs along the floor, then climbs the next leg.
+    func testRecordingGapIsBridgedAlongTheBaseline() {
+        let samples = [
+            (date: start, speedKmh: 50.0),
+            (date: start.addingTimeInterval(10), speedKmh: 60.0),
+            (date: start.addingTimeInterval(4000), speedKmh: 40.0)
+        ]
+
+        let points = SpeedChartSeries.strokePoints(
+            samples: samples,
+            gapBreakSeconds: 90,
+            project: { date, speed in
+                CGPoint(x: date.timeIntervalSince(start), y: speed)
+            },
+            baselineY: 0
+        )
+
+        XCTAssertEqual(points, [
+            CGPoint(x: 0, y: 50),
+            CGPoint(x: 10, y: 60),
+            CGPoint(x: 10, y: 0),
+            CGPoint(x: 4000, y: 0),
+            CGPoint(x: 4000, y: 40)
+        ])
+    }
+
+    func testCloseSamplesAreNotBridged() {
+        let samples = [
+            (date: start, speedKmh: 20.0),
+            (date: start.addingTimeInterval(5), speedKmh: 30.0)
+        ]
+
+        let points = SpeedChartSeries.strokePoints(
+            samples: samples,
+            gapBreakSeconds: 90,
+            project: { date, speed in
+                CGPoint(x: date.timeIntervalSince(start), y: speed)
+            },
+            baselineY: 0
+        )
+
+        XCTAssertEqual(points, [
+            CGPoint(x: 0, y: 20),
+            CGPoint(x: 5, y: 30)
+        ])
+    }
+
+    func testRevealAcrossAGapStaysOnTheFloor() {
+        let samples = [
+            (date: start, speedKmh: 50.0),
+            (date: start.addingTimeInterval(4000), speedKmh: 40.0)
+        ]
+
+        let revealed = SpeedChartSeries.revealedSamples(
+            from: samples,
+            progress: 0.5,
+            gapBreakSeconds: 90
+        )
+
+        XCTAssertEqual(revealed.count, 2)
+        XCTAssertEqual(revealed[1].speedKmh, 0, accuracy: 0.001)
+        XCTAssertEqual(revealed[1].date.timeIntervalSince(start), 2000, accuracy: 0.001)
+    }
+
+    func testRevealAcrossDrivingInterpolatesSpeed() {
+        let samples = [
+            (date: start, speedKmh: 0.0),
+            (date: start.addingTimeInterval(10), speedKmh: 50.0)
+        ]
+
+        let revealed = SpeedChartSeries.revealedSamples(
+            from: samples,
+            progress: 0.5,
+            gapBreakSeconds: 90
+        )
+
+        XCTAssertEqual(revealed[1].speedKmh, 25, accuracy: 0.001)
+    }
+
     // MARK: - Fixtures
 
     /// One sample per second, each moving the distance its speed implies.

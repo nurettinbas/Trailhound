@@ -495,62 +495,51 @@ enum TripShareCardRenderer {
     ) {
         guard !samples.isEmpty else { return }
 
-        let gapBreak = max(90.0, medianInterval * 6)
+        let gapBreak = SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: medianInterval)
         let dateSpan = max(tripEndedAt.timeIntervalSince(tripStartedAt), 1)
         let speedMax = max(maxKmh, 1)
         let brand = UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: 1)
+        let points = SpeedChartSeries.strokePoints(
+            samples: samples.map { ($0.date, $0.speedKmh) },
+            gapBreakSeconds: gapBreak,
+            project: { date, speedKmh in
+                let xFraction = date.timeIntervalSince(tripStartedAt) / dateSpan
+                let yFraction = min(1, max(0, speedKmh / speedMax))
+                return CGPoint(
+                    x: rect.minX + CGFloat(xFraction) * rect.width,
+                    y: rect.maxY - CGFloat(yFraction) * rect.height
+                )
+            },
+            baselineY: rect.maxY
+        )
+        guard points.count >= 2 else { return }
 
-        func point(for sample: SpeedChartSeries.Sample) -> CGPoint {
-            let xFraction = sample.date.timeIntervalSince(tripStartedAt) / dateSpan
-            let yFraction = min(1, max(0, sample.speedKmh / speedMax))
-            return CGPoint(
-                x: rect.minX + CGFloat(xFraction) * rect.width,
-                y: rect.maxY - CGFloat(yFraction) * rect.height
-            )
+        let line = UIBezierPath()
+        line.move(to: points[0])
+        for point in points.dropFirst() {
+            line.addLine(to: point)
         }
 
-        var groups: [[CGPoint]] = []
-        var current = [point(for: samples[0])]
-        for index in 1..<samples.count {
-            let gap = samples[index].date.timeIntervalSince(samples[index - 1].date)
-            let p = point(for: samples[index])
-            if gap > gapBreak {
-                groups.append(current)
-                current = [p]
-            } else {
-                current.append(p)
-            }
+        let area = UIBezierPath()
+        area.move(to: CGPoint(x: points[0].x, y: rect.maxY))
+        area.addLine(to: points[0])
+        for point in points.dropFirst() {
+            area.addLine(to: point)
         }
-        groups.append(current)
+        area.addLine(to: CGPoint(x: points[points.count - 1].x, y: rect.maxY))
+        area.close()
+        brand.withAlphaComponent(0.22).setFill()
+        area.fill()
 
-        for points in groups where points.count >= 2 {
-            let line = UIBezierPath()
-            line.move(to: points[0])
-            for p in points.dropFirst() {
-                line.addLine(to: p)
-            }
+        brand.withAlphaComponent(0.35).setStroke()
+        line.lineWidth = 6
+        line.lineCapStyle = .round
+        line.lineJoinStyle = .round
+        line.stroke()
 
-            let area = UIBezierPath()
-            area.move(to: CGPoint(x: points[0].x, y: rect.maxY))
-            area.addLine(to: points[0])
-            for p in points.dropFirst() {
-                area.addLine(to: p)
-            }
-            area.addLine(to: CGPoint(x: points[points.count - 1].x, y: rect.maxY))
-            area.close()
-            brand.withAlphaComponent(0.22).setFill()
-            area.fill()
-
-            brand.withAlphaComponent(0.35).setStroke()
-            line.lineWidth = 6
-            line.lineCapStyle = .round
-            line.lineJoinStyle = .round
-            line.stroke()
-
-            brand.setStroke()
-            line.lineWidth = 2.5
-            line.stroke()
-        }
+        brand.setStroke()
+        line.lineWidth = 2.5
+        line.stroke()
     }
 
     // MARK: - Helpers
