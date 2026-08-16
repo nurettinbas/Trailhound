@@ -335,6 +335,55 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(empty.averageCostPerTripText, "—")
     }
 
+    func testStatsAggregatesDynamicFuelCost() {
+        let first = Trip(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600),
+            distanceMeters: 5_000,
+            estimatedFuelCost: 50,
+            dynamicFuelCost: 60
+        )
+        let second = Trip(
+            startedAt: Date().addingTimeInterval(-1800),
+            endedAt: Date(),
+            distanceMeters: 4_000,
+            estimatedFuelCost: 40,
+            dynamicFuelCost: 40
+        )
+
+        let stats = StatsViewModel.stats(for: [first, second])
+
+        XCTAssertEqual(stats.estimatedFuelCost, 90, accuracy: 0.1)
+        XCTAssertEqual(stats.dynamicFuelCost, 100, accuracy: 0.1)
+    }
+
+    func testDynamicCostPerKmAndPerTrip() {
+        let stats = TripStats(
+            tripCount: 2,
+            totalDistanceMeters: 10_000,
+            totalDuration: 3600,
+            averageDuration: 1800,
+            estimatedFuelCost: 80,
+            dynamicFuelCost: 100
+        )
+
+        XCTAssertEqual(stats.dynamicCostPerKm, 10, accuracy: 0.01)
+        XCTAssertEqual(stats.dynamicCostPerTrip, 50, accuracy: 0.01)
+
+        let empty = TripStats(
+            tripCount: 0,
+            totalDistanceMeters: 0,
+            totalDuration: 0,
+            averageDuration: 0,
+            estimatedFuelCost: 0,
+            dynamicFuelCost: 0
+        )
+        XCTAssertEqual(empty.dynamicCostPerKm, 0, accuracy: 0.001)
+        XCTAssertEqual(empty.dynamicCostPerTrip, 0, accuracy: 0.001)
+        XCTAssertEqual(empty.dynamicCostPerKmText, "—")
+        XCTAssertEqual(empty.dynamicCostPerTripText, "—")
+    }
+
     func testCategoryBreakdownSortsByDistance() {
         let business = Trip(
             startedAt: Date().addingTimeInterval(-7200),

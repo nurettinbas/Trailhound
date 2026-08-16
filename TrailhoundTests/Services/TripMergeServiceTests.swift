@@ -92,6 +92,36 @@ final class TripMergeServiceTests: XCTestCase {
         XCTAssertTrue(merged.label?.contains("Evening") == true)
     }
 
+    func testMergeRecomputesDynamicFuelFromSnapshots() throws {
+        let first = makeTrip(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-5400),
+            distanceMeters: 3_000
+        )
+        first.fuelConsumptionPer100 = 7.5
+        first.fuelUnitPrice = 65
+        let second = makeTrip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 4_500
+        )
+        second.fuelConsumptionPer100 = 7.5
+        second.fuelUnitPrice = 65
+        container.mainContext.insert(first)
+        container.mainContext.insert(second)
+        try container.mainContext.save()
+
+        let merged = try TripMergeService.merge(trips: [first, second], into: container.mainContext)
+
+        XCTAssertEqual(merged.distanceMeters, 7_500, accuracy: 0.1)
+        XCTAssertEqual(merged.fuelConsumptionPer100 ?? 0, 7.5, accuracy: 0.01)
+        XCTAssertEqual(merged.fuelUnitPrice ?? 0, 65, accuracy: 0.01)
+        XCTAssertNotNil(merged.estimatedFuelCost)
+        XCTAssertGreaterThan(merged.estimatedFuelCost ?? 0, 0)
+        XCTAssertNotNil(merged.dynamicFuelCost)
+        XCTAssertGreaterThan(merged.dynamicFuelCost ?? 0, 0)
+    }
+
     func testMergeMarksTheGapBetweenLegsAsAStop() throws {
         let base = Date().addingTimeInterval(-7200)
         let first = makeTrip(startedAt: base, endedAt: base.addingTimeInterval(1800), distanceMeters: 3000)

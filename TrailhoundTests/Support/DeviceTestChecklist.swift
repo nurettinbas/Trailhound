@@ -47,6 +47,9 @@ enum DeviceTestChecklist {
         "Vehicle photo: All Photos system picker; framing after pick",
         "Vehicle photo: camera shutter; green privacy dot clears when backgrounded",
         "Vehicle photo: limited library / deny photos / deny camera states",
-        "Vehicle photo: Change + existing framing Apply/Save path still works"
+        "Vehicle photo: Change + existing framing Apply/Save path still works",
+        "Trip detail: Avg fuel and Est. fuel both show; Est. ? opens full explanation",
+        "Trip detail / Stats: Cruise + Common ? explain moving average vs pace band; Median + P90 when route loaded",
+        "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)"
     ]
 }

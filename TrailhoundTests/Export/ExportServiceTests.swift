@@ -6,6 +6,7 @@ final class ExportServiceTests: XCTestCase {
     func testCSVContainsHeader() {
         let csv = ExportService.exportCSV(trips: [])
         XCTAssertTrue(csv.contains("distanceKm"))
+        XCTAssertTrue(csv.contains("dynamicFuelCost"))
     }
 
     func testGPXContainsTrackTag() {
@@ -28,6 +29,22 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(lines.count, 2)
         XCTAssertTrue(lines[1].contains(trip.id.uuidString))
         XCTAssertTrue(lines[1].contains("14.20") || lines[1].contains("14.2"))
+    }
+
+    func testCSVIncludesDynamicFuelCost() {
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 5_000,
+            estimatedFuelCost: 80,
+            dynamicFuelCost: 95
+        )
+        let csv = ExportService.exportCSV(trips: [trip])
+        let lines = csv.split(separator: "\n")
+
+        XCTAssertEqual(lines.count, 2)
+        XCTAssertTrue(String(lines[0]).contains("dynamicFuelCost"))
+        XCTAssertTrue(String(lines[1]).contains("95"))
     }
 
     func testGPXIncludesTrackPointsForTrip() {

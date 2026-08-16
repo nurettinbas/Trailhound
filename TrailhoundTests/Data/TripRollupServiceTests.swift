@@ -9,7 +9,7 @@ final class TripRollupServiceTests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         container = try ModelContainer(
-            for: Schema(versionedSchema: TrailhoundSchemaV11.self),
+            for: Schema(versionedSchema: TrailhoundSchemaV18.self),
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }
@@ -33,7 +33,8 @@ final class TripRollupServiceTests: XCTestCase {
         cruiseSpeedKmh: Double = 0,
         cruiseDurationSeconds: Double = 0,
         stopDurationSeconds: Double = 0,
-        mostCommonSpeedKmh: Double = 0
+        mostCommonSpeedKmh: Double = 0,
+        dynamicFuelCost: Double = 0
     ) -> Trip {
         let trip = Trip(
             startedAt: startedAt,
@@ -45,6 +46,7 @@ final class TripRollupServiceTests: XCTestCase {
         trip.nightDistanceMeters = nightMeters
         trip.trackedDistanceMeters = trackedMeters
         trip.estimatedFuelCost = 50
+        trip.dynamicFuelCost = dynamicFuelCost
         trip.cruiseSpeedKmh = cruiseSpeedKmh
         trip.cruiseDurationSeconds = cruiseDurationSeconds
         trip.stopDurationSeconds = stopDurationSeconds
@@ -213,7 +215,8 @@ final class TripRollupServiceTests: XCTestCase {
                 distanceMeters: Double(1_000 * (index + 1)),
                 durationSeconds: 2_000,
                 nightMeters: 200,
-                trackedMeters: Double(1_000 * (index + 1))
+                trackedMeters: Double(1_000 * (index + 1)),
+                dynamicFuelCost: Double(10 * (index + 1))
             )
             trips.append(trip)
             TripRollupService.add(trip, in: context)
@@ -237,6 +240,7 @@ final class TripRollupServiceTests: XCTestCase {
         XCTAssertEqual(fromRollups.totalDistanceMeters, fromTrips.totalDistanceMeters, accuracy: 0.1)
         XCTAssertEqual(fromRollups.totalDuration, fromTrips.totalDuration, accuracy: 0.1)
         XCTAssertEqual(fromRollups.estimatedFuelCost, fromTrips.estimatedFuelCost, accuracy: 0.1)
+        XCTAssertEqual(fromRollups.dynamicFuelCost, fromTrips.dynamicFuelCost, accuracy: 0.1)
         XCTAssertEqual(fromRollups.nightDrivingRatio, fromTrips.nightDrivingRatio, accuracy: 0.0001)
     }
 
@@ -286,5 +290,18 @@ final class TripRollupServiceTests: XCTestCase {
         let row = TripStatsRow(rollup: rollup)
         XCTAssertEqual(row.resolvedCruiseSpeedKmh, 106.8, accuracy: 0.2)
         XCTAssertEqual(row.resolvedMostCommonSpeedKmh, 97.0, accuracy: 0.2)
+    }
+
+    func testRollupAccumulatesDynamicFuelCost() throws {
+        let day = Calendar.current.startOfDay(for: Date()).addingTimeInterval(9 * 3_600)
+        let first = insertTrip(startedAt: day, dynamicFuelCost: 80)
+        let second = insertTrip(startedAt: day.addingTimeInterval(3_600), dynamicFuelCost: 95)
+
+        TripRollupService.add(first, in: context)
+        TripRollupService.add(second, in: context)
+        try context.save()
+
+        let rollup = try XCTUnwrap(try rollups().first)
+        XCTAssertEqual(rollup.dynamicFuelCost, 175, accuracy: 0.1)
     }
 }

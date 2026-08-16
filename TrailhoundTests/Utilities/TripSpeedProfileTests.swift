@@ -148,7 +148,18 @@ final class TripSpeedProfileTests: XCTestCase {
         let profile = TripSpeedProfile.compute(samples: samples(speedsMps: speeds))
 
         XCTAssertNil(profile.cruiseSpeedKmh)
+        XCTAssertNil(profile.mostCommonSpeedKmh)
+        XCTAssertNil(profile.medianSpeedKmh)
+        XCTAssertNil(profile.p90SpeedKmh)
         XCTAssertEqual(profile.cruiseDurationSeconds, 0, accuracy: 0.001)
+    }
+
+    func testSteadySpeedMedianMatchesP90() {
+        let speeds = Array(repeating: 50.0 / 3.6, count: 121)
+        let profile = TripSpeedProfile.compute(samples: samples(speedsMps: speeds))
+
+        XCTAssertEqual(profile.medianSpeedKmh ?? 0, 50, accuracy: 0.5)
+        XCTAssertEqual(profile.p90SpeedKmh ?? 0, 50, accuracy: 0.5)
     }
 
     func testEmptyRouteReportsEmpty() {
@@ -206,6 +217,7 @@ final class TripSpeedProfileTests: XCTestCase {
         XCTAssertEqual(profile.p90SpeedKmh ?? 0, 68, accuracy: 1)
         XCTAssertLessThan(profile.medianSpeedKmh ?? 0, profile.mostCommonSpeedKmh ?? 0)
         XCTAssertGreaterThanOrEqual(profile.p90SpeedKmh ?? 0, profile.medianSpeedKmh ?? 0)
+        XCTAssertLessThanOrEqual(profile.p90SpeedKmh ?? 0, 68.5)
     }
 
     /// Samples one second apart, each moving the distance its speed implies.

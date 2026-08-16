@@ -318,6 +318,29 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
     }
 
+    /// Stored avg cost is the display source of truth — Settings / vehicle averages must not
+    /// replace it when recompute runs again under a different fuel type.
+    func testStoredAvgFuelSurvivesRecomputeAndStatsFuelCost() {
+        let trip = makeTrip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        trip.distanceMeters = 5_000
+        trip.fuelConsumptionPer100 = 7.5
+        trip.fuelUnitPrice = 65
+        trip.estimatedFuelCost = 243.75
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .petrol)
+        let firstDynamic = trip.dynamicFuelCost ?? 0
+        XCTAssertGreaterThan(firstDynamic, 0)
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .diesel)
+        XCTAssertEqual(trip.estimatedFuelCost ?? 0, 243.75, accuracy: 0.01)
+        XCTAssertEqual(StatsViewModel.fuelCost(for: trip), 243.75, accuracy: 0.01)
+        XCTAssertNotNil(trip.dynamicFuelCost)
+        XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
+    }
+
     func testRecomputeOnPointlessTripClearsEndpoints() {
         let trip = Trip(startedAt: Date(), endedAt: Date())
         trip.startLatitude = 1
