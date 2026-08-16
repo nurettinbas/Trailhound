@@ -42,7 +42,7 @@ struct RecordingVehiclePicker: View {
                     if vehicle.id == selectedVehicleID {
                         Label(vehicle.name, systemImage: "checkmark")
                     } else {
-                        Label(vehicle.name, systemImage: VehicleIconOption.default.rawValue)
+                        Text(vehicle.name)
                     }
                 }
             }

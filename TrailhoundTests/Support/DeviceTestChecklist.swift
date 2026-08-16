@@ -38,7 +38,7 @@ enum DeviceTestChecklist {
         "Light/white vehicle photo: if punch makes it vanish, original photo is shown",
         "Vehicle without photo: Island + notification card fall back to SF symbol",
         "Expanded Island: no top gap; bottom buttons not clipped (even at 1:00:10)",
-        "Vehicle picker menu: row icons face right; checkmark stays on selection",
+        "Vehicle picker menu: no row icons; checkmark only on the selected vehicle",
         "Vehicle photo: Add → Library/Camera chooser; Library/Camera single sheet expand (~72%), no dismiss/reopen",
         "Vehicle photo: Capture Back → shrinks to chooser; Cancel on chooser dismisses sheet",
         "Vehicle photo: All Photos system picker; framing after pick",
