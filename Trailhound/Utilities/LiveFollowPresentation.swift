@@ -113,9 +113,39 @@ enum LiveFollowPresentation {
     }
 
     /// Where the follow puck sits on screen: camera looks ahead, so the car is in the lower half.
+    /// Fallback when MapKit has not projected a live vehicle point yet.
     static func heroDestCenter(in containerSize: CGSize, uses3D: Bool = true) -> CGPoint {
         let yFraction: CGFloat = uses3D ? 0.64 : 0.56
         return CGPoint(x: containerSize.width / 2, y: containerSize.height * yFraction)
+    }
+
+    /// Matches `LiveFollowPuckAnnotationView` / `LiveFollowPuckMark` circle size.
+    static let puckCircleSize: CGFloat = 56
+    static let puckChevronHeight: CGFloat = 38
+    static let puckChevronOverlap: CGFloat = 18
+    static let puckFrameVerticalExtra: CGFloat = 14
+
+    static var puckAnnotationFrameHeight: CGFloat {
+        puckCircleSize + puckChevronHeight - puckChevronOverlap + puckFrameVerticalExtra
+    }
+
+    /// Matches `LiveFollowPuckAnnotationView.centerOffset`.
+    static var puckAnnotationCenterOffset: CGPoint {
+        CGPoint(x: 0, y: -puckCircleSize / 2 + 8)
+    }
+
+    /// Screen position of the puck photo-circle center from MapKit's projected annotation point.
+    ///
+    /// `projectedPoint` is `map.convert(coordinate, toPointTo: map)`. The annotation view's
+    /// geometric center is offset by `puckAnnotationCenterOffset`; the circle sits at the top
+    /// of that view, so its center is above the view midY.
+    static func puckCircleCenter(fromProjectedAnnotationPoint projectedPoint: CGPoint) -> CGPoint {
+        let viewCenter = CGPoint(
+            x: projectedPoint.x + puckAnnotationCenterOffset.x,
+            y: projectedPoint.y + puckAnnotationCenterOffset.y
+        )
+        let circleVsViewCenterY = puckCircleSize / 2 - puckAnnotationFrameHeight / 2
+        return CGPoint(x: viewCenter.x, y: viewCenter.y + circleVsViewCenterY)
     }
 
     /// How far the hero arc bows off the straight chord (fraction of chord length).

@@ -20,8 +20,14 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     var vehiclePhoto: UIImage?
     var vehicleSystemImage: String
     var puckRevealed: Bool
+    /// 0…1 — MapKit puck view alpha (handoff crossfade with SwiftUI hero).
+    var puckAlpha: CGFloat
+    /// Bumped when puck alpha should animate (open/close handoff).
+    var puckFadeToken: Int
     var isMoving: Bool
     var onUserBreakFollow: () -> Void
+    /// Once MapKit has laid out, reports the puck circle center in map-view coordinates.
+    var onPuckCircleScreenPoint: ((CGPoint) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(session: session, onUserBreakFollow: onUserBreakFollow)
@@ -58,6 +64,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         context.coordinator.session = session
         context.coordinator.isFollowing = isFollowing
         context.coordinator.onUserBreakFollow = onUserBreakFollow
+        context.coordinator.onPuckCircleScreenPoint = onPuckCircleScreenPoint
+        context.coordinator.desiredPuckAlpha = puckAlpha
         context.coordinator.bindSession()
         mapView.isScrollEnabled = interactionEnabled
         mapView.isZoomEnabled = interactionEnabled
@@ -81,18 +89,32 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             updateCoordinate: false,
             on: mapView
         )
+        let shouldAnimatePuck = context.coordinator.lastPuckFadeToken != puckFadeToken
+        if shouldAnimatePuck {
+            context.coordinator.lastPuckFadeToken = puckFadeToken
+            context.coordinator.applyPuckAlpha(puckAlpha, animated: true, on: mapView)
+        } else if abs(context.coordinator.desiredPuckAlpha - puckAlpha) > 0.001 {
+            context.coordinator.applyPuckAlpha(puckAlpha, animated: false, on: mapView)
+        } else {
+            context.coordinator.desiredPuckAlpha = puckAlpha
+        }
+        context.coordinator.reportPuckCircleScreenPointIfPossible(on: mapView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var session: LiveFollowSession
         var isFollowing = true
         var onUserBreakFollow: () -> Void
+        var onPuckCircleScreenPoint: ((CGPoint) -> Void)?
+        var desiredPuckAlpha: CGFloat = 1
+        var lastPuckFadeToken: Int = 0
         weak var mapView: MKMapView?
         private var isApplyingCamera = false
         private var polylineByID: [String: MKPolyline] = [:]
         private var pinAnnotations: [String: LiveFollowPinAnnotation] = [:]
         private var puckAnnotation: LiveFollowPuckAnnotation?
         private var gestureRecognizersInstalled = false
+        private var lastReportedPuckPoint: CGPoint?
 
         init(
             session: LiveFollowSession,
@@ -269,6 +291,40 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             }
         }
 
+        func applyPuckAlpha(_ alpha: CGFloat, animated: Bool, on map: MKMapView) {
+            desiredPuckAlpha = alpha
+            guard let puckAnnotation, let view = map.view(for: puckAnnotation) else { return }
+            if animated {
+                UIView.animate(
+                    withDuration: TrailhoundMotion.liveFollowHandoffDuration,
+                    delay: 0,
+                    options: [.curveEaseInOut, .beginFromCurrentState]
+                ) {
+                    view.alpha = alpha
+                }
+            } else if abs(view.alpha - alpha) > 0.001 {
+                view.alpha = alpha
+            }
+        }
+
+        /// Projects the live vehicle into map-view space and reports the photo-circle center.
+        func reportPuckCircleScreenPointIfPossible(on map: MKMapView) {
+            guard let onPuckCircleScreenPoint else { return }
+            guard map.bounds.width > 1, map.bounds.height > 1 else { return }
+            guard let coordinate = session.vehicleCoordinate else { return }
+            map.layoutIfNeeded()
+            let projected = map.convert(coordinate, toPointTo: map)
+            let circle = LiveFollowPresentation.puckCircleCenter(fromProjectedAnnotationPoint: projected)
+            if let last = lastReportedPuckPoint,
+               abs(last.x - circle.x) < 0.5,
+               abs(last.y - circle.y) < 0.5
+            {
+                return
+            }
+            lastReportedPuckPoint = circle
+            onPuckCircleScreenPoint(circle)
+        }
+
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             guard let polyline = overlay as? MKPolyline else {
                 return MKOverlayRenderer(overlay: overlay)
@@ -293,6 +349,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 let view = (mapView.dequeueReusableAnnotationView(withIdentifier: reuse) as? LiveFollowPuckAnnotationView)
                     ?? LiveFollowPuckAnnotationView(annotation: puck, reuseIdentifier: reuse)
                 view.apply(puck)
+                view.alpha = desiredPuckAlpha
                 return view
             }
             if let pin = annotation as? LiveFollowPinAnnotation {
@@ -303,6 +360,13 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 return view
             }
             return nil
+        }
+
+        func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+            for view in views where view is LiveFollowPuckAnnotationView {
+                view.alpha = desiredPuckAlpha
+            }
+            reportPuckCircleScreenPointIfPossible(on: mapView)
         }
     }
 }
@@ -353,8 +417,8 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     private let chevronOverlap: CGFloat = 18
     private let photoBorder: CGFloat = 5
     private let photoGap: CGFloat = 3
-    /// Lighter plate than route line blue; ~50% transparent so the map shows through.
-    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 0.5)
+    /// Lighter plate than route line blue; 25% opaque so the map shows through.
+    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 0.25)
 
     private let badge = UIView()
     private let photoView = UIImageView()
@@ -381,7 +445,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         let frameHeight = circleSize + chevronSize.height - chevronOverlap + 14
         let frameWidth = max(circleSize, chevronSize.width) + 24
         frame = CGRect(x: 0, y: 0, width: frameWidth, height: frameHeight)
-        centerOffset = CGPoint(x: 0, y: -circleSize / 2 + 8)
+        centerOffset = LiveFollowPresentation.puckAnnotationCenterOffset
 
         pulse.backgroundColor = Self.plateBlue.withAlphaComponent(0.28)
         pulse.layer.cornerRadius = (circleSize + 22) / 2

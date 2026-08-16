@@ -114,6 +114,29 @@ final class LiveFollowPresentationTests: XCTestCase {
         XCTAssertEqual(dest2D.y, 844 * 0.56, accuracy: 0.01)
     }
 
+    func testPuckCircleCenterAppliesAnnotationOffsetAndBadgeLayout() {
+        let projected = CGPoint(x: 200, y: 500)
+        let circle = LiveFollowPresentation.puckCircleCenter(fromProjectedAnnotationPoint: projected)
+        let offset = LiveFollowPresentation.puckAnnotationCenterOffset
+        let viewCenterY = projected.y + offset.y
+        let circleVsView =
+            LiveFollowPresentation.puckCircleSize / 2
+            - LiveFollowPresentation.puckAnnotationFrameHeight / 2
+        XCTAssertEqual(circle.x, projected.x + offset.x, accuracy: 0.01)
+        XCTAssertEqual(circle.y, viewCenterY + circleVsView, accuracy: 0.01)
+        // Circle sits above the projected annotation point (chevron hangs below).
+        XCTAssertLessThan(circle.y, projected.y)
+    }
+
+    func testPuckAnnotationCenterOffsetMatchesLegacyLayout() {
+        XCTAssertEqual(
+            LiveFollowPresentation.puckAnnotationCenterOffset.y,
+            -LiveFollowPresentation.puckCircleSize / 2 + 8,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(LiveFollowPresentation.puckAnnotationCenterOffset.x, 0, accuracy: 0.01)
+    }
+
     func testHeroFlightArcEndpointsAndBulge() {
         let from = CGPoint(x: 195, y: 160)
         let to = CGPoint(x: 195, y: 540)

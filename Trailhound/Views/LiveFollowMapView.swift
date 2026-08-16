@@ -31,9 +31,15 @@ struct LiveFollowMapView: View {
     /// Keeps the SwiftUI hero mounted during the open handoff crossfade.
     @State private var showHeroOverlay = true
     @State private var puckRevealed = false
+    /// MapKit puck alpha — crossfades with `heroOpacity` at handoff.
+    @State private var puckAlpha: CGFloat = 1
+    @State private var puckFadeToken = 0
+    /// Map-projected puck circle center (overlay-local). Locked once before the open flight.
+    @State private var projectedHeroDest: CGPoint?
+    @State private var lockProjectedHeroDest = false
     @State private var mapMounted = false
     @State private var isClosing = false
-    /// After open fade finishes — follow camera may advance from GPS.
+    /// After open handoff finishes — follow camera may advance from GPS.
     @State private var openSettled = false
     @State private var displaySegments: [LiveFollowPolylineSegment] = []
     @State private var lastBreadcrumbPointCount = -1
@@ -107,7 +113,8 @@ struct LiveFollowMapView: View {
                 cardFallback: sourceGlobal
             )
             let heroSourceLocal = heroSourceGlobal.offsetBy(dx: -origin.x, dy: -origin.y)
-            let heroDest = LiveFollowPresentation.heroDestCenter(in: geo.size, uses3D: uses3D)
+            let heroDest = projectedHeroDest
+                ?? LiveFollowPresentation.heroDestCenter(in: geo.size, uses3D: uses3D)
             let dimOpacity = mapMounted ? 0.42 * (1 - mapClarity) : 0.0
 
             ZStack(alignment: .topLeading) {
@@ -251,10 +258,26 @@ struct LiveFollowMapView: View {
             vehiclePhoto: vehiclePhoto,
             vehicleSystemImage: vehicleSystemImage,
             puckRevealed: puckRevealed,
-            isMoving: !isPaused,
+            puckAlpha: puckAlpha,
+            puckFadeToken: puckFadeToken,
+            isMoving: openSettled && !isPaused,
             onUserBreakFollow: {
                 guard isFollowing else { return }
                 isFollowing = false
+            },
+            onPuckCircleScreenPoint: { point in
+                guard !lockProjectedHeroDest else { return }
+                Task { @MainActor in
+                    guard !self.lockProjectedHeroDest else { return }
+                    if self.projectedHeroDest == nil {
+                        self.projectedHeroDest = point
+                    } else if let current = self.projectedHeroDest,
+                              abs(current.x - point.x) > 0.5
+                                || abs(current.y - point.y) > 0.5
+                    {
+                        self.projectedHeroDest = point
+                    }
+                }
             }
         )
     }
@@ -496,6 +519,9 @@ struct LiveFollowMapView: View {
         heroOpacity = 1
         showHeroOverlay = true
         puckRevealed = false
+        puckAlpha = 1
+        projectedHeroDest = nil
+        lockProjectedHeroDest = false
         prepareMapMount()
 
         if reduceMotion {
@@ -504,16 +530,22 @@ struct LiveFollowMapView: View {
             heroFlight = 1
             heroOpacity = 0
             showHeroOverlay = false
+            puckAlpha = 1
             puckRevealed = true
             openSettled = true
+            lockProjectedHeroDest = true
             return
         }
 
         // One shared fade for map + hero so they stay synchronized (tiles can catch up underneath).
         Task { @MainActor in
-            // Let MapKit paint the first frame at the final camera while still invisible.
+            // Let MapKit paint the first frame at the final camera while still invisible,
+            // and publish a projected landing pixel for the hero arc.
             try? await Task.sleep(for: .milliseconds(50))
             guard !isClosing else { return }
+            try? await Task.sleep(for: .milliseconds(16))
+            guard !isClosing else { return }
+            lockProjectedHeroDest = true
             withAnimation(
                 TrailhoundMotion.liveFollowReveal,
                 completionCriteria: .logicallyComplete
@@ -523,18 +555,34 @@ struct LiveFollowMapView: View {
                 heroFlight = 1
             } completion: {
                 guard !self.isClosing else { return }
-                // Reveal map puck under the hero, then fade the hero out in place (no teleport).
-                self.puckRevealed = true
-                self.openSettled = true
-                withAnimation(.easeOut(duration: 0.28)) {
-                    self.heroOpacity = 0
-                }
                 Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(300))
-                    guard !self.isClosing else { return }
-                    self.showHeroOverlay = false
+                    await self.runOpenHandoff()
                 }
             }
+        }
+    }
+
+    /// Reveal MapKit puck under the hero and crossfade — then unlock follow camera.
+    @MainActor
+    private func runOpenHandoff() async {
+        guard !isClosing else { return }
+        // Add puck invisible under the hero; give MapKit a beat to materialize the view.
+        puckAlpha = 0
+        puckRevealed = true
+        try? await Task.sleep(for: .milliseconds(32))
+        guard !isClosing else { return }
+
+        puckFadeToken += 1
+        puckAlpha = 1
+        withAnimation(
+            TrailhoundMotion.liveFollowHandoff,
+            completionCriteria: .logicallyComplete
+        ) {
+            heroOpacity = 0
+        } completion: {
+            guard !self.isClosing else { return }
+            self.showHeroOverlay = false
+            self.openSettled = true
         }
     }
 
@@ -551,15 +599,16 @@ struct LiveFollowMapView: View {
     private func beginClose() {
         guard !isClosing else { return }
         isClosing = true
+        openSettled = false
         stopDisplayLink()
         releaseIdleLock()
-        // Reverse of open: hero at puck landing spot → fly back to list card.
-        showHeroOverlay = true
-        heroOpacity = 1
-        heroFlight = 1
-        puckRevealed = false
 
         if reduceMotion {
+            showHeroOverlay = true
+            heroOpacity = 1
+            heroFlight = 1
+            puckRevealed = false
+            puckAlpha = 1
             mapClarity = 0
             chromeReveal = 0
             heroFlight = 0
@@ -568,16 +617,43 @@ struct LiveFollowMapView: View {
             return
         }
 
+        Task { @MainActor in
+            await runCloseHandoffThenFlight()
+        }
+    }
+
+    /// Crossfade MapKit puck → SwiftUI hero, then fly the hero back to the list card.
+    @MainActor
+    private func runCloseHandoffThenFlight() async {
+        // Remount hero at the landing spot, invisible, then fade it in over the puck.
+        showHeroOverlay = true
+        heroFlight = 1
+        heroOpacity = 0
+
+        puckFadeToken += 1
+        puckAlpha = 0
         withAnimation(
-            TrailhoundMotion.liveFollowReveal,
+            TrailhoundMotion.liveFollowHandoff,
             completionCriteria: .logicallyComplete
         ) {
-            mapClarity = 0
-            chromeReveal = 0
-            heroFlight = 0
+            heroOpacity = 1
         } completion: {
-            self.mapMounted = false
-            self.onClose()
+            Task { @MainActor in
+                guard self.isClosing else { return }
+                self.puckRevealed = false
+                self.puckAlpha = 1
+                withAnimation(
+                    TrailhoundMotion.liveFollowReveal,
+                    completionCriteria: .logicallyComplete
+                ) {
+                    self.mapClarity = 0
+                    self.chromeReveal = 0
+                    self.heroFlight = 0
+                } completion: {
+                    self.mapMounted = false
+                    self.onClose()
+                }
+            }
         }
     }
 
@@ -661,8 +737,8 @@ struct LiveFollowMapView: View {
 
     /// Apple Maps navigation blue — traveled breadcrumb.
     static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
-    /// Matches MapKit puck plate (~50% transparent).
-    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0).opacity(0.5)
+    /// Matches MapKit puck plate (25% opaque).
+    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0).opacity(0.25)
 
     /// Decimate each gap-split live segment for MapKit cost; never rewrite stored points.
     static func polylineSegments(

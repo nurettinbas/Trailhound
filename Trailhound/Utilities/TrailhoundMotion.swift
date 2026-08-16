@@ -38,6 +38,9 @@ enum TrailhoundMotion {
     static let liveFollowReveal = Animation.easeInOut(duration: 1.05)
     /// Alias used by close / shared call sites.
     static let liveFollowExpand = liveFollowReveal
+    /// Hero ↔ MapKit puck crossfade at the end of open / start of close.
+    static let liveFollowHandoff = Animation.easeInOut(duration: 0.34)
+    static let liveFollowHandoffDuration: TimeInterval = 0.34
     /// Gallery/camera fade inside the grown card.
     static let photoSheetReveal = Animation.easeOut(duration: 0.56)
     /// Pure fade — no offset (offset reads as a new sheet rising).
