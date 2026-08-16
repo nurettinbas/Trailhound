@@ -21,7 +21,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Widget + Live Activity controls
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows vehicle icon, duration, distance, and speed in four equal columns (non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
-- **Live follow map** (optional): Maps-style 3D/2D follow with smooth camera (display-link + MapKit), screen stays awake while open, live breadcrumb, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
+- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center, smooth camera (display-link + MapKit), screen stays awake while open, live breadcrumb, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)

@@ -115,6 +115,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private var puckAnnotation: LiveFollowPuckAnnotation?
         private var gestureRecognizersInstalled = false
         private var lastReportedPuckPoint: CGPoint?
+        private var lastCommittedCoordinate: CLLocationCoordinate2D?
+        private var tipOverlay: LiveFollowGrowingTipOverlay?
+        private weak var tipRenderer: LiveFollowGrowingTipRenderer?
 
         init(
             session: LiveFollowSession,
@@ -137,6 +140,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 }
                 if let vehicle, let puck = self.puckAnnotation {
                     puck.coordinate = vehicle
+                }
+                if let vehicle {
+                    self.updateLiveTip(to: vehicle, on: map)
                 }
             }
         }
@@ -207,6 +213,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                     on: map
                 )
             }
+            lastCommittedCoordinate = segments.last?.coordinates.last
+            if let vehicle = session.vehicleCoordinate {
+                updateLiveTip(to: vehicle, on: map)
+            }
         }
 
         private static func haloID(_ segmentID: String) -> String { "\(segmentID)#halo" }
@@ -229,6 +239,41 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             let polyline = MKPolyline(coordinates: &coordinates, count: count)
             polylineByID[id] = polyline
             map.addOverlay(polyline, level: .aboveRoads)
+        }
+
+        func updateLiveTip(to vehicle: CLLocationCoordinate2D, on map: MKMapView) {
+            guard let pair = LiveFollowRouteTip.coordinates(
+                from: lastCommittedCoordinate,
+                to: vehicle
+            ) else {
+                removeLiveTip(on: map)
+                return
+            }
+            let start = pair[0]
+            let end = pair[1]
+            if let overlay = tipOverlay {
+                overlay.update(start: start, end: end)
+                if overlay.boundingMapRect.contains(MKMapPoint(end)) {
+                    tipRenderer?.setNeedsDisplay(overlay.strokeMapRect())
+                } else {
+                    overlay.expandBounds(around: start, end)
+                    map.removeOverlay(overlay)
+                    map.addOverlay(overlay, level: .aboveRoads)
+                }
+            } else {
+                let overlay = LiveFollowGrowingTipOverlay(start: start, end: end)
+                overlay.expandBounds(around: start, end)
+                tipOverlay = overlay
+                map.addOverlay(overlay, level: .aboveRoads)
+            }
+        }
+
+        func removeLiveTip(on map: MKMapView) {
+            if let overlay = tipOverlay {
+                map.removeOverlay(overlay)
+                tipOverlay = nil
+                tipRenderer = nil
+            }
         }
 
         func syncPins(_ pins: [LiveFollowMapPin], on map: MKMapView) {
@@ -326,6 +371,15 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let tip = overlay as? LiveFollowGrowingTipOverlay {
+                let renderer = LiveFollowGrowingTipRenderer(overlay: tip)
+                renderer.casingColor = RouteStroke.casingColor
+                renderer.solidColor = RouteStroke.solidColor
+                renderer.casingWidth = RouteStroke.casingWidth
+                renderer.solidWidth = RouteStroke.solidWidth
+                tipRenderer = renderer
+                return renderer
+            }
             guard let polyline = overlay as? MKPolyline else {
                 return MKOverlayRenderer(overlay: overlay)
             }
@@ -377,6 +431,77 @@ extension LiveFollowMapKitView.Coordinator: UIGestureRecognizerDelegate {
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
         true
+    }
+}
+
+// MARK: - Growing tip (interpolated vehicle, not stored breadcrumbs)
+
+final class LiveFollowGrowingTipOverlay: NSObject, MKOverlay {
+    private(set) var start: CLLocationCoordinate2D
+    private(set) var end: CLLocationCoordinate2D
+    private(set) var boundingMapRect: MKMapRect = .null
+
+    var coordinate: CLLocationCoordinate2D { end }
+
+    init(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) {
+        self.start = start
+        self.end = end
+        super.init()
+    }
+
+    func update(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) {
+        self.start = start
+        self.end = end
+    }
+
+    func expandBounds(around start: CLLocationCoordinate2D, _ end: CLLocationCoordinate2D) {
+        boundingMapRect = Self.paddedRect(from: start, to: end, padMeters: 280)
+    }
+
+    func strokeMapRect() -> MKMapRect {
+        Self.paddedRect(from: start, to: end, padMeters: 24)
+    }
+
+    private static func paddedRect(
+        from start: CLLocationCoordinate2D,
+        to end: CLLocationCoordinate2D,
+        padMeters: CLLocationDistance
+    ) -> MKMapRect {
+        let p0 = MKMapPoint(start)
+        let p1 = MKMapPoint(end)
+        let rect = MKMapRect(
+            x: min(p0.x, p1.x),
+            y: min(p0.y, p1.y),
+            width: max(abs(p0.x - p1.x), 1),
+            height: max(abs(p0.y - p1.y), 1)
+        )
+        let pad = MKMapPointsPerMeterAtLatitude(start.latitude) * padMeters
+        return rect.insetBy(dx: -pad, dy: -pad)
+    }
+}
+
+final class LiveFollowGrowingTipRenderer: MKOverlayRenderer {
+    var casingColor = UIColor.white.withAlphaComponent(0.45)
+    var solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
+    var casingWidth: CGFloat = 10.2
+    var solidWidth: CGFloat = 7.8
+
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let overlay = overlay as? LiveFollowGrowingTipOverlay else { return }
+        let p0 = point(for: MKMapPoint(overlay.start))
+        let p1 = point(for: MKMapPoint(overlay.end))
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        context.setStrokeColor(casingColor.cgColor)
+        context.setLineWidth(casingWidth / zoomScale)
+        context.move(to: p0)
+        context.addLine(to: p1)
+        context.strokePath()
+        context.setStrokeColor(solidColor.cgColor)
+        context.setLineWidth(solidWidth / zoomScale)
+        context.move(to: p0)
+        context.addLine(to: p1)
+        context.strokePath()
     }
 }
 

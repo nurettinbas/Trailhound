@@ -46,7 +46,7 @@ Optional smoke:
 
 - [ ] **Manual recording** — start / pause / end from the app
 - [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → pause/stop from the map
-- [ ] **Live follow map feel** — chevron + vehicle puck faces travel direction; 3D/2D toggle changes pitch/buildings
+- [ ] **Live follow map feel** — vehicle mark sits at screen center; chevron + puck faces travel direction; 3D/2D toggle changes pitch/buildings
 - [ ] **Widget / Siri** — start / stop recording via widget or Siri shortcut
 - [ ] **Export** — JSON, CSV, GPX, or KML
 

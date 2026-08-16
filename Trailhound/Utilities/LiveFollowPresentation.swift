@@ -112,11 +112,15 @@ enum LiveFollowPresentation {
         )
     }
 
-    /// Where the follow puck sits on screen: camera looks ahead, so the car is in the lower half.
-    /// Fallback when MapKit has not projected a live vehicle point yet.
-    static func heroDestCenter(in containerSize: CGSize, uses3D: Bool = true) -> CGPoint {
-        let yFraction: CGFloat = uses3D ? 0.64 : 0.56
-        return CGPoint(x: containerSize.width / 2, y: containerSize.height * yFraction)
+    /// Fallback hero landing when MapKit has not projected the live vehicle yet.
+    /// Camera is locked to the vehicle, so the annotation coordinate is screen center.
+    static func heroDestCenter(in containerSize: CGSize, uses3D _: Bool = true) -> CGPoint {
+        return puckCircleCenter(
+            fromProjectedAnnotationPoint: CGPoint(
+                x: containerSize.width / 2,
+                y: containerSize.height / 2
+            )
+        )
     }
 
     /// Matches `LiveFollowPuckAnnotationView` / `LiveFollowPuckMark` circle size.
@@ -125,13 +129,21 @@ enum LiveFollowPresentation {
     static let puckChevronOverlap: CGFloat = 18
     static let puckFrameVerticalExtra: CGFloat = 14
 
-    static var puckAnnotationFrameHeight: CGFloat {
-        puckCircleSize + puckChevronHeight - puckChevronOverlap + puckFrameVerticalExtra
+    /// Circle + chevron bounds (pulse padding below is excluded).
+    static var puckArtworkHeight: CGFloat {
+        puckCircleSize + puckChevronHeight - puckChevronOverlap
     }
 
-    /// Matches `LiveFollowPuckAnnotationView.centerOffset`.
+    static var puckAnnotationFrameHeight: CGFloat {
+        puckArtworkHeight + puckFrameVerticalExtra
+    }
+
+    /// Places the visual centroid of circle + chevron on the map coordinate
+    /// (screen midpoint when the camera is locked to the vehicle).
     static var puckAnnotationCenterOffset: CGPoint {
-        CGPoint(x: 0, y: -puckCircleSize / 2 + 8)
+        let artworkMidY = puckArtworkHeight / 2
+        let viewMidY = puckAnnotationFrameHeight / 2
+        return CGPoint(x: 0, y: viewMidY - artworkMidY)
     }
 
     /// Screen position of the puck photo-circle center from MapKit's projected annotation point.

@@ -52,6 +52,26 @@ final class LiveFollowMapPinTests: XCTestCase {
         XCTAssertTrue(pins.isEmpty)
     }
 
+    func testRouteTipNilWhenMissingEnds() {
+        let point = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        XCTAssertNil(LiveFollowRouteTip.coordinates(from: nil, to: point))
+        XCTAssertNil(LiveFollowRouteTip.coordinates(from: point, to: nil))
+    }
+
+    func testRouteTipNilWhenVehicleOnCommittedPoint() {
+        let point = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        XCTAssertNil(LiveFollowRouteTip.coordinates(from: point, to: point))
+    }
+
+    func testRouteTipConnectsCommittedToVehicle() {
+        let committed = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let vehicle = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
+        let coords = LiveFollowRouteTip.coordinates(from: committed, to: vehicle)
+        XCTAssertEqual(coords?.count, 2)
+        XCTAssertEqual(coords?[0].latitude ?? 0, 41.0, accuracy: 0.0000001)
+        XCTAssertEqual(coords?[1].latitude ?? 0, 41.001, accuracy: 0.0000001)
+    }
+
     func testRouteMapPinKindsMatchTripDetailSymbols() {
         XCTAssertEqual(RouteMapPinKind.start.systemName, "flag.fill")
         XCTAssertEqual(RouteMapPinKind.end.systemName, "mappin.circle.fill")

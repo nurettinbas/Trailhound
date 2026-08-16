@@ -98,20 +98,18 @@ final class LiveFollowPresentationTests: XCTestCase {
         )
     }
 
-    func testHeroDestSitsInLowerHalfForFollowCamera() {
-        let dest3D = LiveFollowPresentation.heroDestCenter(
-            in: CGSize(width: 390, height: 844),
-            uses3D: true
+    func testHeroDestMatchesPuckCircleAtScreenCenter() {
+        let size = CGSize(width: 390, height: 844)
+        let dest3D = LiveFollowPresentation.heroDestCenter(in: size, uses3D: true)
+        let dest2D = LiveFollowPresentation.heroDestCenter(in: size, uses3D: false)
+        let expected = LiveFollowPresentation.puckCircleCenter(
+            fromProjectedAnnotationPoint: CGPoint(x: 195, y: 422)
         )
+        XCTAssertEqual(dest3D.x, expected.x, accuracy: 0.01)
+        XCTAssertEqual(dest3D.y, expected.y, accuracy: 0.01)
+        XCTAssertEqual(dest2D.x, dest3D.x, accuracy: 0.01)
+        XCTAssertEqual(dest2D.y, dest3D.y, accuracy: 0.01)
         XCTAssertEqual(dest3D.x, 195, accuracy: 0.01)
-        XCTAssertEqual(dest3D.y, 844 * 0.64, accuracy: 0.01)
-        XCTAssertGreaterThan(dest3D.y, 844 * 0.5)
-
-        let dest2D = LiveFollowPresentation.heroDestCenter(
-            in: CGSize(width: 390, height: 844),
-            uses3D: false
-        )
-        XCTAssertEqual(dest2D.y, 844 * 0.56, accuracy: 0.01)
     }
 
     func testPuckCircleCenterAppliesAnnotationOffsetAndBadgeLayout() {
@@ -126,12 +124,18 @@ final class LiveFollowPresentationTests: XCTestCase {
         XCTAssertEqual(circle.y, viewCenterY + circleVsView, accuracy: 0.01)
         // Circle sits above the projected annotation point (chevron hangs below).
         XCTAssertLessThan(circle.y, projected.y)
+
+        let viewTop = projected.y + offset.y - LiveFollowPresentation.puckAnnotationFrameHeight / 2
+        let artworkMidY = viewTop + LiveFollowPresentation.puckArtworkHeight / 2
+        XCTAssertEqual(artworkMidY, projected.y, accuracy: 0.01)
     }
 
-    func testPuckAnnotationCenterOffsetMatchesLegacyLayout() {
+    func testPuckAnnotationCenterOffsetCentersArtworkOnCoordinate() {
+        let artworkMid = LiveFollowPresentation.puckArtworkHeight / 2
+        let viewMid = LiveFollowPresentation.puckAnnotationFrameHeight / 2
         XCTAssertEqual(
             LiveFollowPresentation.puckAnnotationCenterOffset.y,
-            -LiveFollowPresentation.puckCircleSize / 2 + 8,
+            viewMid - artworkMid,
             accuracy: 0.01
         )
         XCTAssertEqual(LiveFollowPresentation.puckAnnotationCenterOffset.x, 0, accuracy: 0.01)

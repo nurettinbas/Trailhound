@@ -27,7 +27,7 @@ enum DeviceTestChecklist {
         "Live follow map: open — map already at follow pose (no world fly-in); map fade + vehicle→puck hero sync; HUD at bottom",
         "Live follow map: X reverses (map fades out while nav puck flies back to list-card vehicle); Stop skips reverse and plays end credits",
         "Live follow map: Reduce Motion opens/closes instantly settled",
-        "Live follow map: pan/recenter → pause/stop; 3D/2D toggle; chevron + vehicle puck aims with heading",
+        "Live follow map: pan/recenter → pause/stop; 3D/2D toggle; chevron + vehicle puck aims with heading and sits at screen center",
         "Live follow map: smooth camera on straight road and turns (no steppy 4 Hz jumps)",
         "Live follow map: leave untouched 30–60s — screen stays awake; close map — auto-lock works again",
         "Live follow map: green start pin at first point; orange pause pin at each pause (stays after resume)",

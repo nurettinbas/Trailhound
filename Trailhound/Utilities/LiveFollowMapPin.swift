@@ -73,3 +73,20 @@ enum LiveFollowMapPinBuilder {
         return result
     }
 }
+
+/// Display-only chord from the last stored breadcrumb to the interpolated vehicle.
+/// Does not write SwiftData / breadcrumbs.
+enum LiveFollowRouteTip {
+    static let minimumMeters: CLLocationDistance = 0.6
+
+    static func coordinates(
+        from committed: CLLocationCoordinate2D?,
+        to vehicle: CLLocationCoordinate2D?
+    ) -> [CLLocationCoordinate2D]? {
+        guard let committed, let vehicle else { return nil }
+        let start = CLLocation(latitude: committed.latitude, longitude: committed.longitude)
+        let end = CLLocation(latitude: vehicle.latitude, longitude: vehicle.longitude)
+        guard start.distance(from: end) >= minimumMeters else { return nil }
+        return [committed, vehicle]
+    }
+}

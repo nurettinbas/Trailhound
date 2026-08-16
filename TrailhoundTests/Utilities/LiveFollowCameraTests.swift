@@ -166,7 +166,7 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertTrue(camera.headingDegrees < 90 || camera.headingDegrees > 340)
     }
 
-    func testPoseLooksAheadAlongHeadingIn3D() {
+    func testPoseCentersOnVehicleIn3D() {
         var camera = LiveFollowCamera()
         camera.uses3D = true
         let start = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
@@ -176,9 +176,8 @@ final class LiveFollowCameraTests: XCTestCase {
         guard let pose = camera.pose else {
             return XCTFail("expected pose")
         }
-        // Course 0 = north → camera center should be north of the vehicle.
-        XCTAssertGreaterThan(pose.center.latitude, 41.0)
-        XCTAssertEqual(pose.center.longitude, 29.0, accuracy: 0.0005)
+        XCTAssertEqual(pose.center.latitude, 41.0, accuracy: 0.00001)
+        XCTAssertEqual(pose.center.longitude, 29.0, accuracy: 0.00001)
         XCTAssertEqual(pose.pitchDegrees, LiveFollowCamera.pitch3D, accuracy: 0.5)
         XCTAssertEqual(pose.distanceMeters, LiveFollowCamera.distance3D, accuracy: 1)
     }
@@ -195,8 +194,8 @@ final class LiveFollowCameraTests: XCTestCase {
         }
         XCTAssertEqual(pose.pitchDegrees, 0, accuracy: 0.5)
         XCTAssertEqual(pose.distanceMeters, LiveFollowCamera.distance2D, accuracy: 1)
-        // Course 90 = east → camera center east of the vehicle.
-        XCTAssertGreaterThan(pose.center.longitude, 29.0)
+        XCTAssertEqual(pose.center.latitude, 41.0, accuracy: 0.00001)
+        XCTAssertEqual(pose.center.longitude, 29.0, accuracy: 0.00001)
     }
 
     func testSnapDimensionModeJumpsWithoutLerp() {

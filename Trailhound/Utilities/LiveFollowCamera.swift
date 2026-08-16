@@ -9,8 +9,7 @@ import Foundation
 /// 2. **Published** — advanced every display tick (`tick`) with dead-reckoning and
 ///    time-constant heading/pitch/distance so the map stays smooth between ~1 Hz fixes.
 ///
-/// Camera center is nudged ahead of the vehicle along the *published* heading so more
-/// road sits above the puck (Maps / CarPlay-style driving feel).
+/// Camera center is the vehicle itself so the puck sits on the screen midpoint.
 struct LiveFollowCamera {
     /// Below this, `course` is too noisy — keep the last accepted heading.
     static let minimumSpeedForHeadingMps: Double = 5.0 / 3.6
@@ -30,9 +29,6 @@ struct LiveFollowCamera {
     static let pitch2D: Double = 0
     static let distance3D: CLLocationDistance = 220
     static let distance2D: CLLocationDistance = 520
-    /// How far ahead of the car the camera looks (meters along heading).
-    static let lookAhead3DMeters: CLLocationDistance = 36
-    static let lookAhead2DMeters: CLLocationDistance = 55
 
     /// Legacy aliases used by call sites / bootstrap.
     static var pitchDegrees: Double { pitch3D }
@@ -53,7 +49,7 @@ struct LiveFollowCamera {
         }
     }
 
-    /// Published vehicle position (puck). Camera look-ahead is applied in `pose`.
+    /// Published vehicle position (puck). `pose.center` matches this coordinate.
     private(set) var center: CLLocationCoordinate2D?
     private(set) var headingDegrees: CLLocationDirection = 0
     private(set) var isFrozen: Bool = false
@@ -74,14 +70,8 @@ struct LiveFollowCamera {
 
     var pose: Pose? {
         guard let center else { return nil }
-        let lookAhead = uses3D ? Self.lookAhead3DMeters : Self.lookAhead2DMeters
-        let cameraCenter = Self.coordinate(
-            from: center,
-            headingDegrees: headingDegrees,
-            distanceMeters: lookAhead
-        )
         return Pose(
-            center: cameraCenter,
+            center: center,
             headingDegrees: headingDegrees,
             distanceMeters: publishedDistanceMeters,
             pitchDegrees: publishedPitchDegrees
