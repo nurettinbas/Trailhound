@@ -2,9 +2,33 @@ import SwiftData
 import SwiftUI
 
 enum SettingsFocusedField: Hashable {
+    case newCategory
     case fuelPrice
     case privacyRadius
-    case newCategory
+
+    var previous: SettingsFocusedField? {
+        switch self {
+        case .newCategory: nil
+        case .fuelPrice: .newCategory
+        case .privacyRadius: .fuelPrice
+        }
+    }
+
+    var next: SettingsFocusedField? {
+        switch self {
+        case .newCategory: .fuelPrice
+        case .fuelPrice: .privacyRadius
+        case .privacyRadius: nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .newCategory: L10n.categoryNewPlaceholder
+        case .fuelPrice: L10n.settingsFuelPrice
+        case .privacyRadius: L10n.settingsPrivacyRadius
+        }
+    }
 }
 
 struct CategoryManagementView: View {

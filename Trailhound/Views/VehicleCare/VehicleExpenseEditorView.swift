@@ -1,6 +1,19 @@
 import SwiftData
 import SwiftUI
 
+private enum VehicleExpenseFocusedField: Hashable {
+    case amount
+    case note
+
+    var previous: VehicleExpenseFocusedField? {
+        self == .note ? .amount : nil
+    }
+
+    var next: VehicleExpenseFocusedField? {
+        self == .amount ? .note : nil
+    }
+}
+
 struct VehicleExpenseEditorView: View {
     let vehicleID: UUID
     var expenseID: UUID?
@@ -18,6 +31,7 @@ struct VehicleExpenseEditorView: View {
     @State private var draft: VehicleExpenseEditorDraft?
     @State private var isSaving = false
     @State private var showDeletePlanConfirm = false
+    @FocusState private var focusedField: VehicleExpenseFocusedField?
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -37,6 +51,17 @@ struct VehicleExpenseEditorView: View {
 
     private var activeDraft: VehicleExpenseEditorDraft {
         draft ?? VehicleExpenseEditorDraft(category: prefillCategory)
+    }
+
+    private var focusedFieldTitle: String {
+        switch focusedField {
+        case .note:
+            return L10n.string("vehicles.care.expense.note")
+        case .amount:
+            return amountFieldTitle
+        case .none:
+            return ""
+        }
     }
 
     var body: some View {
@@ -62,6 +87,7 @@ struct VehicleExpenseEditorView: View {
                     HStack {
                         TextField("", text: draftBinding(\.amountText))
                             .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .amount)
                         Text(settings.fuelCurrency.symbol)
                             .foregroundStyle(.secondary)
                     }
@@ -93,6 +119,7 @@ struct VehicleExpenseEditorView: View {
                 GlassFieldLabel(title: L10n.string("vehicles.care.expense.note")) {
                     TextField("", text: draftBinding(\.note), axis: .vertical)
                         .lineLimit(2...4)
+                        .focused($focusedField, equals: .note)
                 }
                 .glassRow(position: .last)
             } header: {
@@ -141,6 +168,16 @@ struct VehicleExpenseEditorView: View {
         .glassListChrome()
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .dismissKeyboardOnTap(focus: $focusedField)
+        .dismissKeyboardOnScroll()
+        .fieldKeyboardAccessory(
+            title: focusedFieldTitle,
+            focusID: focusedField.map { AnyHashable($0) },
+            onDone: {
+                focusedField = nil
+                KeyboardDismiss.dismiss()
+            }
+        )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button(L10n.cancel) { dismiss() }

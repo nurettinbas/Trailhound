@@ -11137,6 +11137,40 @@
         }
       }
     },
+    "trip.edit.field.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous field"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki alan"
+          }
+        }
+      }
+    },
+    "trip.edit.field.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next field"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki alan"
+          }
+        }
+      }
+    },
     "trip.edit.note_placeholder": {
       "extractionState": "manual",
       "localizations": {

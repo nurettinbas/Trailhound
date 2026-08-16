@@ -35,11 +35,39 @@ struct PlacePickerView: View {
   @State private var geocodeTask: Task<Void, Never>?
   @State private var nearbyTask: Task<Void, Never>?
   @State private var searchTask: Task<Void, Never>?
-  @FocusState private var isNameFocused: Bool
-  @FocusState private var isSearchFocused: Bool
-  @FocusState private var isCoordinateFocused: Bool
+  @FocusState private var focusedField: PlacePickerFocusedField?
 
   private let geocodingService = GeocodingService()
+
+  private enum PlacePickerFocusedField: Hashable {
+    case name
+    case search
+    case coordinates
+
+    var previous: PlacePickerFocusedField? {
+      switch self {
+      case .name: nil
+      case .search: .name
+      case .coordinates: .search
+      }
+    }
+
+    var next: PlacePickerFocusedField? {
+      switch self {
+      case .name: .search
+      case .search: .coordinates
+      case .coordinates: nil
+      }
+    }
+
+    var title: String {
+      switch self {
+      case .name: L10n.string("place.name.field")
+      case .search: L10n.placePickerSearchPlaceholder
+      case .coordinates: L10n.placeCoordinatesField
+      }
+    }
+  }
 
   private var isEditing: Bool { editingPlace != nil }
   private var isSeededFromDraft: Bool { draft != nil }
@@ -67,7 +95,7 @@ struct PlacePickerView: View {
   }
 
   private var showsLocationPickerResults: Bool {
-    isSearchFocused || isPlaceSearchActive || isSearchingPlaces
+    focusedField == .search || isPlaceSearchActive || isSearchingPlaces
   }
 
   private var locationSectionRowKinds: [LocationSectionRowKind] {
@@ -135,7 +163,7 @@ struct PlacePickerView: View {
       Section {
         GlassFieldLabel(title: L10n.string("place.name.field")) {
           TextField("", text: $name)
-            .focused($isNameFocused)
+            .focused($focusedField, equals: .name)
             .submitLabel(.done)
             .onSubmit { dismissNameKeyboard() }
         }
@@ -223,8 +251,13 @@ struct PlacePickerView: View {
       }
     }
     .glassListChrome()
+    .dismissKeyboardOnTap(focus: $focusedField)
     .dismissKeyboardOnScroll()
-    .keyboardDoneToolbar()
+    .fieldKeyboardAccessory(
+      title: focusedField?.title ?? "",
+      focusID: focusedField.map { AnyHashable($0) },
+      onDone: { dismissNameKeyboard() }
+    )
     .onAppear {
       if !didLoadInitialValues {
         loadEditingPlaceIfNeeded()
@@ -243,17 +276,17 @@ struct PlacePickerView: View {
     .onChange(of: searchQuery) { _, _ in
       schedulePlaceSearch()
     }
-    .onChange(of: isSearchFocused) { _, focused in
-      if focused, !isPlaceSearchActive {
+    .onChange(of: focusedField) { _, field in
+      if field == .search, !isPlaceSearchActive {
         loadNearbyPlaces()
       }
     }
     .onChange(of: latitude) { _, _ in
-      guard !isCoordinateFocused else { return }
+      guard focusedField != .coordinates else { return }
       syncCoordinateTextFromSelection()
     }
     .onChange(of: longitude) { _, _ in
-      guard !isCoordinateFocused else { return }
+      guard focusedField != .coordinates else { return }
       syncCoordinateTextFromSelection()
     }
   }
@@ -270,7 +303,7 @@ struct PlacePickerView: View {
           .keyboardType(.numbersAndPunctuation)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
-          .focused($isCoordinateFocused)
+          .focused($focusedField, equals: .coordinates)
           .submitLabel(.go)
           .onSubmit { applyCoordinateText() }
 
@@ -300,7 +333,7 @@ struct PlacePickerView: View {
 
       TextField(L10n.placePickerSearchPlaceholder, text: $searchQuery)
         .font(.body)
-        .focused($isSearchFocused)
+        .focused($focusedField, equals: .search)
         .textInputAutocapitalization(.words)
         .autocorrectionDisabled()
         .submitLabel(.search)
@@ -627,7 +660,7 @@ struct PlacePickerView: View {
 
   private func refreshLocationDetails() {
     scheduleAddressLookup()
-    if isSearchFocused, !isPlaceSearchActive {
+    if focusedField == .search, !isPlaceSearchActive {
       loadNearbyPlaces()
     }
   }
@@ -686,7 +719,7 @@ struct PlacePickerView: View {
     guard query.count >= 2 else {
       searchResults = []
       isSearchingPlaces = false
-      if isSearchFocused {
+      if focusedField == .search {
         loadNearbyPlaces()
       }
       return
@@ -715,13 +748,13 @@ struct PlacePickerView: View {
     searchResults = []
     isSearchingPlaces = false
     searchTask?.cancel()
-    if isSearchFocused {
+    if focusedField == .search {
       loadNearbyPlaces()
     }
   }
 
   private func selectPlaceOption(_ place: NearbyPlaceOption) {
-    isSearchFocused = false
+    focusedField = nil
     searchQuery = ""
     searchResults = []
     isSearchingPlaces = false
@@ -742,9 +775,7 @@ struct PlacePickerView: View {
   }
 
   private func dismissNameKeyboard() {
-    isNameFocused = false
-    isSearchFocused = false
-    isCoordinateFocused = false
+    focusedField = nil
     KeyboardDismiss.dismiss()
   }
 

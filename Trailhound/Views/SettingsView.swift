@@ -249,7 +249,14 @@ struct SettingsView: View {
         .glassListChrome()
         .dismissKeyboardOnTap(focus: $focusedField)
         .dismissKeyboardOnScroll()
-        .keyboardDoneToolbar()
+        .fieldKeyboardAccessory(
+            title: focusedField?.title ?? "",
+            focusID: focusedField.map { AnyHashable($0) },
+            onDone: {
+                focusedField = nil
+                KeyboardDismiss.dismiss()
+            }
+        )
         .onAppear {
             runCleanupIfNeeded()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }

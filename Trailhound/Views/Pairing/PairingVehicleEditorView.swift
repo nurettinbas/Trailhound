@@ -2,11 +2,47 @@ import SwiftData
 import SwiftUI
 import UIKit
 
+enum PairingVehicleFocusedField: Hashable {
+    case name
+    case consumption
+    case chargePrice
+
+    func previous(isElectric: Bool) -> PairingVehicleFocusedField? {
+        switch self {
+        case .name: nil
+        case .consumption: .name
+        case .chargePrice: .consumption
+        }
+    }
+
+    func next(isElectric: Bool) -> PairingVehicleFocusedField? {
+        switch self {
+        case .name: .consumption
+        case .consumption: isElectric ? .chargePrice : nil
+        case .chargePrice: nil
+        }
+    }
+
+    func title(consumptionLabel: String) -> String {
+        switch self {
+        case .name: L10n.pairingTabVehicleName
+        case .consumption: consumptionLabel
+        case .chargePrice: L10n.pairingTabChargePrice
+        }
+    }
+}
+
+struct VehicleEditorKeyboardNav: Equatable {
+    var isElectric = false
+    var consumptionLabel = ""
+}
+
 struct PairingVehicleEditorView: View {
     let vehicleID: UUID
 
     @Environment(\.dismiss) private var dismiss
     @Query private var vehicles: [VehicleProfile]
+    @FocusState private var focusedField: PairingVehicleFocusedField?
     @State private var hasUnsavedChanges = false
     @State private var saveTrigger = 0
     @State private var saveDisabled = false
@@ -23,6 +59,7 @@ struct PairingVehicleEditorView: View {
                 PairingVehicleEditorForm(
                     vehicle: vehicle,
                     vehicles: vehicles,
+                    focusedField: $focusedField,
                     unsavedChanges: $hasUnsavedChanges,
                     saveTrigger: $saveTrigger,
                     saveDisabled: $saveDisabled,
@@ -69,6 +106,8 @@ struct PairingVehicleEditorForm: View {
     let vehicle: VehicleProfile
     let vehicles: [VehicleProfile]
     var presentation: VehicleEditorPresentation = .standaloneForm
+    var focusedField: FocusState<PairingVehicleFocusedField?>.Binding
+    var keyboardNav: Binding<VehicleEditorKeyboardNav> = .constant(VehicleEditorKeyboardNav())
     var unsavedChanges: Binding<Bool> = .constant(false)
     var saveTrigger: Binding<Int> = .constant(0)
     var saveDisabled: Binding<Bool> = .constant(false)
@@ -141,11 +180,18 @@ struct PairingVehicleEditorForm: View {
                 .glassListChrome()
                 .navigationTitle(L10n.pairingTabVehicleSection)
                 .navigationBarTitleDisplayMode(.inline)
-                .keyboardDoneToolbar()
+                .vehicleFieldKeyboard(
+                    focusedField: focusedField,
+                    consumptionLabel: activeDraft.consumptionLabel
+                )
             case .embeddedInList:
+                // Keyboard accessory must live on the parent List — attaching it to
+                // a Section/row makes SwiftUI copy the bar once per field.
                 editorSections
             }
         }
+        .dismissKeyboardOnTap(focus: focusedField)
+        .dismissKeyboardOnScroll()
         .onAppear {
             // Sheet dismiss / List reappearance must NOT wipe in-progress photo edits.
             if draft == nil {
@@ -153,9 +199,13 @@ struct PairingVehicleEditorForm: View {
             }
             syncUnsavedChanges()
             syncSaveDisabled()
+            syncKeyboardNav()
         }
         .onChange(of: vehicle.id) { _, _ in reloadDraft() }
-        .onChange(of: draft) { _, _ in syncUnsavedChanges() }
+        .onChange(of: draft) { _, _ in
+            syncUnsavedChanges()
+            syncKeyboardNav()
+        }
         .onChange(of: isFraming) { _, _ in
             syncUnsavedChanges()
             syncSaveDisabled()
@@ -204,6 +254,7 @@ struct PairingVehicleEditorForm: View {
     private func vehicleProfileFields(compactTop: Bool) -> some View {
         GlassFieldLabel(title: L10n.pairingTabVehicleName) {
             TextField("", text: draftBinding(\.name))
+                .focused(focusedField, equals: .name)
         }
         .glassRow(position: .first)
         .listRowInsets(vehicleFirstRowInsets(compactTop: compactTop))
@@ -218,17 +269,12 @@ struct PairingVehicleEditorForm: View {
         }
         .glassRow(position: .middle)
         LabeledContent(activeDraft.consumptionLabel) {
-            GeometryReader { geo in
-                HStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    TextField("", value: draftBinding(\.consumption), format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .glassInputField()
-                        .frame(width: geo.size.width * 0.5)
-                }
-            }
-            .frame(height: 44)
+            TextField("", value: draftBinding(\.consumption), format: .number)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .focused(focusedField, equals: .consumption)
+                .glassInputField()
+                .frame(maxWidth: 120)
         }
         .glassRow(position: activeDraft.fuelType == .electric ? .middle : .last)
         if activeDraft.fuelType == .electric {
@@ -240,6 +286,7 @@ struct PairingVehicleEditorForm: View {
                 )
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
+                .focused(focusedField, equals: .chargePrice)
                 .glassInputField()
             }
             .glassRow(position: .last)
@@ -670,10 +717,20 @@ struct PairingVehicleEditorForm: View {
         tapHintBadgeOpacity = 1
         tapHintBounceOffset = 0
         syncUnsavedChanges()
+        syncKeyboardNav()
     }
 
     private func syncUnsavedChanges() {
         unsavedChanges.wrappedValue = hasUnsavedChanges
+    }
+
+    private func syncKeyboardNav() {
+        let next = VehicleEditorKeyboardNav(
+            isElectric: isElectricAccent,
+            consumptionLabel: activeDraft.consumptionLabel
+        )
+        guard keyboardNav.wrappedValue != next else { return }
+        keyboardNav.wrappedValue = next
     }
 
     private func syncSaveDisabled() {
@@ -808,6 +865,22 @@ struct PairingVehicleEditorForm: View {
             get: { activeDraft.chargePricePerKWh ?? settings.evChargePricePerKWh },
             set: { newValue in
                 updateDraft { $0.chargePricePerKWh = newValue }
+            }
+        )
+    }
+}
+
+extension View {
+    func vehicleFieldKeyboard(
+        focusedField: FocusState<PairingVehicleFocusedField?>.Binding,
+        consumptionLabel: String
+    ) -> some View {
+        fieldKeyboardAccessory(
+            title: focusedField.wrappedValue?.title(consumptionLabel: consumptionLabel) ?? "",
+            focusID: focusedField.wrappedValue.map { AnyHashable($0) },
+            onDone: {
+                focusedField.wrappedValue = nil
+                KeyboardDismiss.dismiss()
             }
         )
     }

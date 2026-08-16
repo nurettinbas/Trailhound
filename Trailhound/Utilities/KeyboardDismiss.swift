@@ -41,16 +41,42 @@ enum KeyboardVisibility {
 }
 
 extension View {
-    /// Adds a done button above keyboards that lack a return key (decimal/number pad).
-    func keyboardDoneToolbar(label: String? = nil) -> some View {
-        toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(label ?? L10n.ok) {
-                    KeyboardDismiss.dismiss()
-                }
-            }
+    /// Compact keyboard accessory: centered field title + glass Done on the trailing edge.
+    func fieldKeyboardAccessory(
+        title: String,
+        focusID: AnyHashable?,
+        onDone: @escaping () -> Void
+    ) -> some View {
+        background {
+            FieldKeyboardAccessoryHost(
+                title: title,
+                focusID: focusID,
+                onDone: onDone
+            )
         }
+    }
+
+    /// Done-only accessory (e.g. trip list search).
+    func keyboardDoneToolbar(label: String? = nil, onDone: (() -> Void)? = nil) -> some View {
+        fieldKeyboardAccessory(title: "", focusID: true) {
+            onDone?()
+            KeyboardDismiss.dismiss()
+        }
+    }
+
+    /// Baseline Form/List/sheet keyboard chrome: tap + scroll dismiss and Done.
+    func trailhoundFormKeyboard<F: Hashable>(
+        focus: FocusState<F?>.Binding
+    ) -> some View {
+        dismissKeyboardOnTap(focus: focus)
+            .dismissKeyboardOnScroll()
+            .keyboardDoneToolbar()
+    }
+
+    func trailhoundFormKeyboard(focus: FocusState<Bool>.Binding) -> some View {
+        dismissKeyboardOnTap(focus: focus)
+            .dismissKeyboardOnScroll()
+            .keyboardDoneToolbar()
     }
 
     func dismissKeyboardOnScroll() -> some View {
@@ -195,5 +221,258 @@ private final class DismissKeyboardTapUIView: UIView, UIGestureRecognizerDelegat
             current = candidate.superview
         }
         return false
+    }
+}
+
+// MARK: - Compact title + Done accessory
+
+/// Attaches a real `inputAccessoryView` so every focused field (first tap, TabView roots)
+/// gets the same compact glass strip. Reloads only when the accessory moves to a new field.
+private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
+    var title: String
+    var focusID: AnyHashable?
+    var onDone: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> KeyboardAccessoryAnchorView {
+        let view = KeyboardAccessoryAnchorView()
+        view.coordinator = context.coordinator
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        context.coordinator.apply(title: title, onDone: onDone)
+        return view
+    }
+
+    func updateUIView(_ uiView: KeyboardAccessoryAnchorView, context: Context) {
+        uiView.coordinator = context.coordinator
+        let focusChanged = context.coordinator.lastFocusID != focusID
+        context.coordinator.lastFocusID = focusID
+        context.coordinator.apply(title: title, onDone: onDone)
+        if focusChanged, focusID != nil {
+            // Next runloop: FocusState may have moved first responder without beginEditing.
+            DispatchQueue.main.async {
+                context.coordinator.attachToCurrentFirstResponder(ownedBy: uiView)
+            }
+        }
+    }
+
+    static func dismantleUIView(_ uiView: KeyboardAccessoryAnchorView, coordinator: Coordinator) {
+        uiView.uninstall()
+    }
+
+    @MainActor
+    final class Coordinator {
+        let inputView: UIInputView
+        let hosting: UIHostingController<KeyboardAccessoryBar>
+        var lastFocusID: AnyHashable?
+        private let barHeight = TripDetailKeyboardLayout.accessoryBarHeight
+
+        init() {
+            hosting = UIHostingController(
+                rootView: KeyboardAccessoryBar(title: "", onDone: {})
+            )
+            hosting.view.backgroundColor = .clear
+            hosting.safeAreaRegions = []
+            hosting.view.insetsLayoutMarginsFromSafeArea = false
+
+            let width = UIScreen.main.bounds.width
+            inputView = UIInputView(
+                frame: CGRect(x: 0, y: 0, width: width, height: barHeight),
+                inputViewStyle: .keyboard
+            )
+            inputView.allowsSelfSizing = true
+            inputView.backgroundColor = .clear
+            hosting.view.frame = inputView.bounds
+            hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            inputView.addSubview(hosting.view)
+        }
+
+        func apply(title: String, onDone: @escaping () -> Void) {
+            hosting.rootView = KeyboardAccessoryBar(title: title, onDone: onDone)
+        }
+
+        func attach(to responder: UIResponder) {
+            let accessory = inputView
+            if let field = responder as? UITextField {
+                guard field.inputAccessoryView !== accessory else { return }
+                field.inputAccessoryView = accessory
+                field.reloadInputViews()
+            } else if let textView = responder as? UITextView {
+                guard textView.inputAccessoryView !== accessory else { return }
+                textView.inputAccessoryView = accessory
+                textView.reloadInputViews()
+            }
+        }
+
+        func attachToCurrentFirstResponder(ownedBy anchor: KeyboardAccessoryAnchorView) {
+            guard let responder = UIResponder.trailhoundCurrentFirstResponder() as? UIView,
+                  anchor.owns(responder)
+            else { return }
+            attach(to: responder)
+        }
+    }
+}
+
+private final class KeyboardAccessoryAnchorView: UIView {
+    weak var coordinator: FieldKeyboardAccessoryHost.Coordinator?
+    private var isObserving = false
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            installIfNeeded()
+        } else {
+            uninstall()
+        }
+    }
+
+    func uninstall() {
+        guard isObserving else { return }
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UITextField.textDidBeginEditingNotification,
+            object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UITextView.textDidBeginEditingNotification,
+            object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        isObserving = false
+    }
+
+    private func installIfNeeded() {
+        guard !isObserving else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(textDidBegin(_:)),
+            name: UITextField.textDidBeginEditingNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(textDidBegin(_:)),
+            name: UITextView.textDidBeginEditingNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        isObserving = true
+    }
+
+    @objc private func textDidBegin(_ notification: Notification) {
+        guard let view = notification.object as? UIView, owns(view) else { return }
+        coordinator?.attach(to: view)
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        // TabView roots sometimes skip beginEditing on first focus; catch on show.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.coordinator?.attachToCurrentFirstResponder(ownedBy: self)
+        }
+    }
+
+    func owns(_ field: UIView) -> Bool {
+        guard window != nil, field.window === window else { return false }
+        guard let mine = nearestContentViewController() else { return false }
+        var current: UIView? = field
+        while let view = current {
+            if view === mine.view { return true }
+            current = view.superview
+        }
+        return false
+    }
+}
+
+private extension UIView {
+    func nearestContentViewController() -> UIViewController? {
+        var current: UIResponder? = self
+        while let responder = current {
+            if let controller = responder as? UIViewController,
+               !(controller is UINavigationController),
+               !(controller is UITabBarController),
+               !(controller is UISplitViewController) {
+                return controller
+            }
+            current = responder.next
+        }
+        return nil
+    }
+}
+
+private extension UIResponder {
+    private static weak var capturedFirstResponder: UIResponder?
+
+    @objc func trailhoundCaptureFirstResponder() {
+        UIResponder.capturedFirstResponder = self
+    }
+
+    static func trailhoundCurrentFirstResponder() -> UIResponder? {
+        capturedFirstResponder = nil
+        UIApplication.shared.sendAction(
+            #selector(trailhoundCaptureFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        return capturedFirstResponder
+    }
+}
+
+private struct KeyboardAccessoryBar: View {
+    var title: String
+    var onDone: () -> Void
+
+    /// Pill-like liquid glass chips (title + Done).
+    private let chipCorner: CGFloat = 18
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            Button(action: onDone) {
+                Text(L10n.ok)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background {
+                        GlassSurface(cornerRadius: chipCorner, density: .chrome)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: chipCorner, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.ok)
+        }
+        .overlay {
+            if !title.isEmpty {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background {
+                        GlassSurface(cornerRadius: chipCorner, density: .chrome)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: chipCorner, style: .continuous))
+                    .padding(.horizontal, 72)
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

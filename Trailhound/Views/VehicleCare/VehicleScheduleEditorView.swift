@@ -1,6 +1,19 @@
 import SwiftData
 import SwiftUI
 
+private enum VehicleScheduleFocusedField: Hashable {
+    case title
+    case notes
+
+    var previous: VehicleScheduleFocusedField? {
+        self == .notes ? .title : nil
+    }
+
+    var next: VehicleScheduleFocusedField? {
+        self == .title ? .notes : nil
+    }
+}
+
 struct VehicleScheduleEditorView: View {
     let vehicleID: UUID
     var scheduleID: UUID?
@@ -12,6 +25,7 @@ struct VehicleScheduleEditorView: View {
 
     @State private var draft: VehicleScheduleEditorDraft?
     @State private var isSaving = false
+    @FocusState private var focusedField: VehicleScheduleFocusedField?
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -27,6 +41,17 @@ struct VehicleScheduleEditorView: View {
             if let schedule { return VehicleScheduleEditorDraft(from: schedule) }
             return VehicleScheduleEditorDraft()
         }()
+    }
+
+    private var focusedFieldTitle: String {
+        switch focusedField {
+        case .notes:
+            return L10n.string("vehicles.care.schedule.notes")
+        case .title:
+            return L10n.string("vehicles.care.schedule.title")
+        case .none:
+            return ""
+        }
     }
 
     var body: some View {
@@ -54,6 +79,7 @@ struct VehicleScheduleEditorView: View {
 
                 GlassFieldLabel(title: L10n.string("vehicles.care.schedule.title")) {
                     TextField("", text: draftBinding(\.title))
+                        .focused($focusedField, equals: .title)
                 }
                 .glassRow(position: .middle)
 
@@ -103,6 +129,7 @@ struct VehicleScheduleEditorView: View {
                 GlassFieldLabel(title: L10n.string("vehicles.care.schedule.notes")) {
                     TextField("", text: draftBinding(\.notes), axis: .vertical)
                         .lineLimit(2...4)
+                        .focused($focusedField, equals: .notes)
                 }
                 .glassRow(position: .last)
             }
@@ -125,6 +152,16 @@ struct VehicleScheduleEditorView: View {
                 : L10n.string("vehicles.care.schedule.edit")
         )
         .navigationBarTitleDisplayMode(.inline)
+        .dismissKeyboardOnTap(focus: $focusedField)
+        .dismissKeyboardOnScroll()
+        .fieldKeyboardAccessory(
+            title: focusedFieldTitle,
+            focusID: focusedField.map { AnyHashable($0) },
+            onDone: {
+                focusedField = nil
+                KeyboardDismiss.dismiss()
+            }
+        )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button(L10n.cancel) { dismiss() }

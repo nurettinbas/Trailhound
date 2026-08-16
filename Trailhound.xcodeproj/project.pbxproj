@@ -101,6 +101,11 @@
 		A1TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */; };
 		A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */; };
 		A1TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift */; };
+		A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */; };
+		A1KEYBOARDGUIDE00000001 /* KeyboardGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2KEYBOARDGUIDE00000001 /* KeyboardGuide.swift */; };
+		A1TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */; };
+		A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */; };
+		A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */; };
 		A1HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */; };
 		A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */; };
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
@@ -391,6 +396,11 @@
 		A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripSpeedProfileTests.swift; sourceTree = SOURCE_ROOT; };
 		A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelEstimate.swift; sourceTree = "<group>"; };
 		A2TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripFuelEstimateTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailKeyboardLayout.swift; sourceTree = "<group>"; };
+		A2KEYBOARDGUIDE00000001 /* KeyboardGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardGuide.swift; sourceTree = "<group>"; };
+		A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailEditPanel.swift; sourceTree = "<group>"; };
+		A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripDetailKeyboardLayoutTests.swift; sourceTree = SOURCE_ROOT; };
+		A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/KeyboardFieldTitleTests.swift; sourceTree = SOURCE_ROOT; };
 		A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpPopoverButton.swift; sourceTree = "<group>"; };
 		A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlaceFilter.swift; sourceTree = "<group>"; };
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
@@ -783,6 +793,7 @@
 				A20000000000000000000013 /* TripListView.swift */,
 				A20000000000000000000014 /* TripRowView.swift */,
 				A20000000000000000000015 /* TripDetailView.swift */,
+				A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */,
 				A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */,
 				A2TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift */,
 				A20000000000000000000016 /* ActiveTripView.swift */,
@@ -812,6 +823,8 @@
 			children = (
 				6AD03A7086DB4AACB2377EDA /* NetworkMonitor.swift */,
 				E1D0C9B8A7465091E2F3A456 /* KeyboardDismiss.swift */,
+				A2KEYBOARDGUIDE00000001 /* KeyboardGuide.swift */,
+				A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */,
 				5E100D096E5B474C8C3CC6EB /* FuelCostCalculator.swift */,
 				8A24E57F785447E780408D08 /* ModelContainerFactory.swift */,
 				A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */,
@@ -961,6 +974,8 @@
 				212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */,
 				A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */,
 				A2TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift */,
+				A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */,
+				A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift */,
 				A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */,
@@ -1171,6 +1186,8 @@
 				43AE81A211E64BEDB4BBC9B3 /* TripSpeedSummaryTests.swift in Sources */,
 				A1TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift in Sources */,
 				A1TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift in Sources */,
+				A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */,
+				A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift in Sources */,
 				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,
@@ -1228,6 +1245,9 @@
 				A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */,
 				A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */,
 				A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */,
+				A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */,
+				A1KEYBOARDGUIDE00000001 /* KeyboardGuide.swift in Sources */,
+				A1TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift in Sources */,
 				A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */,
 				A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */,
 				A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */,

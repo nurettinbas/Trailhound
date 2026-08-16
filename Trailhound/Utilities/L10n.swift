@@ -102,6 +102,11 @@ enum L10n {
     static var tripEditLabel: String { string("trip.edit.label") }
     static var tripEditNote: String { string("trip.edit.note") }
     static var tripEditNotePlaceholder: String { string("trip.edit.note_placeholder") }
+    static var tripEditFieldPrevious: String { string("trip.edit.field.previous") }
+    static var tripEditFieldNext: String { string("trip.edit.field.next") }
+    /// Shared a11y labels for form field navigation (same strings as trip edit).
+    static var fieldPrevious: String { tripEditFieldPrevious }
+    static var fieldNext: String { tripEditFieldNext }
     static var tripEditSave: String { string("trip.edit.save") }
     static var tripEditFuelSection: String { string("trip.edit.fuel.section") }
 

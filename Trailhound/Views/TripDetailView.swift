@@ -4,30 +4,6 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-private struct FavoritePlaceSheetItem: Identifiable {
-    enum Endpoint {
-        case start
-        case end
-    }
-
-    enum Mode {
-        case create(PlaceDraft)
-        case edit(UUID)
-    }
-
-    let mode: Mode
-    let endpoint: Endpoint
-
-    var id: String {
-        switch mode {
-        case .create(let draft):
-            return "create-\(endpoint)-\(draft.id.uuidString)"
-        case .edit(let placeID):
-            return "edit-\(endpoint)-\(placeID.uuidString)"
-        }
-    }
-}
-
 @MainActor
 private enum TripDetailRevealSession {
     static var completedTripIDs: Set<UUID> = []
@@ -41,9 +17,10 @@ private enum TripDetailRevealSession {
     }
 }
 
-/// Fixed overlay height — the details card is not user-resizable.
+/// Resting overlay height — editing growth lives in `TripDetailEditPanel`.
 private enum TripDetailPanelLayout {
-    static let heightFraction: CGFloat = 0.52
+    static let heightFraction: CGFloat = TripDetailKeyboardLayout.restHeightFraction
+    static let editingHeightFraction: CGFloat = TripDetailKeyboardLayout.editingHeightFraction
 }
 
 struct TripDetailView: View {
@@ -51,8 +28,6 @@ struct TripDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Query private var places: [SavedPlace]
-    @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
-    @Query private var vehicles: [VehicleProfile]
     @Bindable private var settings = AppSettings.shared
 
     @State private var mapCameraBox = TripDetailMapCameraBox()
@@ -65,22 +40,10 @@ struct TripDetailView: View {
     /// Last laid-out panel height — refit uses this, not only the layout fraction.
     @State private var lastLivePanelHeight: CGFloat = 0
     @State private var mapRefitTask: Task<Void, Never>?
-    @State private var noteText: String = ""
-    @State private var selectedLabel: String = ""
-    @State private var selectedCategoryID: String = BuiltInCategory.personalID.uuidString
-    @State private var selectedVehicleID: UUID?
-    @State private var editedFuelConsumption: Double = 7.5
-    @State private var editedFuelUnitPrice: Double = 65
-    @State private var startAddressText: String = ""
-    @State private var endAddressText: String = ""
-    @State private var startPlaceNameText: String = ""
-    @State private var endPlaceNameText: String = ""
     @State private var shareImage: UIImage?
     @State private var shareCaption: String?
     @State private var showShareSheet = false
     @State private var isRenderingShareCard = false
-    @FocusState private var noteFocused: Bool
-    @State private var originalNoteText: String = ""
     /// In-place map expand — panel slides away on the same MapKit instance (no sheet).
     @State private var isMapExpanded = false
     /// True while expand/collapse animation runs — freezes glass over the live map.
@@ -89,10 +52,6 @@ struct TripDetailView: View {
     @State private var showExpandedMapChrome = false
     @State private var mapExpandTransitionTask: Task<Void, Never>?
     @State private var mapStyle: TripDetailMapStyle = .standard
-    @State private var editedStartedAt: Date = Date()
-    @State private var editedEndedAt: Date = Date()
-    @State private var trimHeadCount: Int = 0
-    @State private var trimTailCount: Int = 0
     /// Recorded GPS count — filled after the first paint so opening never faults points.
     @State private var recordedPointCount: Int = 0
     @State private var routeRevealProgress: Double = 0
@@ -109,8 +68,9 @@ struct TripDetailView: View {
     @State private var statCountProgress: [String: Double] = [:]
     @State private var speedChartRevealProgress: Double = 0
     @State private var tripDetailViewModel: TripDetailViewModel?
-    @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
     @State private var routeLoadTask: Task<Void, Never>?
+    /// Bumped to ask `TripDetailEditPanel` to resign first responder.
+    @State private var keyboardDismissSignal = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var glassFrozen: Bool { isMapExpandTransitioning }
@@ -133,43 +93,6 @@ struct TripDetailView: View {
         trip.stops.sorted { $0.startedAt < $1.startedAt }
     }
 
-    private var sortedDetailVehicles: [VehicleProfile] {
-        vehicles.sorted { lhs, rhs in
-            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-        }
-    }
-
-    private var vehiclePhotoPrefetchID: String {
-        VehiclePhotoStore.prefetchTaskID(for: sortedDetailVehicles)
-    }
-
-    private var selectedDetailVehicle: VehicleProfile? {
-        selectedVehicleID.flatMap { id in
-            sortedDetailVehicles.first(where: { $0.id == id })
-        }
-    }
-
-    private var previewFuelCost: Double {
-        FuelCostCalculator.estimateCost(
-            distanceMeters: trip.distanceMeters,
-            vehicle: selectedDetailVehicle,
-            consumptionPer100: editedFuelConsumption,
-            unitPrice: editedFuelUnitPrice
-        )
-    }
-
-    /// Cheap keyboard preview: scale stored dynamic by ΔC₀ × Δprice without walking points.
-    private var previewDynamicFuelCost: Double? {
-        guard let stored = trip.dynamicFuelCost, stored > 0 else { return nil }
-        let baseC0 = trip.fuelConsumptionPer100 ?? editedFuelConsumption
-        let basePrice = trip.fuelUnitPrice ?? editedFuelUnitPrice
-        guard baseC0 > 0, basePrice > 0, editedFuelConsumption > 0, editedFuelUnitPrice > 0 else {
-            return stored
-        }
-        return stored * (editedFuelConsumption / baseC0) * (editedFuelUnitPrice / basePrice)
-    }
-
     var body: some View {
         ZStack {
             AtmosphericBackground()
@@ -177,8 +100,10 @@ struct TripDetailView: View {
             GeometryReader { geometry in
                 let containerHeight = geometry.size.height
                 let panelHeight = livePanelHeight(containerHeight: containerHeight)
+                let mapPeek = mapTopChromePoints + 24
                 // Expanded: keep the speed chips sitting on the tab bar, not under it.
                 // GeometryReader is under `.ignoresSafeArea(.bottom)`, so inset 0 buries them.
+                // Always rest height — editing growth is owned by TripDetailEditPanel.
                 let chromeBottomInset = panelVisible ? panelHeight : mapBottomChromePoints
                 ZStack(alignment: .bottom) {
                     // Full-screen map — never resized by the panel (Apple Maps pattern).
@@ -186,7 +111,7 @@ struct TripDetailView: View {
                     tripDetailMapLayer(interactive: true)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .onTapGesture {
-                            dismissNoteKeyboard()
+                            dismissEditKeyboard()
                         }
 
                     // Soft settle veil — fades out before the sheet rises (does not remount MapKit).
@@ -222,8 +147,21 @@ struct TripDetailView: View {
                     )
                     .allowsHitTesting(false)
 
-                    detailPanel()
-                        .frame(height: panelHeight)
+                    TripDetailEditPanel(
+                        trip: trip,
+                        viewModel: resolvedViewModel,
+                        glassFrozen: glassFrozen,
+                        panelRisen: panelRisen,
+                        restHeight: panelHeight,
+                        mapPeek: mapPeek,
+                        reduceMotion: reduceMotion,
+                        statCountProgress: statCountProgress,
+                        speedChartRevealProgress: speedChartRevealProgress,
+                        recordedPointCount: $recordedPointCount,
+                        keyboardDismissSignal: $keyboardDismissSignal,
+                        onDisplayRefresh: { refreshTripDetailViewModel() },
+                        onRouteInvalidated: { reloadRouteAfterTrim() }
+                    )
                         .frame(maxWidth: .infinity)
                         .background {
                             // Opaque wash — glass cards and the translucent tab bar never sample the map.
@@ -286,7 +224,6 @@ struct TripDetailView: View {
         // Extend under the translucent tab bar so the card wash covers it — no map peeking through.
         .ignoresSafeArea(edges: .bottom)
         .glassNavigationChrome()
-        .dismissKeyboardOnTap(focus: $noteFocused)
         .accessibilityIdentifier("tripDetail.screen")
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -370,25 +307,7 @@ struct TripDetailView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isRenderingShareCard)
-        .sheet(item: $favoritePlaceSheet) { item in
-            NavigationStack {
-                favoritePlacePicker(for: item)
-            }
-        }
         .onAppear {
-            noteText = trip.note ?? ""
-            originalNoteText = noteText
-            selectedLabel = trip.label ?? ""
-            selectedCategoryID = trip.categoryID
-            selectedVehicleID = trip.vehicleID
-            loadFuelEditDefaults(for: selectedVehicleID, preferTripSnapshot: true)
-            startAddressText = trip.startAddress ?? ""
-            endAddressText = trip.endAddress ?? ""
-            startPlaceNameText = trip.startPlaceName ?? ""
-            endPlaceNameText = trip.endPlaceName ?? ""
-            editedStartedAt = trip.startedAt
-            editedEndedAt = trip.endedAt ?? Date()
-
             if tripDetailViewModel == nil {
                 tripDetailViewModel = TripDetailViewModel(
                     trip: trip,
@@ -706,7 +625,7 @@ struct TripDetailView: View {
         mapRefitTask?.cancel()
         mapExpandTransitionTask?.cancel()
         TrailhoundHaptics.selection()
-        dismissNoteKeyboard()
+        dismissEditKeyboard()
 
         let motion = expanding ? TrailhoundMotion.mapExpand : TrailhoundMotion.mapCollapse
         let durationMs: UInt64 = expanding ? 1400 : 1100
@@ -770,631 +689,6 @@ struct TripDetailView: View {
         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
     }
 
-    @ViewBuilder
-    private func detailPanel() -> some View {
-        VStack(spacing: 0) {
-            panelGrabber
-
-            if panelRisen {
-                ScrollView(.vertical, showsIndicators: true) {
-                    detailPanelContent
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                .dismissKeyboardOnScroll()
-            } else {
-                Color.clear
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-    }
-
-    private var detailPanelContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            tripHeader
-
-            statsStrip
-
-            if !resolvedViewModel.speedSamples.isEmpty {
-                speedChartCard
-            }
-
-            if !sortedStops.isEmpty {
-                detailSelectionSection(title: L10n.tripStopsSection) {
-                    VStack(spacing: 10) {
-                        ForEach(sortedStops, id: \.persistentModelID) { stop in
-                            TripStopEditRow(stop: stop, glassFrozen: glassFrozen)
-                        }
-                    }
-                }
-            }
-
-            if trip.endedAt != nil {
-                detailSplitSection(title: L10n.tripEditTimesSection) {
-                    tripTimePicker(
-                        title: L10n.tripStartedAt,
-                        selection: $editedStartedAt
-                    )
-                } right: {
-                    tripTimePicker(
-                        title: L10n.tripEndedAt,
-                        selection: $editedEndedAt
-                    )
-                }
-            } else {
-                detailSection(title: L10n.tripEditTimesSection) {
-                    tripTimePicker(
-                        title: L10n.tripStartedAt,
-                        selection: $editedStartedAt
-                    )
-                }
-            }
-
-            detailSplitSection(title: L10n.tripTrimPointsSection) {
-                trimStepperCell(
-                    title: L10n.tripTrimHead,
-                    value: $trimHeadCount,
-                    range: 0...maxTrimHead
-                )
-            } right: {
-                trimStepperCell(
-                    title: L10n.tripTrimTail,
-                    value: $trimTailCount,
-                    range: 0...maxTrimTail
-                )
-            }
-
-            detailSection(title: L10n.tripLocationOverrides) {
-                compactTextField(L10n.tripStartPlaceName, text: $startPlaceNameText)
-                favoritePlaceAction(
-                    endpoint: .start,
-                    coordinate: trip.startCoordinate,
-                    accessibilityLabel: L10n.tripAddStartToFavorites
-                )
-                compactTextField(L10n.tripEndPlaceName, text: $endPlaceNameText)
-                favoritePlaceAction(
-                    endpoint: .end,
-                    coordinate: trip.endCoordinate,
-                    accessibilityLabel: L10n.tripAddEndToFavorites
-                )
-                compactTextField(L10n.tripStartAddress, text: $startAddressText)
-                compactTextField(L10n.tripEndAddress, text: $endAddressText)
-            }
-
-            detailSection(title: L10n.tripEditCategoryAndLabel) {
-                HStack(alignment: .top, spacing: 10) {
-                    detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
-                        ForEach(categories) { category in
-                            Label(category.name, systemImage: category.systemImage)
-                                .tag(category.id.uuidString)
-                        }
-                    }
-                    .onChange(of: selectedCategoryID) { _, _ in
-                        dismissNoteKeyboard()
-                    }
-
-                    detailMenuPicker(title: L10n.tripEditLabel, selection: $selectedLabel) {
-                        Text(L10n.labelNone).tag("")
-                        ForEach(TripLabelOption.allCases, id: \.rawValue) { option in
-                            Text(option.displayName).tag(option.rawValue)
-                        }
-                    }
-                    .onChange(of: selectedLabel) { _, _ in
-                        dismissNoteKeyboard()
-                    }
-                }
-
-                if !vehicles.isEmpty {
-                    detailMenuPicker(
-                        title: L10n.string("trip.edit.vehicle"),
-                        selection: $selectedVehicleID,
-                        leading: {
-                            if let selected = sortedDetailVehicles.first(where: { $0.id == selectedVehicleID }) {
-                                VehicleAvatarView(
-                                    systemImage: selected.systemImage,
-                                    photoFileName: selected.photoFileName,
-                                    size: 22,
-                                    cornerRadius: 6,
-                                    isElectricAccent: selected.fuelType == .electric
-                                )
-                            } else {
-                                Image(systemName: "car")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 22, height: 22)
-                            }
-                        }
-                    ) {
-                        Text(L10n.string("trip.edit.vehicle_none"))
-                            .tag(UUID?.none)
-                        ForEach(sortedDetailVehicles) { vehicle in
-                            Text(vehicle.name)
-                                .tag(Optional(vehicle.id))
-                        }
-                    }
-                    .onChange(of: selectedVehicleID) { _, newID in
-                        dismissNoteKeyboard()
-                        loadFuelEditDefaults(for: newID, preferTripSnapshot: false)
-                    }
-                    .task(id: vehiclePhotoPrefetchID) {
-                        await VehiclePhotoStore.shared.prefetch(vehicles: sortedDetailVehicles)
-                    }
-                }
-            }
-
-            detailSplitSection(title: L10n.tripEditFuelSection) {
-                fuelNumberField(
-                    title: selectedDetailVehicle?.consumptionLabel ?? L10n.fuelUnitLPer100km,
-                    value: $editedFuelConsumption
-                )
-            } right: {
-                fuelNumberField(
-                    title: fuelUnitPriceLabel(for: selectedDetailVehicle),
-                    value: $editedFuelUnitPrice
-                )
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.tripEditFuelPreview(FuelCostCalculator.formatCost(
-                    previewFuelCost,
-                    currencyCode: settings.fuelCurrency.rawValue
-                )))
-                if let previewDynamic = previewDynamicFuelCost {
-                    Text("\(L10n.dynamicFuel): \(FuelCostCalculator.formatCost(previewDynamic, currencyCode: settings.fuelCurrency.rawValue))")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .padding(.top, -6)
-
-            detailSection(title: L10n.tripEditNote) {
-                TextField(L10n.tripEditNotePlaceholder, text: $noteText, axis: .vertical)
-                    .lineLimit(2...4)
-                    .focused($noteFocused)
-                    .submitLabel(.done)
-                    .glassInputField()
-                    .onSubmit { dismissNoteKeyboard() }
-            }
-
-            Button(L10n.tripEditSave) {
-                saveEdits()
-                dismissNoteKeyboard()
-            }
-            .accessibilityIdentifier("tripDetail.save")
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 8))
-            .tint(TrailhoundBrandColors.brandBottom)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, GlassTokens.listContentHorizontalInset)
-        .padding(.bottom, 88)
-    }
-
-    private var panelGrabber: some View {
-        Capsule()
-            .fill(Color.secondary.opacity(0.35))
-            .frame(width: 36, height: 5)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity)
-            .accessibilityHidden(true)
-    }
-
-    private var tripHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(resolvedViewModel.routeSummary)
-                .font(.headline)
-                .lineLimit(2)
-
-            Text(resolvedViewModel.dateText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private var statsStrip: some View {
-        let fuelCurrencyCode = settings.fuelCurrency.rawValue
-        let metrics = resolvedViewModel.summaryMetrics
-        let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
-        // Median + P90 (+ stop) share the stats row.
-        let profileIDs: Set<String> = ["medianSpeed", "p90Speed", "stopDuration"]
-        let fuelIDs: Set<String> = ["fuel", "dynamicFuel"]
-        let primaryRow = metrics.filter { primaryIDs.contains($0.id) }
-        let profileRow = metrics.filter { profileIDs.contains($0.id) }
-        let fuelRow = metrics.filter { fuelIDs.contains($0.id) }
-        // Preserve summaryMetrics order: avg → cruise → most common → …
-        let secondaryRow = metrics.filter {
-            !primaryIDs.contains($0.id) && !profileIDs.contains($0.id) && !fuelIDs.contains($0.id)
-        }
-
-        VStack(spacing: 8) {
-            if !primaryRow.isEmpty {
-                statsMetricGrid(metrics: primaryRow)
-            }
-            if !secondaryRow.isEmpty {
-                statsMetricGrid(metrics: secondaryRow)
-            }
-            if !profileRow.isEmpty {
-                statsMetricGrid(metrics: profileRow)
-            }
-            if !fuelRow.isEmpty {
-                statsMetricGrid(metrics: fuelRow)
-            }
-        }
-        .id(fuelCurrencyCode)
-    }
-
-    /// Always three equal columns so every card matches Duration / Distance width.
-    private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8)
-        ]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(metrics) { metric in
-                statsMetricCard(for: metric)
-            }
-        }
-    }
-
-    private func statsMetricCard(for metric: TripSummaryMetric) -> some View {
-        let progress = statCountProgress[metric.id] ?? (panelRisen ? 1 : 0)
-        return VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .center, spacing: 6) {
-                Label(metric.title, systemImage: metric.icon)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
-                if metric.showsHelp, let helpTitle = metric.helpTitle, let helpBody = metric.helpBody {
-                    HelpPopoverButton(
-                        accessibilityLabel: helpTitle,
-                        message: helpBody
-                    )
-                    .scaleEffect(0.7, anchor: .leading)
-                    .frame(width: 22, height: 22)
-                    .padding(.leading, 2)
-                }
-            }
-            Text(metric.formatted(progress: progress))
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .contentTransition(.numericText())
-                .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: progress)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .glassChrome(cornerRadius: 10, frozen: glassFrozen)
-        .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
-        .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.94)
-    }
-
-    private var speedChartCard: some View {
-        let progress = speedChartRevealProgress
-
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.tripSpeedChart)
-                .font(.subheadline.weight(.semibold))
-
-            HStack(alignment: .top, spacing: 6) {
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text(L10n.formatSpeedKmh(resolvedViewModel.speedChartMaxKmh))
-                        .font(.caption2)
-                    Spacer(minLength: 0)
-                    Text(L10n.formatSpeedKmh(0))
-                        .font(.caption2)
-                }
-                .foregroundStyle(.secondary)
-                .frame(width: 34, height: 120)
-
-                SpeedChartRouteCanvas(
-                    samples: resolvedViewModel.speedSamples,
-                    maxKmh: resolvedViewModel.speedChartMaxKmh,
-                    progress: progress,
-                    tripStartedAt: trip.startedAt,
-                    tripEndedAt: trip.endedAt ?? trip.startedAt,
-                    sampleMedianIntervalSeconds: resolvedViewModel.speedSampleMedianIntervalSeconds
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: 120)
-            }
-        }
-        .padding(12)
-        .glassChrome(cornerRadius: 12, frozen: glassFrozen)
-        .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
-        .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.98)
-    }
-
-    private func tripTimePicker(title: String, selection: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            DatePicker(title, selection: selection, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func trimStepperCell(
-        title: String,
-        value: Binding<Int>,
-        range: ClosedRange<Int>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 6) {
-                detailCompactStepButton(systemImage: "minus") {
-                    value.wrappedValue = max(range.lowerBound, value.wrappedValue - 1)
-                }
-                .disabled(value.wrappedValue <= range.lowerBound)
-
-                Text("\(value.wrappedValue)")
-                    .font(.body.weight(.semibold))
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity)
-
-                detailCompactStepButton(systemImage: "plus") {
-                    value.wrappedValue = min(range.upperBound, value.wrappedValue + 1)
-                }
-                .disabled(value.wrappedValue >= range.upperBound)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func detailCompactStepButton(
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.caption2.weight(.bold))
-                .frame(width: 26, height: 26)
-                .glassField(cornerRadius: 6)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func detailMenuPicker<Selection: Hashable, Content: View>(
-        title: String,
-        selection: Binding<Selection>,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        detailMenuPicker(title: title, selection: selection, leading: { EmptyView() }, content: content)
-    }
-
-    private func detailMenuPicker<Selection: Hashable, Leading: View, Content: View>(
-        title: String,
-        selection: Binding<Selection>,
-        @ViewBuilder leading: () -> Leading,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            HStack(spacing: 8) {
-                leading()
-                Picker(title, selection: selection, content: content)
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .buttonStyle(.plain)
-                    .font(.callout)
-                    .tint(.primary)
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func detailMiniCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
-    }
-
-    private func detailSplitSection<Left: View, Right: View>(
-        title: String,
-        @ViewBuilder left: () -> Left,
-        @ViewBuilder right: () -> Right
-    ) -> some View {
-        detailSelectionSection(title: title) {
-            HStack(alignment: .top, spacing: 10) {
-                detailMiniCard(content: left)
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                detailMiniCard(content: right)
-                    .frame(minWidth: 0, maxWidth: .infinity)
-            }
-        }
-    }
-
-    private func detailSelectionSection<Content: View>(
-        title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-
-            content()
-        }
-    }
-
-    private func detailSection<Content: View>(
-        title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-
-            VStack(alignment: .leading, spacing: 10) {
-                content()
-            }
-            .padding(12)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
-        }
-    }
-
-    private func compactTextField(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField(title, text: text)
-                .glassInputField()
-        }
-    }
-
-    @ViewBuilder
-    private func favoritePlaceAction(
-        endpoint: FavoritePlaceSheetItem.Endpoint,
-        coordinate: CLLocationCoordinate2D?,
-        accessibilityLabel: String
-    ) -> some View {
-        if let coordinate {
-            let existing = places.first(where: { $0.contains(coordinate) })
-            Button {
-                dismissNoteKeyboard()
-                if let existing {
-                    favoritePlaceSheet = FavoritePlaceSheetItem(
-                        mode: .edit(existing.id),
-                        endpoint: endpoint
-                    )
-                } else {
-                    favoritePlaceSheet = FavoritePlaceSheetItem(
-                        mode: .create(draft(for: endpoint, coordinate: coordinate)),
-                        endpoint: endpoint
-                    )
-                }
-            } label: {
-                Label(
-                    existing == nil ? L10n.tripAddToFavorites : L10n.placeAlreadySaved,
-                    systemImage: existing == nil ? "star" : "star.fill"
-                )
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(existing == nil ? accessibilityLabel : L10n.tripEditFavoritePlace)
-        }
-    }
-
-    private func draft(
-        for endpoint: FavoritePlaceSheetItem.Endpoint,
-        coordinate: CLLocationCoordinate2D
-    ) -> PlaceDraft {
-        let placeName: String
-        let address: String?
-        switch endpoint {
-        case .start:
-            placeName = startPlaceNameText.trimmingCharacters(in: .whitespacesAndNewlines)
-            address = startAddressText.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .end:
-            placeName = endPlaceNameText.trimmingCharacters(in: .whitespacesAndNewlines)
-            address = endAddressText.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        let resolvedName: String
-        if !placeName.isEmpty {
-            resolvedName = placeName
-        } else if let address, !address.isEmpty {
-            resolvedName = address
-        } else {
-            resolvedName = ""
-        }
-
-        return PlaceDraft(
-            name: resolvedName,
-            coordinate: coordinate,
-            address: (address?.isEmpty == false) ? address : nil,
-            kind: .other
-        )
-    }
-
-    @ViewBuilder
-    private func favoritePlacePicker(for item: FavoritePlaceSheetItem) -> some View {
-        switch item.mode {
-        case .create(let draft):
-            PlacePickerView(draft: draft) { savedName in
-                applyFavoritePlaceName(savedName, to: item.endpoint)
-            }
-        case .edit(let placeID):
-            if let place = places.first(where: { $0.id == placeID }) {
-                PlacePickerView(editingPlace: place) { savedName in
-                    applyFavoritePlaceName(savedName, to: item.endpoint)
-                }
-            } else {
-                Text(L10n.placeAlreadySaved)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func applyFavoritePlaceName(_ name: String, to endpoint: FavoritePlaceSheetItem.Endpoint) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        switch endpoint {
-        case .start:
-            startPlaceNameText = trimmed
-            trip.startPlaceName = trimmed
-        case .end:
-            endPlaceNameText = trimmed
-            trip.endPlaceName = trimmed
-        }
-
-        TripDerivedMetrics.refreshSearchIndex(
-            for: trip,
-            places: places,
-            privacyRadius: settings.privacyRadiusMeters
-        )
-        tripDetailViewModel = TripDetailViewModel(
-            trip: trip,
-            places: places,
-            privacyRadius: settings.privacyRadiusMeters,
-            displayPieces: tripDetailViewModel?.displayPieces
-        )
-        try? modelContext.save()
-    }
-
     private var compactSpeedLegend: some View {
         HStack(spacing: 8) {
             legendChip(color: .green, text: L10n.speedLegendSlow)
@@ -1414,14 +708,6 @@ struct TripDetailView: View {
             Text(text)
                 .font(.caption2)
         }
-    }
-
-    private var maxTrimHead: Int {
-        max(0, recordedPointCount - trimTailCount - 2)
-    }
-
-    private var maxTrimTail: Int {
-        max(0, recordedPointCount - trimHeadCount - 2)
     }
 
     private func mapStops(showAll: Bool) -> [TripDetailMapStop] {
@@ -1494,131 +780,21 @@ struct TripDetailView: View {
         showSharePreview = true
     }
 
-    private func dismissNoteKeyboard() {
-        noteFocused = false
+    private func dismissEditKeyboard() {
+        keyboardDismissSignal += 1
         KeyboardDismiss.dismiss()
     }
 
-    private func loadFuelEditDefaults(for vehicleID: UUID?, preferTripSnapshot: Bool) {
-        let vehicle = vehicleID.flatMap { id in
-            sortedDetailVehicles.first(where: { $0.id == id })
-        }
-        if preferTripSnapshot {
-            editedFuelConsumption = FuelCostCalculator.resolvedConsumption(
-                tripConsumption: trip.fuelConsumptionPer100,
-                vehicle: vehicle
-            )
-            editedFuelUnitPrice = FuelCostCalculator.resolvedUnitPrice(
-                tripUnitPrice: trip.fuelUnitPrice,
-                vehicle: vehicle
-            )
-        } else {
-            editedFuelConsumption = FuelCostCalculator.resolvedConsumption(vehicle: vehicle)
-            editedFuelUnitPrice = FuelCostCalculator.resolvedUnitPrice(vehicle: vehicle)
-        }
-    }
-
-    private func fuelUnitPriceLabel(for vehicle: VehicleProfile?) -> String {
-        vehicle?.fuelType == .electric ? L10n.fuelUnitCostPerKWh : L10n.fuelUnitCostPerLiter
-    }
-
-    private func fuelNumberField(title: String, value: Binding<Double>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField(title, value: value, format: .number.precision(.fractionLength(0...2)))
-                .keyboardType(.decimalPad)
-                .glassInputField()
-        }
-    }
-
-    private func saveEdits() {
-        // Captured before the edit lands: date, category and vehicle all decide which rollup
-        // bucket this trip counted toward, and any of them may be about to change.
-        let previousRollup = TripRollupService.snapshot(of: trip)
-
-        trip.note = noteText.isEmpty ? nil : noteText
-        trip.label = selectedLabel.isEmpty ? nil : selectedLabel
-        trip.categoryID = selectedCategoryID
-        let vehicle = selectedVehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
-        VehicleResolver.assign(vehicle: vehicle, to: trip)
-        trip.startAddress = startAddressText.isEmpty ? nil : startAddressText
-        trip.endAddress = endAddressText.isEmpty ? nil : endAddressText
-        trip.startPlaceName = startPlaceNameText.isEmpty ? nil : startPlaceNameText
-        trip.endPlaceName = endPlaceNameText.isEmpty ? nil : endPlaceNameText
-        trip.startedAt = editedStartedAt
-        if trip.endedAt != nil {
-            trip.endedAt = max(editedEndedAt, editedStartedAt)
-        }
-        applyGPSTrimIfNeeded()
-        FuelCostCalculator.applyEstimate(
-            to: trip,
-            distanceMeters: trip.distanceMeters,
-            vehicle: vehicle,
-            consumptionPer100: editedFuelConsumption,
-            unitPrice: editedFuelUnitPrice
-        )
-        // Covers both edits that moved the trip's dates and trims that replaced its points.
-        TripDerivedMetrics.recompute(
-            for: trip,
+    private func refreshTripDetailViewModel() {
+        tripDetailViewModel = TripDetailViewModel(
+            trip: trip,
             places: places,
             privacyRadius: settings.privacyRadiusMeters,
-            fuelType: vehicle?.fuelType ?? .petrol
+            displayPieces: tripDetailViewModel?.displayPieces
         )
-        TripRollupService.update(trip, from: previousRollup, in: modelContext)
-        originalNoteText = noteText
-        try? modelContext.save()
-        ToastPresenter.shared.show(.tripSaved)
     }
 
-    private func applyGPSTrimIfNeeded() {
-        guard trimHeadCount > 0 || trimTailCount > 0 else { return }
-
-        var sorted = trip.sortedPoints
-        guard sorted.count > trimHeadCount + trimTailCount else { return }
-
-        if trimHeadCount > 0 {
-            sorted.removeFirst(trimHeadCount)
-        }
-        if trimTailCount > 0 {
-            sorted.removeLast(trimTailCount)
-        }
-
-        for point in trip.points {
-            modelContext.delete(point)
-        }
-        trip.points.removeAll()
-
-        var distance: Double = 0
-        var previousLocation: CLLocation?
-        for (index, oldPoint) in sorted.enumerated() {
-            let point = TripPoint(
-                timestamp: oldPoint.timestamp,
-                latitude: oldPoint.latitude,
-                longitude: oldPoint.longitude,
-                sequence: index,
-                speedMps: oldPoint.speedMps,
-                trip: trip
-            )
-            trip.points.append(point)
-            modelContext.insert(point)
-
-            let location = CLLocation(latitude: oldPoint.latitude, longitude: oldPoint.longitude)
-            if let previousLocation {
-                distance += location.distance(from: previousLocation)
-            }
-            previousLocation = location
-        }
-
-        trip.distanceMeters = distance
-        trip.invalidatePointCaches()
-        TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
-        TripRoutePathCache.shared.remove(for: trip.id)
-        DevLog.shared.log(.tripDetail, "gps trim trip=\(trip.id.uuidString.prefix(8)) head=\(trimHeadCount) tail=\(trimTailCount)")
-        trimHeadCount = 0
-        trimTailCount = 0
-        recordedPointCount = trip.points.count
+    private func reloadRouteAfterTrim() {
         routeLoadTask?.cancel()
         routeLoadTask = Task { @MainActor in
             await loadDisplayPathAndReveal()
@@ -1651,108 +827,6 @@ struct TripDetailView: View {
                 "left detail before reveal finished — next open may flash empty until instant reveal"
             )
         }
-    }
-}
-
-private struct TripStopEditRow: View {
-    @Bindable var stop: TripStop
-    var glassFrozen: Bool
-    @State private var startedAt: Date = Date()
-
-    private let durationRange = 1...240
-
-    private var durationMinutes: Binding<Int> {
-        Binding(
-            get: {
-                max(durationRange.lowerBound, Int((stop.durationSeconds / 60.0).rounded()))
-            },
-            set: { newValue in
-                let clamped = min(durationRange.upperBound, max(durationRange.lowerBound, newValue))
-                stop.durationSeconds = TimeInterval(clamped * 60)
-            }
-        )
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            stopMiniCard {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L10n.tripStartedAt)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-
-                    DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .date)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                        .buttonStyle(.plain)
-                        .tint(TrailhoundBrandColors.brandBottom)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                        .buttonStyle(.plain)
-                        .tint(TrailhoundBrandColors.brandBottom)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                .onChange(of: startedAt) { _, newValue in
-                    stop.startedAt = newValue
-                }
-            }
-
-            stopMiniCard {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L10n.duration)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-
-                    HStack(spacing: 6) {
-                        stopStepButton(systemImage: "minus") {
-                            durationMinutes.wrappedValue -= 1
-                        }
-                        .disabled(durationMinutes.wrappedValue <= durationRange.lowerBound)
-
-                        Text(DateFormatters.formatDuration(TimeInterval(durationMinutes.wrappedValue * 60)))
-                            .font(.body.weight(.semibold))
-                            .monospacedDigit()
-                            .frame(maxWidth: .infinity)
-
-                        stopStepButton(systemImage: "plus") {
-                            durationMinutes.wrappedValue += 1
-                        }
-                        .disabled(durationMinutes.wrappedValue >= durationRange.upperBound)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .onAppear {
-            startedAt = stop.startedAt
-        }
-    }
-
-    private func stopMiniCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
-    }
-
-    private func stopStepButton(systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.caption2.weight(.bold))
-                .frame(width: 26, height: 26)
-                .contentShape(Rectangle())
-                .glassField(cornerRadius: 6)
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -1826,7 +900,7 @@ private struct ActivityShareSheet: UIViewControllerRepresentable {
 
 // MARK: - Speed chart route draw
 
-private struct SpeedChartRouteCanvas: View {
+struct SpeedChartRouteCanvas: View {
     let samples: [(id: Int, date: Date, speedKmh: Double)]
     let maxKmh: Double
     let progress: Double

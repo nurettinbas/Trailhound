@@ -31,6 +31,7 @@ struct TripListView: View {
     @State private var showMergeConfirm = false
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
+    @FocusState private var isSearchFocused: Bool
     @Namespace private var tripMorphNamespace
     @State private var morphingTripID: UUID?
     @State private var endCredits: RecordingEndCreditsSnapshot?
@@ -324,6 +325,7 @@ struct TripListView: View {
                 Section {
                     TripListFiltersBar(
                         searchText: $searchText,
+                        searchFocused: $isSearchFocused,
                         selectedDateSection: $selectedDateSection,
                         selectedCategoryID: $selectedCategoryID,
                         selectedVehicleFilter: $selectedVehicleFilter,
@@ -405,6 +407,15 @@ struct TripListView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .dismissKeyboardOnTap(focus: $isSearchFocused)
+        .fieldKeyboardAccessory(
+            title: L10n.searchTrips,
+            focusID: isSearchFocused ? AnyHashable(true) : nil,
+            onDone: {
+                isSearchFocused = false
+                KeyboardDismiss.dismiss()
+            }
+        )
         .glassListChrome()
         // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
         .listSectionSpacing(6)

@@ -22,6 +22,8 @@ struct VehicleDetailView: View {
     @State private var vehicleSaveDisabled = false
     @State private var photoSheet: VehiclePhotoSheetRoute?
     @State private var pendingFramingImage: UIImage?
+    @FocusState private var vehicleEditorFocus: PairingVehicleFocusedField?
+    @State private var vehicleKeyboardNav = VehicleEditorKeyboardNav()
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -137,6 +139,8 @@ struct VehicleDetailView: View {
                 vehicle: vehicle,
                 vehicles: vehicles,
                 presentation: .embeddedInList,
+                focusedField: $vehicleEditorFocus,
+                keyboardNav: $vehicleKeyboardNav,
                 unsavedChanges: $hasUnsavedVehicleEdits,
                 saveTrigger: $vehicleSaveTrigger,
                 saveDisabled: $vehicleSaveDisabled,
@@ -250,7 +254,10 @@ struct VehicleDetailView: View {
         }
         .listStyle(.insetGrouped)
         .glassListChrome()
-        .keyboardDoneToolbar()
+        .vehicleFieldKeyboard(
+            focusedField: $vehicleEditorFocus,
+            consumptionLabel: vehicleKeyboardNav.consumptionLabel
+        )
     }
 
     private func cardRowInsets(index: Int) -> EdgeInsets {

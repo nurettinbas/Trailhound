@@ -4,6 +4,7 @@ import SwiftUI
 /// Week summary + search + date/category/vehicle/place filters pinned above the trip rows.
 struct TripListFiltersBar: View {
     @Binding var searchText: String
+    var searchFocused: FocusState<Bool>.Binding
     @Binding var selectedDateSection: TripDateSection?
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
@@ -122,6 +123,12 @@ struct TripListFiltersBar: View {
                 .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .focused(searchFocused)
+                .submitLabel(.search)
+                .onSubmit {
+                    searchFocused.wrappedValue = false
+                    KeyboardDismiss.dismiss()
+                }
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
