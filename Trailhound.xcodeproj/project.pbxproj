@@ -106,6 +106,7 @@
 		A1TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */; };
 		A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */; };
 		A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */; };
+		A1BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift */; };
 		A1HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */; };
 		A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */; };
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
@@ -401,6 +402,7 @@
 		A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailEditPanel.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripDetailKeyboardLayoutTests.swift; sourceTree = SOURCE_ROOT; };
 		A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/KeyboardFieldTitleTests.swift; sourceTree = SOURCE_ROOT; };
+		A2BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/BundleBrandAssetTests.swift; sourceTree = SOURCE_ROOT; };
 		A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpPopoverButton.swift; sourceTree = "<group>"; };
 		A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlaceFilter.swift; sourceTree = "<group>"; };
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
@@ -976,6 +978,7 @@
 				A2TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift */,
 				A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */,
 				A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */,
+				A2BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift */,
 				A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */,
@@ -1188,6 +1191,7 @@
 				A1TRIPFUELESTIMATETEST1 /* TripFuelEstimateTests.swift in Sources */,
 				A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */,
 				A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */,
+				A1BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift in Sources */,
 				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,

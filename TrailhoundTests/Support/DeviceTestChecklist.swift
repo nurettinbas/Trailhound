@@ -50,6 +50,9 @@ enum DeviceTestChecklist {
         "Vehicle photo: Change + existing framing Apply/Save path still works",
         "Trip detail: Avg fuel and Est. fuel both show; Est. ? opens full explanation",
         "Trip detail / Stats: Cruise + Common ? explain moving average vs pace band; Median + P90 when route loaded",
-        "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)"
+        "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
+        "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
+        "Home screen icon matches previous look (corners, colors, halo)",
+        "Recording start/stop sounds play; same tone as before, no cut-off"
     ]
 }
