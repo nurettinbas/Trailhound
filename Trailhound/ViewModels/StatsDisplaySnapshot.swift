@@ -129,6 +129,13 @@ struct StatsDisplaySnapshot: Sendable {
             previous: previousStats.estimatedFuelCost
         )
     }
+
+    func dynamicFuelCostTrendText() -> String? {
+        StatsViewModel.trendText(
+            current: stats.dynamicFuelCost,
+            previous: previousStats.dynamicFuelCost
+        )
+    }
 }
 
 enum StatsDisplaySnapshotBuilder {

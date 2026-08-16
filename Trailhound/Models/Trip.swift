@@ -20,6 +20,8 @@ final class Trip {
     var fuelConsumptionPer100: Double?
     /// Snapshot of unit price (per liter or per kWh) used for this trip's fuel estimate. `nil` on older trips.
     var fuelUnitPrice: Double?
+    /// Trip-specific fuel cost from speed / stop / accel (VSP + Willans). `nil` = not computed yet; `0` = nothing to report.
+    var dynamicFuelCost: Double?
     var isRouteMatched: Bool
     var matchedDistanceMeters: Double?
     var startPlaceName: String?
@@ -69,6 +71,7 @@ final class Trip {
         estimatedFuelCost: Double? = nil,
         fuelConsumptionPer100: Double? = nil,
         fuelUnitPrice: Double? = nil,
+        dynamicFuelCost: Double? = nil,
         isRouteMatched: Bool = false,
         matchedDistanceMeters: Double? = nil,
         startPlaceName: String? = nil,
@@ -93,6 +96,7 @@ final class Trip {
         self.estimatedFuelCost = estimatedFuelCost
         self.fuelConsumptionPer100 = fuelConsumptionPer100
         self.fuelUnitPrice = fuelUnitPrice
+        self.dynamicFuelCost = dynamicFuelCost
         self.isRouteMatched = isRouteMatched
         self.matchedDistanceMeters = matchedDistanceMeters
         self.startPlaceName = startPlaceName

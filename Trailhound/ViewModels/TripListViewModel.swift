@@ -75,6 +75,10 @@ struct TripListViewModel {
     }
 
     static func fuelText(for trip: Trip) -> String? {
+        let dynamic = trip.dynamicFuelCost ?? 0
+        if dynamic > 0 {
+            return FuelCostCalculator.formatCost(dynamic)
+        }
         let cost = StatsViewModel.fuelCost(for: trip)
         guard cost > 0 else { return nil }
         return FuelCostCalculator.formatCost(cost)

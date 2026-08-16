@@ -11,6 +11,7 @@ import Foundation
 ///   highway cluster and report 12 km/h on a 50 km/h trip.
 /// - **Median:** speed that splits moving time in half — half the drive was slower, half faster.
 ///   On a city-then-highway trip this sits below the mode, which follows the tight highway cluster.
+/// - **P90:** speed below which 90% of moving time was spent — “upper pace” without max spikes.
 /// - **Stop:** every interval whose implied speed is below the moving threshold, including
 ///   multi-minute stands where the recorder wrote no points. GPS wander while parked is still
 ///   a stop; only merge-length gaps and physical teleports are ignored.
@@ -37,13 +38,16 @@ enum TripSpeedProfile {
         var mostCommonSpeedKmh: Double?
         /// Time-weighted median speed while moving.
         var medianSpeedKmh: Double?
+        /// Time-weighted 90th percentile speed while moving.
+        var p90SpeedKmh: Double?
 
         static let empty = Result(
             cruiseSpeedKmh: nil,
             cruiseDurationSeconds: 0,
             stopDurationSeconds: 0,
             mostCommonSpeedKmh: nil,
-            medianSpeedKmh: nil
+            medianSpeedKmh: nil,
+            p90SpeedKmh: nil
         )
     }
 
@@ -114,7 +118,8 @@ enum TripSpeedProfile {
             : movingBucketSeconds
         let mostCommon = smoothedWinningBucket(modeBuckets)
             .map { bucketMidpointKmh($0) }
-        let median = timeWeightedMedianKmh(movingSlices)
+        let median = timeWeightedPercentileKmh(movingSlices, percentile: 0.5)
+        let p90 = timeWeightedPercentileKmh(movingSlices, percentile: 0.9)
 
         guard movingSeconds >= minimumMovingSecondsForCruise, movingMeters > 0 else {
             return Result(
@@ -122,7 +127,8 @@ enum TripSpeedProfile {
                 cruiseDurationSeconds: 0,
                 stopDurationSeconds: stopSeconds,
                 mostCommonSpeedKmh: nil,
-                medianSpeedKmh: nil
+                medianSpeedKmh: nil,
+                p90SpeedKmh: nil
             )
         }
 
@@ -131,7 +137,8 @@ enum TripSpeedProfile {
             cruiseDurationSeconds: movingSeconds,
             stopDurationSeconds: stopSeconds,
             mostCommonSpeedKmh: mostCommon,
-            medianSpeedKmh: median
+            medianSpeedKmh: median,
+            p90SpeedKmh: p90
         )
     }
 
@@ -147,18 +154,21 @@ enum TripSpeedProfile {
         (Double(bucket) + 0.5) * bucketWidthKmh
     }
 
-    /// Speed at the 50th percentile of moving time: sort intervals by speed and walk until
-    /// half the moving seconds have been seen.
-    private static func timeWeightedMedianKmh(_ slices: [SpeedSlice]) -> Double? {
+    /// Speed at `percentile` of moving time (0…1): sort intervals by speed and walk until that
+    /// fraction of moving seconds has been seen. Median uses 0.5; P90 uses 0.9.
+    private static func timeWeightedPercentileKmh(
+        _ slices: [SpeedSlice],
+        percentile: Double
+    ) -> Double? {
         let total = slices.reduce(0.0) { $0 + $1.seconds }
         guard total > 0 else { return nil }
 
         let ordered = slices.sorted { $0.kmh < $1.kmh }
-        let halfway = total / 2
+        let target = total * min(1, max(0, percentile))
         var seen: TimeInterval = 0
         for slice in ordered {
             seen += slice.seconds
-            if seen >= halfway {
+            if seen >= target {
                 return slice.kmh
             }
         }

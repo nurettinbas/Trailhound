@@ -195,21 +195,43 @@ enum TrailhoundSchemaV17: VersionedSchema {
     }
 }
 
+/// Adds optional `Trip.dynamicFuelCost` and matching total on `TripDailyRollup`.
+/// Additive only: existing trips open with `nil` and are backfilled; rollup column defaults
+/// to 0 until `TripRollupService` rebuilds. Does not rewrite `estimatedFuelCost` (avg fuel).
+enum TrailhoundSchemaV18: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(18, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V17); V11–V16 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V18); V11–V17 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV17.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV18.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV17]
+        [migrateV5toV18]
     }
 
-    static let migrateV5toV17 = MigrationStage.lightweight(
+    static let migrateV5toV18 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV17.self
+        toVersion: TrailhoundSchemaV18.self
     )
 }

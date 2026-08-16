@@ -8,15 +8,23 @@ import SwiftData
 /// places where a trip's points actually change, keeps those reads O(1).
 enum TripDerivedMetrics {
     /// Recomputes every field derived from `points`. Safe to call repeatedly.
-    static func recompute(for trip: Trip) {
+    /// - Parameter fuelType: Used for VSP/Willans idle + regen factors. Prefer the trip's vehicle;
+    ///   callers with only `vehicleID` should resolve before clearing the relationship.
+    static func recompute(for trip: Trip, fuelType: VehicleFuelType = .petrol) {
         recomputeEndpoints(for: trip)
         recomputeNightDistance(for: trip)
         recomputeSpeedProfile(for: trip)
+        recomputeFuel(for: trip, fuelType: fuelType)
     }
 
     /// Full refresh including the search index, which additionally depends on saved places.
-    static func recompute(for trip: Trip, places: [SavedPlace], privacyRadius: Double) {
-        recompute(for: trip)
+    static func recompute(
+        for trip: Trip,
+        places: [SavedPlace],
+        privacyRadius: Double,
+        fuelType: VehicleFuelType = .petrol
+    ) {
+        recompute(for: trip, fuelType: fuelType)
         refreshSearchIndex(for: trip, places: places, privacyRadius: privacyRadius)
     }
 
@@ -52,6 +60,31 @@ enum TripDerivedMetrics {
         trip.cruiseDurationSeconds = profile.cruiseDurationSeconds
         trip.stopDurationSeconds = profile.stopDurationSeconds
         trip.mostCommonSpeedKmh = profile.mostCommonSpeedKmh ?? 0
+    }
+
+    /// Writes trip-specific VSP/Willans cost. Always sets a non-nil value (0 when empty) so
+    /// backfill can treat `nil` as pending. Does not rewrite `estimatedFuelCost` (avg).
+    static func recomputeFuel(
+        for trip: Trip,
+        fuelType: VehicleFuelType = .petrol,
+        vehicle: VehicleProfile? = nil
+    ) {
+        let c0 = FuelCostCalculator.resolvedConsumption(
+            tripConsumption: trip.fuelConsumptionPer100,
+            vehicle: vehicle
+        )
+        let unitPrice = FuelCostCalculator.resolvedUnitPrice(
+            tripUnitPrice: trip.fuelUnitPrice,
+            vehicle: vehicle
+        )
+        let estimate = TripFuelEstimate.compute(
+            points: trip.sortedPoints,
+            distanceMeters: trip.distanceMeters,
+            consumptionPer100: c0,
+            unitPrice: unitPrice,
+            fuelType: fuelType
+        )
+        trip.dynamicFuelCost = estimate.dynamicCost
     }
 
     /// Mirrors the fields `TripListViewModel.matchesSearch` scans, lowercased once up front so

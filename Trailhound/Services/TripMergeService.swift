@@ -194,7 +194,8 @@ enum TripMergeCore {
         TripDerivedMetrics.recompute(
             for: merged,
             places: places,
-            privacyRadius: privacyRadius
+            privacyRadius: privacyRadius,
+            fuelType: vehicle?.fuelType ?? .petrol
         )
         TripRollupDelta.add(merged, in: context)
     }

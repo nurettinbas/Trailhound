@@ -27,14 +27,21 @@ struct TripSummaryMetric: Identifiable {
         case cruiseSpeedKmh(Double)
         case mostCommonSpeedKmh(Double)
         case medianSpeedKmh(Double)
+        case p90SpeedKmh(Double)
         case stopDuration(TimeInterval)
         case fuel(Double)
+        /// Cost plus optional volume label (e.g. "₺142 · 2,1 L").
+        case dynamicFuel(cost: Double, detail: String?)
     }
 
     let id: String
     let icon: String
     let title: String
     let kind: Kind
+    var helpTitle: String? = nil
+    var helpBody: String? = nil
+
+    var showsHelp: Bool { helpTitle != nil && helpBody != nil }
 
     func formatted(progress: Double) -> String {
         let p = min(1, max(0, progress))
@@ -55,10 +62,18 @@ struct TripSummaryMetric: Identifiable {
             return L10n.formatSpeedKmh(kmh * eased)
         case .medianSpeedKmh(let kmh):
             return L10n.formatSpeedKmh(kmh * eased)
+        case .p90SpeedKmh(let kmh):
+            return L10n.formatSpeedKmh(kmh * eased)
         case .stopDuration(let seconds):
             return DateFormatters.formatDuration(seconds * eased)
         case .fuel(let cost):
             return FuelCostCalculator.formatCost(cost * eased)
+        case .dynamicFuel(let cost, let detail):
+            let costText = FuelCostCalculator.formatCost(cost * eased)
+            if let detail, !detail.isEmpty, p >= 0.99 {
+                return "\(costText) · \(detail)"
+            }
+            return costText
         }
     }
 }
@@ -276,7 +291,8 @@ struct TripDetailViewModel {
                 cruiseDurationSeconds: trip.cruiseDurationSeconds ?? 0,
                 stopDurationSeconds: trip.stopDurationSeconds ?? 0,
                 mostCommonSpeedKmh: storedMostCommon > 0 ? storedMostCommon : nil,
-                medianSpeedKmh: nil
+                medianSpeedKmh: nil,
+                p90SpeedKmh: nil
             )
         }
         return .empty
@@ -292,6 +308,10 @@ struct TripDetailViewModel {
 
     var medianSpeedKmh: Double? {
         speedProfile.medianSpeedKmh
+    }
+
+    var p90SpeedKmh: Double? {
+        speedProfile.p90SpeedKmh
     }
 
     var stopDurationSeconds: TimeInterval? {
@@ -350,17 +370,22 @@ struct TripDetailViewModel {
                     id: "cruiseSpeed",
                     icon: "gauge.with.dots.needle.67percent",
                     title: L10n.cruiseSpeed,
-                    kind: .cruiseSpeedKmh(cruiseSpeed)
+                    kind: .cruiseSpeedKmh(cruiseSpeed),
+                    helpTitle: L10n.cruiseSpeedHelpTitle,
+                    helpBody: L10n.cruiseSpeedHelpBody
                 )
             )
         }
+        // Immediately right of cruise.
         if let mostCommon = mostCommonSpeedKmh {
             items.append(
                 TripSummaryMetric(
                     id: "mostCommonSpeed",
                     icon: "chart.bar",
                     title: L10n.mostCommonSpeed,
-                    kind: .mostCommonSpeedKmh(mostCommon)
+                    kind: .mostCommonSpeedKmh(mostCommon),
+                    helpTitle: L10n.mostCommonSpeedHelpTitle,
+                    helpBody: L10n.mostCommonSpeedHelpBody
                 )
             )
         }
@@ -370,7 +395,21 @@ struct TripDetailViewModel {
                     id: "medianSpeed",
                     icon: "equal.circle",
                     title: L10n.medianSpeed,
-                    kind: .medianSpeedKmh(median)
+                    kind: .medianSpeedKmh(median),
+                    helpTitle: L10n.medianSpeedHelpTitle,
+                    helpBody: L10n.medianSpeedHelpBody
+                )
+            )
+        }
+        if let p90 = p90SpeedKmh {
+            items.append(
+                TripSummaryMetric(
+                    id: "p90Speed",
+                    icon: "arrow.up.right.circle",
+                    title: L10n.p90Speed,
+                    kind: .p90SpeedKmh(p90),
+                    helpTitle: L10n.p90SpeedHelpTitle,
+                    helpBody: L10n.p90SpeedHelpBody
                 )
             )
         }
@@ -390,12 +429,41 @@ struct TripDetailViewModel {
                 TripSummaryMetric(
                     id: "fuel",
                     icon: "fuelpump",
-                    title: L10n.estimatedFuel,
+                    title: L10n.avgFuel,
                     kind: .fuel(fuel)
                 )
             )
         }
+        let dynamic = trip.dynamicFuelCost ?? 0
+        if dynamic > 0 {
+            items.append(
+                TripSummaryMetric(
+                    id: "dynamicFuel",
+                    icon: "flame",
+                    title: L10n.dynamicFuel,
+                    kind: .dynamicFuel(cost: dynamic, detail: dynamicFuelVolumeText),
+                    helpTitle: L10n.dynamicFuelHelpTitle,
+                    helpBody: L10n.dynamicFuelHelpBody
+                )
+            )
+        }
         return items
+    }
+
+    /// Litres or kWh implied by stored dynamic cost ÷ unit price snapshot.
+    private var dynamicFuelVolumeText: String? {
+        let cost = trip.dynamicFuelCost ?? 0
+        let price = trip.fuelUnitPrice ?? 0
+        guard cost > 0, price > 0 else { return nil }
+        let volume = cost / price
+        let isElectric = trip.vehicle?.fuelType == .electric
+        let unit = isElectric ? "kWh" : "L"
+        let formatter = NumberFormatter()
+        formatter.locale = DateFormatters.currentLocale
+        formatter.maximumFractionDigits = volume >= 10 ? 1 : 2
+        formatter.minimumFractionDigits = 0
+        let number = formatter.string(from: NSNumber(value: volume)) ?? String(format: "%.1f", volume)
+        return "\(number) \(unit)"
     }
 
     /// Prepared display samples when available; empty while the async path is still loading.

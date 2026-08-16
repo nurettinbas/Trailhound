@@ -70,6 +70,15 @@ enum StatsChartTheme {
         endPoint: .bottom
     )
 
+    static let dynamicFuelCostBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.98, green: 0.58, blue: 0.24),
+            Color(red: 0.95, green: 0.40, blue: 0.52)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     // MARK: - Donut slice palettes
 
     private static let distanceSliceColors: [Color] = [

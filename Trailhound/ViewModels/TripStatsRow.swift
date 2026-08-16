@@ -31,6 +31,8 @@ protocol TripStatsAggregable {
     var startPlaceName: String? { get }
     var endPlaceName: String? { get }
     var resolvedFuelCost: Double { get }
+    /// Trip-specific VSP/Willans cost. 0 when unknown or not yet computed.
+    var resolvedDynamicFuelCost: Double { get }
     /// `nil` when the split is unknown, in which case the trip is left out of the ratio rather
     /// than counted as daytime.
     var nightDistanceShare: NightDistanceShare? { get }
@@ -65,6 +67,7 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
     let startPlaceName: String?
     let endPlaceName: String?
     let resolvedFuelCost: Double
+    let resolvedDynamicFuelCost: Double
     let nightDistanceShare: NightDistanceShare?
     let resolvedCruiseSpeedKmh: Double
     let resolvedCruiseDurationSeconds: TimeInterval
@@ -91,6 +94,7 @@ extension TripStatsRow {
             startPlaceName: trip.startPlaceName,
             endPlaceName: trip.endPlaceName,
             resolvedFuelCost: StatsViewModel.fuelCost(for: trip),
+            resolvedDynamicFuelCost: trip.dynamicFuelCost ?? 0,
             nightDistanceShare: trip.nightDistanceShare,
             resolvedCruiseSpeedKmh: trip.cruiseSpeedKmh ?? 0,
             resolvedCruiseDurationSeconds: trip.cruiseDurationSeconds ?? 0,
@@ -121,6 +125,7 @@ extension TripStatsRow {
             startPlaceName: nil,
             endPlaceName: nil,
             resolvedFuelCost: rollup.estimatedFuelCost,
+            resolvedDynamicFuelCost: rollup.dynamicFuelCost,
             nightDistanceShare: NightDistanceShare(
                 nightMeters: rollup.nightDistanceMeters,
                 trackedMeters: rollup.trackedDistanceMeters
@@ -139,6 +144,10 @@ extension TripStatsRow {
 extension Trip: TripStatsAggregable {
     var resolvedFuelCost: Double {
         StatsViewModel.fuelCost(for: self)
+    }
+
+    var resolvedDynamicFuelCost: Double {
+        dynamicFuelCost ?? 0
     }
 
     var resolvedCruiseSpeedKmh: Double { cruiseSpeedKmh ?? 0 }

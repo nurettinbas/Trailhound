@@ -1,12 +1,13 @@
 import SwiftUI
 
 /// Reserves chart layout, then mounts heavy Swift Charts content after the row appears.
-struct StatsDeferredChart<Content: View>: View {
+struct StatsDeferredChart<Content: View, TitleAccessory: View>: View {
     let title: String
     let chartHeight: CGFloat
     var reduceMotion: Bool
     var isPageActive: Bool = true
     var titleAlignment: HorizontalAlignment = .leading
+    @ViewBuilder var titleAccessory: () -> TitleAccessory
     @ViewBuilder let content: () -> Content
 
     @State private var isLoaded = false
@@ -22,12 +23,15 @@ struct StatsDeferredChart<Content: View>: View {
 
     var body: some View {
         VStack(alignment: titleAlignment, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .multilineTextAlignment(titleTextAlignment)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, alignment: titleFrameAlignment)
+            HStack(alignment: .center, spacing: 8) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .multilineTextAlignment(titleTextAlignment)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, alignment: titleFrameAlignment)
+                titleAccessory()
+            }
 
             if isLoaded {
                 content()
@@ -64,6 +68,25 @@ struct StatsDeferredChart<Content: View>: View {
                 isLoaded = true
             }
         }
+    }
+}
+
+extension StatsDeferredChart where TitleAccessory == EmptyView {
+    init(
+        title: String,
+        chartHeight: CGFloat,
+        reduceMotion: Bool,
+        isPageActive: Bool = true,
+        titleAlignment: HorizontalAlignment = .leading,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.chartHeight = chartHeight
+        self.reduceMotion = reduceMotion
+        self.isPageActive = isPageActive
+        self.titleAlignment = titleAlignment
+        self.titleAccessory = { EmptyView() }
+        self.content = content
     }
 }
 

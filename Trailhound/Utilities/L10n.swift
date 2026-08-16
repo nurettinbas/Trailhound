@@ -148,11 +148,24 @@ enum L10n {
     static var speedLegendFast: String { string("speed.legend.fast") }
     static var tripSummary: String { string("trip.summary") }
     static var estimatedFuel: String { string("label.estimated_fuel") }
+    static var avgFuel: String { string("label.avg_fuel") }
+    static var dynamicFuel: String { string("label.dynamic_fuel") }
+    static var dynamicFuelHelpTitle: String { string("label.dynamic_fuel.help.title") }
+    static var dynamicFuelHelpBody: String { string("label.dynamic_fuel.help.body") }
     static var maxSpeed: String { string("label.max_speed") }
     static var averageSpeed: String { string("label.average_speed") }
     static var cruiseSpeed: String { string("label.cruise_speed") }
+    static var cruiseSpeedHelpTitle: String { string("label.cruise_speed.help.title") }
+    static var cruiseSpeedHelpBody: String { string("label.cruise_speed.help.body") }
     static var mostCommonSpeed: String { string("label.most_common_speed") }
+    static var mostCommonSpeedHelpTitle: String { string("label.most_common_speed.help.title") }
+    static var mostCommonSpeedHelpBody: String { string("label.most_common_speed.help.body") }
     static var medianSpeed: String { string("label.median_speed") }
+    static var medianSpeedHelpTitle: String { string("label.median_speed.help.title") }
+    static var medianSpeedHelpBody: String { string("label.median_speed.help.body") }
+    static var p90Speed: String { string("label.p90_speed") }
+    static var p90SpeedHelpTitle: String { string("label.p90_speed.help.title") }
+    static var p90SpeedHelpBody: String { string("label.p90_speed.help.body") }
     static var stopDuration: String { string("label.stop_duration") }
     static var fuelPetrol: String { string("fuel.petrol") }
     static var fuelDiesel: String { string("fuel.diesel") }

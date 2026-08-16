@@ -13,6 +13,7 @@ enum ExportService {
         let label: String?
         let category: String
         let estimatedFuelCost: Double?
+        let dynamicFuelCost: Double?
         let points: [ExportPoint]
     }
 
@@ -35,6 +36,7 @@ enum ExportService {
         let label: String?
         let categoryRaw: String
         let estimatedFuelCost: Double?
+        let dynamicFuelCost: Double?
         let displayStartName: String
         let displayEndName: String
         let routeSummary: String
@@ -77,6 +79,7 @@ enum ExportService {
                 label: trip.label,
                 categoryRaw: trip.categoryRaw,
                 estimatedFuelCost: trip.estimatedFuelCost,
+                dynamicFuelCost: trip.dynamicFuelCost,
                 displayStartName: trip.displayStartName,
                 displayEndName: trip.displayEndName,
                 routeSummary: TripListViewModel.routeSummary(
@@ -128,6 +131,7 @@ enum ExportService {
                 label: snapshot.label,
                 category: snapshot.categoryRaw,
                 estimatedFuelCost: snapshot.estimatedFuelCost,
+                dynamicFuelCost: snapshot.dynamicFuelCost,
                 points: snapshot.points
             )
         }
@@ -142,11 +146,12 @@ enum ExportService {
     }
 
     nonisolated static func exportCSV(snapshots: [TripExportSnapshot]) -> String {
-        var lines = ["id,startedAt,endedAt,distanceKm,start,end,label,category,note,fuelCost"]
+        var lines = ["id,startedAt,endedAt,distanceKm,start,end,label,category,note,fuelCost,dynamicFuelCost"]
         let formatter = ISO8601DateFormatter()
         for snapshot in snapshots {
             let distanceKm = String(format: "%.2f", snapshot.distanceMeters / 1000)
             let fuel = snapshot.estimatedFuelCost.map { String(format: "%.0f", $0) } ?? ""
+            let dynamicFuel = snapshot.dynamicFuelCost.map { String(format: "%.0f", $0) } ?? ""
             let row = [
                 snapshot.id.uuidString,
                 formatter.string(from: snapshot.startedAt),
@@ -157,7 +162,8 @@ enum ExportService {
                 csvEscape(snapshot.label ?? ""),
                 snapshot.categoryRaw,
                 csvEscape(snapshot.note ?? ""),
-                fuel
+                fuel,
+                dynamicFuel
             ].joined(separator: ",")
             lines.append(row)
         }
@@ -253,6 +259,7 @@ enum ExportService {
             label: trip.label,
             categoryRaw: trip.categoryRaw,
             estimatedFuelCost: trip.estimatedFuelCost,
+            dynamicFuelCost: trip.dynamicFuelCost,
             displayStartName: trip.displayStartName,
             displayEndName: trip.displayEndName,
             routeSummary: "\(trip.displayStartName) → \(trip.displayEndName)",

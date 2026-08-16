@@ -13,17 +13,27 @@ actor TripDerivedBackfiller {
     private static let speedProfileVersionKey = "trailhound.derived.speedProfileVersion"
     /// Bump when `TripSpeedProfile` changes so already-filled trips are recomputed.
     private static let speedProfileVersion = 6
+    private static let dynamicFuelVersionKey = "trailhound.derived.dynamicFuelVersion"
+    /// Bump when `TripFuelEstimate` changes so already-filled trips are recomputed.
+    private static let dynamicFuelVersion = 1
 
     func run(privacyRadius: Double) async {
         // Fetched on this actor's own context: `SavedPlace` cannot cross actor boundaries.
         let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let fuelTypes = vehicleFuelTypesByID()
 
         while !Task.isCancelled {
             let pending = fetchPendingBatch()
             guard !pending.isEmpty else { break }
 
             for trip in pending {
-                TripDerivedMetrics.recompute(for: trip, places: places, privacyRadius: privacyRadius)
+                let fuelType = trip.vehicleID.flatMap { fuelTypes[$0] } ?? .petrol
+                TripDerivedMetrics.recompute(
+                    for: trip,
+                    places: places,
+                    privacyRadius: privacyRadius,
+                    fuelType: fuelType
+                )
                 // The derived values are what read paths need from here on; holding every
                 // TripPoint alive would defeat the point of backfilling in batches.
                 trip.invalidatePointCaches()
@@ -78,10 +88,50 @@ actor TripDerivedBackfiller {
         defaults.set(Self.speedProfileVersion, forKey: Self.speedProfileVersionKey)
     }
 
+    /// Re-runs VSP/Willans fuel after a formula change. Does not rewrite `estimatedFuelCost`.
+    func refreshDynamicFuelIfNeeded() async {
+        let defaults = UserDefaults.standard
+        guard defaults.integer(forKey: Self.dynamicFuelVersionKey) < Self.dynamicFuelVersion else {
+            return
+        }
+
+        let fuelTypes = vehicleFuelTypesByID()
+        var offset = 0
+        while !Task.isCancelled {
+            var descriptor = FetchDescriptor<Trip>(
+                predicate: #Predicate { $0.endedAt != nil },
+                sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+            )
+            descriptor.fetchOffset = offset
+            descriptor.fetchLimit = Self.batchSize
+
+            let batch = (try? modelContext.fetch(descriptor)) ?? []
+            guard !batch.isEmpty else { break }
+
+            for trip in batch {
+                let fuelType = trip.vehicleID.flatMap { fuelTypes[$0] } ?? .petrol
+                TripDerivedMetrics.recomputeFuel(for: trip, fuelType: fuelType)
+                trip.invalidatePointCaches()
+            }
+
+            do {
+                try modelContext.save()
+            } catch {
+                return
+            }
+
+            offset += batch.count
+            await Task.yield()
+        }
+
+        guard !Task.isCancelled else { return }
+        defaults.set(Self.dynamicFuelVersion, forKey: Self.dynamicFuelVersionKey)
+    }
+
     /// Completed trips are the only ones read paths aggregate, and an unfinished trip would be
     /// recomputed again the moment it is finalized.
     private func fetchPendingBatch() -> [Trip] {
-        // Two simple predicates: a single OR over optionals can overwhelm the type checker.
+        // Separate predicates: a single OR over optionals can overwhelm the type checker.
         var pendingByID: [UUID: Trip] = [:]
         for trip in fetchBatch(
             predicate: #Predicate { $0.endedAt != nil && $0.stopDurationSeconds == nil }
@@ -90,6 +140,11 @@ actor TripDerivedBackfiller {
         }
         for trip in fetchBatch(
             predicate: #Predicate { $0.endedAt != nil && $0.nightDistanceMeters == nil }
+        ) {
+            pendingByID[trip.id] = trip
+        }
+        for trip in fetchBatch(
+            predicate: #Predicate { $0.endedAt != nil && $0.dynamicFuelCost == nil }
         ) {
             pendingByID[trip.id] = trip
         }
@@ -107,6 +162,15 @@ actor TripDerivedBackfiller {
         descriptor.fetchLimit = Self.batchSize
         return (try? modelContext.fetch(descriptor)) ?? []
     }
+
+    private func vehicleFuelTypesByID() -> [UUID: VehicleFuelType] {
+        let vehicles = (try? modelContext.fetch(FetchDescriptor<VehicleProfile>())) ?? []
+        var map: [UUID: VehicleFuelType] = [:]
+        for vehicle in vehicles {
+            map[vehicle.id] = vehicle.fuelType
+        }
+        return map
+    }
 }
 
 @MainActor
@@ -123,5 +187,6 @@ enum TripDerivedBackfillService {
         await backfiller.run(privacyRadius: privacyRadius)
         // After formula fixes, rewrite cruise / stop before rollups rebuild.
         await backfiller.refreshSpeedProfilesIfNeeded()
+        await backfiller.refreshDynamicFuelIfNeeded()
     }
 }

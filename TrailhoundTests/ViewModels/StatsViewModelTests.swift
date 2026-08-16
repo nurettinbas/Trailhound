@@ -248,6 +248,27 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(daily.count, 2)
         XCTAssertEqual(daily.first?.cost ?? 0, 50, accuracy: 0.1)
         XCTAssertEqual(daily.last?.cost ?? 0, 100, accuracy: 0.1)
+        XCTAssertEqual(daily.first?.dynamicCost ?? 0, 0, accuracy: 0.1)
+        XCTAssertEqual(daily.last?.dynamicCost ?? 0, 0, accuracy: 0.1)
+    }
+
+    func testDailyFuelCostsIncludeDynamicSeries() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let interval = DateInterval(start: today, end: today.addingTimeInterval(86_399))
+
+        let trip = Trip(
+            startedAt: today.addingTimeInterval(3600),
+            endedAt: today.addingTimeInterval(7200),
+            distanceMeters: 4000,
+            estimatedFuelCost: 80,
+            dynamicFuelCost: 95
+        )
+
+        let daily = StatsViewModel.dailyFuelCosts(in: interval, from: [trip])
+        let todayBucket = daily.first { calendar.isDate($0.day, inSameDayAs: today) }
+        XCTAssertEqual(todayBucket?.cost ?? 0, 80, accuracy: 0.1)
+        XCTAssertEqual(todayBucket?.dynamicCost ?? 0, 95, accuracy: 0.1)
     }
 
     func testCategoryAndVehicleFuelBreakdown() {

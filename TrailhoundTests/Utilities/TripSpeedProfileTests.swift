@@ -15,6 +15,7 @@ final class TripSpeedProfileTests: XCTestCase {
         XCTAssertEqual(profile.stopDurationSeconds, 0, accuracy: 0.001)
         XCTAssertEqual(profile.mostCommonSpeedKmh ?? 0, 92.5, accuracy: 0.001)
         XCTAssertEqual(profile.medianSpeedKmh ?? 0, 90, accuracy: 0.5)
+        XCTAssertEqual(profile.p90SpeedKmh ?? 0, 90, accuracy: 0.5)
     }
 
     func testStopThenCruiseCountsStopTimeSeparately() {
@@ -202,7 +203,9 @@ final class TripSpeedProfileTests: XCTestCase {
 
         XCTAssertEqual(profile.mostCommonSpeedKmh ?? 0, 67.5, accuracy: 0.001)
         XCTAssertEqual(profile.medianSpeedKmh ?? 0, 45, accuracy: 1)
+        XCTAssertEqual(profile.p90SpeedKmh ?? 0, 68, accuracy: 1)
         XCTAssertLessThan(profile.medianSpeedKmh ?? 0, profile.mostCommonSpeedKmh ?? 0)
+        XCTAssertGreaterThanOrEqual(profile.p90SpeedKmh ?? 0, profile.medianSpeedKmh ?? 0)
     }
 
     /// Samples one second apart, each moving the distance its speed implies.

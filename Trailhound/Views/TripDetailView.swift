@@ -159,6 +159,17 @@ struct TripDetailView: View {
         )
     }
 
+    /// Cheap keyboard preview: scale stored dynamic by ΔC₀ × Δprice without walking points.
+    private var previewDynamicFuelCost: Double? {
+        guard let stored = trip.dynamicFuelCost, stored > 0 else { return nil }
+        let baseC0 = trip.fuelConsumptionPer100 ?? editedFuelConsumption
+        let basePrice = trip.fuelUnitPrice ?? editedFuelUnitPrice
+        guard baseC0 > 0, basePrice > 0, editedFuelConsumption > 0, editedFuelUnitPrice > 0 else {
+            return stored
+        }
+        return stored * (editedFuelConsumption / baseC0) * (editedFuelUnitPrice / basePrice)
+    }
+
     var body: some View {
         ZStack {
             AtmosphericBackground()
@@ -922,10 +933,17 @@ struct TripDetailView: View {
                 )
             }
 
-            Text(L10n.tripEditFuelPreview(FuelCostCalculator.formatCost(
-                previewFuelCost,
-                currencyCode: settings.fuelCurrency.rawValue
-            )))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.tripEditFuelPreview(FuelCostCalculator.formatCost(
+                    previewFuelCost,
+                    currencyCode: settings.fuelCurrency.rawValue
+                )))
+                if let previewDynamic = previewDynamicFuelCost {
+                    Text("\(L10n.dynamicFuel): \(FuelCostCalculator.formatCost(previewDynamic, currencyCode: settings.fuelCurrency.rawValue))")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             .font(.footnote)
             .foregroundStyle(.secondary)
             .padding(.top, -6)
@@ -983,58 +1001,44 @@ struct TripDetailView: View {
         let fuelCurrencyCode = settings.fuelCurrency.rawValue
         let metrics = resolvedViewModel.summaryMetrics
         let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
-        let profileIDs: Set<String> = ["mostCommonSpeed", "medianSpeed", "stopDuration"]
+        // Median + P90 (+ stop) share the stats row.
+        let profileIDs: Set<String> = ["medianSpeed", "p90Speed", "stopDuration"]
+        let fuelIDs: Set<String> = ["fuel", "dynamicFuel"]
         let primaryRow = metrics.filter { primaryIDs.contains($0.id) }
         let profileRow = metrics.filter { profileIDs.contains($0.id) }
+        let fuelRow = metrics.filter { fuelIDs.contains($0.id) }
+        // Preserve summaryMetrics order: avg → cruise → most common → …
         let secondaryRow = metrics.filter {
-            !primaryIDs.contains($0.id) && !profileIDs.contains($0.id)
+            !primaryIDs.contains($0.id) && !profileIDs.contains($0.id) && !fuelIDs.contains($0.id)
         }
 
         VStack(spacing: 8) {
             if !primaryRow.isEmpty {
-                statsMetricRow(metrics: primaryRow)
+                statsMetricGrid(metrics: primaryRow)
             }
             if !secondaryRow.isEmpty {
-                if secondaryRow.count >= 3 {
-                    statsMetricRow(metrics: secondaryRow)
-                } else {
-                    statsCenteredMetricRow(metrics: secondaryRow)
-                }
+                statsMetricGrid(metrics: secondaryRow)
             }
             if !profileRow.isEmpty {
-                statsMetricRow(metrics: profileRow)
+                statsMetricGrid(metrics: profileRow)
+            }
+            if !fuelRow.isEmpty {
+                statsMetricGrid(metrics: fuelRow)
             }
         }
         .id(fuelCurrencyCode)
     }
 
-    private func statsMetricRow(metrics: [TripSummaryMetric]) -> some View {
-        HStack(spacing: 8) {
+    /// Always three equal columns so every card matches Duration / Distance width.
+    private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
+        let columns = [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8)
+        ]
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             ForEach(metrics) { metric in
                 statsMetricCard(for: metric)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    private func statsCenteredMetricRow(metrics: [TripSummaryMetric]) -> some View {
-        HStack(spacing: 8) {
-            if metrics.count < 3 {
-                Color.clear
-                    .frame(maxWidth: .infinity)
-                    .layoutPriority(metrics.count == 2 ? 1 : 2)
-            }
-
-            ForEach(metrics) { metric in
-                statsMetricCard(for: metric)
-                    .frame(maxWidth: .infinity)
-                    .layoutPriority(2)
-            }
-
-            if metrics.count < 3 {
-                Color.clear
-                    .frame(maxWidth: .infinity)
-                    .layoutPriority(metrics.count == 2 ? 1 : 2)
             }
         }
     }
@@ -1042,12 +1046,23 @@ struct TripDetailView: View {
     private func statsMetricCard(for metric: TripSummaryMetric) -> some View {
         let progress = statCountProgress[metric.id] ?? (panelRisen ? 1 : 0)
         return VStack(alignment: .leading, spacing: 1) {
-            Label(metric.title, systemImage: metric.icon)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-                .labelStyle(.titleAndIcon)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
+            HStack(alignment: .center, spacing: 6) {
+                Label(metric.title, systemImage: metric.icon)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                if metric.showsHelp, let helpTitle = metric.helpTitle, let helpBody = metric.helpBody {
+                    HelpPopoverButton(
+                        accessibilityLabel: helpTitle,
+                        message: helpBody
+                    )
+                    .scaleEffect(0.7, anchor: .leading)
+                    .frame(width: 22, height: 22)
+                    .padding(.leading, 2)
+                }
+            }
             Text(metric.formatted(progress: progress))
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
@@ -1057,7 +1072,7 @@ struct TripDetailView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
         .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
         .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.94)
@@ -1548,7 +1563,8 @@ struct TripDetailView: View {
         TripDerivedMetrics.recompute(
             for: trip,
             places: places,
-            privacyRadius: settings.privacyRadiusMeters
+            privacyRadius: settings.privacyRadiusMeters,
+            fuelType: vehicle?.fuelType ?? .petrol
         )
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
         originalNoteText = noteText

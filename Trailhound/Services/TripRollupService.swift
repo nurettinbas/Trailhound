@@ -42,6 +42,7 @@ enum TripRollupDelta {
         rollup.nightDistanceMeters = max(0, rollup.nightDistanceMeters + sign * contribution.nightMeters)
         rollup.trackedDistanceMeters = max(0, rollup.trackedDistanceMeters + sign * contribution.trackedMeters)
         rollup.estimatedFuelCost = max(0, rollup.estimatedFuelCost + sign * contribution.fuelCost)
+        rollup.dynamicFuelCost = max(0, rollup.dynamicFuelCost + sign * contribution.dynamicFuelCost)
         rollup.tripCount = max(0, rollup.tripCount + Int(sign))
         rollup.stopDurationSeconds = max(0, rollup.stopDurationSeconds + sign * contribution.stopDurationSeconds)
         rollup.cruiseWeightSeconds = max(0, rollup.cruiseWeightSeconds + sign * contribution.cruiseWeightSeconds)
@@ -133,7 +134,8 @@ enum TripRollupService {
     /// Version 6 refreshes after multi-minute standstills count toward stop time.
     /// Version 7 refreshes after stop time uses implied speed (GPS wander is still a stop).
     /// Version 8 fills most-common speed totals added in schema V17.
-    private static let rebuildVersion = 8
+    /// Version 9 fills dynamic (VSP/Willans) fuel totals added in schema V18.
+    private static let rebuildVersion = 9
 
     /// Builds the table on the first launch that has it, and after any change to how rollups are
     /// derived. Cheap no-op afterwards.
@@ -175,6 +177,7 @@ enum TripRollupService {
         var totalDistance = 0.0
         var totalDuration = 0.0
         var totalFuel = 0.0
+        var totalDynamicFuel = 0.0
         var nightMeters = 0.0
         var trackedMeters = 0.0
         var maxSpeedMps = 0.0
@@ -189,6 +192,7 @@ enum TripRollupService {
             totalDistance += rollup.distanceMeters
             totalDuration += rollup.duration
             totalFuel += rollup.estimatedFuelCost
+            totalDynamicFuel += rollup.dynamicFuelCost
             nightMeters += rollup.nightDistanceMeters
             trackedMeters += rollup.trackedDistanceMeters
             maxSpeedMps = max(maxSpeedMps, rollup.maxSpeedMps)
@@ -214,6 +218,7 @@ enum TripRollupService {
             mostCommonSpeedKmh: mostCommonWeight > 0 ? mostCommonProduct / mostCommonWeight : 0,
             stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
+            dynamicFuelCost: totalDynamicFuel,
             nightDrivingRatio: trackedMeters > 0 ? nightMeters / trackedMeters : 0
         )
     }
@@ -265,6 +270,7 @@ actor TripRollupRebuilder {
             rollup.nightDistanceMeters = contribution.nightMeters
             rollup.trackedDistanceMeters = contribution.trackedMeters
             rollup.estimatedFuelCost = contribution.fuelCost
+            rollup.dynamicFuelCost = contribution.dynamicFuelCost
             rollup.tripCount = contribution.tripCount
             rollup.maxSpeedMps = contribution.maxSpeedMps
             rollup.stopDurationSeconds = contribution.stopDurationSeconds
@@ -304,6 +310,7 @@ fileprivate struct Contribution {
     var nightMeters = 0.0
     var trackedMeters = 0.0
     var fuelCost = 0.0
+    var dynamicFuelCost = 0.0
     var maxSpeedMps = 0.0
     var stopDurationSeconds = 0.0
     var cruiseWeightSeconds = 0.0
@@ -320,6 +327,7 @@ fileprivate struct Contribution {
         nightMeters = trip.nightDistanceMeters ?? 0
         trackedMeters = trip.trackedDistanceMeters ?? 0
         fuelCost = StatsViewModel.fuelCost(for: trip)
+        dynamicFuelCost = trip.dynamicFuelCost ?? 0
         // A rollup keeps the highest value it ever saw and never lowers it, so one phantom
         // maximum would poison a whole day's statistics permanently.
         maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) ?? 0
@@ -346,6 +354,7 @@ fileprivate struct Contribution {
         nightMeters += other.nightMeters
         trackedMeters += other.trackedMeters
         fuelCost += other.fuelCost
+        dynamicFuelCost += other.dynamicFuelCost
         maxSpeedMps = max(maxSpeedMps, other.maxSpeedMps)
         stopDurationSeconds += other.stopDurationSeconds
         cruiseWeightSeconds += other.cruiseWeightSeconds

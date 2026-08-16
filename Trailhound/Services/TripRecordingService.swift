@@ -1111,6 +1111,7 @@ final class TripRecordingService {
             )
             TripDerivedMetrics.recomputeNightDistance(for: trip)
             TripDerivedMetrics.recomputeSpeedProfile(for: trip)
+            TripDerivedMetrics.recomputeFuel(for: trip, fuelType: vehicle?.fuelType ?? .petrol)
             TripDerivedMetrics.refreshSearchIndex(
                 for: trip,
                 places: places,
@@ -1419,10 +1420,14 @@ enum TripPostProcessor {
 
         let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
         PlaceMatchingService.matchPlaces(for: trip, places: places)
+        let fuelType = trip.vehicleID
+            .flatMap { VehicleResolver.vehicle(withID: $0, in: context)?.fuelType }
+            ?? .petrol
         TripDerivedMetrics.recompute(
             for: trip,
             places: places,
-            privacyRadius: AppSettings.shared.privacyRadiusMeters
+            privacyRadius: AppSettings.shared.privacyRadiusMeters,
+            fuelType: fuelType
         )
         try? context.save()
         TripRoutePathCache.shared.prewarm(tripID: tripUUID, container: container)

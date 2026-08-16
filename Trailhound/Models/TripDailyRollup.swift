@@ -21,6 +21,8 @@ final class TripDailyRollup {
     var nightDistanceMeters: Double = 0
     var trackedDistanceMeters: Double = 0
     var estimatedFuelCost: Double = 0
+    /// Sum of each trip's VSP/Willans estimated fuel cost for the day.
+    var dynamicFuelCost: Double = 0
     var tripCount: Int = 0
     var maxSpeedMps: Double = 0
     var stopDurationSeconds: Double = 0

@@ -698,10 +698,11 @@ struct StatsView: View {
 
     private func summaryMetricsGrid(currencyCode: String) -> some View {
         let columns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8)
+            GridItem(.flexible(), spacing: 6),
+            GridItem(.flexible(), spacing: 6),
+            GridItem(.flexible(), spacing: 6)
         ]
-        return LazyVGrid(columns: columns, spacing: 8) {
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
             summaryMetricCard(
                 title: L10n.string("stats.trips"),
                 value: "\(snap.stats.tripCount)",
@@ -740,12 +741,16 @@ struct StatsView: View {
             summaryMetricCard(
                 title: L10n.string("stats.cruise_speed"),
                 value: snap.stats.cruiseSpeedText,
-                trend: snap.cruiseSpeedTrendText()
+                trend: snap.cruiseSpeedTrendText(),
+                helpTitle: L10n.cruiseSpeedHelpTitle,
+                helpBody: L10n.cruiseSpeedHelpBody
             )
             summaryMetricCard(
                 title: L10n.string("stats.most_common_speed"),
                 value: snap.stats.mostCommonSpeedText,
-                trend: snap.mostCommonSpeedTrendText()
+                trend: snap.mostCommonSpeedTrendText(),
+                helpTitle: L10n.mostCommonSpeedHelpTitle,
+                helpBody: L10n.mostCommonSpeedHelpBody
             )
             summaryMetricCard(
                 title: L10n.string("stats.stop_duration"),
@@ -758,9 +763,24 @@ struct StatsView: View {
                 trend: snap.fuelCostTrendText()
             )
             summaryMetricCard(
+                title: L10n.string("stats.total_dynamic_fuel"),
+                value: snap.stats.dynamicFuelCost > 0
+                    ? FuelCostCalculator.formatCost(snap.stats.dynamicFuelCost, currencyCode: currencyCode)
+                    : "—",
+                trend: snap.dynamicFuelCostTrendText(),
+                helpTitle: L10n.dynamicFuelHelpTitle,
+                helpBody: L10n.dynamicFuelHelpBody
+            )
+            summaryMetricCard(
                 title: L10n.string("stats.cost_per_km"),
                 value: snap.stats.costPerKm > 0
                     ? FuelCostCalculator.formatCost(snap.stats.costPerKm, currencyCode: currencyCode)
+                    : "—"
+            )
+            summaryMetricCard(
+                title: L10n.string("stats.dynamic_cost_per_km"),
+                value: snap.stats.dynamicCostPerKm > 0
+                    ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerKm, currencyCode: currencyCode)
                     : "—"
             )
             summaryMetricCard(
@@ -770,38 +790,58 @@ struct StatsView: View {
                     : "—"
             )
             summaryMetricCard(
+                title: L10n.string("stats.dynamic_cost_per_trip"),
+                value: snap.stats.dynamicCostPerTrip > 0
+                    ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerTrip, currencyCode: currencyCode)
+                    : "—"
+            )
+            summaryMetricCard(
                 title: L10n.string("stats.night_driving"),
                 value: snap.stats.nightDrivingText
             )
         }
     }
 
-    private func summaryMetricCard(title: String, value: String, trend: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                if let trend {
-                    Text(trend)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(trendColor(for: trend))
+    private func summaryMetricCard(
+        title: String,
+        value: String,
+        trend: String? = nil,
+        helpTitle: String? = nil,
+        helpBody: String? = nil
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(alignment: .center, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                if let helpTitle, let helpBody {
+                    HelpPopoverButton(
+                        accessibilityLabel: helpTitle,
+                        message: helpBody
+                    )
+                    .scaleEffect(0.65, anchor: .leading)
+                    .frame(width: 18, height: 18)
                 }
             }
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            if let trend {
+                Text(trend)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(trendColor(for: trend))
+                    .lineLimit(1)
+            }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
         }
     }
@@ -1011,7 +1051,13 @@ struct StatsView: View {
                 title: titledWithScope("stats.chart.daily_fuel", scope: statsTripChartScopeLabel),
                 chartHeight: 200,
                 reduceMotion: reduceMotion,
-                isPageActive: isActive
+                isPageActive: isActive,
+                titleAccessory: {
+                    HelpPopoverButton(
+                        accessibilityLabel: L10n.dynamicFuelHelpTitle,
+                        message: L10n.dynamicFuelHelpBody
+                    )
+                }
             ) {
                 dailyFuelCostChartBody(snap.dailyFuelCost)
             }
@@ -1308,28 +1354,97 @@ struct StatsView: View {
     private func dailyFuelCostChartBody(_ dailyFuelCostChartData: [DailyFuelCost]) -> some View {
         let days = dailyFuelCostChartData.map(\.day)
         let barCount = dailyFuelCostChartData.count
-        let currencyCode = settings.fuelCurrency.rawValue
-        return Chart(dailyFuelCostChartData) { item in
-            BarMark(
-                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
-                y: .value(L10n.string("stats.chart.fuel_cost"), item.cost)
-            )
-            .foregroundStyle(StatsChartTheme.fuelCostBarFill)
-            .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: item.cost > 0
-                        ? FuelCostCalculator.formatCost(item.cost, currencyCode: currencyCode)
-                        : nil,
-                    barCount: barCount
+        let showValueLabels = barCount <= 10
+        let avgLabel = L10n.string("stats.chart.fuel_avg")
+        let estLabel = L10n.string("stats.chart.fuel_estimated")
+        let avgColor = Color(red: 0.28, green: 0.78, blue: 0.86)
+        let estColor = Color(red: 0.98, green: 0.58, blue: 0.24)
+        let maxValue = dailyFuelCostChartData.map { max($0.cost, $0.dynamicCost) }.max() ?? 0
+
+        return Chart {
+            ForEach(dailyFuelCostChartData) { item in
+                let hostOnAvg = item.cost >= item.dynamicCost
+                BarMark(
+                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                    y: .value(L10n.string("stats.chart.fuel_cost"), item.cost)
                 )
+                .foregroundStyle(by: .value("series", avgLabel))
+                .position(by: .value("series", avgLabel))
+                .cornerRadius(StatsChartTheme.barCornerRadius)
+                .annotation(position: .top, spacing: 2) {
+                    if showValueLabels, hostOnAvg {
+                        dailyFuelDualValueLabel(
+                            avg: item.cost,
+                            estimated: item.dynamicCost,
+                            avgColor: avgColor,
+                            estColor: estColor,
+                            barCount: barCount
+                        )
+                    }
+                }
+
+                BarMark(
+                    x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                    y: .value(L10n.string("stats.chart.fuel_cost"), item.dynamicCost)
+                )
+                .foregroundStyle(by: .value("series", estLabel))
+                .position(by: .value("series", estLabel))
+                .cornerRadius(StatsChartTheme.barCornerRadius)
+                .annotation(position: .top, spacing: 2) {
+                    if showValueLabels, !hostOnAvg {
+                        dailyFuelDualValueLabel(
+                            avg: item.cost,
+                            estimated: item.dynamicCost,
+                            avgColor: avgColor,
+                            estColor: estColor,
+                            barCount: barCount
+                        )
+                    }
+                }
             }
         }
-        .chartBarValueHeadroom(maxValue: dailyFuelCostChartData.map(\.cost).max() ?? 0)
+        .chartForegroundStyleScale([
+            avgLabel: avgColor,
+            estLabel: estColor
+        ])
+        .chartLegend(position: .bottom, alignment: .leading)
+        // Extra headroom for the two-line stacked label.
+        .chartYScale(domain: [0, max(maxValue * 1.42, 1)])
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.fuel_cost"))
         .frame(height: 200)
+    }
+
+    /// Compact dual label (no currency symbol) so Avg + Est. stay readable above grouped bars.
+    @ViewBuilder
+    private func dailyFuelDualValueLabel(
+        avg: Double,
+        estimated: Double,
+        avgColor: Color,
+        estColor: Color,
+        barCount: Int
+    ) -> some View {
+        // Dual stack needs smaller type than single-series bars.
+        let font = StatsChartTheme.barValueLabelFont(barCount: max(barCount + 6, 14))
+        VStack(spacing: 0) {
+            if avg > 0 {
+                Text(compactFuelBarAmount(avg))
+                    .font(font)
+                    .foregroundStyle(avgColor)
+            }
+            if estimated > 0 {
+                Text(compactFuelBarAmount(estimated))
+                    .font(font)
+                    .foregroundStyle(estColor)
+            }
+        }
+        .monospacedDigit()
+        .allowsTightening(true)
+    }
+
+    private func compactFuelBarAmount(_ amount: Double) -> String {
+        String(format: "%.0f", amount.rounded())
     }
 
     private func statsDonutLegendItem(

@@ -52,7 +52,17 @@ struct DailyStopDuration: Identifiable, Sendable {
 struct DailyFuelCost: Identifiable, Sendable {
     let id: Date
     let day: Date
+    /// Catalog avg cost for the day.
     let cost: Double
+    /// VSP/Willans estimated cost for the day.
+    let dynamicCost: Double
+
+    init(id: Date, day: Date, cost: Double, dynamicCost: Double = 0) {
+        self.id = id
+        self.day = day
+        self.cost = cost
+        self.dynamicCost = dynamicCost
+    }
 }
 
 struct CategoryDistance: Identifiable, Sendable {
@@ -159,6 +169,9 @@ struct StatsViewModel {
         let totalFuel = completed.reduce(0) { partial, trip in
             partial + trip.resolvedFuelCost
         }
+        let totalDynamicFuel = completed.reduce(0) { partial, trip in
+            partial + trip.resolvedDynamicFuelCost
+        }
         let count = completed.reduce(0) { $0 + $1.tripCount }
         let averageDuration = count > 0 ? totalDuration / Double(count) : 0
         let averageSpeedKmh = averageSpeedKmh(distanceMeters: totalDistance, duration: totalDuration)
@@ -200,6 +213,7 @@ struct StatsViewModel {
             mostCommonSpeedKmh: mostCommonWeight > 0 ? mostCommonProduct / mostCommonWeight : 0,
             stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
+            dynamicFuelCost: totalDynamicFuel,
             nightDrivingRatio: nightRatio
         )
     }
@@ -216,6 +230,10 @@ struct StatsViewModel {
         }
         guard trip.distanceMeters > 0 else { return 0 }
         return FuelCostCalculator.estimateCost(for: trip)
+    }
+
+    static func dynamicFuelCost(for trip: Trip) -> Double {
+        trip.dynamicFuelCost ?? 0
     }
 
     static func trips<T: TripStatsAggregable>(in interval: DateInterval, from trips: [T]) -> [T] {
@@ -585,23 +603,31 @@ struct StatsViewModel {
     ) -> [DailyFuelCost] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
+        var avgBuckets: [Date: Double] = [:]
+        var dynamicBuckets: [Date: Double] = [:]
 
         var day = calendar.startOfDay(for: interval.start)
         let endDay = calendar.startOfDay(for: interval.end)
         while day <= endDay {
-            buckets[day] = 0
+            avgBuckets[day] = 0
+            dynamicBuckets[day] = 0
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
             day = next
         }
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
-            buckets[tripDay, default: 0] += trip.resolvedFuelCost
+            avgBuckets[tripDay, default: 0] += trip.resolvedFuelCost
+            dynamicBuckets[tripDay, default: 0] += trip.resolvedDynamicFuelCost
         }
 
-        return buckets.keys.sorted().map { day in
-            DailyFuelCost(id: day, day: day, cost: buckets[day] ?? 0)
+        return avgBuckets.keys.sorted().map { day in
+            DailyFuelCost(
+                id: day,
+                day: day,
+                cost: avgBuckets[day] ?? 0,
+                dynamicCost: dynamicBuckets[day] ?? 0
+            )
         }
     }
 
@@ -870,6 +896,7 @@ struct TripStats: Sendable {
     let mostCommonSpeedKmh: Double
     let stopDuration: TimeInterval
     let estimatedFuelCost: Double
+    let dynamicFuelCost: Double
     let nightDrivingRatio: Double
 
     init(
@@ -883,6 +910,7 @@ struct TripStats: Sendable {
         mostCommonSpeedKmh: Double = 0,
         stopDuration: TimeInterval = 0,
         estimatedFuelCost: Double,
+        dynamicFuelCost: Double = 0,
         nightDrivingRatio: Double = 0
     ) {
         self.tripCount = tripCount
@@ -895,6 +923,7 @@ struct TripStats: Sendable {
         self.mostCommonSpeedKmh = mostCommonSpeedKmh
         self.stopDuration = stopDuration
         self.estimatedFuelCost = estimatedFuelCost
+        self.dynamicFuelCost = dynamicFuelCost
         self.nightDrivingRatio = nightDrivingRatio
     }
 
@@ -917,6 +946,7 @@ struct TripStats: Sendable {
         stopDuration > 0 ? DateFormatters.formatDuration(stopDuration) : "—"
     }
     var fuelCostText: String { FuelCostCalculator.formatCost(estimatedFuelCost) }
+    var dynamicFuelCostText: String { FuelCostCalculator.formatCost(dynamicFuelCost) }
     var nightDrivingText: String { StatsViewModel.nightDrivingPercentText(for: nightDrivingRatio) }
 
     var costPerKm: Double {
@@ -930,11 +960,30 @@ struct TripStats: Sendable {
         return estimatedFuelCost / Double(tripCount)
     }
 
+    var dynamicCostPerKm: Double {
+        let kilometers = totalDistanceMeters / 1000
+        guard kilometers > 0, dynamicFuelCost > 0 else { return 0 }
+        return dynamicFuelCost / kilometers
+    }
+
+    var dynamicCostPerTrip: Double {
+        guard tripCount > 0, dynamicFuelCost > 0 else { return 0 }
+        return dynamicFuelCost / Double(tripCount)
+    }
+
     var costPerKmText: String {
         costPerKm > 0 ? FuelCostCalculator.formatCost(costPerKm) : "—"
     }
 
     var averageCostPerTripText: String {
         averageCostPerTrip > 0 ? FuelCostCalculator.formatCost(averageCostPerTrip) : "—"
+    }
+
+    var dynamicCostPerKmText: String {
+        dynamicCostPerKm > 0 ? FuelCostCalculator.formatCost(dynamicCostPerKm) : "—"
+    }
+
+    var dynamicCostPerTripText: String {
+        dynamicCostPerTrip > 0 ? FuelCostCalculator.formatCost(dynamicCostPerTrip) : "—"
     }
 }

@@ -298,6 +298,24 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertNotNil(trip.cruiseSpeedKmh)
         XCTAssertNotNil(trip.cruiseDurationSeconds)
         XCTAssertNotNil(trip.mostCommonSpeedKmh)
+        XCTAssertNotNil(trip.dynamicFuelCost)
+    }
+
+    func testRecomputeFuelDoesNotRewriteAvgCost() {
+        let trip = makeTrip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        trip.distanceMeters = 5_000
+        trip.fuelConsumptionPer100 = 7.5
+        trip.fuelUnitPrice = 65
+        trip.estimatedFuelCost = 243.75
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .petrol)
+
+        XCTAssertEqual(trip.estimatedFuelCost ?? 0, 243.75, accuracy: 0.01)
+        XCTAssertNotNil(trip.dynamicFuelCost)
+        XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
     }
 
     func testRecomputeOnPointlessTripClearsEndpoints() {
