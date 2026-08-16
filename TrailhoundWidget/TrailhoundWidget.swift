@@ -688,34 +688,29 @@ private struct LiveActivityBounceGlyph: View {
     }
 }
 
-/// Distance / Speed row for expanded Island (mockup hierarchy).
-/// `fixedSize` keeps labels and values whole — the Island must never truncate them.
-private struct LiveActivityIslandMetricRow: View {
-    let systemImage: String
+/// Equal-width Island column: small label on top, value below (same size across columns).
+private struct LiveActivityIslandMetricColumn: View {
     let label: String
     let value: String
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.75))
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(Color.white.opacity(0.10)))
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                Text(value)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-            }
-            // The trailing Island region is narrow — scale down instead of truncating.
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.white.opacity(0.45))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
         }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 
@@ -913,71 +908,70 @@ private func liveActivityDynamicIsland(
     context: ActivityViewContext<TripRecordingAttributes>
 ) -> DynamicIsland {
     DynamicIsland {
-        // Vehicle mark + duration share one row height; status copy lives in `.bottom`.
-        DynamicIslandExpandedRegion(.leading) {
-            let markSide: CGFloat = 40
-            HStack(alignment: .center, spacing: 10) {
-                LiveActivityCarIcon(
-                    side: markSide,
-                    photoRevision: context.state.vehiclePhotoRevision,
-                    symbolTint: .white
-                )
-
-                Text(DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds)))
-                    .font(.system(size: markSide * 0.92, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .frame(height: markSide)
-        }
-
-        DynamicIslandExpandedRegion(.trailing) {
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                VStack(alignment: .leading, spacing: 6) {
-                    LiveActivityIslandMetricRow(
-                        systemImage: "road.lanes",
-                        label: WidgetL10n.distance,
-                        value: DateFormatters.formatDistance(context.state.distanceMeters)
-                    )
-                    LiveActivityIslandMetricRow(
-                        systemImage: "gauge.with.dots.needle.67percent",
-                        label: WidgetL10n.speed,
-                        value: context.state.isPaused
-                            ? "—"
-                            : "\(context.state.currentSpeedKmh) km/s"
+        // One full-width row — avoid `.leading`/`.trailing` (they pin content to edges
+        // and leave a dead gap in the middle). Four equal ~25% columns, centered.
+        DynamicIslandExpandedRegion(.center) {
+            HStack(alignment: .center, spacing: 0) {
+                VStack(spacing: 2) {
+                    // Match metric label height so the car lines up with values.
+                    Text(" ")
+                        .font(.system(size: 9, weight: .medium))
+                        .opacity(0)
+                    LiveActivityCarIcon(
+                        side: 36,
+                        photoRevision: context.state.vehiclePhotoRevision,
+                        symbolTint: .white
                     )
                 }
+                .frame(maxWidth: .infinity)
+
+                LiveActivityIslandMetricColumn(
+                    label: WidgetL10n.duration,
+                    value: DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds))
+                )
+
+                LiveActivityIslandMetricColumn(
+                    label: WidgetL10n.distance,
+                    value: DateFormatters.formatDistance(context.state.distanceMeters)
+                )
+
+                LiveActivityIslandMetricColumn(
+                    label: WidgetL10n.speed,
+                    value: context.state.isPaused
+                        ? "—"
+                        : "\(context.state.currentSpeedKmh) km/s"
+                )
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
 
         DynamicIslandExpandedRegion(.bottom) {
-            HStack(alignment: .center, spacing: 10) {
-                HStack(spacing: 7) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                        .frame(width: 26, height: 26)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.white.opacity(0.10))
-                        )
-                    Circle()
-                        .fill(context.state.isPaused ? WidgetPalette.paused : Color.green)
-                        .frame(width: 6, height: 6)
-                    Text(context.state.isPaused ? WidgetL10n.tripPaused : WidgetL10n.tripActive)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.white.opacity(0.14))
+                    .frame(height: 0.5)
+                    .padding(.bottom, 8)
 
-                Spacer(minLength: 8)
+                HStack(alignment: .center, spacing: 12) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.8))
+                            .frame(width: 26, height: 26)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.white.opacity(0.12))
+                            )
+                        Circle()
+                            .fill(context.state.isPaused ? WidgetPalette.paused : Color.green)
+                            .frame(width: 7, height: 7)
+                        Text(context.state.isPaused ? WidgetL10n.tripPaused : WidgetL10n.tripActive)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
 
-                HStack(spacing: 10) {
                     LiveActivityPlaybackControl(isPaused: context.state.isPaused, size: 36)
                     LiveActivityIslandButton(
                         title: WidgetL10n.stop,
@@ -987,8 +981,8 @@ private func liveActivityDynamicIsland(
                         size: 36
                     )
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .padding(.top, 2)
         }
     } compactLeading: {
         LiveActivityCarIcon(

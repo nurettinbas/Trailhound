@@ -105,7 +105,7 @@ final class TripMapFitTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(region!.span.latitudeDelta, 0.0016)
     }
 
-    func testLongRouteUsesSmallerRelativeMargin() {
+    func testLongAndShortRoutesUseSimilarRelativeMargin() {
         let coordinates = [
             CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0),
             CLLocationCoordinate2D(latitude: 41.08, longitude: 29.12)
@@ -127,7 +127,9 @@ final class TripMapFitTests: XCTestCase {
         XCTAssertNotNil(long)
         let shortMarginRatio = short!.span.latitudeDelta / 0.002
         let longMarginRatio = long!.span.latitudeDelta / 0.08
-        XCTAssertLessThan(longMarginRatio, shortMarginRatio)
+        // Pixel fit uses a fixed 1.2 margin; Mercator + aspect can differ by a few thousandths.
+        XCTAssertEqual(longMarginRatio, shortMarginRatio, accuracy: 0.05)
+        XCTAssertGreaterThan(long!.span.latitudeDelta, short!.span.latitudeDelta)
     }
 
     func testPixelPaddingCentersRouteInUsableBand() {
@@ -177,8 +179,9 @@ final class TripMapFitTests: XCTestCase {
         XCTAssertNotNil(region)
         let midLat = 38.39
         let midLon = 27.15
-        // More top chrome than bottom → camera center sits slightly south of the route mid.
-        XCTAssertLessThan(region!.center.latitude, midLat)
+        // More top chrome than bottom → visible band sits slightly below map midpoint.
+        // Camera center is therefore slightly north of the route mid (north = top of map).
+        XCTAssertGreaterThan(region!.center.latitude, midLat)
         XCTAssertEqual(region!.center.longitude, midLon, accuracy: 0.004)
         // Must stay wider than the raw route so start/end are not clipped by the tab bar.
         XCTAssertGreaterThan(region!.span.latitudeDelta, 0.06)
