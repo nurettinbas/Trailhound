@@ -41,6 +41,35 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(stats.maxSpeedKmh, 33.33 * 3.6, accuracy: 0.1)
     }
 
+    func testStatsWeightsCruiseSpeedByCruiseDuration() {
+        let city = Trip(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600),
+            distanceMeters: 5_000
+        )
+        city.cruiseSpeedKmh = 30
+        city.cruiseDurationSeconds = 300 // 5 minutes
+        city.stopDurationSeconds = 120
+        city.mostCommonSpeedKmh = 25
+
+        let highway = Trip(
+            startedAt: Date().addingTimeInterval(-1800),
+            endedAt: Date(),
+            distanceMeters: 40_000
+        )
+        highway.cruiseSpeedKmh = 110
+        highway.cruiseDurationSeconds = 7_200 // 2 hours
+        highway.stopDurationSeconds = 60
+        highway.mostCommonSpeedKmh = 100
+
+        let stats = StatsViewModel.stats(for: [city, highway])
+
+        // (30*300 + 110*7200) / (300+7200) ≈ 106.8
+        XCTAssertEqual(stats.cruiseSpeedKmh, 106.8, accuracy: 0.2)
+        XCTAssertEqual(stats.mostCommonSpeedKmh, 97.0, accuracy: 0.2)
+        XCTAssertEqual(stats.stopDuration, 180, accuracy: 0.1)
+    }
+
     /// A trip recorded before speeds were vetted can carry a maximum no car reached. Statistics
     /// cannot afford to load its points to check, so the value is hidden rather than headlined.
     func testStatsHidesAnImplausibleStoredMaximum() {

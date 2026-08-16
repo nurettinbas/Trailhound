@@ -1086,7 +1086,8 @@ final class TripRecordingService {
             trip.maxSpeedMps = maxSpeedMps > 0 ? maxSpeedMps : nil
             let vehicle = trip.vehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
             trip.vehicle = nil
-            trip.estimatedFuelCost = FuelCostCalculator.estimateCost(
+            FuelCostCalculator.applyEstimate(
+                to: trip,
                 distanceMeters: currentDistanceMeters,
                 vehicle: vehicle
             )
@@ -1109,6 +1110,7 @@ final class TripRecordingService {
                 privacyRadius: privacyRadius
             )
             TripDerivedMetrics.recomputeNightDistance(for: trip)
+            TripDerivedMetrics.recomputeSpeedProfile(for: trip)
             TripDerivedMetrics.refreshSearchIndex(
                 for: trip,
                 places: places,

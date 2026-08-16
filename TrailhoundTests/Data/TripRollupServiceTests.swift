@@ -29,7 +29,11 @@ final class TripRollupServiceTests: XCTestCase {
         category: TripCategory = .personal,
         nightMeters: Double = 2_000,
         trackedMeters: Double = 10_000,
-        maxSpeedMps: Double = 30
+        maxSpeedMps: Double = 30,
+        cruiseSpeedKmh: Double = 0,
+        cruiseDurationSeconds: Double = 0,
+        stopDurationSeconds: Double = 0,
+        mostCommonSpeedKmh: Double = 0
     ) -> Trip {
         let trip = Trip(
             startedAt: startedAt,
@@ -41,6 +45,10 @@ final class TripRollupServiceTests: XCTestCase {
         trip.nightDistanceMeters = nightMeters
         trip.trackedDistanceMeters = trackedMeters
         trip.estimatedFuelCost = 50
+        trip.cruiseSpeedKmh = cruiseSpeedKmh
+        trip.cruiseDurationSeconds = cruiseDurationSeconds
+        trip.stopDurationSeconds = stopDurationSeconds
+        trip.mostCommonSpeedKmh = mostCommonSpeedKmh
         context.insert(trip)
         return trip
     }
@@ -245,5 +253,38 @@ final class TripRollupServiceTests: XCTestCase {
 
         let rollup = try XCTUnwrap(try rollups().first)
         XCTAssertEqual(rollup.maxSpeedMps, 22.22, accuracy: 0.001)
+    }
+
+    func testRollupAccumulatesCruiseWeightAndStopDuration() throws {
+        let day = Calendar.current.startOfDay(for: Date()).addingTimeInterval(9 * 3_600)
+        let city = insertTrip(
+            startedAt: day,
+            cruiseSpeedKmh: 30,
+            cruiseDurationSeconds: 300,
+            stopDurationSeconds: 120,
+            mostCommonSpeedKmh: 25
+        )
+        let highway = insertTrip(
+            startedAt: day.addingTimeInterval(3_600),
+            cruiseSpeedKmh: 110,
+            cruiseDurationSeconds: 7_200,
+            stopDurationSeconds: 60,
+            mostCommonSpeedKmh: 100
+        )
+
+        TripRollupService.add(city, in: context)
+        TripRollupService.add(highway, in: context)
+        try context.save()
+
+        let rollup = try XCTUnwrap(try rollups().first)
+        XCTAssertEqual(rollup.stopDurationSeconds, 180, accuracy: 0.1)
+        XCTAssertEqual(rollup.cruiseWeightSeconds, 7_500, accuracy: 0.1)
+        XCTAssertEqual(rollup.cruiseSpeedProduct, 30 * 300 + 110 * 7_200, accuracy: 0.1)
+        XCTAssertEqual(rollup.mostCommonWeightSeconds, 7_500, accuracy: 0.1)
+        XCTAssertEqual(rollup.mostCommonSpeedProduct, 25 * 300 + 100 * 7_200, accuracy: 0.1)
+
+        let row = TripStatsRow(rollup: rollup)
+        XCTAssertEqual(row.resolvedCruiseSpeedKmh, 106.8, accuracy: 0.2)
+        XCTAssertEqual(row.resolvedMostCommonSpeedKmh, 97.0, accuracy: 0.2)
     }
 }

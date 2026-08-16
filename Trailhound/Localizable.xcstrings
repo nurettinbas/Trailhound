@@ -1413,6 +1413,40 @@
         }
       }
     },
+    "fuel.unit.cost_per_liter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cost / L"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maliyet / L"
+          }
+        }
+      }
+    },
+    "fuel.unit.cost_per_kwh" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cost / kWh"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maliyet / kWh"
+          }
+        }
+      }
+    },
     "Geliştirici Günlüğü" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1976,6 +2010,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ort. hız"
+          }
+        }
+      }
+    },
+    "label.cruise_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruise speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyir hızı"
+          }
+        }
+      }
+    },
+    "label.most_common_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Most common"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En sık hız"
+          }
+        }
+      }
+    },
+    "label.median_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Median"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medyan hız"
+          }
+        }
+      }
+    },
+    "label.stop_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durma süresi"
           }
         }
       }
@@ -8980,6 +9082,57 @@
         }
       }
     },
+    "stats.cruise_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruise speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyir hızı"
+          }
+        }
+      }
+    },
+    "stats.most_common_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Most common"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En sık hız"
+          }
+        }
+      }
+    },
+    "stats.stop_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durma süresi"
+          }
+        }
+      }
+    },
     "stats.chart.categories" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9078,6 +9231,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Günlük ortalama hız"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_cruise_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily cruise speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük seyir hızı"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_most_common_speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily most common speed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük en sık hız"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_stop_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily stop time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük durma süresi"
           }
         }
       }
@@ -10808,6 +11012,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Değişiklikleri kaydet"
+          }
+        }
+      }
+    },
+    "trip.edit.fuel.section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuel estimate"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yakıt tahmini"
+          }
+        }
+      }
+    },
+    "trip.edit.fuel.preview" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updated estimate: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncel tahmin: %@"
           }
         }
       }

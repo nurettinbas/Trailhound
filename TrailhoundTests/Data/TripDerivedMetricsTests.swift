@@ -294,6 +294,10 @@ final class TripDerivedMetricsTests: XCTestCase {
         let night: Double = try XCTUnwrap(trip.nightDistanceMeters)
         XCTAssertEqual(tracked, 1_400, accuracy: 200)
         XCTAssertEqual(night, tracked, accuracy: 0.1, "a trip driven entirely after 22:00 is fully night driving")
+        XCTAssertNotNil(trip.stopDurationSeconds)
+        XCTAssertNotNil(trip.cruiseSpeedKmh)
+        XCTAssertNotNil(trip.cruiseDurationSeconds)
+        XCTAssertNotNil(trip.mostCommonSpeedKmh)
     }
 
     func testRecomputeOnPointlessTripClearsEndpoints() {
@@ -306,6 +310,9 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertNil(trip.startLatitude)
         XCTAssertNil(trip.endLatitude)
         XCTAssertEqual(trip.trackedDistanceMeters, 0)
+        XCTAssertEqual(trip.stopDurationSeconds, 0)
+        XCTAssertEqual(trip.cruiseSpeedKmh, 0)
+        XCTAssertEqual(trip.mostCommonSpeedKmh, 0)
     }
 
     func testStoredCoordinatesAvoidPointLookup() {

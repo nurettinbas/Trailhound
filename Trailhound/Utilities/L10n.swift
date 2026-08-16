@@ -103,6 +103,14 @@ enum L10n {
     static var tripEditNote: String { string("trip.edit.note") }
     static var tripEditNotePlaceholder: String { string("trip.edit.note_placeholder") }
     static var tripEditSave: String { string("trip.edit.save") }
+    static var tripEditFuelSection: String { string("trip.edit.fuel.section") }
+
+    static func tripEditFuelPreview(_ cost: String) -> String {
+        String(format: string("trip.edit.fuel.preview"), cost)
+    }
+
+    static var fuelUnitCostPerLiter: String { string("fuel.unit.cost_per_liter") }
+    static var fuelUnitCostPerKWh: String { string("fuel.unit.cost_per_kwh") }
     static var labelNone: String { string("label.none") }
     static var actionClose: String { string("action.close") }
     static var actionAdd: String { string("action.add") }
@@ -142,6 +150,10 @@ enum L10n {
     static var estimatedFuel: String { string("label.estimated_fuel") }
     static var maxSpeed: String { string("label.max_speed") }
     static var averageSpeed: String { string("label.average_speed") }
+    static var cruiseSpeed: String { string("label.cruise_speed") }
+    static var mostCommonSpeed: String { string("label.most_common_speed") }
+    static var medianSpeed: String { string("label.median_speed") }
+    static var stopDuration: String { string("label.stop_duration") }
     static var fuelPetrol: String { string("fuel.petrol") }
     static var fuelDiesel: String { string("fuel.diesel") }
     static var fuelElectric: String { string("fuel.electric") }

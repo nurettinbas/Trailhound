@@ -34,6 +34,33 @@ enum StatsChartTheme {
         endPoint: .bottom
     )
 
+    static let cruiseSpeedBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.28, green: 0.78, blue: 0.86),
+            Color(red: 0.34, green: 0.82, blue: 0.58)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let mostCommonSpeedBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.45, green: 0.58, blue: 0.98),
+            Color(red: 0.62, green: 0.42, blue: 0.95)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let stopDurationBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.72, green: 0.48, blue: 0.95),
+            Color(red: 0.58, green: 0.64, blue: 0.92)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     static let fuelCostBarFill = LinearGradient(
         colors: [
             Color(red: 0.34, green: 0.82, blue: 0.58),
@@ -174,6 +201,22 @@ enum StatsChartTheme {
         return [lower, paddedUpper]
     }
 
+    /// Room above the tallest bar so value labels are not clipped.
+    static func barValueHeadroom(maxValue: Double) -> [Double] {
+        guard maxValue.isFinite, maxValue > 0 else { return [0, 1] }
+        return [0, maxValue * 1.28]
+    }
+
+    static func barValueLabelFont(barCount: Int) -> Font {
+        let size: CGFloat
+        switch barCount {
+        case ...8: size = 9
+        case ...14: size = 7.5
+        default: size = 6.5
+        }
+        return .system(size: size, weight: .semibold, design: .rounded)
+    }
+
     private static func stableHash(_ string: String) -> Int {
         var hash = 5381
         for byte in string.utf8 {
@@ -193,6 +236,10 @@ extension View {
                     .font(.caption2)
             }
         }
+    }
+
+    func chartBarValueHeadroom(maxValue: Double) -> some View {
+        chartYScale(domain: StatsChartTheme.barValueHeadroom(maxValue: maxValue))
     }
 
     /// Dashed vertical grid + centered date labels (trip daily / cost timeline parity).
@@ -240,6 +287,21 @@ extension View {
         }
         .padding(.horizontal, StatsChartTheme.chartCardHorizontalPadding)
         .frame(maxWidth: .infinity)
+    }
+}
+
+struct StatsBarValueLabel: View {
+    let text: String
+    var barCount: Int = 7
+
+    var body: some View {
+        Text(text)
+            .font(StatsChartTheme.barValueLabelFont(barCount: barCount))
+            .foregroundStyle(Color.primary.opacity(0.78))
+            .lineLimit(1)
+            .minimumScaleFactor(0.45)
+            .monospacedDigit()
+            .allowsTightening(true)
     }
 }
 

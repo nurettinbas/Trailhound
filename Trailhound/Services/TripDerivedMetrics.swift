@@ -11,6 +11,7 @@ enum TripDerivedMetrics {
     static func recompute(for trip: Trip) {
         recomputeEndpoints(for: trip)
         recomputeNightDistance(for: trip)
+        recomputeSpeedProfile(for: trip)
     }
 
     /// Full refresh including the search index, which additionally depends on saved places.
@@ -41,6 +42,16 @@ enum TripDerivedMetrics {
         let share = StatsViewModel.walkNightDistanceShare(for: trip)
         trip.nightDistanceMeters = share?.nightMeters ?? 0
         trip.trackedDistanceMeters = share?.trackedMeters ?? 0
+    }
+
+    /// Writes cruise / stop / most-common totals so stats never have to walk points. Always
+    /// sets every field (0 when there is nothing to report) so backfill can treat `nil` as pending.
+    static func recomputeSpeedProfile(for trip: Trip) {
+        let profile = TripSpeedProfile.compute(points: trip.sortedPoints)
+        trip.cruiseSpeedKmh = profile.cruiseSpeedKmh ?? 0
+        trip.cruiseDurationSeconds = profile.cruiseDurationSeconds
+        trip.stopDurationSeconds = profile.stopDurationSeconds
+        trip.mostCommonSpeedKmh = profile.mostCommonSpeedKmh ?? 0
     }
 
     /// Mirrors the fields `TripListViewModel.matchesSearch` scans, lowercased once up front so

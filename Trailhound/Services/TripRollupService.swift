@@ -43,6 +43,11 @@ enum TripRollupDelta {
         rollup.trackedDistanceMeters = max(0, rollup.trackedDistanceMeters + sign * contribution.trackedMeters)
         rollup.estimatedFuelCost = max(0, rollup.estimatedFuelCost + sign * contribution.fuelCost)
         rollup.tripCount = max(0, rollup.tripCount + Int(sign))
+        rollup.stopDurationSeconds = max(0, rollup.stopDurationSeconds + sign * contribution.stopDurationSeconds)
+        rollup.cruiseWeightSeconds = max(0, rollup.cruiseWeightSeconds + sign * contribution.cruiseWeightSeconds)
+        rollup.cruiseSpeedProduct = max(0, rollup.cruiseSpeedProduct + sign * contribution.cruiseSpeedProduct)
+        rollup.mostCommonWeightSeconds = max(0, rollup.mostCommonWeightSeconds + sign * contribution.mostCommonWeightSeconds)
+        rollup.mostCommonSpeedProduct = max(0, rollup.mostCommonSpeedProduct + sign * contribution.mostCommonSpeedProduct)
 
         if sign > 0 {
             rollup.maxSpeedMps = max(rollup.maxSpeedMps, contribution.maxSpeedMps)
@@ -122,7 +127,13 @@ enum TripRollupService {
     private static let rebuildVersionKey = "trailhound.rollup.rebuiltVersion"
     /// Bump to force every install to regenerate the table after a change to how it is derived.
     /// Version 2 drops the phantom maxima that existing rows recorded before speeds were vetted.
-    private static let rebuildVersion = 2
+    /// Version 3 fills cruise / stop totals added in schema V15.
+    /// Version 4 refreshes cruise / stop after the dwell-aware profile fix.
+    /// Version 5 refreshes after cruise became moving-average (not modal bucket).
+    /// Version 6 refreshes after multi-minute standstills count toward stop time.
+    /// Version 7 refreshes after stop time uses implied speed (GPS wander is still a stop).
+    /// Version 8 fills most-common speed totals added in schema V17.
+    private static let rebuildVersion = 8
 
     /// Builds the table on the first launch that has it, and after any change to how rollups are
     /// derived. Cheap no-op afterwards.
@@ -167,6 +178,11 @@ enum TripRollupService {
         var nightMeters = 0.0
         var trackedMeters = 0.0
         var maxSpeedMps = 0.0
+        var stopDuration = 0.0
+        var cruiseWeight = 0.0
+        var cruiseProduct = 0.0
+        var mostCommonWeight = 0.0
+        var mostCommonProduct = 0.0
         var count = 0
 
         for rollup in rollups {
@@ -176,6 +192,11 @@ enum TripRollupService {
             nightMeters += rollup.nightDistanceMeters
             trackedMeters += rollup.trackedDistanceMeters
             maxSpeedMps = max(maxSpeedMps, rollup.maxSpeedMps)
+            stopDuration += rollup.stopDurationSeconds
+            cruiseWeight += rollup.cruiseWeightSeconds
+            cruiseProduct += rollup.cruiseSpeedProduct
+            mostCommonWeight += rollup.mostCommonWeightSeconds
+            mostCommonProduct += rollup.mostCommonSpeedProduct
             count += rollup.tripCount
         }
 
@@ -189,6 +210,9 @@ enum TripRollupService {
                 duration: totalDuration
             ),
             maxSpeedKmh: maxSpeedMps * 3.6,
+            cruiseSpeedKmh: cruiseWeight > 0 ? cruiseProduct / cruiseWeight : 0,
+            mostCommonSpeedKmh: mostCommonWeight > 0 ? mostCommonProduct / mostCommonWeight : 0,
+            stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
             nightDrivingRatio: trackedMeters > 0 ? nightMeters / trackedMeters : 0
         )
@@ -243,6 +267,11 @@ actor TripRollupRebuilder {
             rollup.estimatedFuelCost = contribution.fuelCost
             rollup.tripCount = contribution.tripCount
             rollup.maxSpeedMps = contribution.maxSpeedMps
+            rollup.stopDurationSeconds = contribution.stopDurationSeconds
+            rollup.cruiseWeightSeconds = contribution.cruiseWeightSeconds
+            rollup.cruiseSpeedProduct = contribution.cruiseSpeedProduct
+            rollup.mostCommonWeightSeconds = contribution.mostCommonWeightSeconds
+            rollup.mostCommonSpeedProduct = contribution.mostCommonSpeedProduct
             modelContext.insert(rollup)
         }
 
@@ -276,6 +305,11 @@ fileprivate struct Contribution {
     var trackedMeters = 0.0
     var fuelCost = 0.0
     var maxSpeedMps = 0.0
+    var stopDurationSeconds = 0.0
+    var cruiseWeightSeconds = 0.0
+    var cruiseSpeedProduct = 0.0
+    var mostCommonWeightSeconds = 0.0
+    var mostCommonSpeedProduct = 0.0
     var tripCount = 0
 
     static let zero = Contribution()
@@ -289,6 +323,18 @@ fileprivate struct Contribution {
         // A rollup keeps the highest value it ever saw and never lowers it, so one phantom
         // maximum would poison a whole day's statistics permanently.
         maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) ?? 0
+        stopDurationSeconds = trip.stopDurationSeconds ?? 0
+        let cruiseSpeed = trip.cruiseSpeedKmh ?? 0
+        let cruiseWeight = trip.cruiseDurationSeconds ?? 0
+        if cruiseSpeed > 0, cruiseWeight > 0 {
+            cruiseWeightSeconds = cruiseWeight
+            cruiseSpeedProduct = cruiseSpeed * cruiseWeight
+        }
+        let mostCommonSpeed = trip.mostCommonSpeedKmh ?? 0
+        if mostCommonSpeed > 0, cruiseWeight > 0 {
+            mostCommonWeightSeconds = cruiseWeight
+            mostCommonSpeedProduct = mostCommonSpeed * cruiseWeight
+        }
         tripCount = 1
     }
 
@@ -301,6 +347,11 @@ fileprivate struct Contribution {
         trackedMeters += other.trackedMeters
         fuelCost += other.fuelCost
         maxSpeedMps = max(maxSpeedMps, other.maxSpeedMps)
+        stopDurationSeconds += other.stopDurationSeconds
+        cruiseWeightSeconds += other.cruiseWeightSeconds
+        cruiseSpeedProduct += other.cruiseSpeedProduct
+        mostCommonWeightSeconds += other.mostCommonWeightSeconds
+        mostCommonSpeedProduct += other.mostCommonSpeedProduct
         tripCount += other.tripCount
     }
 }

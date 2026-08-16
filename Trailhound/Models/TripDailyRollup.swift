@@ -23,6 +23,15 @@ final class TripDailyRollup {
     var estimatedFuelCost: Double = 0
     var tripCount: Int = 0
     var maxSpeedMps: Double = 0
+    var stopDurationSeconds: Double = 0
+    /// Sum of each trip's cruise-bucket duration (weight for the day's cruise speed).
+    var cruiseWeightSeconds: Double = 0
+    /// Sum of (cruiseSpeedKmh × cruiseDurationSeconds) across trips.
+    var cruiseSpeedProduct: Double = 0
+    /// Sum of each trip's moving duration that had a most-common speed (weight).
+    var mostCommonWeightSeconds: Double = 0
+    /// Sum of (mostCommonSpeedKmh × cruiseDurationSeconds) across trips.
+    var mostCommonSpeedProduct: Double = 0
 
     init(
         dayStart: Date,

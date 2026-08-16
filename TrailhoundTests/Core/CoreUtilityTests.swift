@@ -209,6 +209,42 @@ final class FuelCostCalculatorTests: XCTestCase {
         XCTAssertEqual(cost, 200, accuracy: 0.1)
     }
 
+    func testTripOverridesBeatVehicleAndSettings() {
+        defaults.set(10.0, forKey: "fuelLitersPer100km")
+        defaults.set(40.0, forKey: "fuelPricePerLiter")
+        let vehicle = VehicleProfile(name: "Car", fuelType: .petrol, consumption: 8)
+        let cost = FuelCostCalculator.estimateCost(
+            distanceMeters: 100_000,
+            vehicle: vehicle,
+            consumptionPer100: 12,
+            unitPrice: 50
+        )
+        // 100 km × 12 L/100 × 50 = 600
+        XCTAssertEqual(cost, 600, accuracy: 0.1)
+    }
+
+    func testElectricTripUnitPriceOverride() {
+        let vehicle = VehicleProfile(name: "EV", fuelType: .electric, consumption: 20, chargePricePerKWh: 10)
+        let cost = FuelCostCalculator.estimateCost(
+            distanceMeters: 50_000,
+            vehicle: vehicle,
+            consumptionPer100: 18,
+            unitPrice: 5
+        )
+        // 50 km × 18 kWh/100 × 5 = 45
+        XCTAssertEqual(cost, 45, accuracy: 0.1)
+    }
+
+    func testApplyEstimateSnapshotsInputs() {
+        let trip = Trip(distanceMeters: 100_000)
+        let vehicle = VehicleProfile(name: "Car", fuelType: .diesel, consumption: 6.5)
+        defaults.set(55.0, forKey: "fuelPricePerLiter")
+        FuelCostCalculator.applyEstimate(to: trip, distanceMeters: 100_000, vehicle: vehicle)
+        XCTAssertEqual(trip.fuelConsumptionPer100 ?? 0, 6.5, accuracy: 0.01)
+        XCTAssertEqual(trip.fuelUnitPrice ?? 0, 55, accuracy: 0.01)
+        XCTAssertEqual(trip.estimatedFuelCost ?? 0, 357.5, accuracy: 0.1)
+    }
+
     func testResolvedCurrencyCodeDefaultsToTRY() {
         XCTAssertEqual(FuelCostCalculator.resolvedCurrencyCode(defaults: defaults), "TRY")
     }

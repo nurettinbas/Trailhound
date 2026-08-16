@@ -97,6 +97,8 @@
 		A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */; };
 		A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */; };
 		A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */; };
+		A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */; };
+		A1TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */; };
 		A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */; };
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
 		A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */; };
@@ -382,6 +384,8 @@
 		A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDisplayPath.swift; sourceTree = "<group>"; };
 		A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingAccessibility.swift; sourceTree = "<group>"; };
 		A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedSummary.swift; sourceTree = "<group>"; };
+		A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedProfile.swift; sourceTree = "<group>"; };
+		A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripSpeedProfileTests.swift; sourceTree = SOURCE_ROOT; };
 		A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlaceFilter.swift; sourceTree = "<group>"; };
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
 		A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreChangeObserver.swift; sourceTree = "<group>"; };
@@ -810,6 +814,7 @@
 				A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */,
 				A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */,
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
+				A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */,
 				A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */,
 				A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */,
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
@@ -946,6 +951,7 @@
 				A2SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift */,
 				A2TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift */,
 				212D75551FB64F72942FC63F /* TripSpeedSummaryTests.swift */,
+				A2TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift */,
 				A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */,
@@ -1154,6 +1160,7 @@
 				A1SPEEDCOLORSEGTEST0001 /* SpeedColoredSegmentTests.swift in Sources */,
 				A1TRIPDETAILPERFTST0001 /* TripDetailPathPerformanceTests.swift in Sources */,
 				43AE81A211E64BEDB4BBC9B3 /* TripSpeedSummaryTests.swift in Sources */,
+				A1TRIPSPEEDPROFILETEST1 /* TripSpeedProfileTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift in Sources */,
 				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,
@@ -1208,6 +1215,7 @@
 				A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */,
 				A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */,
 				A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */,
+				A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */,
 				A1TRIPPLACEFILTER00001 /* TripPlaceFilter.swift in Sources */,
 				A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */,
 				A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */,

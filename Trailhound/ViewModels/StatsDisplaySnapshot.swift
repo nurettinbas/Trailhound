@@ -8,6 +8,9 @@ struct StatsDisplaySnapshot: Sendable {
     let dailyDuration: [DailyDuration]
     let dailyAverageSpeed: [DailyAverageSpeed]
     let dailyMaxSpeed: [DailyMaxSpeed]
+    let dailyCruiseSpeed: [DailyCruiseSpeed]
+    let dailyMostCommonSpeed: [DailyMostCommonSpeed]
+    let dailyStopDuration: [DailyStopDuration]
     let dailyFuelCost: [DailyFuelCost]
     let categoryDistance: [CategoryDistance]
     let categoryDuration: [CategoryDuration]
@@ -22,6 +25,8 @@ struct StatsDisplaySnapshot: Sendable {
     var hasAnyDailyChart: Bool {
         !dailyDistance.isEmpty || !dailyDuration.isEmpty
             || !dailyAverageSpeed.isEmpty || !dailyMaxSpeed.isEmpty
+            || !dailyCruiseSpeed.isEmpty || !dailyMostCommonSpeed.isEmpty
+            || !dailyStopDuration.isEmpty
             || !dailyFuelCost.isEmpty
     }
 
@@ -48,6 +53,9 @@ struct StatsDisplaySnapshot: Sendable {
         dailyDuration: [],
         dailyAverageSpeed: [],
         dailyMaxSpeed: [],
+        dailyCruiseSpeed: [],
+        dailyMostCommonSpeed: [],
+        dailyStopDuration: [],
         dailyFuelCost: [],
         categoryDistance: [],
         categoryDuration: [],
@@ -91,6 +99,27 @@ struct StatsDisplaySnapshot: Sendable {
         StatsViewModel.trendText(
             current: stats.maxSpeedKmh,
             previous: previousStats.maxSpeedKmh
+        )
+    }
+
+    func cruiseSpeedTrendText() -> String? {
+        StatsViewModel.trendText(
+            current: stats.cruiseSpeedKmh,
+            previous: previousStats.cruiseSpeedKmh
+        )
+    }
+
+    func mostCommonSpeedTrendText() -> String? {
+        StatsViewModel.trendText(
+            current: stats.mostCommonSpeedKmh,
+            previous: previousStats.mostCommonSpeedKmh
+        )
+    }
+
+    func stopDurationTrendText() -> String? {
+        StatsViewModel.trendText(
+            current: stats.stopDuration,
+            previous: previousStats.stopDuration
         )
     }
 
@@ -226,6 +255,9 @@ enum StatsDisplaySnapshotBuilder {
             dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: scopedTrips),
             dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: scopedTrips),
             dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: scopedTrips),
+            dailyCruiseSpeed: StatsViewModel.dailyCruiseSpeeds(in: selectedInterval, from: scopedTrips),
+            dailyMostCommonSpeed: StatsViewModel.dailyMostCommonSpeeds(in: selectedInterval, from: scopedTrips),
+            dailyStopDuration: StatsViewModel.dailyStopDurations(in: selectedInterval, from: scopedTrips),
             dailyFuelCost: StatsViewModel.dailyFuelCosts(in: selectedInterval, from: scopedTrips),
             categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categoryNames: categoryNames),

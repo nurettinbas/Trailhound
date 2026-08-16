@@ -67,6 +67,7 @@ enum TripMergeCore {
     ) throws -> Trip {
         let completed = trips.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
         let merged = try beginMergedTrip(from: completed, into: context)
+        let fuelInputs = mergedFuelInputs(from: completed)
 
         var sequence = 0
         var totalDistance = 0.0
@@ -90,6 +91,8 @@ enum TripMergeCore {
             totalDistance: totalDistance,
             maxSpeed: maxSpeed,
             privacyRadius: privacyRadius,
+            fuelConsumptionPer100: fuelInputs.consumption,
+            fuelUnitPrice: fuelInputs.unitPrice,
             context: context
         )
         return merged
@@ -171,11 +174,20 @@ enum TripMergeCore {
         totalDistance: Double,
         maxSpeed: Double,
         privacyRadius: Double,
+        fuelConsumptionPer100: Double? = nil,
+        fuelUnitPrice: Double? = nil,
         context: ModelContext
     ) {
         merged.distanceMeters = totalDistance
         merged.maxSpeedMps = maxSpeed > 0 ? maxSpeed : nil
-        merged.estimatedFuelCost = FuelCostCalculator.estimateCost(distanceMeters: totalDistance)
+        let vehicle = merged.vehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: context) }
+        FuelCostCalculator.applyEstimate(
+            to: merged,
+            distanceMeters: totalDistance,
+            vehicle: vehicle,
+            consumptionPer100: fuelConsumptionPer100,
+            unitPrice: fuelUnitPrice
+        )
         merged.geocodeStatus = .pending
 
         let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
@@ -185,6 +197,31 @@ enum TripMergeCore {
             privacyRadius: privacyRadius
         )
         TripRollupDelta.add(merged, in: context)
+    }
+
+    /// Distance-weighted average of leg snapshots when present; otherwise `nil` so defaults apply.
+    private static func mergedFuelInputs(from trips: [Trip]) -> (consumption: Double?, unitPrice: Double?) {
+        var consumptionWeight = 0.0
+        var consumptionSum = 0.0
+        var priceWeight = 0.0
+        var priceSum = 0.0
+
+        for trip in trips {
+            let distance = max(trip.distanceMeters, 0)
+            guard distance > 0 else { continue }
+            if let consumption = trip.fuelConsumptionPer100, consumption > 0 {
+                consumptionSum += consumption * distance
+                consumptionWeight += distance
+            }
+            if let price = trip.fuelUnitPrice, price > 0 {
+                priceSum += price * distance
+                priceWeight += distance
+            }
+        }
+
+        let consumption = consumptionWeight > 0 ? consumptionSum / consumptionWeight : nil
+        let unitPrice = priceWeight > 0 ? priceSum / priceWeight : nil
+        return (consumption, unitPrice)
     }
 
     /// The standstill between two merged legs. Merging used to join them with nothing but a

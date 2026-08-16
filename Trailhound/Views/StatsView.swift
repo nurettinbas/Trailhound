@@ -738,6 +738,21 @@ struct StatsView: View {
                 trend: snap.maxSpeedTrendText()
             )
             summaryMetricCard(
+                title: L10n.string("stats.cruise_speed"),
+                value: snap.stats.cruiseSpeedText,
+                trend: snap.cruiseSpeedTrendText()
+            )
+            summaryMetricCard(
+                title: L10n.string("stats.most_common_speed"),
+                value: snap.stats.mostCommonSpeedText,
+                trend: snap.mostCommonSpeedTrendText()
+            )
+            summaryMetricCard(
+                title: L10n.string("stats.stop_duration"),
+                value: snap.stats.stopDurationText,
+                trend: snap.stopDurationTrendText()
+            )
+            summaryMetricCard(
                 title: L10n.string("stats.total_estimated_fuel"),
                 value: FuelCostCalculator.formatCost(snap.stats.estimatedFuelCost, currencyCode: currencyCode),
                 trend: snap.fuelCostTrendText()
@@ -803,6 +818,9 @@ struct StatsView: View {
             snap.dailyDuration.count,
             snap.dailyAverageSpeed.count,
             snap.dailyMaxSpeed.count,
+            snap.dailyCruiseSpeed.count,
+            snap.dailyMostCommonSpeed.count,
+            snap.dailyStopDuration.count,
             snap.dailyFuelCost.count,
             1
         )
@@ -856,6 +874,9 @@ struct StatsView: View {
         case duration
         case averageSpeed
         case maxSpeed
+        case cruiseSpeed
+        case mostCommonSpeed
+        case stopDuration
         case fuel
         case expenses
     }
@@ -889,6 +910,9 @@ struct StatsView: View {
         if !snap.dailyDuration.isEmpty { kinds.append(.duration) }
         if !snap.dailyAverageSpeed.isEmpty { kinds.append(.averageSpeed) }
         if !snap.dailyMaxSpeed.isEmpty { kinds.append(.maxSpeed) }
+        if !snap.dailyCruiseSpeed.isEmpty { kinds.append(.cruiseSpeed) }
+        if !snap.dailyMostCommonSpeed.isEmpty { kinds.append(.mostCommonSpeed) }
+        if !snap.dailyStopDuration.isEmpty { kinds.append(.stopDuration) }
         if !snap.dailyFuelCost.isEmpty { kinds.append(.fuel) }
         if costSnapshot.hasTimelineChart { kinds.append(.expenses) }
         return kinds
@@ -954,6 +978,33 @@ struct StatsView: View {
                 isPageActive: isActive
             ) {
                 dailyMaxSpeedChartBody(snap.dailyMaxSpeed)
+            }
+        case .cruiseSpeed:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.daily_cruise_speed", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                dailyCruiseSpeedChartBody(snap.dailyCruiseSpeed)
+            }
+        case .mostCommonSpeed:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.daily_most_common_speed", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                dailyMostCommonSpeedChartBody(snap.dailyMostCommonSpeed)
+            }
+        case .stopDuration:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.daily_stop_duration", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                dailyStopDurationChartBody(snap.dailyStopDuration)
             }
         case .fuel:
             StatsDeferredChart(
@@ -1060,8 +1111,35 @@ struct StatsView: View {
         }
     }
 
+    @ViewBuilder
+    private func dailyBarValueLabel(text: String?, barCount: Int) -> some View {
+        if let text {
+            StatsBarValueLabel(text: text, barCount: barCount)
+        }
+    }
+
+    private func dailyDistanceBarText(_ meters: Double, barCount: Int) -> String? {
+        guard meters > 0 else { return nil }
+        if barCount <= 8 {
+            return DateFormatters.formatDistance(meters)
+        }
+        let kilometers = meters / 1000
+        return kilometers >= 10
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.1f", kilometers)
+    }
+
+    private func dailySpeedBarText(_ kmh: Double, barCount: Int) -> String? {
+        guard kmh > 0 else { return nil }
+        if barCount <= 8 {
+            return L10n.formatSpeedKmh(kmh)
+        }
+        return String(format: "%.0f", kmh)
+    }
+
     private func dailyDistanceChartBody(_ dailyChartData: [DailyDistance]) -> some View {
         let days = dailyChartData.map(\.day)
+        let barCount = dailyChartData.count
         return Chart(dailyChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1069,7 +1147,14 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.distanceBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: dailyDistanceBarText(item.distanceMeters, barCount: barCount),
+                    barCount: barCount
+                )
+            }
         }
+        .chartBarValueHeadroom(maxValue: dailyChartData.map(\.distanceKilometers).max() ?? 0)
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.distance_km"))
@@ -1078,6 +1163,7 @@ struct StatsView: View {
 
     private func dailyDurationChartBody(_ dailyDurationChartData: [DailyDuration]) -> some View {
         let days = dailyDurationChartData.map(\.day)
+        let barCount = dailyDurationChartData.count
         return Chart(dailyDurationChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1085,7 +1171,14 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.durationBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: item.duration > 0 ? DateFormatters.formatDuration(item.duration) : nil,
+                    barCount: barCount
+                )
+            }
         }
+        .chartBarValueHeadroom(maxValue: dailyDurationChartData.map(\.durationHours).max() ?? 0)
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
@@ -1094,6 +1187,7 @@ struct StatsView: View {
 
     private func dailyAverageSpeedChartBody(_ dailyAverageSpeedChartData: [DailyAverageSpeed]) -> some View {
         let days = dailyAverageSpeedChartData.map(\.day)
+        let barCount = dailyAverageSpeedChartData.count
         return Chart(dailyAverageSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1101,7 +1195,14 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.averageSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
+                    barCount: barCount
+                )
+            }
         }
+        .chartBarValueHeadroom(maxValue: dailyAverageSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
@@ -1110,6 +1211,7 @@ struct StatsView: View {
 
     private func dailyMaxSpeedChartBody(_ dailyMaxSpeedChartData: [DailyMaxSpeed]) -> some View {
         let days = dailyMaxSpeedChartData.map(\.day)
+        let barCount = dailyMaxSpeedChartData.count
         return Chart(dailyMaxSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1117,15 +1219,96 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.maxSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
+                    barCount: barCount
+                )
+            }
         }
+        .chartBarValueHeadroom(maxValue: dailyMaxSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
     }
 
+    private func dailyCruiseSpeedChartBody(_ dailyCruiseSpeedChartData: [DailyCruiseSpeed]) -> some View {
+        let days = dailyCruiseSpeedChartData.map(\.day)
+        let barCount = dailyCruiseSpeedChartData.count
+        return Chart(dailyCruiseSpeedChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
+            )
+            .foregroundStyle(StatsChartTheme.cruiseSpeedBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
+                    barCount: barCount
+                )
+            }
+        }
+        .chartBarValueHeadroom(maxValue: dailyCruiseSpeedChartData.map(\.speedKmh).max() ?? 0)
+        .chartStatsYAxisStyle()
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .frame(height: 200)
+    }
+
+    private func dailyMostCommonSpeedChartBody(_ dailyMostCommonSpeedChartData: [DailyMostCommonSpeed]) -> some View {
+        let days = dailyMostCommonSpeedChartData.map(\.day)
+        let barCount = dailyMostCommonSpeedChartData.count
+        return Chart(dailyMostCommonSpeedChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.speed_kmh"), item.speedKmh)
+            )
+            .foregroundStyle(StatsChartTheme.mostCommonSpeedBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
+                    barCount: barCount
+                )
+            }
+        }
+        .chartBarValueHeadroom(maxValue: dailyMostCommonSpeedChartData.map(\.speedKmh).max() ?? 0)
+        .chartStatsYAxisStyle()
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .frame(height: 200)
+    }
+
+    private func dailyStopDurationChartBody(_ dailyStopDurationChartData: [DailyStopDuration]) -> some View {
+        let days = dailyStopDurationChartData.map(\.day)
+        let barCount = dailyStopDurationChartData.count
+        return Chart(dailyStopDurationChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.duration_hours"), item.durationHours)
+            )
+            .foregroundStyle(StatsChartTheme.stopDurationBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: item.duration > 0 ? DateFormatters.formatDuration(item.duration) : nil,
+                    barCount: barCount
+                )
+            }
+        }
+        .chartBarValueHeadroom(maxValue: dailyStopDurationChartData.map(\.durationHours).max() ?? 0)
+        .chartStatsYAxisStyle()
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
+        .frame(height: 200)
+    }
+
     private func dailyFuelCostChartBody(_ dailyFuelCostChartData: [DailyFuelCost]) -> some View {
         let days = dailyFuelCostChartData.map(\.day)
+        let barCount = dailyFuelCostChartData.count
+        let currencyCode = settings.fuelCurrency.rawValue
         return Chart(dailyFuelCostChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1133,7 +1316,16 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.fuelCostBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
+            .annotation(position: .top, spacing: 2) {
+                dailyBarValueLabel(
+                    text: item.cost > 0
+                        ? FuelCostCalculator.formatCost(item.cost, currencyCode: currencyCode)
+                        : nil,
+                    barCount: barCount
+                )
+            }
         }
+        .chartBarValueHeadroom(maxValue: dailyFuelCostChartData.map(\.cost).max() ?? 0)
         .chartStatsYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.fuel_cost"))

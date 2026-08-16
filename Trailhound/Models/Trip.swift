@@ -16,6 +16,10 @@ final class Trip {
     var geocodeStatusRaw: String
     var maxSpeedMps: Double?
     var estimatedFuelCost: Double?
+    /// Snapshot of L/100 km or kWh/100 km used for this trip's fuel estimate. `nil` on older trips.
+    var fuelConsumptionPer100: Double?
+    /// Snapshot of unit price (per liter or per kWh) used for this trip's fuel estimate. `nil` on older trips.
+    var fuelUnitPrice: Double?
     var isRouteMatched: Bool
     var matchedDistanceMeters: Double?
     var startPlaceName: String?
@@ -30,6 +34,14 @@ final class Trip {
     var endLatitude: Double?
     var endLongitude: Double?
     var searchIndex: String?
+    /// Moving-average cruise from `TripSpeedProfile`. `nil` means not computed yet.
+    var cruiseSpeedKmh: Double?
+    /// Seconds classified as moving — period weight for stats.
+    var cruiseDurationSeconds: Double?
+    /// Seconds spent below the moving threshold, including no-points standstills. `nil` = pending.
+    var stopDurationSeconds: Double?
+    /// Driving-pace mode from `TripSpeedProfile`. `nil` = not computed; `0` = nothing to report.
+    var mostCommonSpeedKmh: Double?
     @Relationship(deleteRule: .nullify)
     var vehicle: VehicleProfile?
     @Relationship(deleteRule: .cascade, inverse: \TripPoint.trip)
@@ -55,6 +67,8 @@ final class Trip {
         geocodeStatus: GeocodeStatus = .pending,
         maxSpeedMps: Double? = nil,
         estimatedFuelCost: Double? = nil,
+        fuelConsumptionPer100: Double? = nil,
+        fuelUnitPrice: Double? = nil,
         isRouteMatched: Bool = false,
         matchedDistanceMeters: Double? = nil,
         startPlaceName: String? = nil,
@@ -77,6 +91,8 @@ final class Trip {
         self.geocodeStatusRaw = geocodeStatus.rawValue
         self.maxSpeedMps = maxSpeedMps
         self.estimatedFuelCost = estimatedFuelCost
+        self.fuelConsumptionPer100 = fuelConsumptionPer100
+        self.fuelUnitPrice = fuelUnitPrice
         self.isRouteMatched = isRouteMatched
         self.matchedDistanceMeters = matchedDistanceMeters
         self.startPlaceName = startPlaceName

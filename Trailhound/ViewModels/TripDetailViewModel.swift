@@ -24,6 +24,10 @@ struct TripSummaryMetric: Identifiable {
         case distance(Double)
         case maxSpeedKmh(Double)
         case averageSpeedKmh(Double)
+        case cruiseSpeedKmh(Double)
+        case mostCommonSpeedKmh(Double)
+        case medianSpeedKmh(Double)
+        case stopDuration(TimeInterval)
         case fuel(Double)
     }
 
@@ -45,6 +49,14 @@ struct TripSummaryMetric: Identifiable {
             return L10n.formatSpeedKmh(kmh * eased)
         case .averageSpeedKmh(let kmh):
             return L10n.formatSpeedKmh(kmh * eased)
+        case .cruiseSpeedKmh(let kmh):
+            return L10n.formatSpeedKmh(kmh * eased)
+        case .mostCommonSpeedKmh(let kmh):
+            return L10n.formatSpeedKmh(kmh * eased)
+        case .medianSpeedKmh(let kmh):
+            return L10n.formatSpeedKmh(kmh * eased)
+        case .stopDuration(let seconds):
+            return DateFormatters.formatDuration(seconds * eased)
         case .fuel(let cost):
             return FuelCostCalculator.formatCost(cost * eased)
         }
@@ -249,6 +261,44 @@ struct TripDetailViewModel {
         return kmh > 0 ? kmh : nil
     }
 
+    /// Prefer the prepared display path when it is loaded so the strip always uses the current
+    /// formula (implied-speed stops, neighbour-blended mode). Fall back to stored cruise / stop
+    /// while the path is still loading.
+    private var speedProfile: TripSpeedProfile.Result {
+        if let pieces = displayPieces, !pieces.isEmpty {
+            return TripSpeedProfile.compute(samples: pieces.flatMap { $0 })
+        }
+        if trip.stopDurationSeconds != nil {
+            let cruise = trip.cruiseSpeedKmh ?? 0
+            let storedMostCommon = trip.mostCommonSpeedKmh ?? 0
+            return TripSpeedProfile.Result(
+                cruiseSpeedKmh: cruise > 0 ? cruise : nil,
+                cruiseDurationSeconds: trip.cruiseDurationSeconds ?? 0,
+                stopDurationSeconds: trip.stopDurationSeconds ?? 0,
+                mostCommonSpeedKmh: storedMostCommon > 0 ? storedMostCommon : nil,
+                medianSpeedKmh: nil
+            )
+        }
+        return .empty
+    }
+
+    var cruiseSpeedKmh: Double? {
+        speedProfile.cruiseSpeedKmh
+    }
+
+    var mostCommonSpeedKmh: Double? {
+        speedProfile.mostCommonSpeedKmh
+    }
+
+    var medianSpeedKmh: Double? {
+        speedProfile.medianSpeedKmh
+    }
+
+    var stopDurationSeconds: TimeInterval? {
+        guard trip.stopDurationSeconds != nil || displayPieces != nil else { return nil }
+        return speedProfile.stopDurationSeconds
+    }
+
     var fuelText: String? {
         let cost = StatsViewModel.fuelCost(for: trip)
         guard cost > 0 else { return nil }
@@ -291,6 +341,46 @@ struct TripDetailViewModel {
                     icon: "gauge.with.dots.needle.33percent",
                     title: L10n.averageSpeed,
                     kind: .averageSpeedKmh(averageSpeed)
+                )
+            )
+        }
+        if let cruiseSpeed = cruiseSpeedKmh {
+            items.append(
+                TripSummaryMetric(
+                    id: "cruiseSpeed",
+                    icon: "gauge.with.dots.needle.67percent",
+                    title: L10n.cruiseSpeed,
+                    kind: .cruiseSpeedKmh(cruiseSpeed)
+                )
+            )
+        }
+        if let mostCommon = mostCommonSpeedKmh {
+            items.append(
+                TripSummaryMetric(
+                    id: "mostCommonSpeed",
+                    icon: "chart.bar",
+                    title: L10n.mostCommonSpeed,
+                    kind: .mostCommonSpeedKmh(mostCommon)
+                )
+            )
+        }
+        if let median = medianSpeedKmh {
+            items.append(
+                TripSummaryMetric(
+                    id: "medianSpeed",
+                    icon: "equal.circle",
+                    title: L10n.medianSpeed,
+                    kind: .medianSpeedKmh(median)
+                )
+            )
+        }
+        if let stopDuration = stopDurationSeconds {
+            items.append(
+                TripSummaryMetric(
+                    id: "stopDuration",
+                    icon: "pause.circle",
+                    title: L10n.stopDuration,
+                    kind: .stopDuration(stopDuration)
                 )
             )
         }

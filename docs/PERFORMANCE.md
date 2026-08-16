@@ -79,14 +79,15 @@ At the source, `RecordingMovementPolicy.trustedGPSSpeedMps` gates Core Location'
 
 ## Trip detail reveal
 
-`TripDetailRevealPolicy` controls the opening route animation. It is fed the **display** point count, not the recorded count, which is now unbounded:
+`TripDetailRevealPolicy` controls the opening route animation. First open always draws (~12 ticks) unless Reduce Motion; same-session reopen stays instant via `TripDetailRevealSession`. Display point count no longer gates animation.
 
-| Display point count | Behavior |
+| Condition | Behavior |
 |-------------|----------|
-| ≤ 300 | ~12 ticks, flat map, solid stroke only during reveal (white casing appears when settled) |
-| > 300 | Instant reveal (full route + casing) |
+| First open, motion OK | ~12 ticks, single solid polyline while drawing; speed colors + white casing when settled |
+| Reduce Motion | Instant reveal (full route + casing) |
+| Same process, trip already revealed | Instant reveal |
 
-Reduce Motion always uses instant reveal.
+During ticks MapKit sees one growing fallback stroke — not up to 60 speed-colored overlays — so long/twisty display paths stay smooth.
 
 **Layout (no MapKit resize).** The map stays full-screen. The frosted details panel is a fixed-height overlay with its own atmospheric wash — panel height never applies `padding` to the Map. The card is not user-resizable (no grabber drag / detents). Camera fit still uses `MapFitContext` insets so the route sits in the visible gap above the panel; refit runs on open (and in-place expand/collapse), not on overlay scroll. `TripDetailMapLayer` is `Equatable` and excludes panel height so sheet motion does not rebuild overlays.
 
@@ -94,7 +95,7 @@ Reduce Motion always uses instant reveal.
 
 **First paint.** Opening never faults `trip.sortedPoints` on the first frame. The speed chart builds from `displayPieces` (≤1500). Trim steppers wait for a deferred `recordedPointCount`. Heavy form content mounts after `panelRisen`. Original GPS rows are never deleted by these paths — `RouteDisplayPath` / `TripRoutePathCache` remain read-only transforms. List rows do **not** prewarm route paths (that faulted GPS on every scroll recycle). Warmth comes from stop/merge `prewarm` plus detail’s async `path(...)` (memory → disk → build).
 
-Signature open order (animated short path only): muted map veil → `mapClear` → frosted panel `sheetRise` → camera refit into the visible gap → start pin → route ticks → end pin + casing. The settle veil is a lightweight SwiftUI overlay (not a MapKit style switch). Elevation stays `.flat` for the whole screen (same hitch reason as live follow). Camera fit uses `MapFitContext.detailOverlay(panelFraction:)` so the route sits in the strip above the overlay panel — full-screen MapKit no longer gets physical bottom padding.
+Signature open order (first open, motion OK): muted map veil → `mapClear` → frosted panel `sheetRise` → camera refit into the visible gap → start pin → route ticks (single stroke) → end pin + speed colors + casing. The settle veil is a lightweight SwiftUI overlay (not a MapKit style switch). Elevation stays `.flat` for the whole screen (same hitch reason as live follow). Camera fit uses `MapFitContext.detailOverlay(panelFraction:)` so the route sits in the strip above the overlay panel — full-screen MapKit no longer gets physical bottom padding.
 
 While the in-place expand/collapse runs, panel glass uses a solid fill (`glassChrome(frozen:)`) so Material does not resample the live map every frame.
 
@@ -224,7 +225,7 @@ about that notification make a plain `onReceive` wrong:
   the deleted model in its own fetched array, and rendering a row from it is a crash rather than a
   glitch. So saves already on the main thread run the handler synchronously.
 
-## Daily rollups (schema V11)
+## Daily rollups (schema V11+)
 
 `TripDailyRollup` pre-aggregates one row per (day, category, vehicle). A period's cost then scales
 with the number of days it covers rather than the number of trips in it, which is what makes a
@@ -237,6 +238,14 @@ six-figure library viable.
   a merge). An edit uses `snapshot(of:)` before the change and `update(_:from:)` after, so a trip
   that moved to another day, category or vehicle leaves its old bucket cleanly. A bucket that drops
   to zero trips is deleted rather than left as a zeroed row with a stale `maxSpeedMps`.
+- Schema **V15** adds cruise / stop totals on each rollup (`stopDurationSeconds`,
+  `cruiseWeightSeconds`, `cruiseSpeedProduct`) fed from matching derived fields on `Trip`. Cruise
+  is moving average (metres while moving / moving time); period cruise is the duration-weighted
+  mean of each trip's cruise.
+  `rebuildVersion` 3 regenerates existing installs after the upgrade; later bumps refresh
+  cruise / stop after formula fixes (v7: implied-speed stops; v8: most-common speed on
+  rollups, schema V17). `TripDerivedBackfillService.speedProfileVersion` is bumped with the
+  same formula so already-filled trips are rewritten.
 - `rebuildIfNeeded` builds the table on the first launch that has it (after the derived backfill, on
   which it depends). Settings → Maintenance → *Rebuild statistics cache* runs `rebuildAll` on demand
   if the deltas ever drift. Both go through the `TripRollupRebuilder` `@ModelActor`, since a rebuild

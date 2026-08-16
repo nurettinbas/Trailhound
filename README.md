@@ -14,6 +14,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Manual start/stop, pause/resume
 - **Shortcuts auto-start / auto-stop**: Personal Automations run Trailhound’s *Start trip* / *End trip* actions when you connect to or leave the car (Bluetooth, CarPlay, or Wi‑Fi). Setup guide lives under the **Pairing** tab
 - Vehicle profiles with fuel/EV cost per trip
+- **Per-trip fuel estimate**: edit average consumption and unit price on the trip detail card (defaults from the vehicle and Settings); cost updates as `distance × consumption × price` for that trip only
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
@@ -32,8 +33,9 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
+- Trip summary cards include **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
-- Swift Charts stats, trends, monthly goals
+- Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, and **stop time** charts
 - Frequent routes, category filters, trip merge/split
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 

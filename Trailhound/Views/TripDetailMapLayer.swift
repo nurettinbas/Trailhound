@@ -25,6 +25,44 @@ struct TripDetailRevealedRouteSegment: Identifiable, Equatable {
     }
 }
 
+/// Map stroke inputs for route reveal: one growing polyline during ticks, colors when settled.
+enum TripDetailRevealOverlays {
+    static let settleProgress = 0.999
+
+    struct Stroke {
+        let revealedItems: [TripDetailRevealedRouteSegment]
+        let revealedFallback: [CLLocationCoordinate2D]
+        let drawCasing: Bool
+    }
+
+    /// Mid-reveal keeps a single fallback polyline so MapKit does not rebuild up to 60 color bands.
+    static func stroke(
+        progress: Double,
+        coloredSegments: [SpeedColoredSegment],
+        fallbackCoordinates: [CLLocationCoordinate2D]
+    ) -> Stroke {
+        if progress < settleProgress {
+            return Stroke(
+                revealedItems: [],
+                revealedFallback: fallbackCoordinates,
+                drawCasing: false
+            )
+        }
+        let items = coloredSegments.map { segment in
+            TripDetailRevealedRouteSegment(
+                id: "\(segment.id)",
+                coordinates: segment.coordinates,
+                color: segment.color
+            )
+        }
+        return Stroke(
+            revealedItems: items,
+            revealedFallback: items.isEmpty ? fallbackCoordinates : [],
+            drawCasing: true
+        )
+    }
+}
+
 struct TripDetailMapStop: Equatable {
     let id: String
     let coordinate: CLLocationCoordinate2D

@@ -59,6 +59,17 @@ struct VehicleCareMiniChart: View {
                             .cornerRadius(StatsChartTheme.barCornerRadius)
                         }
                     }
+                    PointMark(
+                        x: .value("Day", entry.dayStart, unit: .day),
+                        y: .value("Amount", entry.total)
+                    )
+                    .opacity(0)
+                    .annotation(position: .top, spacing: 2) {
+                        StatsBarValueLabel(
+                            text: FuelCostCalculator.formatCost(entry.total, currencyCode: currencyCode),
+                            barCount: entries.count
+                        )
+                    }
                 }
             }
             .modifier(CostBarChartStyle(
@@ -69,7 +80,8 @@ struct VehicleCareMiniChart: View {
                 currencyCode: currencyCode,
                 legendDomain: categories.map(\.displayName),
                 legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
-                accessibilityKey: "stats.chart.daily_expenses"
+                accessibilityKey: "stats.chart.daily_expenses",
+                maxValue: entries.map(\.total).max() ?? 0
             ))
         }
     }
@@ -95,6 +107,17 @@ struct VehicleCareMiniChart: View {
                             .cornerRadius(StatsChartTheme.barCornerRadius)
                         }
                     }
+                    PointMark(
+                        x: .value("Month", entry.monthStart, unit: .month),
+                        y: .value("Amount", entry.total)
+                    )
+                    .opacity(0)
+                    .annotation(position: .top, spacing: 2) {
+                        StatsBarValueLabel(
+                            text: FuelCostCalculator.formatCost(entry.total, currencyCode: currencyCode),
+                            barCount: entries.count
+                        )
+                    }
                 }
             }
             .modifier(CostBarChartStyle(
@@ -105,7 +128,8 @@ struct VehicleCareMiniChart: View {
                 currencyCode: currencyCode,
                 legendDomain: categories.map(\.displayName),
                 legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
-                accessibilityKey: "stats.cost.chart.monthly"
+                accessibilityKey: "stats.cost.chart.monthly",
+                maxValue: entries.map(\.total).max() ?? 0
             ))
         }
     }
@@ -162,6 +186,7 @@ private struct CostBarChartStyle: ViewModifier {
     let legendDomain: [String]
     let legendRange: [Color]
     let accessibilityKey: StaticString
+    let maxValue: Double
 
     private var xDomain: [Date] {
         StatsChartTheme.xScaleDomain(from: dates, padding: xPaddingComponent)
@@ -177,6 +202,7 @@ private struct CostBarChartStyle: ViewModifier {
                 VStack(spacing: StatsChartTheme.legendRowSpacing) {
                     content
                         .chartForegroundStyleScale(domain: legendDomain, range: legendRange)
+                        .chartBarValueHeadroom(maxValue: maxValue)
                         .chartXScale(domain: xDomain)
                         .chartStatsDateXAxis(values: xValues, label: xLabel)
                         .chartYAxis {

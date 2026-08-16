@@ -2,21 +2,19 @@ import Foundation
 
 /// Performance-oriented rules for trip detail route reveal animation.
 enum TripDetailRevealPolicy {
-    static let shortRouteMaxPoints = 300
-    static let animatedRouteMaxPoints = 1500
-
     struct AnimationPlan: Equatable {
         let shouldAnimate: Bool
         let tickCount: Int
         let stepSleepMilliseconds: Int
-        /// Always true for trip detail: flat elevation + solid-only stroke during reveal.
+        /// Flat elevation + solid-only stroke during reveal ticks.
         let useCheapMapDuringReveal: Bool
     }
 
+    /// `pointCount` is retained for call-site compatibility; animate decision ignores it.
+    /// First open always draws (~12 ticks, single polyline) unless Reduce Motion.
     static func animationPlan(pointCount: Int, reduceMotion: Bool) -> AnimationPlan {
-        // Medium and long display paths settle instantly — ticking 60×2 MapPolylines
-        // while the sheet rises is what made detail open hitch.
-        if reduceMotion || pointCount > shortRouteMaxPoints {
+        _ = pointCount
+        if reduceMotion {
             return AnimationPlan(
                 shouldAnimate: false,
                 tickCount: 0,

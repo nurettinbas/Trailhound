@@ -29,6 +29,26 @@ struct DailyMaxSpeed: Identifiable, Sendable {
     let speedKmh: Double
 }
 
+struct DailyCruiseSpeed: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let speedKmh: Double
+}
+
+struct DailyMostCommonSpeed: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let speedKmh: Double
+}
+
+struct DailyStopDuration: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let duration: TimeInterval
+
+    var durationHours: Double { duration / 3600 }
+}
+
 struct DailyFuelCost: Identifiable, Sendable {
     let id: Date
     let day: Date
@@ -149,6 +169,25 @@ struct StatsViewModel {
             .map { $0 * 3.6 }
             .max() ?? 0
         let nightRatio = includeNightRatio ? nightDrivingRatio(for: completed) : 0
+        var cruiseWeight = 0.0
+        var cruiseProduct = 0.0
+        var mostCommonWeight = 0.0
+        var mostCommonProduct = 0.0
+        var stopDuration = 0.0
+        for trip in completed {
+            let weight = trip.resolvedCruiseDurationSeconds
+            let speed = trip.resolvedCruiseSpeedKmh
+            if weight > 0, speed > 0 {
+                cruiseWeight += weight
+                cruiseProduct += speed * weight
+            }
+            let mostCommon = trip.resolvedMostCommonSpeedKmh
+            if weight > 0, mostCommon > 0 {
+                mostCommonWeight += weight
+                mostCommonProduct += mostCommon * weight
+            }
+            stopDuration += trip.resolvedStopDurationSeconds
+        }
 
         return TripStats(
             tripCount: count,
@@ -157,6 +196,9 @@ struct StatsViewModel {
             averageDuration: averageDuration,
             averageSpeedKmh: averageSpeedKmh,
             maxSpeedKmh: maxSpeedKmh,
+            cruiseSpeedKmh: cruiseWeight > 0 ? cruiseProduct / cruiseWeight : 0,
+            mostCommonSpeedKmh: mostCommonWeight > 0 ? mostCommonProduct / mostCommonWeight : 0,
+            stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
             nightDrivingRatio: nightRatio
         )
@@ -440,6 +482,100 @@ struct StatsViewModel {
 
         return buckets.keys.sorted().map { day in
             DailyMaxSpeed(id: day, day: day, speedKmh: buckets[day] ?? 0)
+        }
+    }
+
+    static func dailyCruiseSpeeds<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyCruiseSpeed] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var weightBuckets: [Date: Double] = [:]
+        var productBuckets: [Date: Double] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            weightBuckets[day] = 0
+            productBuckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            let weight = trip.resolvedCruiseDurationSeconds
+            let speed = trip.resolvedCruiseSpeedKmh
+            guard weight > 0, speed > 0 else { continue }
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            weightBuckets[tripDay, default: 0] += weight
+            productBuckets[tripDay, default: 0] += speed * weight
+        }
+
+        return weightBuckets.keys.sorted().map { day in
+            let weight = weightBuckets[day] ?? 0
+            let speed = weight > 0 ? (productBuckets[day] ?? 0) / weight : 0
+            return DailyCruiseSpeed(id: day, day: day, speedKmh: speed)
+        }
+    }
+
+    static func dailyMostCommonSpeeds<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyMostCommonSpeed] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var weightBuckets: [Date: Double] = [:]
+        var productBuckets: [Date: Double] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            weightBuckets[day] = 0
+            productBuckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            let weight = trip.resolvedCruiseDurationSeconds
+            let speed = trip.resolvedMostCommonSpeedKmh
+            guard weight > 0, speed > 0 else { continue }
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            weightBuckets[tripDay, default: 0] += weight
+            productBuckets[tripDay, default: 0] += speed * weight
+        }
+
+        return weightBuckets.keys.sorted().map { day in
+            let weight = weightBuckets[day] ?? 0
+            let speed = weight > 0 ? (productBuckets[day] ?? 0) / weight : 0
+            return DailyMostCommonSpeed(id: day, day: day, speedKmh: speed)
+        }
+    }
+
+    static func dailyStopDurations<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyStopDuration] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets: [Date: TimeInterval] = [:]
+
+        var day = calendar.startOfDay(for: interval.start)
+        let endDay = calendar.startOfDay(for: interval.end)
+        while day <= endDay {
+            buckets[day] = 0
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+
+        for trip in filtered {
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            buckets[tripDay, default: 0] += trip.resolvedStopDurationSeconds
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyStopDuration(id: day, day: day, duration: buckets[day] ?? 0)
         }
     }
 
@@ -730,6 +866,9 @@ struct TripStats: Sendable {
     let averageDuration: TimeInterval
     let averageSpeedKmh: Double
     let maxSpeedKmh: Double
+    let cruiseSpeedKmh: Double
+    let mostCommonSpeedKmh: Double
+    let stopDuration: TimeInterval
     let estimatedFuelCost: Double
     let nightDrivingRatio: Double
 
@@ -740,6 +879,9 @@ struct TripStats: Sendable {
         averageDuration: TimeInterval,
         averageSpeedKmh: Double = 0,
         maxSpeedKmh: Double = 0,
+        cruiseSpeedKmh: Double = 0,
+        mostCommonSpeedKmh: Double = 0,
+        stopDuration: TimeInterval = 0,
         estimatedFuelCost: Double,
         nightDrivingRatio: Double = 0
     ) {
@@ -749,6 +891,9 @@ struct TripStats: Sendable {
         self.averageDuration = averageDuration
         self.averageSpeedKmh = averageSpeedKmh
         self.maxSpeedKmh = maxSpeedKmh
+        self.cruiseSpeedKmh = cruiseSpeedKmh
+        self.mostCommonSpeedKmh = mostCommonSpeedKmh
+        self.stopDuration = stopDuration
         self.estimatedFuelCost = estimatedFuelCost
         self.nightDrivingRatio = nightDrivingRatio
     }
@@ -761,6 +906,15 @@ struct TripStats: Sendable {
     }
     var maxSpeedText: String {
         maxSpeedKmh > 0 ? L10n.formatSpeedKmh(maxSpeedKmh) : "—"
+    }
+    var cruiseSpeedText: String {
+        cruiseSpeedKmh > 0 ? L10n.formatSpeedKmh(cruiseSpeedKmh) : "—"
+    }
+    var mostCommonSpeedText: String {
+        mostCommonSpeedKmh > 0 ? L10n.formatSpeedKmh(mostCommonSpeedKmh) : "—"
+    }
+    var stopDurationText: String {
+        stopDuration > 0 ? DateFormatters.formatDuration(stopDuration) : "—"
     }
     var fuelCostText: String { FuelCostCalculator.formatCost(estimatedFuelCost) }
     var nightDrivingText: String { StatsViewModel.nightDrivingPercentText(for: nightDrivingRatio) }

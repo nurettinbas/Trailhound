@@ -130,21 +130,86 @@ enum TrailhoundSchemaV14: VersionedSchema {
     }
 }
 
+/// Adds cruise / stop derived fields on `Trip` and matching totals on `TripDailyRollup`.
+/// All additive: existing trips open with `nil` cruise/stop and are backfilled at runtime;
+/// rollup columns default to 0 until `TripRollupService` rebuilds.
+enum TrailhoundSchemaV15: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(15, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
+/// Adds optional per-trip fuel estimate inputs on `Trip` (`fuelConsumptionPer100`, `fuelUnitPrice`).
+/// Additive only: existing rows open with `nil` and keep their stored `estimatedFuelCost`.
+enum TrailhoundSchemaV16: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(16, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
+/// Adds optional `Trip.mostCommonSpeedKmh` and matching weight/product totals on
+/// `TripDailyRollup`. Additive only: existing trips open with `nil` and are backfilled;
+/// rollup columns default to 0 until `TripRollupService` rebuilds.
+enum TrailhoundSchemaV17: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(17, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V14); V11–V13 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V17); V11–V16 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV14.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV17.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV14]
+        [migrateV5toV17]
     }
 
-    static let migrateV5toV14 = MigrationStage.lightweight(
+    static let migrateV5toV17 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV14.self
+        toVersion: TrailhoundSchemaV17.self
     )
 }

@@ -34,6 +34,15 @@ protocol TripStatsAggregable {
     /// `nil` when the split is unknown, in which case the trip is left out of the ratio rather
     /// than counted as daytime.
     var nightDistanceShare: NightDistanceShare? { get }
+    /// Modal cruise speed (km/h). 0 when unknown or not enough moving time.
+    /// Named separately from `Trip.cruiseSpeedKmh` (optional stored field).
+    var resolvedCruiseSpeedKmh: Double { get }
+    /// Seconds spent in the winning cruise bucket — weight for period cruise.
+    var resolvedCruiseDurationSeconds: TimeInterval { get }
+    /// Seconds spent below the moving threshold across short gaps.
+    var resolvedStopDurationSeconds: TimeInterval { get }
+    /// Driving-pace mode (km/h). 0 when unknown.
+    var resolvedMostCommonSpeedKmh: Double { get }
     /// How many real trips this value stands for. Always 1 for a `Trip`, but a row rolled up from
     /// `TripDailyRollup` represents a whole day's worth.
     var tripCount: Int { get }
@@ -57,6 +66,10 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
     let endPlaceName: String?
     let resolvedFuelCost: Double
     let nightDistanceShare: NightDistanceShare?
+    let resolvedCruiseSpeedKmh: Double
+    let resolvedCruiseDurationSeconds: TimeInterval
+    let resolvedStopDurationSeconds: TimeInterval
+    let resolvedMostCommonSpeedKmh: Double
     let tripCount: Int
 }
 
@@ -79,6 +92,10 @@ extension TripStatsRow {
             endPlaceName: trip.endPlaceName,
             resolvedFuelCost: StatsViewModel.fuelCost(for: trip),
             nightDistanceShare: trip.nightDistanceShare,
+            resolvedCruiseSpeedKmh: trip.cruiseSpeedKmh ?? 0,
+            resolvedCruiseDurationSeconds: trip.cruiseDurationSeconds ?? 0,
+            resolvedStopDurationSeconds: trip.stopDurationSeconds ?? 0,
+            resolvedMostCommonSpeedKmh: trip.mostCommonSpeedKmh ?? 0,
             tripCount: 1
         )
     }
@@ -90,6 +107,8 @@ extension TripStatsRow {
     /// Place names are always `nil`: daily rollups have no place dimension. Callers that filter
     /// by place must fetch individual trips instead.
     nonisolated init(rollup: TripDailyRollup) {
+        let weight = rollup.cruiseWeightSeconds
+        let mostCommonWeight = rollup.mostCommonWeightSeconds
         self.init(
             id: UUID(),
             startedAt: rollup.dayStart,
@@ -106,6 +125,12 @@ extension TripStatsRow {
                 nightMeters: rollup.nightDistanceMeters,
                 trackedMeters: rollup.trackedDistanceMeters
             ),
+            resolvedCruiseSpeedKmh: weight > 0 ? rollup.cruiseSpeedProduct / weight : 0,
+            resolvedCruiseDurationSeconds: weight,
+            resolvedStopDurationSeconds: rollup.stopDurationSeconds,
+            resolvedMostCommonSpeedKmh: mostCommonWeight > 0
+                ? rollup.mostCommonSpeedProduct / mostCommonWeight
+                : 0,
             tripCount: rollup.tripCount
         )
     }
@@ -115,6 +140,11 @@ extension Trip: TripStatsAggregable {
     var resolvedFuelCost: Double {
         StatsViewModel.fuelCost(for: self)
     }
+
+    var resolvedCruiseSpeedKmh: Double { cruiseSpeedKmh ?? 0 }
+    var resolvedCruiseDurationSeconds: TimeInterval { cruiseDurationSeconds ?? 0 }
+    var resolvedStopDurationSeconds: TimeInterval { stopDurationSeconds ?? 0 }
+    var resolvedMostCommonSpeedKmh: Double { mostCommonSpeedKmh ?? 0 }
 
     var nightDistanceShare: NightDistanceShare? {
         if let nightDistanceMeters, let trackedDistanceMeters {
