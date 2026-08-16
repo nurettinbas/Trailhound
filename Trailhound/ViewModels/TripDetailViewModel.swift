@@ -2,6 +2,7 @@ import Charts
 import CoreLocation
 import MapKit
 import SwiftUI
+import UIKit
 
 struct SpeedColoredSegment: Identifiable {
     let id: Int
@@ -57,10 +58,55 @@ struct TripDetailViewModel {
         var top: Double
         var bottom: Double
         var horizontal: Double
+        /// Map view width / height. Needed so latitude/longitude spans match the portrait
+        /// aspect — equal spans make MapKit expand latitude and defeat the vertical offset.
+        var aspectWidthOverHeight: Double
 
-        static let detailWithPanel = MapFitContext(top: 0.13, bottom: 0.54, horizontal: 0.08)
-        static let fullscreen = MapFitContext(top: 0.11, bottom: 0.10, horizontal: 0.08)
-        static let cinematicReveal = MapFitContext(top: 0.13, bottom: 0.08, horizontal: 0.08)
+        /// Visible strip above the default balanced overlay panel (full-screen map).
+        /// `top` is only status/nav chrome over the map (transparent bar); keep it measured in the view.
+        static let detailWithPanel = MapFitContext(
+            top: 0.10,
+            bottom: 0.60,
+            horizontal: 0.06,
+            aspectWidthOverHeight: 0.46
+        )
+        static let fullscreen = MapFitContext(
+            top: 0.11,
+            bottom: 0.10,
+            horizontal: 0.06,
+            aspectWidthOverHeight: 0.46
+        )
+        static let cinematicReveal = MapFitContext(
+            top: 0.10,
+            bottom: 0.08,
+            horizontal: 0.06,
+            aspectWidthOverHeight: 0.46
+        )
+
+        /// Fit for a live overlay panel on a full-screen map.
+        /// - topChromeFraction: status + nav overlay on the map (from GeometryReader)
+        /// - panelFraction: opaque card height / map height
+        /// Bottom adds legend + pin clearance so the route centers in the clear map, not under chrome.
+        static func detailOverlay(
+            panelFraction: Double,
+            aspectWidthOverHeight: Double,
+            topChromeFraction: Double = 0.10
+        ) -> MapFitContext {
+            let top = max(0.06, min(topChromeFraction, 0.16))
+            // Speed legend + start/end pin labels sit above the card in the map strip.
+            let bottomChrome = 0.09
+            let minVisible = 0.18
+            let bottom = min(
+                max(panelFraction + bottomChrome, 0.34),
+                1 - top - minVisible
+            )
+            return MapFitContext(
+                top: top,
+                bottom: bottom,
+                horizontal: 0.06,
+                aspectWidthOverHeight: max(0.35, min(aspectWidthOverHeight, 0.7))
+            )
+        }
     }
 
     let trip: Trip
@@ -163,11 +209,12 @@ struct TripDetailViewModel {
         if let cached = Self.chartSeriesCache[trip.id], cached.fingerprint == routeFingerprint {
             return cached.series
         }
-        // Chart walks the full recording once and buckets to ~600 samples. Map drawing never
-        // uses this path — it stays on the prepared display pieces.
-        let series = SpeedChartSeries.build(
-            samples: RouteDisplayPath.samples(from: trip.sortedPoints)
-        )
+        // Prefer the prepared display path so opening detail never faults every GPS point
+        // just to draw the chart. Empty until `displayPieces` arrive.
+        guard let pieces = displayPieces else {
+            return SpeedChartSeries.Series()
+        }
+        let series = SpeedChartSeries.build(samples: pieces.flatMap { $0 })
         Self.chartSeriesCache[trip.id] = ChartSeriesCacheEntry(
             fingerprint: routeFingerprint,
             series: series
@@ -394,24 +441,52 @@ struct TripDetailViewModel {
         if path.count >= 2 {
             return Self.regionFitting(coordinates: path, fit: fit)
         }
-        // While the path loads, frame the denormalised endpoints without faulting points.
         let endpoints = [trip.startCoordinate, trip.endCoordinate].compactMap { $0 }
         guard !endpoints.isEmpty else { return nil }
         return Self.regionFitting(coordinates: endpoints, fit: fit)
     }
 
-    /// Fits the camera to the drawn route inside the visible map area.
+    /// Live layout fit — uses map pixel size + edge padding (nav, panel, legend).
+    func mapRegion(
+        mapSize: CGSize,
+        edgePadding: UIEdgeInsets,
+        margin: Double = 1.2
+    ) -> MKCoordinateRegion? {
+        let path = displayCoordinates
+        if path.count >= 2 {
+            return Self.regionFitting(
+                coordinates: path,
+                mapSize: mapSize,
+                edgePadding: edgePadding,
+                margin: margin
+            )
+        }
+        let endpoints = [trip.startCoordinate, trip.endCoordinate].compactMap { $0 }
+        guard !endpoints.isEmpty else { return nil }
+        return Self.regionFitting(
+            coordinates: endpoints,
+            mapSize: mapSize,
+            edgePadding: edgePadding,
+            margin: margin
+        )
+    }
+
+    /// Pixel-accurate fit: route centered in the map view after `edgePadding` (nav + panel + legend).
     static func regionFitting(
         coordinates: [CLLocationCoordinate2D],
-        fit: MapFitContext
+        mapSize: CGSize,
+        edgePadding: UIEdgeInsets,
+        margin: Double = 1.2
     ) -> MKCoordinateRegion? {
-        guard let first = coordinates.first else { return nil }
+        guard let first = coordinates.first,
+              mapSize.width > 1,
+              mapSize.height > 1
+        else { return nil }
 
         var minLat = first.latitude
         var maxLat = first.latitude
         var minLon = first.longitude
         var maxLon = first.longitude
-
         for coordinate in coordinates.dropFirst() {
             minLat = min(minLat, coordinate.latitude)
             maxLat = max(maxLat, coordinate.latitude)
@@ -419,48 +494,81 @@ struct TripDetailViewModel {
             maxLon = max(maxLon, coordinate.longitude)
         }
 
-        var latDelta = max(maxLat - minLat, 0)
-        var lonDelta = max(maxLon - minLon, 0)
+        let midLat = (minLat + maxLat) / 2
+        let midLon = (minLon + maxLon) / 2
 
-        // ~180m floor — keeps very short hops readable without over-zooming long trips.
-        let minimumDelta = 0.0016
-        if latDelta < 1e-8 { latDelta = minimumDelta * 0.35 }
-        if lonDelta < 1e-8 { lonDelta = minimumDelta * 0.35 }
-
-        let visibleHeight = max(0.22, 1 - fit.top - fit.bottom)
-        let visibleWidth = max(0.22, 1 - (2 * fit.horizontal))
-
-        var requiredLat = latDelta / visibleHeight
-        var requiredLon = lonDelta / visibleWidth
-
-        let rawMax = max(latDelta, lonDelta)
-        let margin: Double
-        if rawMax < 0.003 {
-            margin = 2.35
-        } else if rawMax < 0.01 {
-            margin = 1.85
-        } else if rawMax < 0.05 {
-            margin = 1.45
-        } else {
-            margin = 1.28
+        // Build route map-rect ( Mercator ).
+        let nw = MKMapPoint(CLLocationCoordinate2D(latitude: maxLat, longitude: minLon))
+        let se = MKMapPoint(CLLocationCoordinate2D(latitude: minLat, longitude: maxLon))
+        var routeRect = MKMapRect(
+            x: min(nw.x, se.x),
+            y: min(nw.y, se.y),
+            width: max(abs(nw.x - se.x), 1),
+            height: max(abs(nw.y - se.y), 1)
+        )
+        // ~180 m floor in map points at mid-latitude.
+        let minMeters: CLLocationDistance = 180
+        let metersPerPoint = MKMetersPerMapPointAtLatitude(midLat)
+        let minPoints = minMeters / max(metersPerPoint, 1e-6)
+        if routeRect.size.width < minPoints {
+            routeRect = routeRect.insetBy(dx: -(minPoints - routeRect.size.width) / 2, dy: 0)
+        }
+        if routeRect.size.height < minPoints {
+            routeRect = routeRect.insetBy(dx: 0, dy: -(minPoints - routeRect.size.height) / 2)
         }
 
-        requiredLat *= margin
-        requiredLon *= margin
+        let usableWidth = max(mapSize.width - edgePadding.left - edgePadding.right, 48)
+        let usableHeight = max(mapSize.height - edgePadding.top - edgePadding.bottom, 48)
 
-        let side = max(requiredLat, requiredLon, minimumDelta)
+        // Map points per view point so the route fills the usable rect.
+        let scale = max(
+            routeRect.size.width / usableWidth,
+            routeRect.size.height / usableHeight
+        ) * margin
 
-        // Shift the center so the route sits in the visible map above the bottom sheet.
-        let visibleCenterY = fit.top + (visibleHeight / 2)
-        let latOffset = (0.5 - visibleCenterY) * side
+        let fullWidth = scale * mapSize.width
+        let fullHeight = scale * mapSize.height
 
-        return MKCoordinateRegion(
-            center: CLLocationCoordinate2D(
-                latitude: ((minLat + maxLat) / 2) - latOffset,
-                longitude: (minLon + maxLon) / 2
-            ),
-            span: MKCoordinateSpan(latitudeDelta: side, longitudeDelta: side)
+        let routeCenter = MKMapPoint(CLLocationCoordinate2D(latitude: midLat, longitude: midLon))
+        let visibleCenterX = edgePadding.left + usableWidth / 2
+        let visibleCenterY = edgePadding.top + usableHeight / 2
+
+        // Place route center at the visible-rect center (not the full map center).
+        let mapCenterX = routeCenter.x + (0.5 - Double(visibleCenterX / mapSize.width)) * fullWidth
+        let mapCenterY = routeCenter.y + (0.5 - Double(visibleCenterY / mapSize.height)) * fullHeight
+
+        let fitted = MKMapRect(
+            x: mapCenterX - fullWidth / 2,
+            y: mapCenterY - fullHeight / 2,
+            width: fullWidth,
+            height: fullHeight
         )
+        return MKCoordinateRegion(fitted)
+    }
+
+    /// Fractional-inset wrapper (tests + callers without a live layout size).
+    static func regionFitting(
+        coordinates: [CLLocationCoordinate2D],
+        fit: MapFitContext
+    ) -> MKCoordinateRegion? {
+        let size = CGSize(width: 390, height: 844)
+        let padding = UIEdgeInsets(
+            top: fit.top * size.height,
+            left: fit.horizontal * size.width,
+            bottom: fit.bottom * size.height,
+            right: fit.horizontal * size.width
+        )
+        return regionFitting(
+            coordinates: coordinates,
+            mapSize: size,
+            edgePadding: padding
+        )
+    }
+
+    /// Flat MapCamera distance that frames `region` without pitch.
+    static func cameraDistance(for region: MKCoordinateRegion) -> CLLocationDistance {
+        let metersAcross = max(region.span.latitudeDelta, region.span.longitudeDelta) * 111_320
+        return max(400, metersAcross * 1.55)
     }
 
     static func speedColor(for speedMps: Double?) -> Color {

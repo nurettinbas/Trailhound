@@ -16,6 +16,10 @@ enum TrailhoundMotion {
     static let coldOpenFade = Animation.spring(response: 0.28, dampingFraction: 0.88)
     /// Soft sheet rise for TripDetail panel.
     static let sheetRise = Animation.spring(response: 0.55, dampingFraction: 0.88)
+    /// Trip detail: panel recedes + camera opens as one beat (no sheet modal).
+    static let mapExpand = Animation.timingCurve(0.18, 0.82, 0.16, 1.0, duration: 1.40)
+    /// Return to details — still slow, slightly quicker so it feels decisive.
+    static let mapCollapse = Animation.timingCurve(0.22, 0.80, 0.24, 1.0, duration: 1.10)
     /// Map clarity / dark→clear open.
     static let mapClear = Animation.easeOut(duration: 0.9)
     /// Pin pop with a bit of overshoot.

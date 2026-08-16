@@ -4,39 +4,6 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-private enum TripMapStyle {
-    case standard
-    case dark
-
-    func mapStyle(flatElevation: Bool) -> MapStyle {
-        switch self {
-        case .standard:
-            return flatElevation
-                ? .standard(elevation: .flat)
-                : .standard(elevation: .realistic)
-        case .dark:
-            return flatElevation
-                ? .standard(elevation: .flat, emphasis: .muted)
-                : .standard(elevation: .realistic, emphasis: .muted)
-        }
-    }
-}
-
-/// Trip detail map route: solid core + faint white casing under every color.
-private enum TripRouteMapStroke {
-    static let solidWidth: CGFloat = 7.2
-    static let casingWidth: CGFloat = 9.6
-    static let casingColor = Color.white.opacity(0.45)
-    static let lineCap: CGLineCap = .round
-    static let lineJoin: CGLineJoin = .round
-}
-
-private struct RevealedRouteSegment: Identifiable {
-    let id: String
-    let coordinates: [CLLocationCoordinate2D]
-    let color: Color
-}
-
 private struct FavoritePlaceSheetItem: Identifiable {
     enum Endpoint {
         case start
@@ -120,7 +87,16 @@ struct TripDetailView: View {
     @Query private var vehicles: [VehicleProfile]
     @Bindable private var settings = AppSettings.shared
 
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var mapCameraBox = TripDetailMapCameraBox()
+    /// Used so camera fit spans match the portrait map aspect.
+    @State private var mapViewportSize: CGSize = CGSize(width: 390, height: 844)
+    /// Status + transparent nav overlay height in points (not a fraction of a stale size).
+    @State private var mapTopChromePoints: CGFloat = 96
+    /// Tab bar + home-indicator band the map draws under (`.ignoresSafeArea(.bottom)`).
+    @State private var mapBottomChromePoints: CGFloat = 83
+    /// Last laid-out panel height — refit uses this, not only detent.fraction.
+    @State private var lastLivePanelHeight: CGFloat = 0
+    @State private var mapRefitTask: Task<Void, Never>?
     @State private var noteText: String = ""
     @State private var selectedLabel: String = ""
     @State private var selectedCategoryID: String = BuiltInCategory.personalID.uuidString
@@ -135,15 +111,24 @@ struct TripDetailView: View {
     @State private var isRenderingShareCard = false
     @FocusState private var noteFocused: Bool
     @State private var originalNoteText: String = ""
-    @State private var showFullscreenMap = false
-    @State private var mapStyle: TripMapStyle = .standard
+    /// In-place map expand — panel slides away on the same MapKit instance (no sheet).
+    @State private var isMapExpanded = false
+    /// True while expand/collapse animation runs — freezes glass over the live map.
+    @State private var isMapExpandTransitioning = false
+    /// Style picker fades in after the panel has largely cleared.
+    @State private var showExpandedMapChrome = false
+    @State private var mapExpandTransitionTask: Task<Void, Never>?
+    @State private var mapStyle: TripDetailMapStyle = .standard
     @State private var editedStartedAt: Date = Date()
     @State private var editedEndedAt: Date = Date()
     @State private var trimHeadCount: Int = 0
     @State private var trimTailCount: Int = 0
+    /// Recorded GPS count — filled after the first paint so opening never faults points.
+    @State private var recordedPointCount: Int = 0
     @State private var routeRevealProgress: Double = 0
     @State private var startPinVisible = false
     @State private var endPinVisible = false
+    @State private var showAllStops = false
     @State private var didStartDetailReveal = false
     @State private var detailRevealTask: Task<Void, Never>?
     @State private var panelRisen = false
@@ -157,10 +142,13 @@ struct TripDetailView: View {
     @State private var statCountProgress: [String: Double] = [:]
     @State private var speedChartRevealProgress: Double = 0
     @State private var tripDetailViewModel: TripDetailViewModel?
-    @State private var revealCheapMapDuringAnimation = false
     @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
     @State private var routeLoadTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var glassFrozen: Bool { panelDragTranslation != 0 || isMapExpandTransitioning }
+
+    private var panelVisible: Bool { panelRisen && !isMapExpanded }
 
     private var resolvedViewModel: TripDetailViewModel {
         if let tripDetailViewModel {
@@ -196,24 +184,31 @@ struct TripDetailView: View {
             GeometryReader { geometry in
                 let containerHeight = geometry.size.height
                 let panelHeight = livePanelHeight(containerHeight: containerHeight)
+                // Expanded: keep the speed chips sitting on the tab bar, not under it.
+                // GeometryReader is under `.ignoresSafeArea(.bottom)`, so inset 0 buries them.
+                let chromeBottomInset = panelVisible ? panelHeight : mapBottomChromePoints
                 ZStack(alignment: .bottom) {
+                    // Full-screen map — never resized by the panel (Apple Maps pattern).
+                    // Keep interactive from first paint so toggling modes does not rebuild MapKit.
+                    tripDetailMapLayer(interactive: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onTapGesture {
+                            dismissNoteKeyboard()
+                        }
+
+                    // Soft settle veil — fades out before the sheet rises (does not remount MapKit).
+                    Color.black.opacity(0.42 * (1 - mapClarity))
+                        .allowsHitTesting(false)
+                        .animation(reduceMotion ? nil : TrailhoundMotion.mapClear, value: mapClarity)
+
+                    // Cheap chrome sits above the map and tracks panel height without resizing MapKit.
                     ZStack(alignment: .topTrailing) {
-                        tripMapView(style: mapStyle, interactive: panelRisen)
-                            .onTapGesture {
-                                dismissNoteKeyboard()
-                            }
-
-                        // Lightweight settle veil — avoid MapKit style thrash during reveal.
-                        Color.black.opacity(0.42 * (1 - mapClarity))
-                            .allowsHitTesting(false)
-                            .animation(reduceMotion ? nil : TrailhoundMotion.mapClear, value: mapClarity)
-
                         if !networkMonitor.isConnected {
                             Text(L10n.tripMapOfflineHint)
                                 .font(.caption2)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .glassChrome(cornerRadius: 14)
+                                .glassChrome(cornerRadius: 14, frozen: glassFrozen)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                                 .padding(12)
                                 .opacity(mapClarity)
@@ -225,20 +220,79 @@ struct TripDetailView: View {
                             .opacity(mapClarity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.bottom, panelRisen ? panelHeight : 0)
-                    .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
-                    .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelDetent)
+                    .padding(.bottom, chromeBottomInset)
+                    .animation(
+                        reduceMotion ? nil : (isMapExpanded
+                            ? TrailhoundMotion.mapExpand
+                            : TrailhoundMotion.mapCollapse),
+                        value: isMapExpanded
+                    )
+                    .allowsHitTesting(false)
 
                     detailPanel(containerHeight: containerHeight)
                         .frame(height: panelHeight)
-                        .offset(y: panelRisen ? 0 : panelHeight + 24)
-                        .opacity(panelRisen ? 1 : 0)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            // Opaque wash — glass cards and the translucent tab bar never sample the map.
+                            ZStack {
+                                Color(.systemBackground)
+                                AtmosphericBackground(style: .lightweight)
+                            }
+                        }
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 18,
+                                bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 0,
+                                topTrailingRadius: 18,
+                                style: .continuous
+                            )
+                        )
+                        .offset(y: panelVisible ? 0 : panelHeight + 24)
+                        .opacity(panelVisible ? 1 : 0)
                         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
                         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelDetent)
-                        .allowsHitTesting(panelRisen)
+                        .animation(
+                            reduceMotion ? nil : (isMapExpanded
+                                ? TrailhoundMotion.mapExpand
+                                : TrailhoundMotion.mapCollapse),
+                            value: isMapExpanded
+                        )
+                        .allowsHitTesting(panelVisible)
+                }
+                // Content-sized overlay — outside frozen chrome so the picker stays tappable.
+                .overlay(alignment: .topTrailing) {
+                    if showExpandedMapChrome {
+                        expandedMapStylePicker
+                            .padding(.top, 12)
+                            .padding(.trailing, 12)
+                            .transition(.opacity)
+                    }
+                }
+                .onAppear {
+                    refreshMapChromeInsets(from: geometry)
+                    lastLivePanelHeight = panelHeight
+                }
+                .onChange(of: geometry.size) { _, newSize in
+                    refreshMapChromeInsets(from: geometry)
+                    if !isMapExpanded {
+                        lastLivePanelHeight = livePanelHeight(containerHeight: newSize.height)
+                    }
+                    if panelRisen, didStartDetailReveal {
+                        refitMapToVisibleGap(
+                            panelHeight: isMapExpanded ? 0 : nil,
+                            animated: false
+                        )
+                    }
+                }
+                .onChange(of: panelHeight) { _, newHeight in
+                    guard !isMapExpanded else { return }
+                    lastLivePanelHeight = newHeight
                 }
             }
         }
+        // Extend under the translucent tab bar so the card wash covers it — no map peeking through.
+        .ignoresSafeArea(edges: .bottom)
         .glassNavigationChrome()
         .dismissKeyboardOnTap(focus: $noteFocused)
         .accessibilityIdentifier("tripDetail.screen")
@@ -259,15 +313,16 @@ struct TripDetailView: View {
                 .accessibilityLabel(L10n.share)
 
                 Button {
-                    showFullscreenMap = true
+                    toggleMapExpanded()
                 } label: {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    Image(
+                        systemName: isMapExpanded
+                            ? "arrow.down.right.and.arrow.up.left"
+                            : "arrow.up.left.and.arrow.down.right"
+                    )
                 }
-                .accessibilityLabel(L10n.mapFullscreen)
+                .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
             }
-        }
-        .sheet(isPresented: $showFullscreenMap) {
-            fullscreenMapSheet
         }
         .sheet(isPresented: $showSharePreview, onDismiss: {
             if pendingSystemShare {
@@ -350,9 +405,20 @@ struct TripDetailView: View {
                 )
             }
 
-            // Keep the map muted until the path is ready — then clear → sheet → route draw.
+            // Keep legend muted until the path is ready — map itself stays visible (no black veil).
             mapClarity = 0
             panelRisen = false
+            didStartDetailReveal = false
+            showAllStops = false
+            recordedPointCount = 0
+            routeRevealProgress = 0
+            startPinVisible = false
+            endPinVisible = false
+
+            // Frame endpoints immediately so MapKit never sits on .automatic (blank/world flash).
+            if let region = fittedMapRegion(panelHeight: mapViewportSize.height * panelDetent.fraction) {
+                applyFittedCamera(region: region, animated: false)
+            }
 
             routeLoadTask?.cancel()
             routeLoadTask = Task { @MainActor in
@@ -368,7 +434,16 @@ struct TripDetailView: View {
             detailRevealTask = nil
             routeLoadTask?.cancel()
             routeLoadTask = nil
+            mapRefitTask?.cancel()
+            mapRefitTask = nil
+            mapExpandTransitionTask?.cancel()
+            mapExpandTransitionTask = nil
             didStartDetailReveal = false
+            showAllStops = false
+            recordedPointCount = 0
+            isMapExpanded = false
+            isMapExpandTransitioning = false
+            showExpandedMapChrome = false
             // The detail map is the only screen that needs every GPS point; holding them past
             // dismissal is how browsing a long library grows memory without bound.
             trip.invalidatePointCaches()
@@ -389,12 +464,15 @@ struct TripDetailView: View {
             displayPieces: pieces
         )
 
-        // Reveal cost scales with what is drawn, not with what is stored.
+        // Defer faulting recorded points until after the first paint + path are ready.
+        await Task.yield()
+        guard !Task.isCancelled else { return }
+        recordedPointCount = trip.points.count
+
         let plan = TripDetailRevealPolicy.animationPlan(
             pointCount: resolvedViewModel.displayPointCount,
             reduceMotion: reduceMotion
         )
-        revealCheapMapDuringAnimation = plan.useCheapMapDuringReveal
 
         if !plan.shouldAnimate || TripDetailRevealSession.hasCompleted(trip.id) {
             finishDetailRevealInstant()
@@ -412,6 +490,7 @@ struct TripDetailView: View {
         routeRevealProgress = 0
         startPinVisible = false
         endPinVisible = false
+        showAllStops = false
         mapClarity = 0
         panelRisen = false
         statCountProgress = Dictionary(
@@ -419,11 +498,8 @@ struct TripDetailView: View {
         )
         speedChartRevealProgress = 0
 
-        let useCinematicCamera = !plan.useCheapMapDuringReveal
-        if useCinematicCamera, let opening = resolvedViewModel.cinematicOpeningCamera(fit: .cinematicReveal) {
-            cameraPosition = .camera(opening)
-        } else if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
-            cameraPosition = .region(region)
+        if let region = fittedMapRegion(panelHeight: mapViewportSize.height * panelDetent.fraction) {
+            applyFittedCamera(region: region, animated: false)
         }
 
         detailRevealTask?.cancel()
@@ -436,12 +512,6 @@ struct TripDetailView: View {
                 mapClarity = 1
             }
 
-            if useCinematicCamera, let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
-                withAnimation(TrailhoundMotion.mapClear) {
-                    cameraPosition = .region(region)
-                }
-            }
-
             try? await Task.sleep(for: .milliseconds(280))
             guard !Task.isCancelled else { return }
 
@@ -449,6 +519,8 @@ struct TripDetailView: View {
             withAnimation(TrailhoundMotion.sheetRise) {
                 panelRisen = true
             }
+
+            scheduleMapRefit(panelHeight: mapViewportSize.height * panelDetent.fraction)
 
             try? await Task.sleep(for: .milliseconds(160))
             guard !Task.isCancelled else { return }
@@ -488,6 +560,7 @@ struct TripDetailView: View {
             statCountProgress[metric.id] = 1
         }
         speedChartRevealProgress = 1
+        showAllStops = true
 
         TripDetailRevealSession.markCompleted(trip.id)
 
@@ -508,6 +581,7 @@ struct TripDetailView: View {
         routeRevealProgress = 1
         startPinVisible = true
         endPinVisible = true
+        showAllStops = true
         mapClarity = 1
         panelRisen = true
         statCountProgress = Dictionary(
@@ -515,9 +589,17 @@ struct TripDetailView: View {
         )
         speedChartRevealProgress = 1
         TripDetailRevealSession.markCompleted(trip.id)
-        if let region = resolvedViewModel.mapRegion(fit: .detailWithPanel) {
-            cameraPosition = .region(region)
-        }
+        // Full-screen map: frame the route into the gap above the live panel detent.
+        scheduleMapRefit(
+            panelHeight: mapViewportSize.height * panelDetent.fraction,
+            animated: false,
+            delayMilliseconds: 80
+        )
+    }
+
+    private func setMapCamera(_ position: MapCameraPosition) {
+        // Update binding only — remounting Map (e.g. via .id) blanks tiles and flashes black.
+        mapCameraBox.position = position
     }
 
     private func livePanelHeight(containerHeight: CGFloat) -> CGFloat {
@@ -528,7 +610,110 @@ struct TripDetailView: View {
         return min(maxHeight, max(minHeight, base - panelDragTranslation))
     }
 
+    /// `GeometryReader` under `.ignoresSafeArea(.bottom)` reports a zero bottom inset.
+    /// Read the key window so the tab bar + home indicator are real points.
+    private func refreshMapChromeInsets(from geometry: GeometryProxy) {
+        mapViewportSize = geometry.size
+        let window = windowSafeInsets
+        let topSafe = max(geometry.safeAreaInsets.top, window.top, 54)
+        mapTopChromePoints = topSafe + 44
+        // 49 = standard UITabBar content height above the home indicator.
+        mapBottomChromePoints = max(window.bottom, 34) + 49
+    }
+
+    private var windowSafeInsets: UIEdgeInsets {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let inset = scenes.flatMap(\.windows).first(where: \.isKeyWindow)?.safeAreaInsets {
+            return inset
+        }
+        return scenes.flatMap(\.windows).first?.safeAreaInsets
+            ?? UIEdgeInsets(top: 59, left: 0, bottom: 34, right: 0)
+    }
+
+    private func mapEdgePadding(panelHeight: CGFloat) -> UIEdgeInsets {
+        let size = mapViewportSize
+        if isMapExpanded {
+            // Same chrome the user sees: nav + style picker above, tab bar + speed chips below.
+            let stylePickerRow: CGFloat = 52
+            let legendRow: CGFloat = 36
+            let top = max(mapTopChromePoints, 96) + stylePickerRow
+            let bottom = max(mapBottomChromePoints, 83) + legendRow
+            let horizontal = max(size.width * 0.08, 24)
+            return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+        }
+        let horizontal = max(size.width * 0.06, 16)
+        // Legend sits just above the card; pins hang below their coordinates.
+        let legendAndPins: CGFloat = 56
+        let top = max(mapTopChromePoints, 96)
+        let bottom = max(panelHeight, 0) + legendAndPins
+        return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+    }
+
+    private func fittedMapRegion(panelHeight: CGFloat) -> MKCoordinateRegion? {
+        let size = mapViewportSize
+        guard size.width > 1, size.height > 1 else { return nil }
+        return resolvedViewModel.mapRegion(
+            mapSize: size,
+            edgePadding: mapEdgePadding(panelHeight: panelHeight),
+            margin: isMapExpanded ? 1.18 : 1.2
+        )
+    }
+
+    private func applyFittedCamera(
+        region: MKCoordinateRegion,
+        animated: Bool,
+        animation: Animation = TrailhoundMotion.gentle
+    ) {
+        // Use the fitted region directly. Converting to MapCamera + a fudged altitude
+        // zooms in (~1.55× max-span) and clips the route off-center under the tab bar.
+        let position = MapCameraPosition.region(region)
+        if animated, !reduceMotion {
+            withAnimation(animation) {
+                setMapCamera(position)
+            }
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                setMapCamera(position)
+            }
+        }
+    }
+
+    private func refitMapToVisibleGap(
+        panelHeight: CGFloat? = nil,
+        animated: Bool = true,
+        animation: Animation = TrailhoundMotion.gentle
+    ) {
+        let size = mapViewportSize
+        let height = panelHeight
+            ?? (lastLivePanelHeight > 0
+                ? lastLivePanelHeight
+                : size.height * panelDetent.fraction)
+        guard let region = fittedMapRegion(panelHeight: height) else { return }
+        applyFittedCamera(region: region, animated: animated, animation: animation)
+    }
+
+    /// One camera settle after sheet/detent motion — avoid double-apply flash.
+    private func scheduleMapRefit(
+        panelHeight: CGFloat? = nil,
+        animated: Bool = true,
+        delayMilliseconds: UInt64 = 280
+    ) {
+        let height = panelHeight
+            ?? (lastLivePanelHeight > 0
+                ? lastLivePanelHeight
+                : mapViewportSize.height * panelDetent.fraction)
+        mapRefitTask?.cancel()
+        mapRefitTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(delayMilliseconds))
+            guard !Task.isCancelled else { return }
+            refitMapToVisibleGap(panelHeight: height, animated: animated)
+        }
+    }
+
     private func snapPanelDetent(containerHeight: CGFloat, velocityY: CGFloat) {
+        guard !isMapExpanded else { return }
         let live = livePanelHeight(containerHeight: containerHeight)
         var target = TripDetailPanelDetent.nearest(height: live, containerHeight: containerHeight)
         // Fling: downward velocity favors more map; upward favors more details.
@@ -537,202 +722,278 @@ struct TripDetailView: View {
         } else if velocityY < -900 {
             target = target.higher ?? target
         }
+        let targetHeight = containerHeight * target.fraction
         withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
             panelDetent = target
             panelDragTranslation = 0
         }
-        refitMapForPanelDetent(target)
+        lastLivePanelHeight = targetHeight
+        scheduleMapRefit(panelHeight: targetHeight)
     }
 
-    private func refitMapForPanelDetent(_ detent: TripDetailPanelDetent) {
-        let fit = TripDetailViewModel.MapFitContext(
-            top: 0.13,
-            bottom: Double(detent.fraction) + 0.02,
-            horizontal: 0.08
-        )
-        if let region = resolvedViewModel.mapRegion(fit: fit) {
-            withAnimation(reduceMotion ? nil : TrailhoundMotion.gentle) {
-                cameraPosition = .region(region)
+    private func toggleMapExpanded() {
+        let expanding = !isMapExpanded
+        mapRefitTask?.cancel()
+        mapExpandTransitionTask?.cancel()
+        TrailhoundHaptics.selection()
+        dismissNoteKeyboard()
+
+        let motion = expanding ? TrailhoundMotion.mapExpand : TrailhoundMotion.mapCollapse
+        let durationMs: UInt64 = expanding ? 1400 : 1100
+        let chromeFadeInMs: UInt64 = 750
+        let restorePanelHeight = lastLivePanelHeight > 0
+            ? lastLivePanelHeight
+            : mapViewportSize.height * panelDetent.fraction
+
+        if reduceMotion {
+            isMapExpandTransitioning = false
+            showExpandedMapChrome = expanding
+            isMapExpanded = expanding
+            refitMapToVisibleGap(
+                panelHeight: expanding ? 0 : restorePanelHeight,
+                animated: false
+            )
+            return
+        }
+
+        isMapExpandTransitioning = true
+        if !expanding {
+            withAnimation(TrailhoundMotion.gentle) {
+                showExpandedMapChrome = false
             }
+        }
+
+        withAnimation(motion) {
+            isMapExpanded = expanding
+        }
+        refitMapToVisibleGap(
+            panelHeight: expanding ? 0 : restorePanelHeight,
+            animated: true,
+            animation: motion
+        )
+
+        mapExpandTransitionTask = Task { @MainActor in
+            if expanding {
+                try? await Task.sleep(for: .milliseconds(chromeFadeInMs))
+                guard !Task.isCancelled else { return }
+                withAnimation(TrailhoundMotion.gentle) {
+                    showExpandedMapChrome = true
+                }
+                try? await Task.sleep(for: .milliseconds(durationMs - chromeFadeInMs))
+            } else {
+                try? await Task.sleep(for: .milliseconds(durationMs))
+            }
+            guard !Task.isCancelled else { return }
+            isMapExpandTransitioning = false
         }
     }
 
+    private var expandedMapStylePicker: some View {
+        Picker(L10n.mapStylePicker, selection: $mapStyle) {
+            Text(L10n.mapStyleLight).tag(TripDetailMapStyle.standard)
+            Text(L10n.mapStyleDark).tag(TripDetailMapStyle.dark)
+        }
+        .pickerStyle(.segmented)
+        .glassSegmentedStyle()
+        .frame(width: 180)
+        .padding(8)
+        .glassChrome(cornerRadius: 10, frozen: glassFrozen)
+    }
+
+    private func refitMapForPanelDetent(_ detent: TripDetailPanelDetent, animated: Bool = true) {
+        let height = mapViewportSize.height * detent.fraction
+        lastLivePanelHeight = height
+        if animated {
+            scheduleMapRefit(panelHeight: height, animated: true)
+        } else {
+            refitMapToVisibleGap(panelHeight: height, animated: false)
+        }
+    }
+
+    @ViewBuilder
     private func detailPanel(containerHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             panelGrabber(containerHeight: containerHeight)
 
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 14) {
-                    tripHeader
-
-                    statsStrip
-
-                    if !resolvedViewModel.speedSamples.isEmpty {
-                        speedChartCard
-                    }
-
-                    if !sortedStops.isEmpty {
-                        detailSection(title: L10n.tripStopsSection) {
-                            ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { index, stop in
-                                TripStopEditRow(stop: stop)
-                                if index < sortedStops.count - 1 {
-                                    Divider()
-                                }
-                            }
-                        }
-                    }
-
-                    if trip.endedAt != nil {
-                        detailSplitSection(title: L10n.tripEditTimesSection) {
-                            tripTimePicker(
-                                title: L10n.tripStartedAt,
-                                selection: $editedStartedAt
-                            )
-                        } right: {
-                            tripTimePicker(
-                                title: L10n.tripEndedAt,
-                                selection: $editedEndedAt
-                            )
-                        }
-                    } else {
-                        detailSection(title: L10n.tripEditTimesSection) {
-                            tripTimePicker(
-                                title: L10n.tripStartedAt,
-                                selection: $editedStartedAt
-                            )
-                        }
-                    }
-
-                    detailSplitSection(title: L10n.tripTrimPointsSection) {
-                        trimStepperCell(
-                            title: L10n.tripTrimHead,
-                            value: $trimHeadCount,
-                            range: 0...maxTrimHead
-                        )
-                    } right: {
-                        trimStepperCell(
-                            title: L10n.tripTrimTail,
-                            value: $trimTailCount,
-                            range: 0...maxTrimTail
-                        )
-                    }
-
-                    detailSection(title: L10n.tripLocationOverrides) {
-                        compactTextField(L10n.tripStartPlaceName, text: $startPlaceNameText)
-                        favoritePlaceAction(
-                            endpoint: .start,
-                            coordinate: trip.startCoordinate,
-                            accessibilityLabel: L10n.tripAddStartToFavorites
-                        )
-                        compactTextField(L10n.tripEndPlaceName, text: $endPlaceNameText)
-                        favoritePlaceAction(
-                            endpoint: .end,
-                            coordinate: trip.endCoordinate,
-                            accessibilityLabel: L10n.tripAddEndToFavorites
-                        )
-                        compactTextField(L10n.tripStartAddress, text: $startAddressText)
-                        compactTextField(L10n.tripEndAddress, text: $endAddressText)
-                    }
-
-                    detailSplitSection(title: L10n.tripEditCategoryAndLabel) {
-                        detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
-                            ForEach(categories) { category in
-                                Label(category.name, systemImage: category.systemImage)
-                                    .tag(category.id.uuidString)
-                            }
-                        }
-                        .onChange(of: selectedCategoryID) { _, _ in
-                            dismissNoteKeyboard()
-                        }
-                    } right: {
-                        detailMenuPicker(title: L10n.tripEditLabel, selection: $selectedLabel) {
-                            Text(L10n.labelNone).tag("")
-                            ForEach(TripLabelOption.allCases, id: \.rawValue) { option in
-                                Text(option.displayName).tag(option.rawValue)
-                            }
-                        }
-                        .onChange(of: selectedLabel) { _, _ in
-                            dismissNoteKeyboard()
-                        }
-                    }
-
-                    if !vehicles.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(L10n.string("trip.edit.vehicle"))
-                                .font(.subheadline.weight(.semibold))
-
-                            detailMiniCard {
-                                HStack(spacing: 10) {
-                                    // Single identity mark: photo if set, else SF Symbol (facing right).
-                                    if let selected = sortedDetailVehicles.first(where: { $0.id == selectedVehicleID }) {
-                                        VehicleAvatarView(
-                                            systemImage: selected.systemImage,
-                                            photoFileName: selected.photoFileName,
-                                            size: 28,
-                                            cornerRadius: 7,
-                                            isElectricAccent: selected.fuelType == .electric
-                                        )
-                                    } else {
-                                        Image(systemName: "minus.circle")
-                                            .font(.body)
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 28, height: 28)
-                                    }
-
-                                    // Name-only menu — avoid a second system icon beside the avatar.
-                                    Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
-                                        Text(L10n.string("trip.edit.vehicle_none"))
-                                            .tag(UUID?.none)
-                                        ForEach(sortedDetailVehicles) { vehicle in
-                                            Text(vehicle.name)
-                                                .tag(Optional(vehicle.id))
-                                        }
-                                    }
-                                    .labelsHidden()
-                                    .pickerStyle(.menu)
-                                    .buttonStyle(.plain)
-                                    .font(.callout)
-                                    .tint(.primary)
-                                    .foregroundStyle(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .onChange(of: selectedVehicleID) { _, _ in
-                                        dismissNoteKeyboard()
-                                    }
-                                }
-                            }
-                        }
-                        .task(id: vehiclePhotoPrefetchID) {
-                            await VehiclePhotoStore.shared.prefetch(vehicles: sortedDetailVehicles)
-                        }
-                    }
-
-                    detailSection(title: L10n.tripEditNote) {
-                        TextField(L10n.tripEditNotePlaceholder, text: $noteText, axis: .vertical)
-                            .lineLimit(2...4)
-                            .focused($noteFocused)
-                            .submitLabel(.done)
-                            .glassInputField()
-                            .onSubmit { dismissNoteKeyboard() }
-                    }
-
-                    Button(L10n.tripEditSave) {
-                        saveEdits()
-                        dismissNoteKeyboard()
-                    }
-                    .accessibilityIdentifier("tripDetail.save")
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.roundedRectangle(radius: 8))
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, 4)
+            if panelRisen {
+                ScrollView(.vertical, showsIndicators: true) {
+                    detailPanelContent
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, GlassTokens.listContentHorizontalInset)
-                .padding(.bottom, 88)
+                .scrollBounceBehavior(.basedOnSize)
+                .dismissKeyboardOnScroll()
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .dismissKeyboardOnScroll()
         }
+    }
+
+    private var detailPanelContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            tripHeader
+
+            statsStrip
+
+            if !resolvedViewModel.speedSamples.isEmpty {
+                speedChartCard
+            }
+
+            if !sortedStops.isEmpty {
+                detailSection(title: L10n.tripStopsSection) {
+                    ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { index, stop in
+                        TripStopEditRow(stop: stop)
+                        if index < sortedStops.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+
+            if trip.endedAt != nil {
+                detailSplitSection(title: L10n.tripEditTimesSection) {
+                    tripTimePicker(
+                        title: L10n.tripStartedAt,
+                        selection: $editedStartedAt
+                    )
+                } right: {
+                    tripTimePicker(
+                        title: L10n.tripEndedAt,
+                        selection: $editedEndedAt
+                    )
+                }
+            } else {
+                detailSection(title: L10n.tripEditTimesSection) {
+                    tripTimePicker(
+                        title: L10n.tripStartedAt,
+                        selection: $editedStartedAt
+                    )
+                }
+            }
+
+            detailSplitSection(title: L10n.tripTrimPointsSection) {
+                trimStepperCell(
+                    title: L10n.tripTrimHead,
+                    value: $trimHeadCount,
+                    range: 0...maxTrimHead
+                )
+            } right: {
+                trimStepperCell(
+                    title: L10n.tripTrimTail,
+                    value: $trimTailCount,
+                    range: 0...maxTrimTail
+                )
+            }
+
+            detailSection(title: L10n.tripLocationOverrides) {
+                compactTextField(L10n.tripStartPlaceName, text: $startPlaceNameText)
+                favoritePlaceAction(
+                    endpoint: .start,
+                    coordinate: trip.startCoordinate,
+                    accessibilityLabel: L10n.tripAddStartToFavorites
+                )
+                compactTextField(L10n.tripEndPlaceName, text: $endPlaceNameText)
+                favoritePlaceAction(
+                    endpoint: .end,
+                    coordinate: trip.endCoordinate,
+                    accessibilityLabel: L10n.tripAddEndToFavorites
+                )
+                compactTextField(L10n.tripStartAddress, text: $startAddressText)
+                compactTextField(L10n.tripEndAddress, text: $endAddressText)
+            }
+
+            detailSplitSection(title: L10n.tripEditCategoryAndLabel) {
+                detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
+                    ForEach(categories) { category in
+                        Label(category.name, systemImage: category.systemImage)
+                            .tag(category.id.uuidString)
+                    }
+                }
+                .onChange(of: selectedCategoryID) { _, _ in
+                    dismissNoteKeyboard()
+                }
+            } right: {
+                detailMenuPicker(title: L10n.tripEditLabel, selection: $selectedLabel) {
+                    Text(L10n.labelNone).tag("")
+                    ForEach(TripLabelOption.allCases, id: \.rawValue) { option in
+                        Text(option.displayName).tag(option.rawValue)
+                    }
+                }
+                .onChange(of: selectedLabel) { _, _ in
+                    dismissNoteKeyboard()
+                }
+            }
+
+            if !vehicles.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(L10n.string("trip.edit.vehicle"))
+                        .font(.subheadline.weight(.semibold))
+
+                    detailMiniCard {
+                        HStack(spacing: 10) {
+                            if let selected = sortedDetailVehicles.first(where: { $0.id == selectedVehicleID }) {
+                                VehicleAvatarView(
+                                    systemImage: selected.systemImage,
+                                    photoFileName: selected.photoFileName,
+                                    size: 28,
+                                    cornerRadius: 7,
+                                    isElectricAccent: selected.fuelType == .electric
+                                )
+                            } else {
+                                Image(systemName: "minus.circle")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 28, height: 28)
+                            }
+
+                            Picker(L10n.string("trip.edit.vehicle"), selection: $selectedVehicleID) {
+                                Text(L10n.string("trip.edit.vehicle_none"))
+                                    .tag(UUID?.none)
+                                ForEach(sortedDetailVehicles) { vehicle in
+                                    Text(vehicle.name)
+                                        .tag(Optional(vehicle.id))
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .buttonStyle(.plain)
+                            .font(.callout)
+                            .tint(.primary)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .onChange(of: selectedVehicleID) { _, _ in
+                                dismissNoteKeyboard()
+                            }
+                        }
+                    }
+                }
+                .task(id: vehiclePhotoPrefetchID) {
+                    await VehiclePhotoStore.shared.prefetch(vehicles: sortedDetailVehicles)
+                }
+            }
+
+            detailSection(title: L10n.tripEditNote) {
+                TextField(L10n.tripEditNotePlaceholder, text: $noteText, axis: .vertical)
+                    .lineLimit(2...4)
+                    .focused($noteFocused)
+                    .submitLabel(.done)
+                    .glassInputField()
+                    .onSubmit { dismissNoteKeyboard() }
+            }
+
+            Button(L10n.tripEditSave) {
+                saveEdits()
+                dismissNoteKeyboard()
+            }
+            .accessibilityIdentifier("tripDetail.save")
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 8))
+            .tint(TrailhoundBrandColors.brandBottom)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, GlassTokens.listContentHorizontalInset)
+        .padding(.bottom, 88)
     }
 
     private func panelGrabber(containerHeight: CGFloat) -> some View {
@@ -859,7 +1120,7 @@ struct TripDetailView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassChrome(cornerRadius: 10)
+        .glassChrome(cornerRadius: 10, frozen: glassFrozen)
         .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
         .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.94)
     }
@@ -895,7 +1156,7 @@ struct TripDetailView: View {
             }
         }
         .padding(12)
-        .glassChrome(cornerRadius: 12)
+        .glassChrome(cornerRadius: 12, frozen: glassFrozen)
         .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
         .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.98)
     }
@@ -1022,7 +1283,7 @@ struct TripDetailView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12)
+            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
     }
 
     private func detailSplitSection<Left: View, Right: View>(
@@ -1056,7 +1317,7 @@ struct TripDetailView: View {
             }
             .padding(12)
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12)
+            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
         }
     }
 
@@ -1190,7 +1451,7 @@ struct TripDetailView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .glassChrome(cornerRadius: 14)
+        .glassChrome(cornerRadius: 14, frozen: glassFrozen)
     }
 
     private func legendChip(color: Color, text: String) -> some View {
@@ -1204,156 +1465,60 @@ struct TripDetailView: View {
     }
 
     private var maxTrimHead: Int {
-        max(0, trip.sortedPoints.count - trimTailCount - 2)
+        max(0, recordedPointCount - trimTailCount - 2)
     }
 
     private var maxTrimTail: Int {
-        max(0, trip.sortedPoints.count - trimHeadCount - 2)
+        max(0, recordedPointCount - trimHeadCount - 2)
+    }
+
+    private func mapStops(showAll: Bool) -> [TripDetailMapStop] {
+        let vm = resolvedViewModel
+        return sortedStops.map { stop in
+            TripDetailMapStop(
+                id: String(describing: stop.persistentModelID),
+                coordinate: stop.coordinate,
+                revealProgress: showAll ? 0 : vm.annotationRevealProgress(forStopAt: stop.coordinate)
+            )
+        }
     }
 
     @ViewBuilder
-    private func tripMapView(
-        style: TripMapStyle,
+    private func tripDetailMapLayer(
         interactive: Bool,
-        revealProgress: Double? = nil
+        revealProgress: Double? = nil,
+        forceShowAllStops: Bool = false
     ) -> some View {
         let progress = revealProgress ?? routeRevealProgress
-        let duringReveal = progress < 0.999
-        let useCheapReveal = duringReveal && revealCheapMapDuringAnimation
+        let drawCasing = progress >= 0.999
+        let showStops = forceShowAllStops || showAllStops || progress >= 0.999
         let revealedSegments = resolvedViewModel.revealedSpeedColoredSegments(progress: progress)
         let revealedFallback = resolvedViewModel.revealedFallbackCoordinates(progress: progress)
-        // Stable ids — progress only changes the tip segment's coordinates, not every overlay identity.
         let revealedItems = revealedSegments.map { segment in
-            RevealedRouteSegment(
+            TripDetailRevealedRouteSegment(
                 id: "\(segment.id)",
                 coordinates: segment.coordinates,
                 color: segment.color
             )
         }
-        // Casing + solid doubles overlay count; always draw casing so every color has a white edge.
-        Map(position: $cameraPosition, interactionModes: interactive ? .all : []) {
-            ForEach(revealedItems) { segment in
-                MapPolyline(coordinates: segment.coordinates)
-                    .stroke(
-                        TripRouteMapStroke.casingColor,
-                        style: StrokeStyle(
-                            lineWidth: TripRouteMapStroke.casingWidth,
-                            lineCap: TripRouteMapStroke.lineCap,
-                            lineJoin: TripRouteMapStroke.lineJoin
-                        )
-                    )
-                    .mapOverlayLevel(level: .aboveRoads)
-            }
 
-            ForEach(revealedItems) { segment in
-                MapPolyline(coordinates: segment.coordinates)
-                    .stroke(
-                        segment.color,
-                        style: StrokeStyle(
-                            lineWidth: TripRouteMapStroke.solidWidth,
-                            lineCap: TripRouteMapStroke.lineCap,
-                            lineJoin: TripRouteMapStroke.lineJoin
-                        )
-                    )
-                    .mapOverlayLevel(level: .aboveRoads)
-            }
-
-            if revealedItems.isEmpty, revealedFallback.count >= 2 {
-                MapPolyline(coordinates: revealedFallback)
-                    .stroke(
-                        TripRouteMapStroke.casingColor,
-                        style: StrokeStyle(
-                            lineWidth: TripRouteMapStroke.casingWidth,
-                            lineCap: TripRouteMapStroke.lineCap,
-                            lineJoin: TripRouteMapStroke.lineJoin
-                        )
-                    )
-                MapPolyline(coordinates: revealedFallback)
-                    .stroke(
-                        .cyan,
-                        style: StrokeStyle(
-                            lineWidth: TripRouteMapStroke.solidWidth,
-                            lineCap: TripRouteMapStroke.lineCap,
-                            lineJoin: TripRouteMapStroke.lineJoin
-                        )
-                    )
-            }
-
-            // All stops stay visible. MapKit's SwiftUI Map has no real z-index for point
-            // annotations — `mapOverlayLevel` only affects overlays like polylines/polygons.
-            // The actual lever is declaration order inside this builder: later annotations draw
-            // on top. Stops must come first, start next, end last (topmost).
-            ForEach(Array(sortedStops.enumerated()), id: \.element.persistentModelID) { _, stop in
-                if progress >= resolvedViewModel.annotationRevealProgress(forStopAt: stop.coordinate) {
-                    Annotation(L10n.tripPointStop, coordinate: stop.coordinate) {
-                        RouteMapPinMark(
-                            kind: .stop,
-                            popped: true,
-                            reduceMotion: reduceMotion
-                        )
-                    }
-                }
-            }
-
-            if startPinVisible, let start = resolvedViewModel.routeStartCoordinate {
-                Annotation(L10n.tripPointStart, coordinate: start, anchor: .bottom) {
-                    RouteMapPinMark(
-                        kind: .start,
-                        popped: startPinVisible,
-                        reduceMotion: reduceMotion
-                    )
-                }
-            }
-
-            if endPinVisible, let end = resolvedViewModel.routeEndCoordinate {
-                Annotation(L10n.tripPointEnd, coordinate: end, anchor: .bottom) {
-                    RouteMapPinMark(
-                        kind: .end,
-                        popped: endPinVisible,
-                        reduceMotion: reduceMotion
-                    )
-                }
-            }
-        }
-        .mapStyle(style.mapStyle(flatElevation: useCheapReveal))
-        .preferredColorScheme(style == .dark ? .dark : nil)
-    }
-
-    private var fullscreenMapSheet: some View {
-        NavigationStack {
-            ZStack(alignment: .topTrailing) {
-                tripMapView(style: mapStyle, interactive: true, revealProgress: 1)
-
-                VStack(alignment: .trailing, spacing: 8) {
-                    compactSpeedLegend
-
-                    Picker(L10n.mapStylePicker, selection: $mapStyle) {
-                        Text(L10n.mapStyleLight).tag(TripMapStyle.standard)
-                        Text(L10n.mapStyleDark).tag(TripMapStyle.dark)
-                    }
-                    .pickerStyle(.segmented)
-                    .glassSegmentedStyle()
-                    .frame(width: 180)
-                    .padding(8)
-                    .glassChrome(cornerRadius: 10)
-                }
-                .padding()
-            }
-            .navigationTitle(resolvedViewModel.routeSummary)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(L10n.actionClose) {
-                        showFullscreenMap = false
-                    }
-                }
-            }
-            .onAppear {
-                if let region = resolvedViewModel.mapRegion(fit: .fullscreen) {
-                    cameraPosition = .region(region)
-                }
-            }
-        }
+        TripDetailMapLayer(
+            style: mapStyle,
+            interactive: interactive,
+            routeRevealProgress: progress,
+            drawCasing: drawCasing,
+            revealedItems: revealedItems,
+            revealedFallback: revealedFallback,
+            startCoordinate: resolvedViewModel.routeStartCoordinate,
+            endCoordinate: resolvedViewModel.routeEndCoordinate,
+            startPinVisible: revealProgress == nil ? startPinVisible : true,
+            endPinVisible: revealProgress == nil ? endPinVisible : true,
+            showAllStops: showStops,
+            stops: mapStops(showAll: showStops),
+            reduceMotion: reduceMotion,
+            cameraBox: mapCameraBox
+        )
+        .equatable()
     }
 
     private func renderShareCard() async {
@@ -1465,6 +1630,7 @@ struct TripDetailView: View {
         DevLog.shared.log(.tripDetail, "gps trim trip=\(trip.id.uuidString.prefix(8)) head=\(trimHeadCount) tail=\(trimTailCount)")
         trimHeadCount = 0
         trimTailCount = 0
+        recordedPointCount = trip.points.count
         routeLoadTask?.cancel()
         routeLoadTask = Task { @MainActor in
             await loadDisplayPathAndReveal()

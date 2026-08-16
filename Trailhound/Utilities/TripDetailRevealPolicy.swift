@@ -9,26 +9,19 @@ enum TripDetailRevealPolicy {
         let shouldAnimate: Bool
         let tickCount: Int
         let stepSleepMilliseconds: Int
-        /// When true, map uses flat elevation and a single polyline stroke during reveal.
+        /// Always true for trip detail: flat elevation + solid-only stroke during reveal.
         let useCheapMapDuringReveal: Bool
     }
 
     static func animationPlan(pointCount: Int, reduceMotion: Bool) -> AnimationPlan {
-        if reduceMotion || pointCount > animatedRouteMaxPoints {
+        // Medium and long display paths settle instantly — ticking 60×2 MapPolylines
+        // while the sheet rises is what made detail open hitch.
+        if reduceMotion || pointCount > shortRouteMaxPoints {
             return AnimationPlan(
                 shouldAnimate: false,
                 tickCount: 0,
                 stepSleepMilliseconds: 0,
                 useCheapMapDuringReveal: true
-            )
-        }
-
-        if pointCount <= shortRouteMaxPoints {
-            return AnimationPlan(
-                shouldAnimate: true,
-                tickCount: 16,
-                stepSleepMilliseconds: 40,
-                useCheapMapDuringReveal: false
             )
         }
 

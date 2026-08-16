@@ -111,6 +111,47 @@ final class TripRoutePathCacheTests: XCTestCase {
         XCTAssertNil(disk)
     }
 
+    func testPrewarmSkipsWorkerWhenMemoryHit() async throws {
+        let trip = try insertTrip(pointCount: 25)
+        let cache = TripRoutePathCache.shared
+        cache.resetWorkerInvocationCount()
+
+        _ = await cache.path(for: trip, container: container)
+        let invocationsAfterPath = cache.workerInvocationCount
+        XCTAssertGreaterThan(invocationsAfterPath, 0)
+
+        cache.prewarm(tripID: trip.id, container: container)
+        try await Task.sleep(for: .milliseconds(80))
+
+        XCTAssertEqual(cache.workerInvocationCount, invocationsAfterPath)
+    }
+
+    func testPrewarmSkipsWorkerWhenDiskHit() async throws {
+        let trip = try insertTrip(pointCount: 22)
+        let cache = TripRoutePathCache.shared
+        let fingerprint = TripRoutePathFingerprint.make(from: trip)
+        let samples = RouteDisplayPath.displaySegments(
+            samples: RouteDisplayPath.samples(from: trip.sortedPoints)
+        )
+        let payload = TripRoutePathPayload.from(samples: samples, fingerprint: fingerprint)
+        cache.storeForTesting(payload, for: trip.id)
+        try await Task.sleep(for: .milliseconds(50))
+        cache.clearMemory()
+        cache.resetWorkerInvocationCount()
+
+        cache.prewarm(tripID: trip.id, container: container)
+        try await Task.sleep(for: .milliseconds(80))
+
+        XCTAssertEqual(cache.workerInvocationCount, 0)
+        let restored = await cache.path(for: trip, container: container)
+        XCTAssertEqual(cache.workerInvocationCount, 0)
+        XCTAssertEqual(restored.count, samples.count)
+        XCTAssertEqual(
+            restored.first?.map(\.coordinate.latitude),
+            samples.first?.map(\.coordinate.latitude)
+        )
+    }
+
     func testCorruptDiskFileIsTreatedAsMiss() async throws {
         let trip = try insertTrip(pointCount: 12)
         let cache = TripRoutePathCache.shared

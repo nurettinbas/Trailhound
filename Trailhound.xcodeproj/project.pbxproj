@@ -74,6 +74,7 @@
 		A10000000000000000000013 /* TripListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* TripListView.swift */; };
 		A10000000000000000000014 /* TripRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* TripRowView.swift */; };
 		A10000000000000000000015 /* TripDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* TripDetailView.swift */; };
+		A1TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift */; };
 		A10000000000000000000016 /* ActiveTripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* ActiveTripView.swift */; };
 		A1LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */; };
 		A1LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */; };
@@ -358,6 +359,7 @@
 		A20000000000000000000013 /* TripListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripListView.swift; sourceTree = "<group>"; };
 		A20000000000000000000014 /* TripRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRowView.swift; sourceTree = "<group>"; };
 		A20000000000000000000015 /* TripDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailView.swift; sourceTree = "<group>"; };
+		A2TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailMapLayer.swift; sourceTree = "<group>"; };
 		A20000000000000000000016 /* ActiveTripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveTripView.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowMapView.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowCamera.swift; sourceTree = "<group>"; };
@@ -771,6 +773,7 @@
 				A20000000000000000000013 /* TripListView.swift */,
 				A20000000000000000000014 /* TripRowView.swift */,
 				A20000000000000000000015 /* TripDetailView.swift */,
+				A2TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift */,
 				A20000000000000000000016 /* ActiveTripView.swift */,
 				A2LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift */,
 				A2LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift */,
@@ -1189,6 +1192,7 @@
 				A10000000000000000000013 /* TripListView.swift in Sources */,
 				A10000000000000000000014 /* TripRowView.swift in Sources */,
 				A10000000000000000000015 /* TripDetailView.swift in Sources */,
+				A1TRIPDETAILMAPLAYER0001 /* TripDetailMapLayer.swift in Sources */,
 				A10000000000000000000016 /* ActiveTripView.swift in Sources */,
 				A1LIVEFOLLOWMAP0000001 /* LiveFollowMapView.swift in Sources */,
 				A1LIVEFOLLOWMAPKIT00001 /* LiveFollowMapKitView.swift in Sources */,

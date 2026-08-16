@@ -9,21 +9,12 @@ final class TripDetailRevealPolicyTests: XCTestCase {
         )
         XCTAssertFalse(plan.shouldAnimate)
         XCTAssertEqual(plan.tickCount, 0)
+        XCTAssertTrue(plan.useCheapMapDuringReveal)
     }
 
-    func testShortRouteUsesSixteenTicks() {
+    func testShortRouteUsesTwelveTicksAndCheapMap() {
         let plan = TripDetailRevealPolicy.animationPlan(
             pointCount: TripDetailRevealPolicy.shortRouteMaxPoints,
-            reduceMotion: false
-        )
-        XCTAssertTrue(plan.shouldAnimate)
-        XCTAssertEqual(plan.tickCount, 16)
-        XCTAssertFalse(plan.useCheapMapDuringReveal)
-    }
-
-    func testMediumRouteUsesCheapMap() {
-        let plan = TripDetailRevealPolicy.animationPlan(
-            pointCount: TripDetailRevealPolicy.shortRouteMaxPoints + 50,
             reduceMotion: false
         )
         XCTAssertTrue(plan.shouldAnimate)
@@ -31,9 +22,20 @@ final class TripDetailRevealPolicyTests: XCTestCase {
         XCTAssertTrue(plan.useCheapMapDuringReveal)
     }
 
+    func testMediumRouteIsInstant() {
+        let plan = TripDetailRevealPolicy.animationPlan(
+            pointCount: TripDetailRevealPolicy.shortRouteMaxPoints + 50,
+            reduceMotion: false
+        )
+        XCTAssertFalse(plan.shouldAnimate)
+        XCTAssertEqual(plan.tickCount, 0)
+        XCTAssertTrue(plan.useCheapMapDuringReveal)
+    }
+
     func testReduceMotionSkipsAnimation() {
         let plan = TripDetailRevealPolicy.animationPlan(pointCount: 10, reduceMotion: true)
         XCTAssertFalse(plan.shouldAnimate)
+        XCTAssertTrue(plan.useCheapMapDuringReveal)
     }
 
     func testQuantizedProgressSteps() {

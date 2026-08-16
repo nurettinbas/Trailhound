@@ -140,8 +140,21 @@ final class TripRoutePathCache {
     }
 
     /// Builds and stores the display path in the background so the first detail open is warm.
+    /// Skips work when memory, an in-flight build, or a disk payload already covers `tripID`.
+    /// Fingerprint validation stays on `path(...)` at detail open — stale disk is rejected there.
     func prewarm(tripID: UUID, container: ModelContainer) {
+        if memoryCache[tripID] != nil { return }
+        if inFlight[tripID] != nil { return }
+
         Task { @MainActor in
+            if memoryCache[tripID] != nil { return }
+            if inFlight[tripID] != nil { return }
+
+            if let stored = await Self.readPayload(at: fileURL(for: tripID)) {
+                memoryCache[tripID] = stored
+                return
+            }
+
             _ = await buildAndStore(tripID: tripID, container: container)
         }
     }

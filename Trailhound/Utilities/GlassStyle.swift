@@ -172,6 +172,8 @@ struct GlassSurface: View {
     var topRadius: CGFloat?
     var bottomRadius: CGFloat?
     var density: GlassDensity = .panel
+    /// Skip Material blur — used while a sheet/panel is being dragged over a live map.
+    var frozen: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -188,8 +190,16 @@ struct GlassSurface: View {
 
     var body: some View {
         ZStack {
-            if reduceTransparency {
+            if reduceTransparency || frozen {
                 shape.fill(GlassTokens.solidFallback)
+                if frozen, !reduceTransparency {
+                    shape.fill(
+                        TrailhoundBrandColors.brandBottom.opacity(
+                            density.brandTintOpacity(for: colorScheme) * 0.85
+                        )
+                    )
+                    shape.fill(Color.white.opacity(density.frostOpacity(for: colorScheme) * 0.9))
+                }
             } else {
                 shape.fill(density.material(for: colorScheme))
                 shape.fill(TrailhoundBrandColors.brandBottom.opacity(density.brandTintOpacity(for: colorScheme)))
@@ -270,13 +280,14 @@ struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = GlassTokens.cardRadius
     var density: GlassDensity = .panel
     var contentInset: CGFloat = GlassTokens.cardContentInset
+    var frozen: Bool = false
 
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, contentInset)
             .padding(.vertical, contentInset)
             .background {
-                GlassSurface(cornerRadius: cornerRadius, density: density)
+                GlassSurface(cornerRadius: cornerRadius, density: density, frozen: frozen)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
@@ -284,11 +295,12 @@ struct GlassCardModifier: ViewModifier {
 
 struct GlassChromeModifier: ViewModifier {
     var cornerRadius: CGFloat = GlassTokens.chipRadius
+    var frozen: Bool = false
 
     func body(content: Content) -> some View {
         content
             .background {
-                GlassSurface(cornerRadius: cornerRadius, density: .chrome)
+                GlassSurface(cornerRadius: cornerRadius, density: .chrome, frozen: frozen)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
@@ -485,13 +497,21 @@ extension View {
     func glassCard(
         cornerRadius: CGFloat = GlassTokens.cardRadius,
         density: GlassDensity = .panel,
-        contentInset: CGFloat = GlassTokens.cardContentInset
+        contentInset: CGFloat = GlassTokens.cardContentInset,
+        frozen: Bool = false
     ) -> some View {
-        modifier(GlassCardModifier(cornerRadius: cornerRadius, density: density, contentInset: contentInset))
+        modifier(
+            GlassCardModifier(
+                cornerRadius: cornerRadius,
+                density: density,
+                contentInset: contentInset,
+                frozen: frozen
+            )
+        )
     }
 
-    func glassChrome(cornerRadius: CGFloat = GlassTokens.chipRadius) -> some View {
-        modifier(GlassChromeModifier(cornerRadius: cornerRadius))
+    func glassChrome(cornerRadius: CGFloat = GlassTokens.chipRadius, frozen: Bool = false) -> some View {
+        modifier(GlassChromeModifier(cornerRadius: cornerRadius, frozen: frozen))
     }
 
     /// Inline inputs on glass panels — frosted tint instead of system grouped black/white.

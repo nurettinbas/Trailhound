@@ -135,6 +135,7 @@ enum L10n {
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
     static var mapFullscreen: String { string("map.fullscreen") }
+    static var mapExitFullscreen: String { string("map.exit_fullscreen") }
     static var mapStyleLight: String { string("map.style.light") }
     static var mapStyleDark: String { string("map.style.dark") }
     static var speedLegendSlow: String { string("speed.legend.slow") }

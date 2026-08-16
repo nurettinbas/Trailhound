@@ -2523,6 +2523,23 @@
         }
       }
     },
+    "map.exit_fullscreen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit fullscreen map"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tam ekrandan çık"
+          }
+        }
+      }
+    },
     "map.style.dark" : {
       "extractionState" : "stale",
       "localizations" : {

@@ -83,13 +83,20 @@ At the source, `RecordingMovementPolicy.trustedGPSSpeedMps` gates Core Location'
 
 | Display point count | Behavior |
 |-------------|----------|
-| ≤ 300 | ~16 ticks, full map styling during reveal; cinematic opening camera + map-clear veil |
-| 301–1500 | ~12 ticks, flat map + single polyline stroke during reveal; skip cinematic camera |
-| > 1500 | Instant reveal (no animation) |
+| ≤ 300 | ~12 ticks, flat map, solid stroke only during reveal (white casing appears when settled) |
+| > 300 | Instant reveal (full route + casing) |
 
 Reduce Motion always uses instant reveal.
 
-Signature open order (animated path only): muted map veil → `mapClear` → frosted panel `sheetRise` → start pin → route ticks → end pin. The settle veil is a lightweight SwiftUI overlay (not a MapKit style switch). The bottom panel stays a custom glass panel (not system detents) so map padding stays in sync with the reveal.
+**Layout (no MapKit resize).** The map stays full-screen. The frosted details panel is an overlay with its own atmospheric wash — panel height never applies `padding` to the Map, so grabber drag does not relayout MapKit every frame. Camera fit still uses `MapFitContext` insets so the route sits in the visible gap above the panel; refit runs on detent snap / open only, not during drag. `TripDetailMapLayer` is `Equatable` and excludes panel drag state so sheet motion does not rebuild overlays.
+
+**In-place map expand (no sheet).** Toolbar fullscreen is not a second MapKit instance or SwiftUI `.sheet`. `isMapExpanded` slides the existing panel off-screen (`offset` + `opacity`; frame height stays put) and refits the shared `mapCameraBox` on the same beat — `TrailhoundMotion.mapExpand` (1.40s) / `mapCollapse` (1.10s). Do not reintroduce a deferred `scheduleMapRefit` (280ms) on this path; panel and camera must share one curve. Apply the fitted `MKCoordinateRegion` via `MapCameraPosition.region` — do not convert through `MapCamera` + `cameraDistance` (that altitude fudge zooms in and clips the route). Expanded edge padding must clear nav + style picker on top and tab-bar + speed chips on the bottom. Read tab-bar height from the key window (`safeArea.bottom + 49`); `GeometryReader` under `.ignoresSafeArea(.bottom)` reports 0 and buries the chips. When expanded, chrome bottom inset is that tab-bar height so the legend sits on the bar, not under it. Glass stays `frozen` for the transition duration. Style picker fades in after ~750ms expand only. Reduce Motion snaps both directions. Elevation stays `.flat`; expand must not toggle route/pin/stop reveal inputs.
+
+**First paint.** Opening never faults `trip.sortedPoints` on the first frame. The speed chart builds from `displayPieces` (≤1500). Trim steppers wait for a deferred `recordedPointCount`. Heavy form content mounts after `panelRisen`. Original GPS rows are never deleted by these paths — `RouteDisplayPath` / `TripRoutePathCache` remain read-only transforms. List rows do **not** prewarm route paths (that faulted GPS on every scroll recycle). Warmth comes from stop/merge `prewarm` plus detail’s async `path(...)` (memory → disk → build).
+
+Signature open order (animated short path only): muted map veil → `mapClear` → frosted panel `sheetRise` → camera refit into the visible gap → start pin → route ticks → end pin + casing. The settle veil is a lightweight SwiftUI overlay (not a MapKit style switch). Elevation stays `.flat` for the whole screen (same hitch reason as live follow). Camera fit uses `MapFitContext.detailOverlay(panelFraction:)` so the route sits in the strip above the overlay panel — full-screen MapKit no longer gets physical bottom padding.
+
+While the grabber is dragging, panel glass uses a solid fill (`glassChrome(frozen:)`) so Material does not resample the live map every frame.
 
 ## Share card
 
@@ -265,7 +272,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 1. Instruments → Time Profiler + Core Animation on device.
 2. Pairing → edit vehicle name with keyboard — should feel smooth vs list screens.
 3. Start recording, scroll trip list, switch tabs — CPU should drop on non-Trips tabs.
-4. Open a long trip detail — should not hitch for multi-second map reveal. Short trips may run map-clear + panel rise before the route ticks; long trips stay instant.
+4. Open a long trip detail — first frame must not hitch on GPS fault; map stays full-screen while the panel rises/drags. Short trips may run map-clear + panel rise + route ticks; medium/long trips settle instantly. Grabber drag must stay smooth (no MapKit resize). Toolbar fullscreen must expand in place (panel recedes + camera opens together) — no second map sheet, no black flash.
 5. Stats tab with many trips — scroll through charts; rows below the fold should appear after placeholders, without blocking the summary header.
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.
