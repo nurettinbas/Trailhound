@@ -217,6 +217,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         @objc private func userGesture(_ gesture: UIGestureRecognizer) {
             guard gesture.state == .began else { return }
             guard !isApplyingCamera else { return }
+            // Open hero still writes the follow camera; a pan in that window would
+            // break follow and leave the curved flight chasing a sliding map.
+            guard session.openSettled else { return }
             cancelCameraEase()
             breakFollow()
             onUserBreakFollow()

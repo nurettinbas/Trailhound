@@ -482,7 +482,7 @@ struct TripDetailEditPanel: View {
     private var statsStrip: some View {
         let fuelCurrencyCode = settings.fuelCurrency.rawValue
         let metrics = viewModel.summaryMetrics
-        let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
+        let primaryIDs: Set<String> = ["duration", "movingDuration", "distance", "maxSpeed"]
         let profileIDs: Set<String> = ["medianSpeed", "p90Speed", "stopDuration"]
         let fuelIDs: Set<String> = ["fuel", "dynamicFuel"]
         let primaryRow = metrics.filter { primaryIDs.contains($0.id) }

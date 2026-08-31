@@ -283,7 +283,7 @@ struct TripDetailViewModel {
         if let pieces = displayPieces, !pieces.isEmpty {
             return TripSpeedProfile.compute(samples: pieces.flatMap { $0 })
         }
-        if trip.stopDurationSeconds != nil {
+        if trip.stopDurationSeconds != nil || trip.cruiseDurationSeconds != nil {
             let cruise = trip.cruiseSpeedKmh ?? 0
             let storedMostCommon = trip.mostCommonSpeedKmh ?? 0
             return TripSpeedProfile.Result(
@@ -319,6 +319,19 @@ struct TripDetailViewModel {
         return speedProfile.stopDurationSeconds
     }
 
+    /// Time spent actually moving — pauses and standstills left out.
+    /// Falls back to clock time minus stops when cruise was zeroed (short moving windows).
+    var movingDurationSeconds: TimeInterval? {
+        guard trip.cruiseDurationSeconds != nil || trip.stopDurationSeconds != nil || displayPieces != nil else {
+            return nil
+        }
+        let moving = speedProfile.cruiseDurationSeconds
+        if moving > 0 { return moving }
+        guard let duration = trip.duration, duration > 0 else { return nil }
+        let remainder = max(0, duration - speedProfile.stopDurationSeconds)
+        return remainder > 0 ? remainder : nil
+    }
+
     var fuelText: String? {
         let cost = StatsViewModel.fuelCost(for: trip)
         guard cost > 0 else { return nil }
@@ -336,14 +349,28 @@ struct TripDetailViewModel {
                 icon: "clock",
                 title: L10n.duration,
                 kind: .duration(trip.duration ?? 0)
-            ),
+            )
+        ]
+        if let moving = movingDurationSeconds {
+            items.append(
+                TripSummaryMetric(
+                    id: "movingDuration",
+                    icon: "steeringwheel",
+                    title: L10n.movingDuration,
+                    kind: .duration(moving),
+                    helpTitle: L10n.movingDurationHelpTitle,
+                    helpBody: L10n.movingDurationHelpBody
+                )
+            )
+        }
+        items.append(
             TripSummaryMetric(
                 id: "distance",
                 icon: "road.lanes",
                 title: L10n.labelDistance,
                 kind: .distance(trip.distanceMeters)
             )
-        ]
+        )
         if let maxSpeed = derivedMaxSpeedMps {
             items.append(
                 TripSummaryMetric(

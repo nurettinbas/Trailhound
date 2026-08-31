@@ -163,6 +163,7 @@ final class DeviceTestChecklistTests: XCTestCase {
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("chevron sharp tip") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("camera pulls back") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("CarPlay Live Activity tile") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Travel time") }))
     }
 }
 

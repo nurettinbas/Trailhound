@@ -39,7 +39,8 @@ struct LiveFollowMapView: View {
     @State private var lockProjectedHeroDest = false
     @State private var mapMounted = false
     @State private var isClosing = false
-    /// After open handoff finishes — follow camera may advance from GPS.
+    /// After open handoff finishes — MapKit puck pulse / chrome settle. Follow camera
+    /// already runs during the hero flight so the landing cannot drift at speed.
     @State private var openSettled = false
     @State private var hudAnchorBox = RecordingCardAnchorBox()
     @State private var displayLink = DisplayLinkClock()
@@ -264,7 +265,7 @@ struct LiveFollowMapView: View {
     private var mapLayer: some View {
         LiveFollowMapKitView(
             session: session,
-            isFollowing: isFollowing && openSettled && !isClosing,
+            isFollowing: isFollowing && !isClosing,
             isPaused: isPaused,
             overviewRequestToken: overviewRequestToken,
             recenterRequestToken: recenterRequestToken,
@@ -627,7 +628,7 @@ struct LiveFollowMapView: View {
         }
     }
 
-    /// Reveal MapKit puck under the hero and crossfade — then unlock follow camera.
+    /// Reveal MapKit puck under the hero and crossfade. Follow camera is already live.
     @MainActor
     private func runOpenHandoff() async {
         guard !isClosing else { return }
@@ -826,7 +827,8 @@ struct LiveFollowMapView: View {
     /// Matches MapKit puck plate (opaque so the route cannot show through).
     static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
 
-    /// Pass the recorded runs through untouched — they are already split at GPS gaps.
+    /// Map recorded GPS runs onto polyline segments. Runs are already split at gaps;
+    /// pieces with fewer than two points cannot form a stroke and are dropped.
     ///
     /// The live map no longer routes geometry through SwiftUI at all (the coordinator
     /// pulls it from the session on display ticks); this stays as the pure mapping

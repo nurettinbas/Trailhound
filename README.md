@@ -21,7 +21,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Widget + Live Activity controls
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
-- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; pan (including while paused) to look back at the start; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
+- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; opening the map at speed keeps the curved vehicle→puck flight on the moving mark; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; pan (including while paused) to look back at the start; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)
@@ -34,7 +34,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
-- Trip summary cards include **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
+- Trip summary cards include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
 - Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, **stop time**, and dual **avg / estimated** fuel charts
 - Frequent routes, category filters, trip merge/split

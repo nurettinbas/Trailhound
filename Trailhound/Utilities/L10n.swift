@@ -68,6 +68,9 @@ enum L10n {
     static var filterVehicle: String { string("filter.vehicle") }
     static var filterPlace: String { string("filter.place") }
     static var duration: String { string("label.duration") }
+    static var movingDuration: String { string("label.moving_duration") }
+    static var movingDurationHelpTitle: String { string("label.moving_duration.help.title") }
+    static var movingDurationHelpBody: String { string("label.moving_duration.help.body") }
     static var currentSpeed: String { string("label.current_speed") }
     static var maxAbbr: String { string("label.max_abbr") }
     static var avgAbbr: String { string("label.avg_abbr") }

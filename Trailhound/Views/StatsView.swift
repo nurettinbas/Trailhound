@@ -810,7 +810,7 @@ struct StatsView: View {
         helpBody: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .center, spacing: 2) {
+            HStack(alignment: .center, spacing: 6) {
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
@@ -823,6 +823,7 @@ struct StatsView: View {
                     )
                     .scaleEffect(0.65, anchor: .leading)
                     .frame(width: 18, height: 18)
+                    .padding(.leading, 4)
                 }
             }
             Text(value)

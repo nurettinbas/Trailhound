@@ -15,9 +15,7 @@ final class LiveFollowMapViewTests: XCTestCase {
 
     func testPolylineSegmentsDropsEmptyPieces() {
         let single = [CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)]
-        let segments = LiveFollowMapView.polylineSegments(from: [single])
-        XCTAssertEqual(segments.count, 1)
-        XCTAssertEqual(segments.first?.coordinates.count, 1)
+        XCTAssertTrue(LiveFollowMapView.polylineSegments(from: [single]).isEmpty)
         XCTAssertTrue(LiveFollowMapView.polylineSegments(from: [[]]).isEmpty)
         XCTAssertTrue(LiveFollowMapView.polylineSegments(from: []).isEmpty)
     }

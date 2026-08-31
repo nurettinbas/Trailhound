@@ -2446,6 +2446,57 @@
         }
       }
     },
+    "label.moving_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel time"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk"
+          }
+        }
+      }
+    },
+    "label.moving_duration.help.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel time is how long you were actually moving — pauses and standstills are left out. Duration is the full clock from start to end."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk süresi, duraklamalar ve beklemeler hariç gerçek hareket süresidir. Süre, başlangıçtan bitişe kadar geçen toplam saattir."
+          }
+        }
+      }
+    },
+    "label.moving_duration.help.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is travel time?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk süresi nedir?"
+          }
+        }
+      }
+    },
     "label.none" : {
       "extractionState" : "stale",
       "localizations" : {

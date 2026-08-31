@@ -619,6 +619,32 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertGreaterThan(poseWrites, 0)
     }
 
+    /// The open hero lasts ~1 s. At motorway speed that is tens of metres — if the
+    /// map camera froze for that window while the pose kept ticking, the curved
+    /// flight would land on empty road with the trail already gone ahead.
+    @MainActor
+    func testMotorwayOpenWindowMovesTensOfMetresWhileUnsettled() {
+        let session = LiveFollowSession()
+        session.openSettled = false
+        session.isFollowing = true
+        session.isPaused = false
+        let highway = location(lat: 41.0, lon: 29.0, speedMps: 33, course: 0, courseAccuracy: 5)
+        session.ingest(location: highway, isPaused: false, now: baseDate)
+
+        var now = baseDate
+        for _ in 0..<63 {
+            now = now.addingTimeInterval(frame)
+            session.handleDisplayTick(dt: frame, now: now)
+        }
+        let travelled = CLLocation(latitude: 41.0, longitude: 29.0)
+            .distance(from: CLLocation(
+                latitude: session.vehicleCoordinate?.latitude ?? 41.0,
+                longitude: session.vehicleCoordinate?.longitude ?? 29.0
+            ))
+        XCTAssertGreaterThan(travelled, 25)
+        XCTAssertLessThan(travelled, 50)
+    }
+
     private func location(
         lat: Double,
         lon: Double,

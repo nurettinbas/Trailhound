@@ -86,8 +86,9 @@ final class LiveFollowSession {
         }
 
         // Advance pose while the cover is open so the overlay tip and puck keep
-        // updating after pan and during open handoff. MapKit only applies camera
-        // when following (coordinator gates on isFollowing && openSettled).
+        // updating after pan and during open handoff. MapKit applies the follow
+        // camera whenever `isFollowing` is set — including the open hero — so a
+        // motorway tick cannot slide the trail off a frozen landing target.
         _ = tick(dt: dt, now: now)
     }
 

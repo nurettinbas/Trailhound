@@ -352,7 +352,7 @@ enum TripShareCardRenderer {
         origin: CGPoint,
         width: CGFloat
     ) -> CGFloat {
-        let primaryIDs: Set<String> = ["duration", "distance", "maxSpeed"]
+        let primaryIDs: Set<String> = ["duration", "movingDuration", "distance", "maxSpeed"]
         let primary = metrics.filter { primaryIDs.contains($0.id) }
         let secondary = metrics.filter { !primaryIDs.contains($0.id) }
 

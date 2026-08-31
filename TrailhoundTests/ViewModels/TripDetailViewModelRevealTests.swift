@@ -93,3 +93,68 @@ final class TripDetailViewModelRevealTests: XCTestCase {
         return trip
     }
 }
+
+@MainActor
+final class TripDetailViewModelSummaryTests: XCTestCase {
+    func testSummaryPutsTravelTimeBesideDuration() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(3_600),
+            distanceMeters: 40_000
+        )
+        trip.cruiseDurationSeconds = 2_700
+        trip.stopDurationSeconds = 900
+
+        let ids = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+            .summaryMetrics
+            .map(\.id)
+        XCTAssertEqual(ids.prefix(2).map { $0 }, ["duration", "movingDuration"])
+        XCTAssertEqual(ids[2], "distance")
+    }
+
+    func testSummaryFormatsStoredMovingDuration() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(3_600),
+            distanceMeters: 40_000
+        )
+        trip.cruiseDurationSeconds = 2_700
+        trip.stopDurationSeconds = 900
+
+        let moving = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+            .summaryMetrics
+            .first { $0.id == "movingDuration" }
+        XCTAssertEqual(moving?.formatted(progress: 1), DateFormatters.formatDuration(2_700))
+    }
+
+    func testSummaryOmitsTravelTimeUntilProfileExists() {
+        let start = Date()
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(600),
+            distanceMeters: 3_000
+        )
+        let ids = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+            .summaryMetrics
+            .map(\.id)
+        XCTAssertFalse(ids.contains("movingDuration"))
+    }
+
+    func testSummaryFallsBackToClockMinusStopsWhenCruiseIsZeroed() {
+        let start = Date()
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(120),
+            distanceMeters: 400
+        )
+        trip.cruiseDurationSeconds = 0
+        trip.stopDurationSeconds = 40
+
+        let moving = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+            .summaryMetrics
+            .first { $0.id == "movingDuration" }
+        XCTAssertEqual(moving?.formatted(progress: 1), DateFormatters.formatDuration(80))
+    }
+}
