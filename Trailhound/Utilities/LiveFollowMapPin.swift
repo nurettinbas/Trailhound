@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 
 /// Session-local map pins for live follow (not a SwiftData schema change).
 enum LiveFollowMapPinKind: String, Equatable {
@@ -74,19 +75,109 @@ enum LiveFollowMapPinBuilder {
     }
 }
 
-/// Display-only chord from the last stored breadcrumb to the interpolated vehicle.
-/// Does not write SwiftData / breadcrumbs.
-enum LiveFollowRouteTip {
-    static let minimumMeters: CLLocationDistance = 0.6
+/// Live-follow route geometry: GPS history pieces + a two-point tip to the puck.
+/// Display-only — does not write SwiftData / breadcrumbs.
+///
+/// History and tip never share interior vertices. Real GPS gaps stay as separate
+/// pieces (no bird-flight chord). The tip is dropped rather than invented across a gap.
+enum LiveFollowGrowingRoute {
+    /// Keep the newest raw GPS points so Douglas-Peucker cannot rewrite the growing tail.
+    static let liveTailKeep = 40
+    /// Short sessions stay raw; decimate only the aged prefix of a long drive.
+    static let liveRawUntil = 500
+    /// Refuse a tip chord longer than this (GPS gap / dead-reckon runaway).
+    static let tipMaxGapMeters: CLLocationDistance = 120
+    /// Ignore sub-pixel jitter so a parked puck does not draw a 2-point stub.
+    static let tipMinGapMeters: CLLocationDistance = 0.05
+    /// Minimum pad around a point-sized overview (just started).
+    static let overviewMinPadMeters: CLLocationDistance = 120
+    /// Extra fraction around the traveled bounding box.
+    static let overviewPadFraction: Double = 0.18
 
-    static func coordinates(
-        from committed: CLLocationCoordinate2D?,
-        to vehicle: CLLocationCoordinate2D?
+    /// Last live segment: aged prefix may be decimated; the newest points stay raw.
+    static func liveActiveCoordinates(_ raw: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
+        guard raw.count > liveRawUntil else { return raw }
+        let tipCount = min(liveTailKeep, raw.count)
+        let prefix = Array(raw.dropLast(tipCount))
+        let tip = Array(raw.suffix(tipCount))
+        guard prefix.count >= 2 else { return raw }
+        let samples = prefix.enumerated().map { index, coordinate in
+            RouteSample(
+                coordinate: coordinate,
+                timestamp: Date(timeIntervalSince1970: TimeInterval(index)),
+                speedMps: nil
+            )
+        }
+        let decimated = RouteDisplayPath.decimate(
+            samples: samples,
+            maxCount: 1_200,
+            chordCapMeters: RouteDisplayPath.baseChordLimitMeters
+        )
+        return decimated.map(\.coordinate) + tip
+    }
+
+    /// GPS body only — pieces with fewer than two points cannot form a polyline.
+    static func historyPieces(from segments: [[CLLocationCoordinate2D]]) -> [[CLLocationCoordinate2D]] {
+        segments.filter { $0.count >= 2 }
+    }
+
+    /// Last recorded vertex of the active run — the tip starts here.
+    static func tipAnchor(from segments: [[CLLocationCoordinate2D]]) -> CLLocationCoordinate2D? {
+        segments.last { !$0.isEmpty }?.last
+    }
+
+    /// Two-point `[anchor, vehicle]` stroke, or `nil` when it would invent a chord.
+    static func tipSegment(
+        anchor: CLLocationCoordinate2D?,
+        vehicle: CLLocationCoordinate2D?
     ) -> [CLLocationCoordinate2D]? {
-        guard let committed, let vehicle else { return nil }
-        let start = CLLocation(latitude: committed.latitude, longitude: committed.longitude)
-        let end = CLLocation(latitude: vehicle.latitude, longitude: vehicle.longitude)
-        guard start.distance(from: end) >= minimumMeters else { return nil }
-        return [committed, vehicle]
+        guard let anchor, let vehicle else { return nil }
+        let delta = CLLocation(latitude: anchor.latitude, longitude: anchor.longitude)
+            .distance(from: CLLocation(latitude: vehicle.latitude, longitude: vehicle.longitude))
+        guard delta > tipMinGapMeters, delta <= tipMaxGapMeters else { return nil }
+        return [anchor, vehicle]
+    }
+
+    /// North-up overview that covers the traveled path and the puck.
+    static func overviewMapRect(
+        historyPieces: [[CLLocationCoordinate2D]],
+        vehicle: CLLocationCoordinate2D?
+    ) -> MKMapRect {
+        var rect = MKMapRect.null
+        func include(_ coordinate: CLLocationCoordinate2D) {
+            let point = MKMapPoint(coordinate)
+            rect = rect.union(MKMapRect(origin: point, size: .init(width: 0, height: 0)))
+        }
+        for piece in historyPieces {
+            for coordinate in piece {
+                include(coordinate)
+            }
+        }
+        if let vehicle {
+            include(vehicle)
+        }
+        guard !rect.isNull else { return .null }
+        let latitude = MKMapPoint(x: rect.midX, y: rect.midY).coordinate.latitude
+        let metersPerPoint = MKMetersPerMapPointAtLatitude(latitude)
+        let minPad = overviewMinPadMeters / max(metersPerPoint, 1e-9)
+        let padX = max(rect.size.width * overviewPadFraction, minPad)
+        let padY = max(rect.size.height * overviewPadFraction, minPad)
+        return rect.insetBy(dx: -padX, dy: -padY)
+    }
+
+    /// Cheap MapKit invalidate around a few vertices (not `.world`).
+    static func dirtyMapRect(
+        around coordinates: [CLLocationCoordinate2D],
+        meters: CLLocationDistance = 48
+    ) -> MKMapRect {
+        var rect = MKMapRect.null
+        for coordinate in coordinates {
+            let point = MKMapPoint(coordinate)
+            let metersPerPoint = MKMetersPerMapPointAtLatitude(coordinate.latitude)
+            let pad = meters / max(metersPerPoint, 1e-9)
+            let piece = MKMapRect(x: point.x - pad, y: point.y - pad, width: pad * 2, height: pad * 2)
+            rect = rect.union(piece)
+        }
+        return rect
     }
 }

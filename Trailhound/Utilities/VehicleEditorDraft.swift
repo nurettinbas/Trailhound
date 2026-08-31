@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import AppIntents
 
 enum VehiclePhotoEdit: Equatable {
     case unchanged
@@ -81,5 +82,8 @@ struct VehicleEditorDraft: Equatable {
         }
 
         try context.save()
+        if !UITestSupport.isUnitTesting {
+            TrailhoundShortcuts.updateAppShortcutParameters()
+        }
     }
 }

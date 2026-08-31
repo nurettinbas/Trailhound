@@ -7,6 +7,7 @@
 build/
 DerivedData/
 .derivedData/
+.derivedData*/
 *.xcuserstate
 *.xccheckout
 *.xcscmblueprint

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import AppIntents
 
 @MainActor
 enum VehiclePairingService {
@@ -13,6 +14,9 @@ enum VehiclePairingService {
         }
         if save {
             try? context.save()
+            if !UITestSupport.isUnitTesting {
+                TrailhoundShortcuts.updateAppShortcutParameters()
+            }
         }
     }
 
@@ -33,6 +37,8 @@ enum VehiclePairingService {
             }
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)
+            } else if !UITestSupport.isUnitTesting {
+                TrailhoundShortcuts.updateAppShortcutParameters()
             }
             VehicleCareNotificationScheduler.rescheduleAll(in: context)
             return true

@@ -2,19 +2,19 @@ import MapKit
 import SwiftUI
 import UIKit
 
-/// MapKit host for live follow — display-link camera writes, incremental polylines, pins + puck.
-struct LiveFollowMapKitView: UIViewRepresentable {
-    /// Recording track: solid core + faint white casing (halo overlay).
-    private enum RouteStroke {
-        static let solidWidth: CGFloat = 7.8
-        static let casingWidth: CGFloat = 10.2
-        static let solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
-        static let casingColor = UIColor.white.withAlphaComponent(0.45)
-    }
+/// Live-follow route stroke — single solid (no casing, no second blue).
+enum LiveFollowRouteStrokeStyle {
+    static let solidWidth: CGFloat = 7.2
+    static let solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
+}
 
+/// MapKit host for live follow — display-link camera, GPS history + two-point tip, pins + puck.
+struct LiveFollowMapKitView: UIViewRepresentable {
     var session: LiveFollowSession
     var isFollowing: Bool
-    var interactionEnabled: Bool
+    var isPaused: Bool
+    /// Bumped when the user asks to fit start + traveled path + puck (north-up 2D).
+    var overviewRequestToken: Int
     var segments: [LiveFollowPolylineSegment]
     var pins: [LiveFollowMapPin]
     var vehiclePhoto: UIImage?
@@ -44,16 +44,15 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         map.isPitchEnabled = true
         map.isZoomEnabled = true
         map.isScrollEnabled = true
-        // Fewer labels = faster first paint while following.
         map.pointOfInterestFilter = .excludingAll
         if #available(iOS 16.0, *) {
-            // Flat tiles + camera pitch. Realistic elevation re-meshes on every
-            // heading tick and is the usual source of follow hitch.
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat)
         }
         context.coordinator.mapView = map
         context.coordinator.bindSession()
         context.coordinator.installGestureBreak(on: map)
+        context.coordinator.ensureHistoryOverlay(on: map)
+        context.coordinator.ensureTipOverlay(on: map)
         if let pose = session.pose {
             context.coordinator.applyCamera(pose, on: map)
         }
@@ -63,14 +62,11 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.session = session
         context.coordinator.isFollowing = isFollowing
+        context.coordinator.isPaused = isPaused
         context.coordinator.onUserBreakFollow = onUserBreakFollow
         context.coordinator.onPuckCircleScreenPoint = onPuckCircleScreenPoint
         context.coordinator.desiredPuckAlpha = puckAlpha
         context.coordinator.bindSession()
-        mapView.isScrollEnabled = interactionEnabled
-        mapView.isZoomEnabled = interactionEnabled
-        mapView.isRotateEnabled = interactionEnabled
-        mapView.isPitchEnabled = interactionEnabled
 
         if #available(iOS 16.0, *) {
             if !(mapView.preferredConfiguration is MKStandardMapConfiguration) {
@@ -78,7 +74,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             }
         }
 
-        context.coordinator.syncPolylines(segments, on: mapView)
+        context.coordinator.syncRoute(segments, on: mapView)
         context.coordinator.syncPins(pins, on: mapView)
         context.coordinator.syncPuck(
             coordinate: session.vehicleCoordinate,
@@ -98,26 +94,35 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         } else {
             context.coordinator.desiredPuckAlpha = puckAlpha
         }
+        if context.coordinator.lastOverviewRequestToken != overviewRequestToken {
+            context.coordinator.lastOverviewRequestToken = overviewRequestToken
+            if overviewRequestToken > 0 {
+                context.coordinator.applyOverviewCamera(on: mapView)
+            }
+        }
         context.coordinator.reportPuckCircleScreenPointIfPossible(on: mapView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var session: LiveFollowSession
         var isFollowing = true
+        var isPaused = false
         var onUserBreakFollow: () -> Void
         var onPuckCircleScreenPoint: ((CGPoint) -> Void)?
         var desiredPuckAlpha: CGFloat = 1
         var lastPuckFadeToken: Int = 0
+        var lastOverviewRequestToken: Int = 0
         weak var mapView: MKMapView?
         private var isApplyingCamera = false
-        private var polylineByID: [String: MKPolyline] = [:]
         private var pinAnnotations: [String: LiveFollowPinAnnotation] = [:]
         private var puckAnnotation: LiveFollowPuckAnnotation?
         private var gestureRecognizersInstalled = false
         private var lastReportedPuckPoint: CGPoint?
-        private var lastCommittedCoordinate: CLLocationCoordinate2D?
-        private var tipOverlay: LiveFollowGrowingTipOverlay?
-        private weak var tipRenderer: LiveFollowGrowingTipRenderer?
+        private let historyOverlay = LiveFollowHistoryOverlay()
+        private weak var historyRenderer: LiveFollowHistoryRenderer?
+        private let tipOverlay = LiveFollowTipOverlay()
+        private weak var tipRenderer: LiveFollowTipRenderer?
+        private var lastCommittedPieces: [[CLLocationCoordinate2D]] = []
 
         init(
             session: LiveFollowSession,
@@ -127,23 +132,38 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             self.onUserBreakFollow = onUserBreakFollow
         }
 
+        @objc private func userGesture(_ gesture: UIGestureRecognizer) {
+            guard gesture.state == .began else { return }
+            guard !isApplyingCamera else { return }
+            breakFollow()
+            onUserBreakFollow()
+        }
+
+        /// Stop follow immediately — don't wait for SwiftUI `updateUIView`.
+        private func breakFollow() {
+            session.isFollowing = false
+            isFollowing = false
+        }
+
+        private var isFollowLocked: Bool {
+            session.isFollowing && isFollowing
+        }
+
         func bindSession() {
             session.onPoseWrite = { [weak self] pose, vehicle in
                 guard let self, let map = self.mapView else { return }
-                // Prefer session flag so recenter (which sets session.isFollowing first) applies
-                // a full pose before SwiftUI's updateUIView refreshes the coordinator.
-                if self.session.isFollowing || self.isFollowing {
-                    self.applyCamera(pose, on: map)
-                } else {
-                    // Dimension-mode writes while panned: keep user's center & heading.
-                    self.applyCamera(pose, on: map, preserveCenter: true)
+                let following = self.isFollowLocked
+
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                if following {
+                    self.applyCamera(pose, on: map, withinTransaction: true)
                 }
                 if let vehicle, let puck = self.puckAnnotation {
                     puck.coordinate = vehicle
                 }
-                if let vehicle {
-                    self.updateLiveTip(to: vehicle, on: map)
-                }
+                self.updateRouteTip(vehicle: vehicle, on: map)
+                CATransaction.commit()
             }
         }
 
@@ -162,16 +182,11 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             map.addGestureRecognizer(rotate)
         }
 
-        @objc private func userGesture(_ gesture: UIGestureRecognizer) {
-            guard gesture.state == .began else { return }
-            guard !isApplyingCamera else { return }
-            onUserBreakFollow()
-        }
-
         func applyCamera(
             _ pose: LiveFollowCamera.Pose,
             on map: MKMapView,
-            preserveCenter: Bool = false
+            preserveCenter: Bool = false,
+            withinTransaction: Bool = false
         ) {
             let center = preserveCenter ? map.camera.centerCoordinate : pose.center
             let camera = MKMapCamera(
@@ -181,99 +196,110 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 heading: preserveCenter ? map.camera.heading : pose.headingDegrees
             )
             isApplyingCamera = true
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
+            if !withinTransaction {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+            }
             map.camera = camera
-            CATransaction.commit()
+            if !withinTransaction {
+                CATransaction.commit()
+            }
             isApplyingCamera = false
         }
 
-        func syncPolylines(_ segments: [LiveFollowPolylineSegment], on map: MKMapView) {
-            // White casing + solid overlays share the same coordinate run (two IDs per segment).
-            var nextIDs = Set<String>()
-            for segment in segments {
-                nextIDs.insert(Self.haloID(segment.id))
-                nextIDs.insert(Self.solidID(segment.id))
+        func syncRoute(_ segments: [LiveFollowPolylineSegment], on map: MKMapView) {
+            let next = segments.map(\.coordinates)
+            let unchanged = Self.samePieces(next, lastCommittedPieces)
+            lastCommittedPieces = next
+            if !unchanged {
+                replaceHistoryOverlay(next, on: map)
             }
-            for (id, polyline) in polylineByID where !nextIDs.contains(id) {
-                map.removeOverlay(polyline)
-                polylineByID.removeValue(forKey: id)
-            }
-            for segment in segments {
-                var coords = segment.coordinates
-                guard coords.count >= 2 else { continue }
-                upsertPolyline(
-                    id: Self.haloID(segment.id),
-                    coordinates: &coords,
-                    on: map
-                )
-                upsertPolyline(
-                    id: Self.solidID(segment.id),
-                    coordinates: &coords,
-                    on: map
-                )
-            }
-            lastCommittedCoordinate = segments.last?.coordinates.last
-            if let vehicle = session.vehicleCoordinate {
-                updateLiveTip(to: vehicle, on: map)
-            }
+            updateRouteTip(vehicle: session.vehicleCoordinate, on: map)
         }
 
-        private static func haloID(_ segmentID: String) -> String { "\(segmentID)#halo" }
-        private static func solidID(_ segmentID: String) -> String { "\(segmentID)#solid" }
-
-        private func upsertPolyline(id: String, coordinates: inout [CLLocationCoordinate2D], on map: MKMapView) {
-            let count = coordinates.count
-            if let existing = polylineByID[id] {
-                let existingCount = existing.pointCount
-                let tipMoved: Bool = {
-                    guard existingCount > 0, count > 0 else { return true }
-                    let lastExisting = existing.points()[existingCount - 1].coordinate
-                    let lastNew = coordinates[count - 1]
-                    return abs(lastExisting.latitude - lastNew.latitude) > 1e-9
-                        || abs(lastExisting.longitude - lastNew.longitude) > 1e-9
-                }()
-                if existingCount == count, !tipMoved { return }
-                map.removeOverlay(existing)
-            }
-            let polyline = MKPolyline(coordinates: &coordinates, count: count)
-            polylineByID[id] = polyline
-            map.addOverlay(polyline, level: .aboveRoads)
-        }
-
-        func updateLiveTip(to vehicle: CLLocationCoordinate2D, on map: MKMapView) {
-            guard let pair = LiveFollowRouteTip.coordinates(
-                from: lastCommittedCoordinate,
-                to: vehicle
-            ) else {
-                removeLiveTip(on: map)
-                return
-            }
-            let start = pair[0]
-            let end = pair[1]
-            if let overlay = tipOverlay {
-                overlay.update(start: start, end: end)
-                if overlay.boundingMapRect.contains(MKMapPoint(end)) {
-                    tipRenderer?.setNeedsDisplay(overlay.strokeMapRect())
-                } else {
-                    overlay.expandBounds(around: start, end)
-                    map.removeOverlay(overlay)
-                    map.addOverlay(overlay, level: .aboveRoads)
-                }
+        private func updateRouteTip(vehicle: CLLocationCoordinate2D?, on map: MKMapView) {
+            ensureTipOverlay(on: map)
+            let points: [CLLocationCoordinate2D]
+            if isPaused {
+                points = []
             } else {
-                let overlay = LiveFollowGrowingTipOverlay(start: start, end: end)
-                overlay.expandBounds(around: start, end)
-                tipOverlay = overlay
-                map.addOverlay(overlay, level: .aboveRoads)
+                points = LiveFollowGrowingRoute.tipSegment(
+                    anchor: LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces),
+                    vehicle: vehicle
+                ) ?? []
+            }
+            let dirty = tipOverlay.replacePoints(points)
+            guard !dirty.isNull else { return }
+            tipRenderer?.setNeedsDisplay(dirty)
+        }
+
+        func ensureTipOverlay(on map: MKMapView) {
+            if !map.overlays.contains(where: { $0 === tipOverlay }) {
+                map.addOverlay(tipOverlay, level: .aboveRoads)
             }
         }
 
-        func removeLiveTip(on map: MKMapView) {
-            if let overlay = tipOverlay {
-                map.removeOverlay(overlay)
-                tipOverlay = nil
-                tipRenderer = nil
+        func ensureHistoryOverlay(on map: MKMapView) {
+            if !map.overlays.contains(where: { $0 === historyOverlay }) {
+                map.addOverlay(historyOverlay, level: .aboveRoads)
             }
+        }
+
+        private func replaceHistoryOverlay(_ pieces: [[CLLocationCoordinate2D]], on map: MKMapView) {
+            ensureHistoryOverlay(on: map)
+            let drawable = LiveFollowGrowingRoute.historyPieces(from: pieces)
+            if let dirty = historyOverlay.replacePieces(drawable) {
+                historyRenderer?.setNeedsDisplay(dirty)
+            } else {
+                historyRenderer?.setNeedsDisplay()
+            }
+        }
+
+        func applyOverviewCamera(on map: MKMapView) {
+            let pieces = LiveFollowGrowingRoute.historyPieces(from: lastCommittedPieces)
+            let rect = LiveFollowGrowingRoute.overviewMapRect(
+                historyPieces: pieces,
+                vehicle: session.vehicleCoordinate ?? LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces)
+            )
+            guard !rect.isNull else { return }
+            breakFollow()
+            onUserBreakFollow()
+            let center = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
+            let metersPerPoint = MKMetersPerMapPointAtLatitude(center.latitude)
+            let spanMeters = max(rect.size.width, rect.size.height) * metersPerPoint
+            let distance = max(spanMeters * 1.35, 220)
+            isApplyingCamera = true
+            let camera = MKMapCamera(
+                lookingAtCenter: center,
+                fromDistance: distance,
+                pitch: 0,
+                heading: 0
+            )
+            map.setCamera(camera, animated: true)
+            isApplyingCamera = false
+        }
+
+        private static func samePieces(
+            _ lhs: [[CLLocationCoordinate2D]],
+            _ rhs: [[CLLocationCoordinate2D]]
+        ) -> Bool {
+            guard lhs.count == rhs.count else { return false }
+            for (a, b) in zip(lhs, rhs) {
+                guard a.count == b.count else { return false }
+                if let al = a.last, let bl = b.last,
+                   abs(al.latitude - bl.latitude) > 1e-9
+                    || abs(al.longitude - bl.longitude) > 1e-9
+                {
+                    return false
+                }
+                if let af = a.first, let bf = b.first,
+                   abs(af.latitude - bf.latitude) > 1e-9
+                    || abs(af.longitude - bf.longitude) > 1e-9
+                {
+                    return false
+                }
+            }
+            return true
         }
 
         func syncPins(_ pins: [LiveFollowMapPin], on map: MKMapView) {
@@ -322,6 +348,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 puckAnnotation.vehicleSystemImage = systemImage
                 puckAnnotation.isMoving = isMoving
                 if let view = map.view(for: puckAnnotation) as? LiveFollowPuckAnnotationView {
+                    view.isHidden = false
                     view.apply(puckAnnotation)
                 }
             } else {
@@ -338,17 +365,22 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
         func applyPuckAlpha(_ alpha: CGFloat, animated: Bool, on map: MKMapView) {
             desiredPuckAlpha = alpha
-            guard let puckAnnotation, let view = map.view(for: puckAnnotation) else { return }
+            let apply = {
+                if let puckAnnotation = self.puckAnnotation, let view = map.view(for: puckAnnotation) {
+                    view.alpha = alpha
+                    view.isHidden = false
+                }
+            }
             if animated {
                 UIView.animate(
                     withDuration: TrailhoundMotion.liveFollowHandoffDuration,
                     delay: 0,
                     options: [.curveEaseInOut, .beginFromCurrentState]
                 ) {
-                    view.alpha = alpha
+                    apply()
                 }
-            } else if abs(view.alpha - alpha) > 0.001 {
-                view.alpha = alpha
+            } else {
+                apply()
             }
         }
 
@@ -357,7 +389,6 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             guard let onPuckCircleScreenPoint else { return }
             guard map.bounds.width > 1, map.bounds.height > 1 else { return }
             guard let coordinate = session.vehicleCoordinate else { return }
-            map.layoutIfNeeded()
             let projected = map.convert(coordinate, toPointTo: map)
             let circle = LiveFollowPresentation.puckCircleCenter(fromProjectedAnnotationPoint: projected)
             if let last = lastReportedPuckPoint,
@@ -371,30 +402,17 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let tip = overlay as? LiveFollowGrowingTipOverlay {
-                let renderer = LiveFollowGrowingTipRenderer(overlay: tip)
-                renderer.casingColor = RouteStroke.casingColor
-                renderer.solidColor = RouteStroke.solidColor
-                renderer.casingWidth = RouteStroke.casingWidth
-                renderer.solidWidth = RouteStroke.solidWidth
+            if let history = overlay as? LiveFollowHistoryOverlay {
+                let renderer = LiveFollowHistoryRenderer(overlay: history)
+                historyRenderer = renderer
+                return renderer
+            }
+            if let tip = overlay as? LiveFollowTipOverlay {
+                let renderer = LiveFollowTipRenderer(overlay: tip)
                 tipRenderer = renderer
                 return renderer
             }
-            guard let polyline = overlay as? MKPolyline else {
-                return MKOverlayRenderer(overlay: overlay)
-            }
-            let isHalo = polylineByID.first(where: { $0.value === polyline })?.key.hasSuffix("#halo") == true
-            let renderer = MKPolylineRenderer(polyline: polyline)
-            if isHalo {
-                renderer.strokeColor = RouteStroke.casingColor
-                renderer.lineWidth = RouteStroke.casingWidth
-            } else {
-                renderer.strokeColor = RouteStroke.solidColor
-                renderer.lineWidth = RouteStroke.solidWidth
-            }
-            renderer.lineCap = .round
-            renderer.lineJoin = .round
-            return renderer
+            return MKOverlayRenderer(overlay: overlay)
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -404,6 +422,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                     ?? LiveFollowPuckAnnotationView(annotation: puck, reuseIdentifier: reuse)
                 view.apply(puck)
                 view.alpha = desiredPuckAlpha
+                view.isHidden = false
                 return view
             }
             if let pin = annotation as? LiveFollowPinAnnotation {
@@ -419,6 +438,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
             for view in views where view is LiveFollowPuckAnnotationView {
                 view.alpha = desiredPuckAlpha
+                view.isHidden = false
             }
             reportPuckCircleScreenPointIfPossible(on: mapView)
         }
@@ -434,73 +454,101 @@ extension LiveFollowMapKitView.Coordinator: UIGestureRecognizerDelegate {
     }
 }
 
-// MARK: - Growing tip (interpolated vehicle, not stored breadcrumbs)
+// MARK: - History overlay (fixed world bounds — mutate in place, no 1 Hz add/remove)
 
-final class LiveFollowGrowingTipOverlay: NSObject, MKOverlay {
-    private(set) var start: CLLocationCoordinate2D
-    private(set) var end: CLLocationCoordinate2D
-    private(set) var boundingMapRect: MKMapRect = .null
+final class LiveFollowHistoryOverlay: NSObject, MKOverlay {
+    private(set) var pieces: [[CLLocationCoordinate2D]] = []
 
-    var coordinate: CLLocationCoordinate2D { end }
-
-    init(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) {
-        self.start = start
-        self.end = end
-        super.init()
+    var coordinate: CLLocationCoordinate2D {
+        pieces.first?.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
     }
 
-    func update(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) {
-        self.start = start
-        self.end = end
-    }
+    let boundingMapRect: MKMapRect = .world
 
-    func expandBounds(around start: CLLocationCoordinate2D, _ end: CLLocationCoordinate2D) {
-        boundingMapRect = Self.paddedRect(from: start, to: end, padMeters: 280)
-    }
-
-    func strokeMapRect() -> MKMapRect {
-        Self.paddedRect(from: start, to: end, padMeters: 24)
-    }
-
-    private static func paddedRect(
-        from start: CLLocationCoordinate2D,
-        to end: CLLocationCoordinate2D,
-        padMeters: CLLocationDistance
-    ) -> MKMapRect {
-        let p0 = MKMapPoint(start)
-        let p1 = MKMapPoint(end)
-        let rect = MKMapRect(
-            x: min(p0.x, p1.x),
-            y: min(p0.y, p1.y),
-            width: max(abs(p0.x - p1.x), 1),
-            height: max(abs(p0.y - p1.y), 1)
-        )
-        let pad = MKMapPointsPerMeterAtLatitude(start.latitude) * padMeters
-        return rect.insetBy(dx: -pad, dy: -pad)
+    /// Returns a small dirty rect when the active run grew; `nil` means full redraw.
+    func replacePieces(_ next: [[CLLocationCoordinate2D]]) -> MKMapRect? {
+        let previousCount = pieces.count
+        let previousActiveCount = pieces.last?.count ?? 0
+        let previousLast = pieces.last?.last
+        pieces = next
+        let grewSameRun = next.count == previousCount
+            && (next.last?.count ?? 0) >= previousActiveCount
+            && previousCount > 0
+        if grewSameRun, let previousLast, let nextLast = next.last?.last {
+            return LiveFollowGrowingRoute.dirtyMapRect(around: [previousLast, nextLast])
+        }
+        return nil
     }
 }
 
-final class LiveFollowGrowingTipRenderer: MKOverlayRenderer {
-    var casingColor = UIColor.white.withAlphaComponent(0.45)
-    var solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
-    var casingWidth: CGFloat = 10.2
-    var solidWidth: CGFloat = 7.8
-
+final class LiveFollowHistoryRenderer: MKOverlayRenderer {
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
-        guard let overlay = overlay as? LiveFollowGrowingTipOverlay else { return }
-        let p0 = point(for: MKMapPoint(overlay.start))
-        let p1 = point(for: MKMapPoint(overlay.end))
+        guard let overlay = overlay as? LiveFollowHistoryOverlay else { return }
         context.setLineCap(.round)
         context.setLineJoin(.round)
-        context.setStrokeColor(casingColor.cgColor)
-        context.setLineWidth(casingWidth / zoomScale)
-        context.move(to: p0)
-        context.addLine(to: p1)
-        context.strokePath()
-        context.setStrokeColor(solidColor.cgColor)
-        context.setLineWidth(solidWidth / zoomScale)
-        context.move(to: p0)
-        context.addLine(to: p1)
+        context.setStrokeColor(LiveFollowRouteStrokeStyle.solidColor.cgColor)
+        context.setLineWidth(LiveFollowRouteStrokeStyle.solidWidth / zoomScale)
+
+        for piece in overlay.pieces where piece.count >= 2 {
+            let path = CGMutablePath()
+            for (index, coordinate) in piece.enumerated() {
+                let point = self.point(for: MKMapPoint(coordinate))
+                if index == 0 {
+                    path.move(to: point)
+                } else {
+                    path.addLine(to: point)
+                }
+            }
+            context.addPath(path)
+            context.strokePath()
+        }
+    }
+}
+
+// MARK: - Two-point tip overlay (fixed world bounds — MapKit never drops the renderer)
+
+final class LiveFollowTipOverlay: NSObject, MKOverlay {
+    private(set) var points: [CLLocationCoordinate2D] = []
+
+    var coordinate: CLLocationCoordinate2D {
+        points.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+    }
+
+    /// Captured when MapKit adds the overlay. Must stay world-sized so later
+    /// coordinate updates remain drawable without swapping the overlay.
+    let boundingMapRect: MKMapRect = .world
+
+    @discardableResult
+    func replacePoints(_ next: [CLLocationCoordinate2D]) -> MKMapRect {
+        let previous = points
+        if previous.count == next.count,
+           zip(previous, next).allSatisfy({
+               abs($0.latitude - $1.latitude) < 1e-9
+                   && abs($0.longitude - $1.longitude) < 1e-9
+           })
+        {
+            return .null
+        }
+        points = next
+        return LiveFollowGrowingRoute.dirtyMapRect(around: previous + next)
+    }
+}
+
+final class LiveFollowTipRenderer: MKOverlayRenderer {
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let overlay = overlay as? LiveFollowTipOverlay else { return }
+        guard overlay.points.count == 2 else { return }
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        context.setStrokeColor(LiveFollowRouteStrokeStyle.solidColor.cgColor)
+        context.setLineWidth(LiveFollowRouteStrokeStyle.solidWidth / zoomScale)
+
+        let path = CGMutablePath()
+        let start = point(for: MKMapPoint(overlay.points[0]))
+        let end = point(for: MKMapPoint(overlay.points[1]))
+        path.move(to: start)
+        path.addLine(to: end)
+        context.addPath(path)
         context.strokePath()
     }
 }
@@ -542,20 +590,18 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     private let chevronOverlap: CGFloat = 18
     private let photoBorder: CGFloat = 5
     private let photoGap: CGFloat = 3
-    /// Lighter plate than route line blue; 25% opaque so the map shows through.
-    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 0.25)
+    /// Opaque plate so the traveled path cannot show through the photo.
+    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1)
 
     private let badge = UIView()
     private let photoView = UIImageView()
     private let symbolView = UIImageView()
     private let chevron = UIImageView()
-    private let pulse = UIView()
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         canShowCallout = false
         clipsToBounds = false
-        // Always draw the vehicle above route pins when they overlap.
         zPriority = .max
         displayPriority = .required
         setup()
@@ -572,10 +618,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         frame = CGRect(x: 0, y: 0, width: frameWidth, height: frameHeight)
         centerOffset = LiveFollowPresentation.puckAnnotationCenterOffset
 
-        pulse.backgroundColor = Self.plateBlue.withAlphaComponent(0.28)
-        pulse.layer.cornerRadius = (circleSize + 22) / 2
-        addSubview(pulse)
-
+        badge.isOpaque = true
         badge.backgroundColor = Self.plateBlue
         badge.layer.cornerRadius = circleSize / 2
         badge.layer.borderColor = UIColor.white.cgColor
@@ -593,6 +636,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
 
         chevron.contentMode = .scaleAspectFit
         chevron.image = Self.makeChevronImage(size: chevronSize)
+        chevron.layer.zPosition = 2
         addSubview(chevron)
 
         let side = circleSize
@@ -607,18 +651,12 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             width: chevronSize.width,
             height: chevronSize.height
         )
-        pulse.frame = CGRect(
-            x: badge.frame.midX - (side + 22) / 2,
-            y: badge.frame.midY - (side + 22) / 2,
-            width: side + 22,
-            height: side + 22
-        )
-        pulse.isHidden = true
     }
 
     func apply(_ annotation: LiveFollowPuckAnnotation) {
         zPriority = .max
         displayPriority = .required
+        isHidden = false
         if let photo = annotation.vehiclePhoto {
             photoView.image = photo
             photoView.isHidden = false
@@ -629,27 +667,18 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
             symbolView.image = UIImage(systemName: annotation.vehicleSystemImage, withConfiguration: config)
         }
-        setMoving(annotation.isMoving)
     }
 
-    private func setMoving(_ moving: Bool) {
-        pulse.layer.removeAllAnimations()
-        guard moving else {
-            pulse.isHidden = true
-            return
-        }
-        pulse.isHidden = false
-        pulse.alpha = 0.55
-        pulse.transform = .identity
-        UIView.animate(
-            withDuration: 1.2,
-            delay: 0,
-            options: [.repeat, .autoreverse, .curveEaseInOut],
-            animations: {
-                self.pulse.alpha = 0.15
-                self.pulse.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
-            }
-        )
+    /// Four-point chevron (V notch). Tests and drawing both use `points.last`.
+    static func chevronOutlinePoints(size: CGSize) -> [CGPoint] {
+        let w = size.width
+        let h = size.height
+        return [
+            CGPoint(x: w * 0.50, y: h * 0.04),
+            CGPoint(x: w * 0.97, y: h * 0.92),
+            CGPoint(x: w * 0.50, y: h * 0.72),
+            CGPoint(x: w * 0.03, y: h * 0.92)
+        ]
     }
 
     private static func makeChevronImage(size: CGSize) -> UIImage {
@@ -657,15 +686,12 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         return renderer.image { ctx in
             let w = size.width
             let h = size.height
-            let points = [
-                CGPoint(x: w * 0.50, y: h * 0.04),
-                CGPoint(x: w * 0.97, y: h * 0.92),
-                CGPoint(x: w * 0.50, y: h * 0.72),
-                CGPoint(x: w * 0.03, y: h * 0.92)
-            ]
+            let points = Self.chevronOutlinePoints(size: size)
             let radius = min(w, h) * 0.12
             let cg = CGMutablePath()
-            cg.move(to: CGPoint(x: (points[3].x + points[0].x) / 2, y: (points[3].y + points[0].y) / 2))
+            guard let last = points.last else { return }
+            let first = points[0]
+            cg.move(to: CGPoint(x: (last.x + first.x) / 2, y: (last.y + first.y) / 2))
             for index in points.indices {
                 let current = points[index]
                 let next = points[(index + 1) % points.count]
@@ -709,7 +735,6 @@ final class LiveFollowPinAnnotationView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         canShowCallout = false
-        // Route pins stay under the live vehicle puck.
         zPriority = .min
         displayPriority = .required
         iconView.contentMode = .scaleAspectFit
@@ -733,7 +758,6 @@ final class LiveFollowPinAnnotationView: MKAnnotationView {
         let image = RouteMapPinImage.uiImage(for: routeKind)
         iconView.image = image
         let size = image.size
-        // Match trip detail anchors: start uses `.bottom`, stops are center-aligned.
         bounds = CGRect(origin: .zero, size: size)
         iconView.frame = bounds
         centerOffset = routeKind.isEndpoint

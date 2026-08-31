@@ -38,6 +38,7 @@ These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestCheck
 - [ ] **30+ min real drive** — distance and duration advance
 - [ ] **Background** — background the app, wait 5 min: recording continues
 - [ ] **Shortcuts auto-start** — recording starts when connecting to the car (Bluetooth / CarPlay / Wi‑Fi automation)
+- [ ] **Shortcuts vehicle pick** — separate CarPlay vs Bluetooth automations assign different vehicles on Start trip
 - [ ] **Shortcuts auto-stop** — recording stops when leaving the car
 - [ ] **Orphan recovery** — force-quit → reopen → orphan banner / recovery
 - [ ] **Map** — detail map route looks realistic (does not cross water)
@@ -45,8 +46,8 @@ These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestCheck
 Optional smoke:
 
 - [ ] **Manual recording** — start / pause / end from the app
-- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → pause/stop from the map
-- [ ] **Live follow map feel** — vehicle mark sits at screen center; chevron + puck faces travel direction; 3D/2D toggle changes pitch/buildings
+- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** fits start + trail → pause/stop from the map (pan still works while paused)
+- [ ] **Live follow map feel** — vehicle mark at screen center while following; single blue path appears immediately (no blank window); fills in behind you with no duplicate stroke; pan keeps puck + trail updating
 - [ ] **Widget / Siri** — start / stop recording via widget or Siri shortcut
 - [ ] **Export** — JSON, CSV, GPX, or KML
 
@@ -69,7 +70,8 @@ Optional smoke:
 
 ## Auto-record with Shortcuts
 
-- Auto start/stop is set up via **Shortcuts Personal Automations** (guide under the Pairing tab).
+- Auto start/stop is set up via **Shortcuts** (guide under the Pairing tab): named Shortcut with **Vehicle**, then Personal Automation → **Run Shortcut**.
+- On **Start trip**, set **Vehicle** in that named Shortcut (Personal Automations often hide the picker).
 - In-app Bluetooth audio-route matching was removed; no extra Bluetooth entitlement is required.
 - Location + background location mode are used only during an active recording.
 

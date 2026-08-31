@@ -49,7 +49,8 @@ final class LiveFollowSession {
         return true
     }
 
-    /// Display-link entry: ingest latest GPS, advance pose when following.
+    /// Display-link entry: ingest latest GPS and advance pose while the map is open.
+    /// Camera application is gated in MapKit (follow only); puck and two-point tip always update.
     func handleDisplayTick(dt: TimeInterval, now: Date = Date()) {
         guard !isClosing else { return }
 
@@ -67,7 +68,9 @@ final class LiveFollowSession {
             camera.ingest(location: location, isPaused: isPaused, now: now)
         }
 
-        guard openSettled, isFollowing else { return }
+        // Advance pose while the cover is open so the overlay tip and puck keep
+        // updating after pan and during open handoff. MapKit only applies camera
+        // when following (coordinator gates on isFollowing && openSettled).
         _ = tick(dt: dt, now: now)
     }
 

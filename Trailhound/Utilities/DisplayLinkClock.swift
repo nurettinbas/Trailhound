@@ -28,6 +28,7 @@ final class DisplayLinkClock {
         target.handler = { [weak self] link in
             self?.handle(link)
         }
+        displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         displayLink.add(to: .main, forMode: .common)
         self.link = displayLink
     }

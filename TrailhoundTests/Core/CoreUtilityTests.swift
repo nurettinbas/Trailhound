@@ -151,9 +151,15 @@ final class DeviceTestChecklistTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(DeviceTestChecklist.items.count, 9)
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("colorSegs") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("disk cache") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Shortcuts: Start trip Vehicle") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Live follow map") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Reduce Motion") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("3D/2D") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("hold-back") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("two-point tip") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("recenter") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("overview") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("CarPlay Live Activity tile") }))
     }
 }
 

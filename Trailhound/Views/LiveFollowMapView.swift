@@ -50,6 +50,8 @@ struct LiveFollowMapView: View {
     @State private var idleLockHeld = false
     /// Local 2D/3D mirror — avoids rebuilding the MapKit host on every settings write.
     @State private var uses3DLocal = true
+    /// Bumped to ask MapKit to fit start + traveled path + puck (north-up 2D).
+    @State private var overviewRequestToken = 0
 
     private var uses3D: Bool { uses3DLocal }
 
@@ -168,6 +170,11 @@ struct LiveFollowMapView: View {
             retainIdleLock()
             wasPaused = isPaused
             runOpenSequence()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(1_800))
+                guard !isClosing else { return }
+                forceOpenSettledIfNeeded()
+            }
         }
         .onDisappear {
             stopDisplayLink()
@@ -252,7 +259,8 @@ struct LiveFollowMapView: View {
         LiveFollowMapKitView(
             session: session,
             isFollowing: isFollowing && openSettled && !isClosing,
-            interactionEnabled: !isPaused,
+            isPaused: isPaused,
+            overviewRequestToken: overviewRequestToken,
             segments: displaySegments,
             pins: mapPins,
             vehiclePhoto: vehiclePhoto,
@@ -264,6 +272,7 @@ struct LiveFollowMapView: View {
             onUserBreakFollow: {
                 guard isFollowing else { return }
                 isFollowing = false
+                session.isFollowing = false
             },
             onPuckCircleScreenPoint: { point in
                 guard !lockProjectedHeroDest else { return }
@@ -354,6 +363,21 @@ struct LiveFollowMapView: View {
     private var mapToolsRail: some View {
         HStack(spacing: 8) {
             mapDimensionToggle
+
+            Button {
+                TrailhoundHaptics.selection()
+                isFollowing = false
+                session.isFollowing = false
+                overviewRequestToken += 1
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 33, height: 33)
+                    .background(.white.opacity(0.14), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.string("recording.live_map.overview"))
 
             Button {
                 TrailhoundHaptics.selection()
@@ -587,6 +611,20 @@ struct LiveFollowMapView: View {
         }
     }
 
+    /// If the open-handoff animation completion never fires, still reveal the map and unlock follow.
+    @MainActor
+    private func forceOpenSettledIfNeeded() {
+        guard !isClosing else { return }
+        if mapClarity < 1 { mapClarity = 1 }
+        if chromeReveal < 1 { chromeReveal = 1 }
+        if heroOpacity > 0 { heroOpacity = 0 }
+        if showHeroOverlay { showHeroOverlay = false }
+        if puckAlpha < 1 { puckAlpha = 1 }
+        if !puckRevealed { puckRevealed = true }
+        if !openSettled { openSettled = true }
+        lockProjectedHeroDest = true
+    }
+
     /// Inserts the map tree after the follow camera is already written (no world→local fly-in).
     @MainActor
     private func prepareMapMount() {
@@ -738,15 +776,26 @@ struct LiveFollowMapView: View {
 
     /// Apple Maps navigation blue — traveled breadcrumb.
     static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
-    /// Matches MapKit puck plate (25% opaque).
-    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0).opacity(0.25)
+    /// Matches MapKit puck plate (opaque so the route cannot show through).
+    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
 
-    /// Decimate each gap-split live segment for MapKit cost; never rewrite stored points.
+    /// Decimate completed gap-split runs; keep the active tail raw so the stroke can grow.
+    /// Never rewrite stored points.
     static func polylineSegments(
         from liveSegments: [[CLLocationCoordinate2D]]
     ) -> [LiveFollowPolylineSegment] {
         var result: [LiveFollowPolylineSegment] = []
+        let lastIndex = liveSegments.count - 1
         for (index, coords) in liveSegments.enumerated() {
+            if index == lastIndex {
+                let piece = LiveFollowGrowingRoute.liveActiveCoordinates(coords)
+                if !piece.isEmpty {
+                    result.append(
+                        LiveFollowPolylineSegment(id: "live-\(index)-0", coordinates: piece)
+                    )
+                }
+                continue
+            }
             guard coords.count >= 2 else { continue }
             let samples = coords.enumerated().map { offset, coordinate in
                 RouteSample(
@@ -910,21 +959,8 @@ struct LiveFollowPuckMark: View {
     /// How far the chevron sits up onto the circle.
     private let chevronOverlap: CGFloat = 18
 
-    @State private var pulseOn = false
-
     var body: some View {
         ZStack(alignment: .top) {
-            if isMoving, !reduceMotion {
-                SoftPulseRing(
-                    color: UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1),
-                    isActive: true,
-                    reduceMotion: false
-                )
-                .frame(width: circleSize + 22, height: circleSize + 22)
-                .offset(y: -11)
-                .allowsHitTesting(false)
-            }
-
             ZStack(alignment: .top) {
                 photoBadge
                     .frame(width: circleSize, height: circleSize)
@@ -940,24 +976,8 @@ struct LiveFollowPuckMark: View {
             width: max(circleSize, chevronSize.width) + 24,
             height: circleSize + chevronSize.height - chevronOverlap + 14
         )
-        .scaleEffect(pulseOn ? 1.03 : 1)
         .offset(y: -circleSize / 2 + 8)
-        .onAppear { syncPulse() }
-        .onChange(of: isMoving) { _, _ in syncPulse() }
-        .onChange(of: reduceMotion) { _, _ in syncPulse() }
         .accessibilityHidden(true)
-    }
-
-    private func syncPulse() {
-        if isMoving, !reduceMotion {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                pulseOn = true
-            }
-        } else {
-            withAnimation(.easeOut(duration: 0.2)) {
-                pulseOn = false
-            }
-        }
     }
 
     private var filledChevron: some View {

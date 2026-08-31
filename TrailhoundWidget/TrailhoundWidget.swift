@@ -688,29 +688,104 @@ private struct LiveActivityBounceGlyph: View {
     }
 }
 
+/// One value font for Duration / Distance / Speed so all three stay the same size.
+/// Longest string wins; every column uses that size (no per-column scaling).
+private enum LiveActivityMetricTypeScale {
+    static let labelSize: CGFloat = 9
+
+    static func valueSize(for values: [String], compact: Bool) -> CGFloat {
+        let longest = values.map(\.count).max() ?? 0
+        switch longest {
+        case ...6: return compact ? 14 : 15
+        case ...8: return compact ? 12 : 13
+        default: return compact ? 11 : 12
+        }
+    }
+}
+
+private func liveActivityMetricValues(
+    _ state: TripRecordingAttributes.ContentState
+) -> (duration: String, distance: String, speed: String) {
+    let duration = DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds))
+    let distance = DateFormatters.formatDistance(state.distanceMeters)
+    let speed = state.isPaused ? "—" : "\(state.currentSpeedKmh) km/s"
+    return (duration, distance, speed)
+}
+
 /// Equal-width Island column: small label on top, value below (same size across columns).
 private struct LiveActivityIslandMetricColumn: View {
     let label: String
     let value: String
+    var valueFontSize: CGFloat = 15
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .center, spacing: 2) {
             Text(label)
-                .font(.system(size: 9, weight: .medium))
+                .font(.system(size: LiveActivityMetricTypeScale.labelSize, weight: .medium))
                 .foregroundStyle(.white.opacity(0.45))
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .allowsTightening(true)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: valueFontSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
-                .contentTransition(.numericText())
                 .lineLimit(1)
-                .minimumScaleFactor(0.55)
+                .allowsTightening(true)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
+        .clipped()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)")
+    }
+}
+
+/// Expanded Island row: car + three metrics sharing one value font size.
+private struct LiveActivityIslandExpandedMetrics: View {
+    let state: TripRecordingAttributes.ContentState
+
+    var body: some View {
+        let metrics = liveActivityMetricValues(state)
+        let valueFontSize = LiveActivityMetricTypeScale.valueSize(
+            for: [metrics.duration, metrics.distance, metrics.speed],
+            compact: false
+        )
+        HStack(alignment: .center, spacing: 0) {
+            VStack(spacing: 2) {
+                // Match metric label height so the car lines up with values.
+                Text(" ")
+                    .font(.system(size: LiveActivityMetricTypeScale.labelSize, weight: .medium))
+                    .opacity(0)
+                LiveActivityCarIcon(
+                    side: 36,
+                    photoRevision: state.vehiclePhotoRevision,
+                    symbolTint: .white
+                )
+            }
+            .frame(maxWidth: .infinity)
+
+            LiveActivityIslandMetricColumn(
+                label: WidgetL10n.duration,
+                value: metrics.duration,
+                valueFontSize: valueFontSize
+            )
+
+            LiveActivityIslandMetricColumn(
+                label: WidgetL10n.distance,
+                value: metrics.distance,
+                valueFontSize: valueFontSize
+            )
+
+            LiveActivityIslandMetricColumn(
+                label: WidgetL10n.speed,
+                value: metrics.speed,
+                valueFontSize: valueFontSize
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
 
@@ -781,7 +856,7 @@ private struct LiveActivityLockScreenBanner: View {
 /// CarPlay Dashboard + watchOS Smart Stack — glanceable, non-interactive (CarPlay strips buttons).
 ///
 /// If the system tags a wide Lock Screen / notification banner as `.small`, show the
-/// original lock layout instead of stretching the 4-column CarPlay tile.
+/// original lock layout instead of stretching the compact CarPlay tile.
 private struct LiveActivitySmallFamilyBanner: View {
     let state: TripRecordingAttributes.ContentState
 
@@ -791,76 +866,63 @@ private struct LiveActivitySmallFamilyBanner: View {
                 if geo.size.width >= 300 {
                     LiveActivityLockScreenBanner(state: state)
                 } else {
-                    carPlayColumns
+                    carPlayColumns(tileSize: geo.size)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    private var carPlayColumns: some View {
-        HStack(alignment: .center, spacing: 4) {
-            iconColumn
-            metricColumn(
-                value: DateFormatters.formatDuration(TimeInterval(state.elapsedSeconds)),
-                label: WidgetL10n.duration
+    private func carPlayColumns(tileSize: CGSize) -> some View {
+        let metrics = liveActivityMetricValues(state)
+        let valueFontSize = LiveActivityMetricTypeScale.valueSize(
+            for: [metrics.duration, metrics.distance, metrics.speed],
+            compact: true
+        )
+        // Same visual size as the old equal-column GeometryReader: min(¼ inner width, inner height).
+        let innerWidth = max(1, tileSize.width - 16)
+        let innerHeight = max(1, tileSize.height - 12)
+        let iconSide = max(28, min(innerHeight, (innerWidth - 12) / 4))
+
+        return HStack(alignment: .center, spacing: 4) {
+            LiveActivityCarIcon(
+                side: iconSide,
+                photoRevision: state.vehiclePhotoRevision,
+                symbolTint: WidgetPalette.brandBottom
             )
-            metricColumn(
-                value: DateFormatters.formatDistance(state.distanceMeters),
-                label: WidgetL10n.distance
-            )
-            metricColumn(
-                value: state.isPaused ? "—" : "\(state.currentSpeedKmh) km/s",
-                label: WidgetL10n.speed
-            )
+            .frame(width: iconSide, height: iconSide)
+            .accessibilityHidden(true)
+
+            metricColumn(value: metrics.duration, label: WidgetL10n.duration, valueFontSize: valueFontSize)
+            metricColumn(value: metrics.distance, label: WidgetL10n.distance, valueFontSize: valueFontSize)
+            metricColumn(value: metrics.speed, label: WidgetL10n.speed, valueFontSize: valueFontSize)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
     }
 
-    private var iconColumn: some View {
-        GeometryReader { geo in
-            let side = min(geo.size.width, geo.size.height)
-            LiveActivityCarIcon(
-                side: side,
-                photoRevision: state.vehiclePhotoRevision,
-                symbolTint: WidgetPalette.brandBottom
-            )
-            .frame(width: side, height: side)
-            .frame(width: geo.size.width, height: geo.size.height)
-        }
-        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityHidden(true)
-    }
-
-    private func metricColumn(value: String, label: String) -> some View {
-        metricColumn(label: label, accessibilityValue: value) {
-            Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-        }
-    }
-
-    private func metricColumn<Value: View>(
-        label: String,
-        accessibilityValue: String,
-        @ViewBuilder value: () -> Value
-    ) -> some View {
+    private func metricColumn(value: String, label: String, valueFontSize: CGFloat) -> some View {
         VStack(alignment: .center, spacing: 2) {
             Text(label)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: LiveActivityMetricTypeScale.labelSize, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            value()
+                .allowsTightening(true)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+            Text(value)
+                .font(.system(size: valueFontSize, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .allowsTightening(true)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
         }
         .frame(minWidth: 0, maxWidth: .infinity)
+        .clipped()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(accessibilityValue)")
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 
@@ -889,7 +951,7 @@ private struct LiveActivityBannerRoot: View {
 
 /// Live Activity for Lock Screen, Dynamic Island, and CarPlay Dashboard.
 ///
-/// Requires iOS 18 so we can declare `activityFamily.small` (CarPlay 4-column tile).
+/// Requires iOS 18 so we can declare `activityFamily.small` (CarPlay dashboard tile).
 /// Home Screen / Lock Screen widgets still load on iOS 17 via the other widgets in this bundle.
 @available(iOS 18.0, *)
 struct TrailhoundLiveActivity: Widget {
@@ -909,40 +971,9 @@ private func liveActivityDynamicIsland(
 ) -> DynamicIsland {
     DynamicIsland {
         // One full-width row — avoid `.leading`/`.trailing` (they pin content to edges
-        // and leave a dead gap in the middle). Four equal ~25% columns, centered.
+        // and leave a dead gap in the middle). Icon + three equal metric columns, centered.
         DynamicIslandExpandedRegion(.center) {
-            HStack(alignment: .center, spacing: 0) {
-                VStack(spacing: 2) {
-                    // Match metric label height so the car lines up with values.
-                    Text(" ")
-                        .font(.system(size: 9, weight: .medium))
-                        .opacity(0)
-                    LiveActivityCarIcon(
-                        side: 36,
-                        photoRevision: context.state.vehiclePhotoRevision,
-                        symbolTint: .white
-                    )
-                }
-                .frame(maxWidth: .infinity)
-
-                LiveActivityIslandMetricColumn(
-                    label: WidgetL10n.duration,
-                    value: DateFormatters.formatDuration(TimeInterval(context.state.elapsedSeconds))
-                )
-
-                LiveActivityIslandMetricColumn(
-                    label: WidgetL10n.distance,
-                    value: DateFormatters.formatDistance(context.state.distanceMeters)
-                )
-
-                LiveActivityIslandMetricColumn(
-                    label: WidgetL10n.speed,
-                    value: context.state.isPaused
-                        ? "—"
-                        : "\(context.state.currentSpeedKmh) km/s"
-                )
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            LiveActivityIslandExpandedMetrics(state: context.state)
         }
 
         DynamicIslandExpandedRegion(.bottom) {
@@ -1036,4 +1067,24 @@ struct TrailhoundWidgetBundle: WidgetBundle {
 } timeline: {
     TrailhoundWidgetEntry.preview(isRecording: true, isPaused: false)
     TrailhoundWidgetEntry.preview(isRecording: false, isPaused: false)
+}
+
+@available(iOS 18.0, *)
+#Preview("Live Activity metrics", as: .content, using: TripRecordingAttributes(startedAt: .now)) {
+    TrailhoundLiveActivity()
+} contentStates: {
+    TripRecordingAttributes.ContentState.previewShort
+    TripRecordingAttributes.ContentState.previewLong
+}
+
+private extension TripRecordingAttributes.ContentState {
+    /// CarPlay-style short values: 3:25 / 0.5 km.
+    static var previewShort: Self {
+        .init(elapsedSeconds: 205, distanceMeters: 500, currentSpeedKmh: 0, isPaused: false)
+    }
+
+    /// Long values that used to overlap: 1:08:24 / 138.9 km / 88 km/s.
+    static var previewLong: Self {
+        .init(elapsedSeconds: 4104, distanceMeters: 138_900, currentSpeedKmh: 88, isPaused: false)
+    }
 }

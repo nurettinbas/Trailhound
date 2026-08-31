@@ -23,9 +23,22 @@ struct StartTripRecordingIntent: LiveActivityIntent {
     nonisolated static var openAppWhenRun: Bool { false }
     nonisolated static var isDiscoverable: Bool { true }
 
+    /// Required (non-optional): optional `AppEntity` params often fail App Intents
+    /// metadata export, so Shortcuts shows a bare "Start trip" with no Vehicle field.
+    @Parameter(title: "shortcut.start.vehicle")
+    var vehicle: VehicleEntity
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Start trip \(\.$vehicle)")
+    }
+
     @MainActor
     func perform() async throws -> some IntentResult {
         performRecordingShortcut {
+            ShortcutStartVehicleSelection.apply(
+                vehicleID: vehicle.id,
+                using: AppServices.runtime.tripRecordingService
+            )
             RecordingControlBridge.requestStartFromControlSurface()
         }
         let recording = AppServices.runtime.tripRecordingService
@@ -45,6 +58,16 @@ struct StartTripRecordingIntent: LiveActivityIntent {
             )
         }
         return .result(dialog: IntentDialog("shortcut.start.success"))
+    }
+}
+
+/// Shared orchestration for Shortcuts Start trip + unit tests.
+enum ShortcutStartVehicleSelection {
+    /// Sets the recording vehicle when Shortcuts passed a known id; unknown/deleted ids are ignored.
+    @MainActor
+    static func apply(vehicleID: UUID?, using recording: TripRecordingService) {
+        guard let vehicleID else { return }
+        recording.setRecordingVehicle(vehicleID)
     }
 }
 
@@ -124,11 +147,10 @@ struct TrailhoundShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: StartTripRecordingIntent(),
             phrases: [
-                "Yolculuğu başlat \(.applicationName)",
-                "\(.applicationName) yolculuğu başlat",
-                "\(.applicationName) ile yolculuğu başlat",
-                "Start trip in \(.applicationName)",
-                "Start trip with \(.applicationName)"
+                "Yolculuğu başlat \(\.$vehicle) \(.applicationName)",
+                "\(.applicationName) ile \(\.$vehicle) yolculuğu başlat",
+                "Start \(\.$vehicle) trip in \(.applicationName)",
+                "Start trip with \(\.$vehicle) in \(.applicationName)"
             ],
             shortTitle: "shortcut.start.title",
             systemImageName: "play.circle"

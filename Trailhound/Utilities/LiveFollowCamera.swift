@@ -15,10 +15,20 @@ struct LiveFollowCamera {
     static let minimumSpeedForHeadingMps: Double = 5.0 / 3.6
     /// Legacy per-sample blend factor (tests / helpers). Prefer `headingTauSeconds` at runtime.
     static let headingSmoothing: Double = 0.34
-    /// Time constant for heading (and 2D/3D) exponential approach toward the target.
-    static let headingTauSeconds: TimeInterval = 0.28
-    static let positionTauSeconds: TimeInterval = 0.16
+    /// Time constant for published heading — higher = softer map rotation in turns.
+    static let headingTauSeconds: TimeInterval = 0.56
+    /// Ease each GPS course sample into the heading target (avoids 1 Hz target snaps).
+    static let targetHeadingIngestFactor: Double = 0.42
+    /// Blend GPS course with path bearing when the fix moved enough to trust geometry.
+    static let pathHeadingBlend: Double = 0.48
+    static let pathHeadingMinMoveMeters: CLLocationDistance = 6
+    /// Softer than a raw GPS chase so 1 Hz samples do not hitch the puck.
+    static let positionTauSeconds: TimeInterval = 0.24
     static let modeTauSeconds: TimeInterval = 0.20
+    /// Ease GPS speed into dead-reckon so a noisy speed sample cannot yank the camera.
+    static let speedIngestFactor: Double = 0.38
+    /// Ignore sub-meter “GPS is behind the puck” noise — never rewind along heading.
+    static let alongTrackRewindDeadbandMeters: CLLocationDistance = 0.15
     /// Cap dead-reckoning so a lost fix does not fly the puck forever.
     static let maxDeadReckonSeconds: TimeInterval = 1.2
     /// Ignore absurd frame gaps (app backgrounded, debugger pause).
@@ -65,6 +75,7 @@ struct LiveFollowCamera {
     private var lastSampleTimestamp: Date?
     private var lastSampleCoordinate: CLLocationCoordinate2D?
     private var hasAcceptedHeading = false
+    private var hasIngestedSpeed = false
     private var publishedPitchDegrees: Double = pitch3D
     private var publishedDistanceMeters: CLLocationDistance = distance3D
 
@@ -100,10 +111,17 @@ struct LiveFollowCamera {
 
         let isFirstFix = center == nil
         let stampAdvanced = lastSampleTimestamp.map { location.timestamp > $0 } ?? true
+        let previousSampleCoordinate = lastSampleCoordinate
         lastSampleTimestamp = location.timestamp
         lastSampleCoordinate = location.coordinate
         targetCoordinate = location.coordinate
-        targetSpeedMps = max(0, location.speed)
+        let rawSpeed = max(0, location.speed)
+        if hasIngestedSpeed {
+            targetSpeedMps += (rawSpeed - targetSpeedMps) * Self.speedIngestFactor
+        } else {
+            targetSpeedMps = rawSpeed
+            hasIngestedSpeed = true
+        }
         if stampAdvanced, abs(now.timeIntervalSince(location.timestamp)) <= 5 {
             lastFixAt = location.timestamp
         } else {
@@ -112,10 +130,40 @@ struct LiveFollowCamera {
 
         if shouldAcceptCourse(from: location) {
             let raw = Self.normalizedHeading(location.course)
-            targetHeadingDegrees = raw
+            var aim = raw
+            if !reduceMotion, let previousSampleCoordinate {
+                let moved = CLLocation(
+                    latitude: previousSampleCoordinate.latitude,
+                    longitude: previousSampleCoordinate.longitude
+                )
+                .distance(from: CLLocation(
+                    latitude: location.coordinate.latitude,
+                    longitude: location.coordinate.longitude
+                ))
+                if moved >= Self.pathHeadingMinMoveMeters {
+                    let pathBearing = Self.bearingDegrees(
+                        from: previousSampleCoordinate,
+                        to: location.coordinate
+                    )
+                    aim = Self.smoothedHeading(
+                        from: aim,
+                        toward: pathBearing,
+                        factor: Self.pathHeadingBlend
+                    )
+                }
+            }
             if !hasAcceptedHeading {
-                headingDegrees = raw
+                targetHeadingDegrees = aim
+                headingDegrees = aim
                 hasAcceptedHeading = true
+            } else if reduceMotion {
+                targetHeadingDegrees = aim
+            } else {
+                targetHeadingDegrees = Self.smoothedHeading(
+                    from: targetHeadingDegrees,
+                    toward: aim,
+                    factor: Self.targetHeadingIngestFactor
+                )
             }
         }
 
@@ -149,6 +197,13 @@ struct LiveFollowCamera {
                 from: target,
                 headingDegrees: headingDegrees,
                 distanceMeters: targetSpeedMps * reckonAge
+            )
+        }
+        if let current = center, hasAcceptedHeading, targetSpeedMps > 0.5 {
+            predicted = Self.withoutAlongTrackRewind(
+                current: current,
+                predicted: predicted,
+                headingDegrees: headingDegrees
             )
         }
         let positionAlpha = 1 - exp(-clampedDt / Self.positionTauSeconds)
@@ -196,6 +251,7 @@ struct LiveFollowCamera {
         reduceMotion = false
         targetCoordinate = location.coordinate
         targetSpeedMps = max(0, location.speed)
+        hasIngestedSpeed = true
         lastFixAt = now
         lastSampleTimestamp = location.timestamp
         lastSampleCoordinate = location.coordinate
@@ -219,6 +275,7 @@ struct LiveFollowCamera {
         headingDegrees = 0
         isFrozen = false
         hasAcceptedHeading = false
+        hasIngestedSpeed = false
         targetCoordinate = nil
         targetHeadingDegrees = 0
         targetSpeedMps = 0
@@ -256,6 +313,45 @@ struct LiveFollowCamera {
     static func normalizedHeading(_ degrees: CLLocationDirection) -> CLLocationDirection {
         let wrapped = degrees.truncatingRemainder(dividingBy: 360)
         return wrapped < 0 ? wrapped + 360 : wrapped
+    }
+
+    /// Initial bearing from `from` to `to` (degrees, clockwise from north).
+    static func bearingDegrees(
+        from: CLLocationCoordinate2D,
+        to: CLLocationCoordinate2D
+    ) -> CLLocationDirection {
+        let lat1 = from.latitude * .pi / 180
+        let lat2 = to.latitude * .pi / 180
+        let dLon = (to.longitude - from.longitude) * .pi / 180
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        return normalizedHeading(atan2(y, x) * 180 / .pi)
+    }
+
+    /// Meters of `to` ahead of `from` along `headingDegrees` (negative = behind).
+    static func alongTrackMeters(
+        from: CLLocationCoordinate2D,
+        to: CLLocationCoordinate2D,
+        headingDegrees: CLLocationDirection
+    ) -> CLLocationDistance {
+        let distance = CLLocation(latitude: from.latitude, longitude: from.longitude)
+            .distance(from: CLLocation(latitude: to.latitude, longitude: to.longitude))
+        guard distance > 0 else { return 0 }
+        var delta = bearingDegrees(from: from, to: to) - headingDegrees
+        if delta > 180 { delta -= 360 }
+        if delta < -180 { delta += 360 }
+        return distance * cos(delta * .pi / 180)
+    }
+
+    /// Keep the puck from sliding backward when a stale GPS sample lands behind dead-reckon.
+    static func withoutAlongTrackRewind(
+        current: CLLocationCoordinate2D,
+        predicted: CLLocationCoordinate2D,
+        headingDegrees: CLLocationDirection
+    ) -> CLLocationCoordinate2D {
+        let along = alongTrackMeters(from: current, to: predicted, headingDegrees: headingDegrees)
+        guard along < -alongTrackRewindDeadbandMeters else { return predicted }
+        return coordinate(from: predicted, headingDegrees: headingDegrees, distanceMeters: -along)
     }
 
     static func lerpCoordinate(

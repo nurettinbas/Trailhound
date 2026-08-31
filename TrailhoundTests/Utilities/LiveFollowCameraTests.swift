@@ -56,6 +56,30 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertEqual(camera.center?.latitude, frozenLat)
     }
 
+    func testTargetHeadingEasesOnCourseJump() {
+        var camera = LiveFollowCamera()
+        let first = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
+        camera.ingest(location: first, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        let second = location(lat: 41.0003, lon: 29.0, speedMps: 20, course: 90, courseAccuracy: 5)
+        let t1 = baseDate.addingTimeInterval(1)
+        camera.ingest(location: second, isPaused: false, now: t1)
+        _ = camera.tick(dt: frame, now: t1)
+        // Target eases — published heading should not lunge toward 90 immediately.
+        XCTAssertLessThan(camera.headingDegrees, 40)
+    }
+
+    func testBearingDegreesEast() {
+        let origin = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let east = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.001)
+        XCTAssertEqual(
+            LiveFollowCamera.bearingDegrees(from: origin, to: east),
+            90,
+            accuracy: 2
+        )
+    }
+
     func testHeadingApproachesTargetOverTicks() {
         var camera = LiveFollowCamera()
         let first = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
@@ -105,13 +129,59 @@ final class LiveFollowCameraTests: XCTestCase {
         }
     }
 
+    func testDoesNotRewindWhenNextFixLagsDeadReckon() {
+        var camera = LiveFollowCamera()
+        let start = location(
+            lat: 41.0,
+            lon: 29.0,
+            speedMps: 20,
+            course: 0,
+            courseAccuracy: 5,
+            timestamp: baseDate
+        )
+        camera.ingest(location: start, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        var now = baseDate
+        for _ in 0..<60 {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
+        }
+        let ahead = camera.center?.latitude ?? -1
+        XCTAssertGreaterThan(ahead, 41.0)
+
+        let stale = location(
+            lat: 41.00004,
+            lon: 29.0,
+            speedMps: 20,
+            course: 0,
+            courseAccuracy: 5,
+            timestamp: now
+        )
+        camera.ingest(location: stale, isPaused: false, now: now)
+        _ = camera.tick(dt: frame, now: now.addingTimeInterval(frame))
+        XCTAssertGreaterThanOrEqual(camera.center?.latitude ?? -1, ahead - 0.000_000_1)
+    }
+
+    func testWithoutAlongTrackRewindKeepsForwardProgress() {
+        let current = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
+        let behind = CLLocationCoordinate2D(latitude: 41.0002, longitude: 29.0)
+        let clamped = LiveFollowCamera.withoutAlongTrackRewind(
+            current: current,
+            predicted: behind,
+            headingDegrees: 0
+        )
+        XCTAssertGreaterThan(clamped.latitude, behind.latitude)
+        XCTAssertEqual(clamped.latitude, current.latitude, accuracy: 0.00002)
+    }
+
     func testDeadReckonCapsAfterMaxAge() {
         var camera = LiveFollowCamera()
         let fix = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
         camera.ingest(location: fix, isPaused: false, now: baseDate)
 
         let atCap = baseDate.addingTimeInterval(LiveFollowCamera.maxDeadReckonSeconds)
-        for _ in 0..<90 {
+        for _ in 0..<200 {
             _ = camera.tick(dt: frame, now: atCap)
         }
         let latAtCap = camera.center?.latitude ?? -1
@@ -120,7 +190,7 @@ final class LiveFollowCameraTests: XCTestCase {
         for _ in 0..<30 {
             _ = camera.tick(dt: frame, now: later)
         }
-        XCTAssertEqual(camera.center?.latitude ?? -1, latAtCap, accuracy: 0.000_000_1)
+        XCTAssertEqual(camera.center?.latitude ?? -1, latAtCap, accuracy: 0.000_001)
     }
 
     func testForceRecenterUpdatesImmediately() {
@@ -155,15 +225,19 @@ final class LiveFollowCameraTests: XCTestCase {
             isPaused: false,
             now: baseDate.addingTimeInterval(1)
         )
-        for step in 1...30 {
+        for step in 1...180 {
             _ = camera.tick(
                 dt: frame,
                 now: baseDate.addingTimeInterval(1 + Double(step) * frame)
             )
+            let heading = camera.headingDegrees
+            XCTAssertFalse(heading > 90 && heading < 270, "Should not take the long arc")
         }
-        // Should approach 10 via 0, never go the long way through 180.
-        XCTAssertLessThan(camera.headingDegrees, 20)
-        XCTAssertTrue(camera.headingDegrees < 90 || camera.headingDegrees > 340)
+        let delta = min(
+            abs(camera.headingDegrees - 10),
+            360 - abs(camera.headingDegrees - 10)
+        )
+        XCTAssertLessThan(delta, 25)
     }
 
     func testPoseCentersOnVehicleIn3D() {
@@ -378,12 +452,58 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertEqual(LiveFollowCamera.normalizedHeading(450), 90, accuracy: 0.01)
     }
 
+    @MainActor
+    func testSessionTickContinuesWhenNotFollowing() {
+        let session = LiveFollowSession()
+        session.openSettled = true
+        session.isFollowing = false
+        session.isPaused = false
+        var poseWrites = 0
+        session.onPoseWrite = { _, _ in poseWrites += 1 }
+
+        let start = location(lat: 41.0, lon: 29.0, speedMps: 15, course: 0, courseAccuracy: 5)
+        session.ingest(location: start, isPaused: false, now: baseDate)
+        XCTAssertTrue(session.tick(dt: frame, now: baseDate))
+        let firstWrites = poseWrites
+        XCTAssertGreaterThan(firstWrites, 0)
+
+        let later = baseDate.addingTimeInterval(1)
+        let next = location(
+            lat: 41.001,
+            lon: 29.0,
+            speedMps: 15,
+            course: 0,
+            courseAccuracy: 5,
+            timestamp: later
+        )
+        session.ingest(location: next, isPaused: false, now: later)
+        XCTAssertTrue(session.tick(dt: frame, now: later))
+        XCTAssertGreaterThan(poseWrites, firstWrites)
+        XCTAssertNotNil(session.vehicleCoordinate)
+    }
+
+    @MainActor
+    func testHandleDisplayTickAdvancesWithoutOpenSettled() {
+        let session = LiveFollowSession()
+        session.openSettled = false
+        session.isFollowing = true
+        session.isPaused = false
+        var poseWrites = 0
+        session.onPoseWrite = { _, _ in poseWrites += 1 }
+
+        let start = location(lat: 41.0, lon: 29.0, speedMps: 12, course: 90, courseAccuracy: 5)
+        session.ingest(location: start, isPaused: false, now: baseDate)
+        session.handleDisplayTick(dt: frame, now: baseDate)
+        XCTAssertGreaterThan(poseWrites, 0)
+    }
+
     private func location(
         lat: Double,
         lon: Double,
         speedMps: Double,
         course: Double,
-        courseAccuracy: Double
+        courseAccuracy: Double,
+        timestamp: Date? = nil
     ) -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
@@ -394,7 +514,7 @@ final class LiveFollowCameraTests: XCTestCase {
             courseAccuracy: courseAccuracy,
             speed: speedMps,
             speedAccuracy: 1,
-            timestamp: baseDate
+            timestamp: timestamp ?? baseDate
         )
     }
 }

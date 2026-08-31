@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftData
 import SwiftUI
 
@@ -203,6 +204,9 @@ struct PairingTabView: View {
         )
         modelContext.insert(vehicle)
         guard (try? modelContext.save()) != nil else { return }
+        if !UITestSupport.isUnitTesting {
+            TrailhoundShortcuts.updateAppShortcutParameters()
+        }
         openDetail(for: vehicle.id)
     }
 

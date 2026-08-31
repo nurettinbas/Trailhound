@@ -328,6 +328,8 @@ enum L10n {
     static var pairingShortcutsGuideConnectStep3: String { string("pairing.shortcuts.guide.connect.step3") }
     static var pairingShortcutsGuideConnectStep4: String { string("pairing.shortcuts.guide.connect.step4") }
     static var pairingShortcutsGuideConnectStep5: String { string("pairing.shortcuts.guide.connect.step5") }
+    static var pairingShortcutsGuideConnectStep6: String { string("pairing.shortcuts.guide.connect.step6") }
+    static var pairingShortcutsGuideConnectStep7: String { string("pairing.shortcuts.guide.connect.step7") }
     static var pairingShortcutsGuideDisconnectTitle: String { string("pairing.shortcuts.guide.disconnect.title") }
     static var pairingShortcutsGuideDisconnectStep1: String { string("pairing.shortcuts.guide.disconnect.step1") }
     static var pairingShortcutsGuideDisconnectStep2: String { string("pairing.shortcuts.guide.disconnect.step2") }

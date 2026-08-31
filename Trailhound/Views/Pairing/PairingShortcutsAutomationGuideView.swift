@@ -520,7 +520,9 @@ struct PairingShortcutsAutomationGuideView: View {
             L10n.pairingShortcutsGuideConnectStep2,
             L10n.pairingShortcutsGuideConnectStep3,
             L10n.pairingShortcutsGuideConnectStep4,
-            L10n.pairingShortcutsGuideConnectStep5
+            L10n.pairingShortcutsGuideConnectStep5,
+            L10n.pairingShortcutsGuideConnectStep6,
+            L10n.pairingShortcutsGuideConnectStep7
         ]
     }
 
@@ -534,7 +536,15 @@ struct PairingShortcutsAutomationGuideView: View {
     }
 
     private var connectIcons: [String] {
-        ["apps.iphone", "plus.circle.fill", "point.3.connected.trianglepath.dotted", "play.fill", "bell.slash.fill"]
+        [
+            "apps.iphone",
+            "square.and.pencil",
+            "car.side.fill",
+            "bolt.horizontal.circle",
+            "point.3.connected.trianglepath.dotted",
+            "arrow.up.forward.app",
+            "bell.slash.fill"
+        ]
     }
 
     private var disconnectIcons: [String] {

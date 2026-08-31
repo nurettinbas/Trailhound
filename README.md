@@ -12,16 +12,16 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Recording
 - Manual start/stop, pause/resume
-- **Shortcuts auto-start / auto-stop**: Personal Automations run Trailhound’s *Start trip* / *End trip* actions when you connect to or leave the car (Bluetooth, CarPlay, or Wi‑Fi). Setup guide lives under the **Pairing** tab
+- **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). Setup guide lives under the **Pairing** tab
 - Vehicle profiles with fuel/EV cost per trip
 - **Avg fuel**: catalog cost from `distance × consumption × price` (edit consumption and unit price on the trip detail card; defaults from the vehicle and Settings)
 - **Estimated fuel**: trip-specific cost from this drive’s speeds, stops, and acceleration (VSP + Willans), including idle time; shown next to Avg on trip detail and Stats, with a short help tip — not a pump reading
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
-- **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows vehicle icon, duration, distance, and speed in four equal columns (non-interactive; Lock Screen / Dynamic Island controls unchanged)
+- **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
-- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center, smooth camera (display-link + MapKit), screen stays awake while open, live breadcrumb, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
+- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — camera and puck keep moving between GPS fixes (no 1 Hz hitch), a single blue traveled path that fills in behind you, pan (including while paused) to look back at the start, **Show entire route** to fit start + trail on screen, screen stays awake while open, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)
@@ -61,13 +61,13 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 | **iPhone (iOS)** | **17.0** | ✅ Primary target |
 | **iPadOS** | 17.0 | ⚠️ Runs as iPhone app (not optimized for iPad) |
 | **Widget (Home / Lock)** | iOS 17.0+ | ✅ Home Screen & Lock Screen widgets |
-| **Live Activity + CarPlay tile** | iOS 18.0+ | ✅ Lock Screen, Dynamic Island, CarPlay Dashboard (4-column stats) |
+| **Live Activity + CarPlay tile** | iOS 18.0+ | ✅ Lock Screen, Dynamic Island, CarPlay Dashboard (icon + duration, distance, speed) |
 | **Siri / Shortcuts** | iOS 17.0+ | ✅ App Intents + Personal Automations |
 | **macOS / visionOS / tvOS** | — | ❌ Not supported |
 
 ### Why iOS 17?
 
-Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern **WidgetKit** APIs that require iOS 17. The project does not build for iOS 16 or earlier. The **CarPlay Dashboard Live Activity** layout (four equal columns: icon, duration, distance, speed) needs **iOS 18** (`activityFamily.small`); on iOS 17 the Home Screen widgets still work, but the Live Activity presentation targets iOS 18+.
+Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern **WidgetKit** APIs that require iOS 17. The project does not build for iOS 16 or earlier. The **CarPlay Dashboard Live Activity** layout (vehicle icon plus duration, distance, and speed) needs **iOS 18** (`activityFamily.small`); on iOS 17 the Home Screen widgets still work, but the Live Activity presentation targets iOS 18+.
 
 ### Device & permissions
 
@@ -149,7 +149,7 @@ Requires **iOS 17+** and **Siri / Shortcuts** available. After first launch:
 
 1. Open **Pairing** in Trailhound → follow **Auto-start with Shortcuts**
 2. Or open **Shortcuts** → search **Trailhound** and add: **Start trip**, **Pause trip**, **Resume trip**, **End trip**
-3. For hands-free start/stop: create Personal Automations (Bluetooth / CarPlay / Wi‑Fi connect & disconnect) that run those actions
+3. For hands-free start/stop: create a named Shortcut with **Start trip** + **Vehicle**, then a Personal Automation that uses **Run Shortcut** on Bluetooth / CarPlay / Wi‑Fi connect (and **End trip** on disconnect). Automations often hide the Vehicle picker if you add Start trip directly.
 
 **Siri examples:** *“Start trip in Trailhound”*, *“Pause trip in Trailhound”* (Turkish phrases are also registered for TR Siri language)
 
