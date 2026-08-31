@@ -11398,19 +11398,53 @@
         }
       }
     },
+    "trip.edit.fuel.help.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avg fuel is the catalog cost: distance × consumption × unit price. Change those values here to recalculate. It is not Estimated fuel, which looks at this trip’s speeds and stops."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ort. yakıt katalog maliyeti: mesafe × tüketim × birim fiyat. Değerleri buradan değiştirince yeniden hesaplanır. Bu yolculuğun hız ve duruşlarına bakan Tahmini yakıt değildir."
+          }
+        }
+      }
+    },
+    "trip.edit.fuel.help.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is Avg fuel calculate?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ort. yakıt hesapla nedir?"
+          }
+        }
+      }
+    },
     "trip.edit.fuel.preview" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Updated estimate: %@"
+            "value" : "Avg fuel estimate: %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Güncel tahmin: %@"
+            "value" : "Ort. yakıt tahmini: %@"
           }
         }
       }
@@ -11421,13 +11455,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fuel estimate"
+            "value" : "Avg fuel calculate"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yakıt tahmini"
+            "value" : "Ort. yakıt hesapla"
           }
         }
       }

@@ -3,6 +3,13 @@ import SwiftData
 import SwiftUI
 import UIKit
 
+private enum TripSummaryMetricCardLayout {
+    static let titleRowHeight: CGFloat = 16
+    static let titleValueSpacing: CGFloat = 4
+    static let helpButtonSide: CGFloat = 16
+    static let minHeight: CGFloat = 52
+}
+
 private struct FavoritePlaceSheetItem: Identifiable {
     enum Endpoint {
         case start
@@ -410,7 +417,11 @@ struct TripDetailEditPanel: View {
                 }
             }
 
-            detailSplitSection(title: L10n.tripEditFuelSection) {
+            detailSplitSection(
+                title: L10n.tripEditFuelSection,
+                helpTitle: L10n.tripEditFuelHelpTitle,
+                helpBody: L10n.tripEditFuelHelpBody
+            ) {
                 fuelNumberField(
                     title: consumptionFieldTitle,
                     value: $editedFuelConsumption,
@@ -481,32 +492,8 @@ struct TripDetailEditPanel: View {
     @ViewBuilder
     private var statsStrip: some View {
         let fuelCurrencyCode = settings.fuelCurrency.rawValue
-        let metrics = viewModel.summaryMetrics
-        let primaryIDs: Set<String> = ["duration", "movingDuration", "distance", "maxSpeed"]
-        let profileIDs: Set<String> = ["medianSpeed", "p90Speed", "stopDuration"]
-        let fuelIDs: Set<String> = ["fuel", "dynamicFuel"]
-        let primaryRow = metrics.filter { primaryIDs.contains($0.id) }
-        let profileRow = metrics.filter { profileIDs.contains($0.id) }
-        let fuelRow = metrics.filter { fuelIDs.contains($0.id) }
-        let secondaryRow = metrics.filter {
-            !primaryIDs.contains($0.id) && !profileIDs.contains($0.id) && !fuelIDs.contains($0.id)
-        }
-
-        VStack(spacing: 8) {
-            if !primaryRow.isEmpty {
-                statsMetricGrid(metrics: primaryRow)
-            }
-            if !secondaryRow.isEmpty {
-                statsMetricGrid(metrics: secondaryRow)
-            }
-            if !profileRow.isEmpty {
-                statsMetricGrid(metrics: profileRow)
-            }
-            if !fuelRow.isEmpty {
-                statsMetricGrid(metrics: fuelRow)
-            }
-        }
-        .id(fuelCurrencyCode)
+        statsMetricGrid(metrics: viewModel.summaryMetrics)
+            .id(fuelCurrencyCode)
     }
 
     private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
@@ -524,34 +511,40 @@ struct TripDetailEditPanel: View {
 
     private func statsMetricCard(for metric: TripSummaryMetric) -> some View {
         let progress = statCountProgress[metric.id] ?? (panelRisen ? 1 : 0)
-        return VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .center, spacing: 6) {
+        return VStack(alignment: .leading, spacing: TripSummaryMetricCardLayout.titleValueSpacing) {
+            HStack(alignment: .center, spacing: 4) {
                 Label(metric.title, systemImage: metric.icon)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if metric.showsHelp, let helpTitle = metric.helpTitle, let helpBody = metric.helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
-                        message: helpBody
+                        message: helpBody,
+                        side: TripSummaryMetricCardLayout.helpButtonSide
                     )
-                    .scaleEffect(0.7, anchor: .leading)
-                    .frame(width: 22, height: 22)
-                    .padding(.leading, 2)
                 }
             }
+            .frame(height: TripSummaryMetricCardLayout.titleRowHeight)
+
             Text(metric.formatted(progress: progress))
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentTransition(.numericText())
                 .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: progress)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: TripSummaryMetricCardLayout.minHeight,
+            alignment: .topLeading
+        )
         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
         .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
         .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.94)
@@ -710,10 +703,12 @@ struct TripDetailEditPanel: View {
 
     private func detailSplitSection<Left: View, Right: View>(
         title: String,
+        helpTitle: String? = nil,
+        helpBody: String? = nil,
         @ViewBuilder left: () -> Left,
         @ViewBuilder right: () -> Right
     ) -> some View {
-        detailSelectionSection(title: title) {
+        detailSelectionSection(title: title, helpTitle: helpTitle, helpBody: helpBody) {
             HStack(alignment: .top, spacing: 10) {
                 detailMiniCard(content: left)
                     .frame(minWidth: 0, maxWidth: .infinity)
@@ -725,11 +720,22 @@ struct TripDetailEditPanel: View {
 
     private func detailSelectionSection<Content: View>(
         title: String,
+        helpTitle: String? = nil,
+        helpBody: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
+            HStack(alignment: .center, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                if let helpTitle, let helpBody {
+                    HelpPopoverButton(
+                        accessibilityLabel: helpTitle,
+                        message: helpBody,
+                        side: 22
+                    )
+                }
+            }
 
             content()
         }

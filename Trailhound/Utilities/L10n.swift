@@ -110,6 +110,8 @@ enum L10n {
     static var fieldNext: String { tripEditFieldNext }
     static var tripEditSave: String { string("trip.edit.save") }
     static var tripEditFuelSection: String { string("trip.edit.fuel.section") }
+    static var tripEditFuelHelpTitle: String { string("trip.edit.fuel.help.title") }
+    static var tripEditFuelHelpBody: String { string("trip.edit.fuel.help.body") }
 
     static func tripEditFuelPreview(_ cost: String) -> String {
         String(format: string("trip.edit.fuel.preview"), cost)

@@ -59,7 +59,7 @@ enum DeviceTestChecklist {
         "Vehicle photo: limited library / deny photos / deny camera states",
         "Vehicle photo: Change + existing framing Apply/Save path still works",
         "Trip detail: Travel time (moving, excluding stops) sits beside Duration; ? explains the difference",
-        "Trip detail: Avg fuel and Est. fuel both show; Est. ? opens full explanation",
+        "Trip detail: cards pack left-to-right with no empty mid-grid slots; Avg fuel calculate ? explains catalog cost; preview is Avg fuel estimate; Avg fuel and Est. fuel both show cost · volume; Est. ? opens full explanation",
         "Trip detail / Stats: Cruise + Common ? explain moving average vs pace band; Median + P90 when route loaded",
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",

@@ -164,6 +164,7 @@ final class DeviceTestChecklistTests: XCTestCase {
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("camera pulls back") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("CarPlay Live Activity tile") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Travel time") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Avg fuel calculate") }))
     }
 }
 
@@ -289,6 +290,35 @@ final class FuelCostCalculatorTests: XCTestCase {
         XCTAssertTrue(tenThousand.contains("₺"), tenThousand)
         XCTAssertFalse(tenThousand.contains(","), tenThousand)
         XCTAssertFalse(tenThousand.contains(".50"), tenThousand)
+    }
+
+    func testFormatVolumeUsesLitresAndkWh() {
+        let tr = Locale(identifier: "tr_TR")
+        XCTAssertEqual(
+            FuelCostCalculator.formatVolume(cost: 19.5, unitPrice: 65, isElectric: false, locale: tr),
+            "0,3 L"
+        )
+        XCTAssertEqual(
+            FuelCostCalculator.formatVolume(cost: 42, unitPrice: 8.5, isElectric: true, locale: tr),
+            "4,94 kWh"
+        )
+        XCTAssertNil(FuelCostCalculator.formatVolume(cost: 10, unitPrice: 0, isElectric: false))
+    }
+
+    func testTripEditFuelCopyUsesAvgFuelNames() {
+        let section = L10n.tripEditFuelSection
+        XCTAssertTrue(
+            section.contains("Avg fuel") || section.contains("Ort. yakıt"),
+            section
+        )
+        let preview = L10n.tripEditFuelPreview("₺ 19")
+        XCTAssertTrue(preview.contains("₺ 19"), preview)
+        XCTAssertTrue(
+            preview.contains("Avg fuel estimate") || preview.contains("Ort. yakıt tahmini"),
+            preview
+        )
+        XCTAssertFalse(L10n.tripEditFuelHelpTitle.isEmpty)
+        XCTAssertFalse(L10n.tripEditFuelHelpBody.isEmpty)
     }
 }
 

@@ -819,11 +819,9 @@ struct StatsView: View {
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
-                        message: helpBody
+                        message: helpBody,
+                        side: 18
                     )
-                    .scaleEffect(0.65, anchor: .leading)
-                    .frame(width: 18, height: 18)
-                    .padding(.leading, 4)
                 }
             }
             Text(value)

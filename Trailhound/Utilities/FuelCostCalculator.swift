@@ -121,4 +121,22 @@ enum FuelCostCalculator {
         }
         return formatter.string(from: NSNumber(value: amount)) ?? "\(Int(amount.rounded()))"
     }
+
+    /// Litres or kWh implied by cost ÷ unit price, e.g. `"0,3 L"`.
+    static func formatVolume(
+        cost: Double,
+        unitPrice: Double,
+        isElectric: Bool,
+        locale: Locale? = nil
+    ) -> String? {
+        guard cost > 0, unitPrice > 0 else { return nil }
+        let volume = cost / unitPrice
+        let unit = isElectric ? "kWh" : "L"
+        let formatter = NumberFormatter()
+        formatter.locale = locale ?? DateFormatters.currentLocale
+        formatter.maximumFractionDigits = volume >= 10 ? 1 : 2
+        formatter.minimumFractionDigits = 0
+        let number = formatter.string(from: NSNumber(value: volume)) ?? String(format: "%.1f", volume)
+        return "\(number) \(unit)"
+    }
 }

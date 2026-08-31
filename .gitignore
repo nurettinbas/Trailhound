@@ -47,4 +47,3 @@ fastlane/test_output
 /*.jpg
 /*.png
 !Trailhound/**/*.png
-.wiki-tmp/

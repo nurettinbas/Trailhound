@@ -14,7 +14,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Manual start/stop, pause/resume
 - **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). Setup guide lives under the **Pairing** tab
 - Vehicle profiles with fuel/EV cost per trip
-- **Avg fuel**: catalog cost from `distance × consumption × price` (edit consumption and unit price on the trip detail card; defaults from the vehicle and Settings)
+- **Avg fuel**: catalog cost from `distance × consumption × price`, shown as currency · litres (or kWh) like Estimated fuel. Trip detail **Avg fuel calculate** (with ?) edits consumption and unit price; the live line is **Avg fuel estimate**. Defaults from the vehicle and Settings
 - **Estimated fuel**: trip-specific cost from this drive’s speeds, stops, and acceleration (VSP + Willans), including idle time; shown next to Avg on trip detail and Stats, with a short help tip — not a pump reading
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
@@ -34,7 +34,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
-- Trip summary cards include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
+- Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
 - Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, **stop time**, and dual **avg / estimated** fuel charts
 - Frequent routes, category filters, trip merge/split
@@ -185,7 +185,6 @@ docs/                 # Battery, TestFlight, vehicle care notes
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll
-- [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 

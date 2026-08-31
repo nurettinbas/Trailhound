@@ -7,6 +7,8 @@ import SwiftUI
 struct HelpPopoverButton: View {
     let accessibilityLabel: String
     let message: String
+    /// Layout side of the `?` control. Default 44 pt for accessibility; metric cards pass 16.
+    var side: CGFloat = 44
 
     @State private var isPresented = false
 
@@ -15,9 +17,9 @@ struct HelpPopoverButton: View {
             isPresented = true
         } label: {
             Image(systemName: "questionmark.circle")
-                .font(.body)
+                .font(side <= 18 ? .system(size: 12, weight: .medium) : .body)
                 .foregroundStyle(.secondary)
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(width: side, height: side)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

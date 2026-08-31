@@ -157,4 +157,52 @@ final class TripDetailViewModelSummaryTests: XCTestCase {
             .first { $0.id == "movingDuration" }
         XCTAssertEqual(moving?.formatted(progress: 1), DateFormatters.formatDuration(80))
     }
+
+    func testSummaryFormatsAvgFuelWithVolumeLikeEstimated() {
+        let start = Date()
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(600),
+            distanceMeters: 5_000
+        )
+        trip.estimatedFuelCost = 19.5
+        trip.dynamicFuelCost = 22
+        trip.fuelUnitPrice = 65
+
+        let metrics = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500).summaryMetrics
+        let avg = metrics.first { $0.id == "fuel" }
+        let estimated = metrics.first { $0.id == "dynamicFuel" }
+        let avgVolume = FuelCostCalculator.formatVolume(cost: 19.5, unitPrice: 65, isElectric: false)
+        let estimatedVolume = FuelCostCalculator.formatVolume(cost: 22, unitPrice: 65, isElectric: false)
+
+        XCTAssertEqual(
+            avg?.formatted(progress: 1),
+            "\(FuelCostCalculator.formatCost(19.5)) · \(avgVolume!)"
+        )
+        XCTAssertEqual(
+            estimated?.formatted(progress: 1),
+            "\(FuelCostCalculator.formatCost(22)) · \(estimatedVolume!)"
+        )
+    }
+
+    func testSummaryKeepsDurationThroughFuelInOneSequence() {
+        let start = Date()
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(3_600),
+            distanceMeters: 40_000
+        )
+        trip.cruiseDurationSeconds = 2_700
+        trip.stopDurationSeconds = 900
+        trip.maxSpeedMps = 33
+        trip.estimatedFuelCost = 19
+        trip.dynamicFuelCost = 22
+        trip.fuelUnitPrice = 65
+
+        let ids = TripDetailViewModel(trip: trip, places: [], privacyRadius: 500)
+            .summaryMetrics
+            .map(\.id)
+        XCTAssertEqual(ids.prefix(4).map { $0 }, ["duration", "movingDuration", "distance", "maxSpeed"])
+        XCTAssertEqual(ids.suffix(2).map { $0 }, ["fuel", "dynamicFuel"])
+    }
 }

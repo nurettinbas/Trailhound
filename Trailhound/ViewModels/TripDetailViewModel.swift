@@ -29,7 +29,8 @@ struct TripSummaryMetric: Identifiable {
         case medianSpeedKmh(Double)
         case p90SpeedKmh(Double)
         case stopDuration(TimeInterval)
-        case fuel(Double)
+        /// Cost plus optional volume label (e.g. "₺19 · 0,3 L").
+        case fuel(cost: Double, detail: String?)
         /// Cost plus optional volume label (e.g. "₺142 · 2,1 L").
         case dynamicFuel(cost: Double, detail: String?)
     }
@@ -66,9 +67,7 @@ struct TripSummaryMetric: Identifiable {
             return L10n.formatSpeedKmh(kmh * eased)
         case .stopDuration(let seconds):
             return DateFormatters.formatDuration(seconds * eased)
-        case .fuel(let cost):
-            return FuelCostCalculator.formatCost(cost * eased)
-        case .dynamicFuel(let cost, let detail):
+        case .fuel(let cost, let detail), .dynamicFuel(let cost, let detail):
             let costText = FuelCostCalculator.formatCost(cost * eased)
             if let detail, !detail.isEmpty, p >= 0.99 {
                 return "\(costText) · \(detail)"
@@ -457,7 +456,7 @@ struct TripDetailViewModel {
                     id: "fuel",
                     icon: "fuelpump",
                     title: L10n.avgFuel,
-                    kind: .fuel(fuel)
+                    kind: .fuel(cost: fuel, detail: fuelVolumeText(cost: fuel))
                 )
             )
         }
@@ -468,7 +467,7 @@ struct TripDetailViewModel {
                     id: "dynamicFuel",
                     icon: "flame",
                     title: L10n.dynamicFuel,
-                    kind: .dynamicFuel(cost: dynamic, detail: dynamicFuelVolumeText),
+                    kind: .dynamicFuel(cost: dynamic, detail: fuelVolumeText(cost: dynamic)),
                     helpTitle: L10n.dynamicFuelHelpTitle,
                     helpBody: L10n.dynamicFuelHelpBody
                 )
@@ -477,20 +476,16 @@ struct TripDetailViewModel {
         return items
     }
 
-    /// Litres or kWh implied by stored dynamic cost ÷ unit price snapshot.
-    private var dynamicFuelVolumeText: String? {
-        let cost = trip.dynamicFuelCost ?? 0
-        let price = trip.fuelUnitPrice ?? 0
-        guard cost > 0, price > 0 else { return nil }
-        let volume = cost / price
-        let isElectric = trip.vehicle?.fuelType == .electric
-        let unit = isElectric ? "kWh" : "L"
-        let formatter = NumberFormatter()
-        formatter.locale = DateFormatters.currentLocale
-        formatter.maximumFractionDigits = volume >= 10 ? 1 : 2
-        formatter.minimumFractionDigits = 0
-        let number = formatter.string(from: NSNumber(value: volume)) ?? String(format: "%.1f", volume)
-        return "\(number) \(unit)"
+    /// Litres or kWh implied by cost ÷ unit price (trip snapshot → vehicle → Settings).
+    private func fuelVolumeText(cost: Double) -> String? {
+        FuelCostCalculator.formatVolume(
+            cost: cost,
+            unitPrice: FuelCostCalculator.resolvedUnitPrice(
+                tripUnitPrice: trip.fuelUnitPrice,
+                vehicle: trip.vehicle
+            ),
+            isElectric: trip.vehicle?.fuelType == .electric
+        )
     }
 
     /// Prepared display samples when available; empty while the async path is still loading.
