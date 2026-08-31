@@ -186,6 +186,77 @@ final class LiveFollowMapPinTests: XCTestCase {
         XCTAssertNil(LiveFollowGrowingRoute.tipSegment(anchor: lastGPS, vehicle: vehicle))
     }
 
+    func testTipApproachIsTheVertexBeforeTheAnchor() {
+        let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let b = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
+        let c = CLLocationCoordinate2D(latitude: 41.002, longitude: 29.0)
+        XCTAssertNil(LiveFollowGrowingRoute.tipApproach(from: []))
+        XCTAssertNil(LiveFollowGrowingRoute.tipApproach(from: [[c]]))
+        let approach = LiveFollowGrowingRoute.tipApproach(from: [[a, b, c]])
+        XCTAssertEqual(approach?.latitude ?? 0, b.latitude, accuracy: 0.000_000_1)
+        XCTAssertEqual(LiveFollowGrowingRoute.tipAnchor(from: [[a, b, c]])?.latitude ?? 0, c.latitude, accuracy: 0.000_000_1)
+    }
+
+    func testTipSegmentDropsABackwardChord() {
+        let previous = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let anchor = LiveFollowCamera.coordinate(from: previous, headingDegrees: 0, distanceMeters: 20)
+        let forward = LiveFollowCamera.coordinate(from: anchor, headingDegrees: 0, distanceMeters: 8)
+        let backward = LiveFollowCamera.coordinate(from: anchor, headingDegrees: 180, distanceMeters: 8)
+
+        let ahead = LiveFollowGrowingRoute.tipSegment(
+            anchor: anchor,
+            previous: previous,
+            vehicle: forward
+        )
+        XCTAssertEqual(ahead?.count, 2)
+
+        XCTAssertNil(
+            LiveFollowGrowingRoute.tipSegment(
+                anchor: anchor,
+                previous: previous,
+                vehicle: backward
+            ),
+            "A tip against the direction of travel would draw as blue road ahead of the puck"
+        )
+    }
+
+    func testTailSegmentExtendsUncommittedHistoryToTheVehicle() {
+        let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let b = LiveFollowCamera.coordinate(from: a, headingDegrees: 0, distanceMeters: 20)
+        let vehicle = LiveFollowCamera.coordinate(from: b, headingDegrees: 0, distanceMeters: 8)
+        let tail = LiveFollowGrowingRoute.tailSegment(tail: [a, b], vehicle: vehicle)
+        XCTAssertEqual(tail?.count, 3)
+        XCTAssertEqual(tail?[0].latitude ?? 0, a.latitude, accuracy: 0.000_000_1)
+        XCTAssertEqual(tail?[1].latitude ?? 0, b.latitude, accuracy: 0.000_000_1)
+        XCTAssertEqual(tail?[2].latitude ?? 0, vehicle.latitude, accuracy: 0.000_000_1)
+    }
+
+    func testTailSegmentKeepsRecordedPointsWhenTheVehicleChordIsRefused() {
+        let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let b = LiveFollowCamera.coordinate(from: a, headingDegrees: 0, distanceMeters: 20)
+        let backward = LiveFollowCamera.coordinate(from: b, headingDegrees: 180, distanceMeters: 8)
+        let far = LiveFollowCamera.coordinate(from: b, headingDegrees: 0, distanceMeters: 200)
+
+        let againstTravel = LiveFollowGrowingRoute.tailSegment(tail: [a, b], vehicle: backward)
+        XCTAssertEqual(againstTravel?.count, 2)
+        XCTAssertEqual(againstTravel?[1].latitude ?? 0, b.latitude, accuracy: 0.000_000_1)
+
+        let acrossGap = LiveFollowGrowingRoute.tailSegment(tail: [a, b], vehicle: far)
+        XCTAssertEqual(acrossGap?.count, 2)
+        XCTAssertEqual(acrossGap?[1].latitude ?? 0, b.latitude, accuracy: 0.000_000_1)
+    }
+
+    func testTailSegmentDropsEmptyAndSinglePointStubs() {
+        let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let near = LiveFollowCamera.coordinate(from: a, headingDegrees: 0, distanceMeters: 8)
+        XCTAssertNil(LiveFollowGrowingRoute.tailSegment(tail: [], vehicle: near))
+        XCTAssertNil(LiveFollowGrowingRoute.tailSegment(tail: [a], vehicle: nil))
+        let stub = LiveFollowGrowingRoute.tailSegment(tail: [a], vehicle: near)
+        XCTAssertEqual(stub?.count, 2)
+        XCTAssertEqual(stub?[0].latitude ?? 0, a.latitude, accuracy: 0.000_000_1)
+        XCTAssertEqual(stub?[1].latitude ?? 0, near.latitude, accuracy: 0.000_000_1)
+    }
+
     func testOverviewMapRectCoversStartAndPuck() {
         let start = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
         let mid = CLLocationCoordinate2D(latitude: 41.01, longitude: 29.0)

@@ -156,10 +156,12 @@ final class DeviceTestChecklistTests: XCTestCase {
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("Reduce Motion") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("3D/2D") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("hold-back") }))
-        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("two-point tip") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("growing tail tip") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("same thickness in 2D and 3D") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("recenter") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("overview") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("chevron sharp tip") }))
+        XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("camera pulls back") }))
         XCTAssertTrue(DeviceTestChecklist.items.contains(where: { $0.contains("CarPlay Live Activity tile") }))
     }
 }

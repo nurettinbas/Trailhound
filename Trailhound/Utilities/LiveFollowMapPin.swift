@@ -84,7 +84,7 @@ enum LiveFollowMapPinBuilder {
     }
 }
 
-/// Live-follow route geometry: GPS history pieces + a two-point tip to the puck.
+/// Live-follow route geometry: GPS history pieces + a growing tail to the puck.
 /// Display-only — does not write SwiftData / breadcrumbs.
 ///
 /// History and tip never share interior vertices. Real GPS gaps stay as separate
@@ -135,16 +135,62 @@ enum LiveFollowGrowingRoute {
         segments.last { !$0.isEmpty }?.last
     }
 
+    /// Vertex before the anchor — gives the tip a direction of travel to agree with.
+    static func tipApproach(from segments: [[CLLocationCoordinate2D]]) -> CLLocationCoordinate2D? {
+        guard let piece = segments.last(where: { $0.count >= 2 }) else { return nil }
+        return piece[piece.count - 2]
+    }
+
     /// Two-point `[anchor, vehicle]` stroke, or `nil` when it would invent a chord.
+    ///
+    /// A tip pointing against the direction of travel would render as blue road *ahead*
+    /// of the vehicle and snap back on the next breadcrumb, so it is dropped instead.
     static func tipSegment(
         anchor: CLLocationCoordinate2D?,
+        previous: CLLocationCoordinate2D? = nil,
         vehicle: CLLocationCoordinate2D?
     ) -> [CLLocationCoordinate2D]? {
         guard let anchor, let vehicle else { return nil }
         let delta = CLLocation(latitude: anchor.latitude, longitude: anchor.longitude)
             .distance(from: CLLocation(latitude: vehicle.latitude, longitude: vehicle.longitude))
         guard delta > tipMinGapMeters, delta <= tipMaxGapMeters else { return nil }
+        if let previous, isBackward(previous: previous, anchor: anchor, vehicle: vehicle) {
+            return nil
+        }
         return [anchor, vehicle]
+    }
+
+    /// Growing-run stroke: uncommitted history vertices, extended to the live vehicle
+    /// when that extension passes the `tipSegment` guards. Falls back to the bare tail
+    /// (when drawable) so recorded points never vanish just because the chord is refused.
+    static func tailSegment(
+        tail: [CLLocationCoordinate2D],
+        vehicle: CLLocationCoordinate2D?
+    ) -> [CLLocationCoordinate2D]? {
+        guard let anchor = tail.last else { return nil }
+        let previous = tail.count >= 2 ? tail[tail.count - 2] : nil
+        if let tip = tipSegment(anchor: anchor, previous: previous, vehicle: vehicle),
+           let vehiclePoint = tip.last
+        {
+            return tail + [vehiclePoint]
+        }
+        return tail.count >= 2 ? tail : nil
+    }
+
+    /// Dot product of `previous → anchor` with `anchor → vehicle`, in local metres.
+    private static func isBackward(
+        previous: CLLocationCoordinate2D,
+        anchor: CLLocationCoordinate2D,
+        vehicle: CLLocationCoordinate2D
+    ) -> Bool {
+        let metresPerDegreeLat = 111_320.0
+        let metresPerDegreeLon = metresPerDegreeLat * cos(anchor.latitude * .pi / 180)
+        let travelX = (anchor.longitude - previous.longitude) * metresPerDegreeLon
+        let travelY = (anchor.latitude - previous.latitude) * metresPerDegreeLat
+        let tipX = (vehicle.longitude - anchor.longitude) * metresPerDegreeLon
+        let tipY = (vehicle.latitude - anchor.latitude) * metresPerDegreeLat
+        guard travelX * travelX + travelY * travelY > 0.01 else { return false }
+        return travelX * tipX + travelY * tipY < 0
     }
 
     /// North-up overview that covers the traveled path and the puck.

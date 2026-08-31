@@ -163,6 +163,29 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(camera.center?.latitude ?? -1, ahead - 0.000_000_1)
     }
 
+    func testCoastStaysAheadOfLastFixSoTrailDoesNotLeadThePuck() {
+        var camera = LiveFollowCamera()
+        let start = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
+        camera.ingest(location: start, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        // Half a GPS interval later the published center must sit *ahead* of the
+        // last fix. Aiming at the raw GPS parks the puck a whole second behind
+        // reality and the breadcrumb trail draws out in front of the vehicle.
+        var now = baseDate
+        for _ in 0..<30 {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
+        }
+        let expected = LiveFollowCamera.coordinate(
+            from: CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0),
+            headingDegrees: 0,
+            distanceMeters: 20 * 0.5
+        )
+        XCTAssertEqual(camera.center?.latitude ?? 0, expected.latitude, accuracy: 0.000_08)
+        XCTAssertGreaterThan(camera.center?.latitude ?? 0, 41.0)
+    }
+
     func testResolvedSpeedFallsBackToImpliedWhenGPSSpeedMissing() {
         let previous = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
         let next = location(
@@ -316,7 +339,28 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertEqual(pose.center.latitude, 41.0, accuracy: 0.00001)
         XCTAssertEqual(pose.center.longitude, 29.0, accuracy: 0.00001)
         XCTAssertEqual(pose.pitchDegrees, LiveFollowCamera.pitch3D, accuracy: 0.5)
-        XCTAssertEqual(pose.distanceMeters, LiveFollowCamera.distance3D, accuracy: 1)
+        XCTAssertEqual(
+            pose.distanceMeters,
+            LiveFollowCamera.followDistance(uses3D: true, speedMps: 20),
+            accuracy: 1
+        )
+    }
+
+    func testFollowDistanceGrowsWithSpeedAndCaps() {
+        let parked = LiveFollowCamera.followDistance(uses3D: true, speedMps: 0)
+        let motorway = LiveFollowCamera.followDistance(uses3D: true, speedMps: 28)
+        XCTAssertEqual(parked, LiveFollowCamera.distance3D, accuracy: 0.01)
+        XCTAssertGreaterThan(motorway, parked * 1.5)
+        XCTAssertLessThanOrEqual(motorway, LiveFollowCamera.distanceCap3D)
+        XCTAssertEqual(
+            LiveFollowCamera.followDistance(uses3D: true, speedMps: 500),
+            LiveFollowCamera.distanceCap3D,
+            accuracy: 0.01
+        )
+        XCTAssertGreaterThan(
+            LiveFollowCamera.followDistance(uses3D: false, speedMps: 28),
+            LiveFollowCamera.followDistance(uses3D: true, speedMps: 28)
+        )
     }
 
     func testPoseFlattensIn2D() {
@@ -330,7 +374,11 @@ final class LiveFollowCameraTests: XCTestCase {
             return XCTFail("expected pose")
         }
         XCTAssertEqual(pose.pitchDegrees, 0, accuracy: 0.5)
-        XCTAssertEqual(pose.distanceMeters, LiveFollowCamera.distance2D, accuracy: 1)
+        XCTAssertEqual(
+            pose.distanceMeters,
+            LiveFollowCamera.followDistance(uses3D: false, speedMps: 20),
+            accuracy: 1
+        )
         XCTAssertEqual(pose.center.latitude, 41.0, accuracy: 0.00001)
         XCTAssertEqual(pose.center.longitude, 29.0, accuracy: 0.00001)
     }
@@ -349,7 +397,11 @@ final class LiveFollowCameraTests: XCTestCase {
         camera.uses3D = false
         camera.snapDimensionMode()
         XCTAssertEqual(camera.pose?.pitchDegrees ?? -1, LiveFollowCamera.pitch2D, accuracy: 0.01)
-        XCTAssertEqual(camera.pose?.distanceMeters ?? -1, LiveFollowCamera.distance2D, accuracy: 0.01)
+        XCTAssertEqual(
+            camera.pose?.distanceMeters ?? -1,
+            LiveFollowCamera.followDistance(uses3D: false, speedMps: 20),
+            accuracy: 0.01
+        )
     }
 
     func testModeLerpBlendsPitchWhenSwitching2D3D() {
@@ -543,6 +595,13 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertTrue(session.tick(dt: frame, now: later))
         XCTAssertGreaterThan(poseWrites, firstWrites)
         XCTAssertNotNil(session.vehicleCoordinate)
+    }
+
+    @MainActor
+    func testSessionRouteIsEmptyUntilRecordingServiceIsBound() {
+        let session = LiveFollowSession()
+        XCTAssertEqual(session.routeVersion, 0)
+        XCTAssertTrue(session.routeSegments.isEmpty)
     }
 
     @MainActor

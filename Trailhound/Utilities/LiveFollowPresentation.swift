@@ -148,6 +148,20 @@ enum LiveFollowPresentation {
         CGPoint(x: 0, y: puckAnnotationFrameHeight / 2 - puckCircleSize / 2)
     }
 
+    /// Artwork is drawn pointing screen-up. Rotate it by this many radians so the
+    /// chevron's sharp tip (and the photo) face `travelHeading` on a map whose
+    /// camera heading is `mapHeading`. Zero while following — the camera already
+    /// faces travel, so the unrotated puck is already correct.
+    static func puckRotationRadians(
+        travelHeadingDegrees: Double,
+        mapHeadingDegrees: Double
+    ) -> CGFloat {
+        var delta = travelHeadingDegrees - mapHeadingDegrees
+        while delta > 180 { delta -= 360 }
+        while delta < -180 { delta += 360 }
+        return CGFloat(delta * .pi / 180)
+    }
+
     /// Screen position of the puck photo-circle center from MapKit's projected annotation point.
     ///
     /// `projectedPoint` is `map.convert(coordinate, toPointTo: map)`. The annotation view's

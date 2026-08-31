@@ -17,6 +17,23 @@ final class LiveFollowSession {
     @ObservationIgnored
     weak var locationService: LocationService?
 
+    /// Route source for the MapKit coordinator. Read on display ticks (never from a
+    /// SwiftUI body), so a 1 Hz breadcrumb append cannot re-render the view tree —
+    /// that body + `updateUIView` pass every GPS fix is what stuttered the follow map.
+    @ObservationIgnored
+    weak var recordingService: TripRecordingService?
+
+    /// Cheap change stamp for the live route (point count + gap-split count).
+    var routeVersion: Int {
+        guard let recordingService else { return 0 }
+        return recordingService.liveBreadcrumbCoordinates.count &* 31
+            &+ recordingService.liveBreadcrumbSegments.count
+    }
+
+    var routeSegments: [[CLLocationCoordinate2D]] {
+        recordingService?.liveBreadcrumbSegments ?? []
+    }
+
     @ObservationIgnored var isPaused = false
     @ObservationIgnored var isFollowing = true
     @ObservationIgnored var openSettled = false
@@ -50,7 +67,7 @@ final class LiveFollowSession {
     }
 
     /// Display-link entry: ingest latest GPS and advance pose while the map is open.
-    /// Camera application is gated in MapKit (follow only); puck and two-point tip always update.
+    /// Camera application is gated in MapKit (follow only); puck and growing tail always update.
     func handleDisplayTick(dt: TimeInterval, now: Date = Date()) {
         guard !isClosing else { return }
 

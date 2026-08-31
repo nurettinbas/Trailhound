@@ -41,8 +41,6 @@ struct LiveFollowMapView: View {
     @State private var isClosing = false
     /// After open handoff finishes — follow camera may advance from GPS.
     @State private var openSettled = false
-    @State private var displaySegments: [LiveFollowPolylineSegment] = []
-    @State private var lastBreadcrumbPointCount = -1
     @State private var hudAnchorBox = RecordingCardAnchorBox()
     @State private var displayLink = DisplayLinkClock()
     @State private var pausePinCoordinates: [CLLocationCoordinate2D] = []
@@ -52,6 +50,7 @@ struct LiveFollowMapView: View {
     @State private var uses3DLocal = true
     /// Bumped to ask MapKit to fit start + traveled path + puck (north-up 2D).
     @State private var overviewRequestToken = 0
+    @State private var recenterRequestToken = 0
     /// First recorded breadcrumb — kept for the cover's lifetime so the start flag
     /// cannot vanish if the live array is briefly empty.
     @State private var latchedStartCoordinate: CLLocationCoordinate2D?
@@ -220,11 +219,6 @@ struct LiveFollowMapView: View {
                 onClose()
             }
         }
-        .onChange(of: recordingService.liveBreadcrumbCoordinates.count) { _, count in
-            latchStartCoordinateIfNeeded()
-            guard mapMounted else { return }
-            refreshDisplaySegments(force: count != lastBreadcrumbPointCount)
-        }
         .onChange(of: settings.liveFollowMap3DEnabled) { _, enabled in
             guard mapMounted else { return }
             guard uses3DLocal != enabled else { return }
@@ -273,7 +267,7 @@ struct LiveFollowMapView: View {
             isFollowing: isFollowing && openSettled && !isClosing,
             isPaused: isPaused,
             overviewRequestToken: overviewRequestToken,
-            segments: displaySegments,
+            recenterRequestToken: recenterRequestToken,
             pins: mapPins,
             vehiclePhoto: vehiclePhoto,
             vehicleSystemImage: vehicleSystemImage,
@@ -371,43 +365,11 @@ struct LiveFollowMapView: View {
         }
     }
 
-    /// 2D/3D, recenter, and close — white-on-blue chips matching the recording-card pills.
+    /// 2D/3D, overview/follow switch, and close — white-on-blue chips matching the recording-card pills.
     private var mapToolsRail: some View {
         HStack(spacing: 8) {
             mapDimensionToggle
-
-            Button {
-                TrailhoundHaptics.selection()
-                isFollowing = false
-                session.isFollowing = false
-                overviewRequestToken += 1
-            } label: {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 33, height: 33)
-                    .background(.white.opacity(0.14), in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L10n.string("recording.live_map.overview"))
-
-            Button {
-                TrailhoundHaptics.selection()
-                isFollowing = true
-                session.isFollowing = true
-                session.applyDimensionMode(uses3DLocal)
-                if let location = locationService.lastLocation {
-                    session.forceRecenter(location: location)
-                }
-            } label: {
-                Image(systemName: isFollowing ? "location.north.line.fill" : "location.north.line")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 33, height: 33)
-                    .background(.white.opacity(isFollowing ? 0.26 : 0.14), in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L10n.string("recording.live_map.recenter"))
+            mapFollowToggle
 
             Spacer(minLength: 8)
 
@@ -428,7 +390,7 @@ struct LiveFollowMapView: View {
     }
 
     private var mapDimensionToggle: some View {
-        HStack(spacing: 0) {
+        mapCapsuleToggle {
             mapDimensionSegment(title: "2D", selected: !uses3DLocal) {
                 setDimensionMode(false)
             }
@@ -436,9 +398,35 @@ struct LiveFollowMapView: View {
                 setDimensionMode(true)
             }
         }
-        .padding(2)
-        .frame(height: 33)
-        .background(.white.opacity(0.12), in: Capsule())
+    }
+
+    /// Overview vs heading-follow — same capsule switch as 2D/3D.
+    private var mapFollowToggle: some View {
+        mapCapsuleToggle {
+            mapIconSegment(
+                systemName: "arrow.up.left.and.arrow.down.right",
+                selected: !isFollowing,
+                ignoreIfSelected: false,
+                accessibilityLabel: L10n.string("recording.live_map.overview")
+            ) {
+                requestOverview()
+            }
+            mapIconSegment(
+                systemName: isFollowing ? "location.north.line.fill" : "location.north.line",
+                selected: isFollowing,
+                ignoreIfSelected: true,
+                accessibilityLabel: L10n.string("recording.live_map.recenter")
+            ) {
+                requestRecenter()
+            }
+        }
+    }
+
+    private func mapCapsuleToggle<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 0, content: content)
+            .padding(2)
+            .frame(height: 33)
+            .background(.white.opacity(0.12), in: Capsule())
     }
 
     private func mapDimensionSegment(
@@ -470,10 +458,50 @@ struct LiveFollowMapView: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
+    private func mapIconSegment(
+        systemName: String,
+        selected: Bool,
+        ignoreIfSelected: Bool,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            if ignoreIfSelected, selected { return }
+            TrailhoundHaptics.selection()
+            action()
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
+                .frame(width: 33, height: 29)
+                .background {
+                    if selected {
+                        Capsule().fill(.white.opacity(0.28))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     private func setDimensionMode(_ enabled3D: Bool) {
         uses3DLocal = enabled3D
         settings.liveFollowMap3DEnabled = enabled3D
         session.applyDimensionMode(enabled3D)
+    }
+
+    private func requestOverview() {
+        isFollowing = false
+        session.isFollowing = false
+        overviewRequestToken += 1
+    }
+
+    private func requestRecenter() {
+        isFollowing = true
+        session.isFollowing = true
+        session.applyDimensionMode(uses3DLocal)
+        recenterRequestToken += 1
     }
 
     private func bottomHUD(useGlass: Bool) -> some View {
@@ -643,7 +671,6 @@ struct LiveFollowMapView: View {
         guard !isClosing, !mapMounted else { return }
         bootstrapCamera()
         latchStartCoordinateIfNeeded()
-        refreshDisplaySegments(force: true)
         mapMounted = true
     }
 
@@ -721,6 +748,7 @@ struct LiveFollowMapView: View {
 
     private func bootstrapCamera() {
         session.locationService = locationService
+        session.recordingService = recordingService
         session.isPaused = isPaused
         session.isFollowing = isFollowing
         session.openSettled = openSettled
@@ -739,6 +767,11 @@ struct LiveFollowMapView: View {
         syncSessionFlags()
         displayLink.onTick = { [session] dt in
             session.handleDisplayTick(dt: dt)
+            // Start pin fallback for a session opened before the first breadcrumb —
+            // latched here (not via onChange) so the body never observes breadcrumbs.
+            if latchedStartCoordinate == nil {
+                latchStartCoordinateIfNeeded()
+            }
         }
         displayLink.start()
     }
@@ -751,6 +784,7 @@ struct LiveFollowMapView: View {
 
     private func syncSessionFlags() {
         session.locationService = locationService
+        session.recordingService = recordingService
         session.isPaused = isPaused
         session.isFollowing = isFollowing
         session.openSettled = openSettled
@@ -787,14 +821,6 @@ struct LiveFollowMapView: View {
         }
     }
 
-    private func refreshDisplaySegments(force: Bool) {
-        let count = recordingService.liveBreadcrumbCoordinates.count
-        guard force || count != lastBreadcrumbPointCount else { return }
-        lastBreadcrumbPointCount = count
-        let live = recordingService.liveBreadcrumbSegments
-        displaySegments = Self.polylineSegments(from: live)
-    }
-
     /// Apple Maps navigation blue — traveled breadcrumb.
     static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
     /// Matches MapKit puck plate (opaque so the route cannot show through).
@@ -802,9 +828,9 @@ struct LiveFollowMapView: View {
 
     /// Pass the recorded runs through untouched — they are already split at GPS gaps.
     ///
-    /// This runs on every breadcrumb (~1 Hz). Decimating here re-ran Douglas-Peucker over
-    /// the entire drive each second, which is exactly the per-second stall that showed up
-    /// at speed. MapKit-side cost is bounded by chunking the history overlay instead.
+    /// The live map no longer routes geometry through SwiftUI at all (the coordinator
+    /// pulls it from the session on display ticks); this stays as the pure mapping
+    /// used by tests and any future list-side consumers.
     static func polylineSegments(
         from liveSegments: [[CLLocationCoordinate2D]]
     ) -> [LiveFollowPolylineSegment] {

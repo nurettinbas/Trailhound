@@ -21,7 +21,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Widget + Live Activity controls
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
-- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the map keeps gliding between GPS fixes (no 1 Hz hitch), a single blue traveled path that fills in behind you and holds the same thickness in 2D and 3D, pan (including while paused) to look back at the start, **Show entire route** to fit start + trail on screen, screen stays awake while open, start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
+- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; pan (including while paused) to look back at the start; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)
@@ -184,6 +184,8 @@ docs/                 # Battery, TestFlight, vehicle care notes
 ## Documentation
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
+- [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll
+- [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 

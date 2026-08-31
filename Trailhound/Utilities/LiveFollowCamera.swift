@@ -34,6 +34,8 @@ struct LiveFollowCamera {
     /// Catch up only when GPS is ahead — never rewind. Kept slow so the correction
     /// trims the integrated position instead of racing it.
     static let alongCatchupTauSeconds: TimeInterval = 1.20
+    /// Ignore sub-step along-track noise, but small enough that real lag cannot settle in.
+    static let alongCatchupDeadbandMeters: CLLocationDistance = 0.25
     static let maxImpliedSpeedMps: Double = 50
     static let modeTauSeconds: TimeInterval = 0.20
     /// Ease GPS speed into dead-reckon so a noisy speed sample cannot yank the camera.
@@ -50,8 +52,24 @@ struct LiveFollowCamera {
     /// Closer than overview maps — “on the road” nav feel (Apple Maps follow).
     static let pitch3D: Double = 62
     static let pitch2D: Double = 0
+    /// Standstill eye distance. The camera pulls back with speed (see `followDistance`).
     static let distance3D: CLLocationDistance = 220
     static let distance2D: CLLocationDistance = 520
+    static let distanceStretch3D: CLLocationDistance = 13
+    static let distanceStretch2D: CLLocationDistance = 21
+    static let distanceCap3D: CLLocationDistance = 620
+    static let distanceCap2D: CLLocationDistance = 1_150
+
+    /// Eye distance for the current speed — Apple Maps pulls back as you speed up.
+    ///
+    /// A fixed 220 m eye at motorway speed sweeps the ground past the screen so fast that
+    /// every dropped frame reads as a lurch. Backing off cuts the on-screen angular rate
+    /// and shows more road ahead, which is both calmer and more useful.
+    static func followDistance(uses3D: Bool, speedMps: Double) -> CLLocationDistance {
+        let base = uses3D ? distance3D : distance2D
+        let stretch = max(0, speedMps) * (uses3D ? distanceStretch3D : distanceStretch2D)
+        return min(base + stretch, uses3D ? distanceCap3D : distanceCap2D)
+    }
 
     /// Legacy aliases used by call sites / bootstrap.
     static var pitchDegrees: Double { pitch3D }
@@ -194,8 +212,9 @@ struct LiveFollowCamera {
         }
 
         if isFirstFix || wasFrozen {
-            snapPublished(to: location.coordinate)
+            // Speed first: `snapPublished` sizes the eye distance from it.
             publishedSpeedMps = targetSpeedMps
+            snapPublished(to: location.coordinate)
         }
     }
 
@@ -227,6 +246,20 @@ struct LiveFollowCamera {
             publishedSpeedMps += (targetSpeedMps - publishedSpeedMps) * speedAlpha
         }
 
+        // A fix says where the car *was*. Correcting toward that raw point parks the puck
+        // a whole GPS interval behind reality, so the breadcrumb trail draws out ahead of
+        // the vehicle and lurches forward once a second. Aim at where the car should be
+        // *now* instead: the reference then advances at the same rate as the puck and stays
+        // continuous across fixes, because a new fix arrives exactly as old age is spent.
+        let liveTarget: CLLocationCoordinate2D = {
+            guard !isStale, hasAcceptedHeading, publishedSpeedMps > 0.2 else { return target }
+            return Self.coordinate(
+                from: target,
+                headingDegrees: headingDegrees,
+                distanceMeters: publishedSpeedMps * min(age, Self.maxDeadReckonSeconds)
+            )
+        }()
+
         if let current = center {
             if publishedSpeedMps > 0.2, hasAcceptedHeading {
                 let step = publishedSpeedMps * clampedDt
@@ -237,13 +270,13 @@ struct LiveFollowCamera {
                 )
                 center = Self.correctedTowardGPS(
                     current: predicted,
-                    gps: target,
+                    gps: liveTarget,
                     headingDegrees: headingDegrees,
                     dt: clampedDt
                 )
             } else if !isStale {
                 let positionAlpha = 1 - exp(-clampedDt / Self.alongCatchupTauSeconds)
-                center = Self.lerpCoordinate(from: current, toward: target, factor: positionAlpha)
+                center = Self.lerpCoordinate(from: current, toward: liveTarget, factor: positionAlpha)
             }
             // Stale fix with the coast spent: hold. Never rewind to an old position.
         }
@@ -258,7 +291,7 @@ struct LiveFollowCamera {
         }
 
         let targetPitch = uses3D ? Self.pitch3D : Self.pitch2D
-        let targetDistance = uses3D ? Self.distance3D : Self.distance2D
+        let targetDistance = Self.followDistance(uses3D: uses3D, speedMps: publishedSpeedMps)
         let modeAlpha = 1 - exp(-clampedDt / Self.modeTauSeconds)
         publishedPitchDegrees += (targetPitch - publishedPitchDegrees) * modeAlpha
         publishedDistanceMeters += (targetDistance - publishedDistanceMeters) * modeAlpha
@@ -304,7 +337,7 @@ struct LiveFollowCamera {
     /// Instantly match published pitch/distance to the current 2D/3D mode (no lerp).
     mutating func snapDimensionMode() {
         publishedPitchDegrees = uses3D ? Self.pitch3D : Self.pitch2D
-        publishedDistanceMeters = uses3D ? Self.distance3D : Self.distance2D
+        publishedDistanceMeters = Self.followDistance(uses3D: uses3D, speedMps: publishedSpeedMps)
     }
 
     mutating func reset() {
@@ -337,7 +370,7 @@ struct LiveFollowCamera {
     private mutating func snapPublished(to coordinate: CLLocationCoordinate2D) {
         center = coordinate
         publishedPitchDegrees = uses3D ? Self.pitch3D : Self.pitch2D
-        publishedDistanceMeters = uses3D ? Self.distance3D : Self.distance2D
+        publishedDistanceMeters = Self.followDistance(uses3D: uses3D, speedMps: publishedSpeedMps)
     }
 
     private func shouldAcceptCourse(from location: CLLocation) -> Bool {
@@ -427,7 +460,7 @@ struct LiveFollowCamera {
                 distanceMeters: -lateralStep
             )
         }
-        if along > 0.8 {
+        if along > alongCatchupDeadbandMeters {
             let catchUp = along * (1 - exp(-dt / alongCatchupTauSeconds))
             result = coordinate(from: result, headingDegrees: headingDegrees, distanceMeters: catchUp)
         }

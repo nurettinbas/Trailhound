@@ -81,6 +81,19 @@ enum TripDetailMapStyle: Equatable {
     case standard
     case dark
 
+    /// Picker default: follow the phone's appearance until the user chooses.
+    static func matching(_ colorScheme: ColorScheme) -> TripDetailMapStyle {
+        colorScheme == .dark ? .dark : .standard
+    }
+
+    /// Always force a scheme — `nil` would follow the system, so Light does nothing in Dark Mode.
+    var forcedColorScheme: ColorScheme {
+        switch self {
+        case .standard: return .light
+        case .dark: return .dark
+        }
+    }
+
     func mapStyle() -> MapStyle {
         // Always flat — realistic elevation remeshes on camera/layout changes and hitches.
         switch self {
@@ -235,7 +248,8 @@ struct TripDetailMapLayer: View, Equatable {
             }
         }
         .mapStyle(style.mapStyle())
-        .preferredColorScheme(style == .dark ? .dark : nil)
+        .environment(\.colorScheme, style.forcedColorScheme)
+        .preferredColorScheme(style.forcedColorScheme)
     }
 }
 

@@ -134,6 +134,47 @@ final class LiveFollowPresentationTests: XCTestCase {
         XCTAssertGreaterThan(offset.y, 0)
     }
 
+    func testPuckRotationIsIdentityWhenMapAlreadyFacesTravel() {
+        XCTAssertEqual(
+            LiveFollowPresentation.puckRotationRadians(
+                travelHeadingDegrees: 90,
+                mapHeadingDegrees: 90
+            ),
+            0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            LiveFollowPresentation.puckRotationRadians(
+                travelHeadingDegrees: 0,
+                mapHeadingDegrees: 0
+            ),
+            0,
+            accuracy: 0.0001
+        )
+    }
+
+    func testPuckRotationOnNorthUpOverviewFacesTravel() {
+        // Artwork is drawn screen-up. Eastbound on a north-up map needs +90°
+        // (clockwise in UIKit) so the chevron's sharp tip points along the road.
+        let east = LiveFollowPresentation.puckRotationRadians(
+            travelHeadingDegrees: 90,
+            mapHeadingDegrees: 0
+        )
+        XCTAssertEqual(east, .pi / 2, accuracy: 0.0001)
+
+        let west = LiveFollowPresentation.puckRotationRadians(
+            travelHeadingDegrees: 270,
+            mapHeadingDegrees: 0
+        )
+        XCTAssertEqual(west, -.pi / 2, accuracy: 0.0001)
+
+        let wrap = LiveFollowPresentation.puckRotationRadians(
+            travelHeadingDegrees: 10,
+            mapHeadingDegrees: 350
+        )
+        XCTAssertEqual(wrap, 20 * .pi / 180, accuracy: 0.0001)
+    }
+
     func testHeroFlightArcEndpointsAndBulge() {
         let from = CGPoint(x: 195, y: 160)
         let to = CGPoint(x: 195, y: 540)

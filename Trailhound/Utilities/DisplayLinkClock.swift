@@ -13,8 +13,10 @@ final class DisplayLinkClock {
     }
 
     private let target = Target()
-    private var link: CADisplayLink?
-    private var lastTimestamp: CFTimeInterval = 0
+    /// `deinit` is nonisolated in Swift 6; `CADisplayLink` is not Sendable, so the
+    /// stored link has to be reachable without hopping to the main actor.
+    nonisolated(unsafe) private var link: CADisplayLink?
+    private var lastPresentationTime: CFTimeInterval = 0
 
     /// Called each display frame with a clamped `dt` in seconds.
     var onTick: ((TimeInterval) -> Void)?
@@ -23,7 +25,7 @@ final class DisplayLinkClock {
 
     func start() {
         guard link == nil else { return }
-        lastTimestamp = 0
+        lastPresentationTime = 0
         let displayLink = CADisplayLink(target: target, selector: #selector(Target.step(_:)))
         target.handler = { [weak self] link in
             self?.handle(link)
@@ -36,19 +38,32 @@ final class DisplayLinkClock {
     func stop() {
         link?.invalidate()
         link = nil
-        lastTimestamp = 0
+        lastPresentationTime = 0
         target.handler = nil
     }
 
+    deinit {
+        link?.invalidate()
+    }
+
+    /// Steps by the gap between *presentation* times, not between callback times.
+    ///
+    /// `targetTimestamp` is when the frame being built will actually reach the screen, so
+    /// these deltas match what the eye integrates and stay even when a frame is dropped.
+    /// Measuring `link.timestamp` instead folds callback-scheduling noise straight into
+    /// the motion, which reads as micro-stutter even at a steady 60 fps.
     private func handle(_ link: CADisplayLink) {
-        let timestamp = link.timestamp
+        let presentationTime = link.targetTimestamp
         let dt: TimeInterval
-        if lastTimestamp > 0 {
-            dt = min(max(timestamp - lastTimestamp, 0), LiveFollowCamera.maxTickDeltaSeconds)
+        if lastPresentationTime > 0 {
+            dt = min(
+                max(presentationTime - lastPresentationTime, 0),
+                LiveFollowCamera.maxTickDeltaSeconds
+            )
         } else {
             dt = link.duration > 0 ? link.duration : (1.0 / 60.0)
         }
-        lastTimestamp = timestamp
+        lastPresentationTime = presentationTime
         onTick?(dt)
     }
 }

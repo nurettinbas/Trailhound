@@ -27,6 +27,7 @@ struct TripDetailView: View {
     @Bindable var trip: Trip
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
+    @Environment(\.colorScheme) private var colorScheme
     @Query private var places: [SavedPlace]
     @Bindable private var settings = AppSettings.shared
 
@@ -51,7 +52,8 @@ struct TripDetailView: View {
     /// Style picker fades in after the panel has largely cleared.
     @State private var showExpandedMapChrome = false
     @State private var mapExpandTransitionTask: Task<Void, Never>?
-    @State private var mapStyle: TripDetailMapStyle = .standard
+    /// `nil` until the user picks — then Light/Dark are forced, not system-following.
+    @State private var mapStyleOverride: TripDetailMapStyle?
     /// Recorded GPS count — filled after the first paint so opening never faults points.
     @State private var recordedPointCount: Int = 0
     @State private var routeRevealProgress: Double = 0
@@ -677,8 +679,15 @@ struct TripDetailView: View {
         }
     }
 
+    private var mapStyle: TripDetailMapStyle {
+        mapStyleOverride ?? .matching(colorScheme)
+    }
+
     private var expandedMapStylePicker: some View {
-        Picker(L10n.mapStylePicker, selection: $mapStyle) {
+        Picker(L10n.mapStylePicker, selection: Binding(
+            get: { mapStyle },
+            set: { mapStyleOverride = $0 }
+        )) {
             Text(L10n.mapStyleLight).tag(TripDetailMapStyle.standard)
             Text(L10n.mapStyleDark).tag(TripDetailMapStyle.dark)
         }
