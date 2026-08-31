@@ -193,6 +193,36 @@ final class AppSettingsLiveFollowMapTests: XCTestCase {
     }
 }
 
+@MainActor
+final class AppSettingsAppearanceModeTests: XCTestCase {
+    func testAppearanceDefaultsToSystemAndPersists() {
+        let suiteName = "test.trailhound.appearanceMode.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create test defaults")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(settings.appearanceMode, .system)
+        XCTAssertNil(settings.appearanceMode.preferredColorScheme)
+
+        settings.appearanceMode = .dark
+        XCTAssertEqual(settings.appearanceMode, .dark)
+        XCTAssertEqual(settings.appearanceMode.preferredColorScheme, .dark)
+        XCTAssertEqual(defaults.string(forKey: "appearanceMode"), "dark")
+
+        let reloaded = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(reloaded.appearanceMode, .dark)
+
+        reloaded.appearanceMode = .light
+        XCTAssertEqual(reloaded.appearanceMode.preferredColorScheme, .light)
+
+        reloaded.appearanceMode = .system
+        XCTAssertNil(reloaded.appearanceMode.preferredColorScheme)
+    }
+}
+
 final class FuelCostCalculatorTests: XCTestCase {
     private var defaults: UserDefaults!
 

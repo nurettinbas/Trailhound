@@ -1,4 +1,24 @@
 import Foundation
+import SwiftUI
+
+enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    /// `nil` leaves the interface style to the system.
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    static let `default` = AppearanceMode.system
+}
 
 enum FuelCurrency: String, CaseIterable, Identifiable, Sendable {
     case tryCurrency = "TRY"
@@ -46,6 +66,10 @@ final class AppSettings {
             }
         }
     }
+    /// App-wide appearance. `.system` follows iPhone light/dark mode.
+    var appearanceMode: AppearanceMode = .default {
+        didSet { defaults.set(appearanceMode.rawValue, forKey: Key.appearanceMode) }
+    }
 
     private enum Key {
         static let recordingSounds = "recordingSoundsEnabled"
@@ -67,6 +91,7 @@ final class AppSettings {
         static let developerModeEnabled = "developerModeEnabled"
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
+        static let appearanceMode = "appearanceMode"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -87,6 +112,10 @@ final class AppSettings {
         if let raw = resolvedDefaults.string(forKey: Key.recordingVehicleID),
            let id = UUID(uuidString: raw) {
             recordingVehicleID = id
+        }
+        if let raw = resolvedDefaults.string(forKey: Key.appearanceMode),
+           let mode = AppearanceMode(rawValue: raw) {
+            appearanceMode = mode
         }
     }
 

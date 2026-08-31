@@ -117,6 +117,22 @@ struct SettingsView: View {
             CategoryManagementView(focusedField: $focusedField)
 
             Section {
+                Picker(L10n.settingsAppearancePicker, selection: $settings.appearanceMode) {
+                    Text(L10n.settingsAppearanceSystem).tag(AppearanceMode.system)
+                    Text(L10n.settingsAppearanceLight).tag(AppearanceMode.light)
+                    Text(L10n.settingsAppearanceDark).tag(AppearanceMode.dark)
+                }
+                .glassSegmentedStyle()
+                .labelsHidden()
+                .accessibilityIdentifier("settings.appearance")
+                .glassRow(position: .only)
+            } header: {
+                Text(L10n.settingsAppearanceSection)
+            } footer: {
+                Text(L10n.settingsAppearanceHint)
+            }
+
+            Section {
                 Button(L10n.settingsOpenSystemSettings) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)

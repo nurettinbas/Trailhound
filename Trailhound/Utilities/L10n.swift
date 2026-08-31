@@ -222,6 +222,12 @@ enum L10n {
     static var settingsRemovePairing: String { string("settings.vehicle_pairing.remove") }
     static var settingsPairVehicleHint: String { string("settings.vehicle_pairing.hint") }
     static var settingsDefineVehicle: String { string("settings.vehicle_pairing.define") }
+    static var settingsAppearanceSection: String { string("settings.appearance.section") }
+    static var settingsAppearancePicker: String { string("settings.appearance.picker") }
+    static var settingsAppearanceSystem: String { string("settings.appearance.system") }
+    static var settingsAppearanceLight: String { string("settings.appearance.light") }
+    static var settingsAppearanceDark: String { string("settings.appearance.dark") }
+    static var settingsAppearanceHint: String { string("settings.appearance.hint") }
     static var settingsLanguageSection: String { string("settings.language.section") }
     static var settingsLanguageSystemHint: String { string("settings.language.system_hint") }
     static var settingsFuelSection: String { string("settings.fuel.section") }

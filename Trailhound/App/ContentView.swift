@@ -17,6 +17,7 @@ struct ContentView: View {
                 mainTabs
             }
         }
+        .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .toastHost()
     }
 
