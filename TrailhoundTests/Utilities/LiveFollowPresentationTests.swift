@@ -112,33 +112,26 @@ final class LiveFollowPresentationTests: XCTestCase {
         XCTAssertEqual(dest3D.x, 195, accuracy: 0.01)
     }
 
-    func testPuckCircleCenterAppliesAnnotationOffsetAndBadgeLayout() {
+    /// The route tail ends at the coordinate, so the circle center must land there too —
+    /// otherwise the trail enters the puck off-center (badly on a bend under 3D pitch).
+    func testPuckCircleCenterSitsExactlyOnTheProjectedCoordinate() {
         let projected = CGPoint(x: 200, y: 500)
         let circle = LiveFollowPresentation.puckCircleCenter(fromProjectedAnnotationPoint: projected)
-        let offset = LiveFollowPresentation.puckAnnotationCenterOffset
-        let viewCenterY = projected.y + offset.y
-        let circleVsView =
-            LiveFollowPresentation.puckCircleSize / 2
-            - LiveFollowPresentation.puckAnnotationFrameHeight / 2
-        XCTAssertEqual(circle.x, projected.x + offset.x, accuracy: 0.01)
-        XCTAssertEqual(circle.y, viewCenterY + circleVsView, accuracy: 0.01)
-        // Circle sits above the projected annotation point (chevron hangs below).
-        XCTAssertLessThan(circle.y, projected.y)
-
-        let viewTop = projected.y + offset.y - LiveFollowPresentation.puckAnnotationFrameHeight / 2
-        let artworkMidY = viewTop + LiveFollowPresentation.puckArtworkHeight / 2
-        XCTAssertEqual(artworkMidY, projected.y, accuracy: 0.01)
+        XCTAssertEqual(circle.x, projected.x, accuracy: 0.01)
+        XCTAssertEqual(circle.y, projected.y, accuracy: 0.01)
     }
 
-    func testPuckAnnotationCenterOffsetCentersArtworkOnCoordinate() {
-        let artworkMid = LiveFollowPresentation.puckArtworkHeight / 2
-        let viewMid = LiveFollowPresentation.puckAnnotationFrameHeight / 2
+    func testPuckAnnotationCenterOffsetCentersCircleOnCoordinate() {
+        let offset = LiveFollowPresentation.puckAnnotationCenterOffset
+        XCTAssertEqual(offset.x, 0, accuracy: 0.01)
         XCTAssertEqual(
-            LiveFollowPresentation.puckAnnotationCenterOffset.y,
-            viewMid - artworkMid,
+            offset.y,
+            LiveFollowPresentation.puckAnnotationFrameHeight / 2
+                - LiveFollowPresentation.puckCircleSize / 2,
             accuracy: 0.01
         )
-        XCTAssertEqual(LiveFollowPresentation.puckAnnotationCenterOffset.x, 0, accuracy: 0.01)
+        // Chevron hangs below the coordinate, behind the vehicle.
+        XCTAssertGreaterThan(offset.y, 0)
     }
 
     func testHeroFlightArcEndpointsAndBulge() {

@@ -52,6 +52,9 @@ struct LiveFollowMapView: View {
     @State private var uses3DLocal = true
     /// Bumped to ask MapKit to fit start + traveled path + puck (north-up 2D).
     @State private var overviewRequestToken = 0
+    /// First recorded breadcrumb — kept for the cover's lifetime so the start flag
+    /// cannot vanish if the live array is briefly empty.
+    @State private var latchedStartCoordinate: CLLocationCoordinate2D?
 
     private var uses3D: Bool { uses3DLocal }
 
@@ -70,7 +73,14 @@ struct LiveFollowMapView: View {
     }
 
     private var startPinCoordinate: CLLocationCoordinate2D? {
-        recordingService.liveBreadcrumbCoordinates.first
+        // Read the fallback only when needed — touching `lastLocation` here would
+        // subscribe the whole body to every GPS fix.
+        if let latched = latchedStartCoordinate { return latched }
+        return LiveFollowMapPinBuilder.resolvedStartCoordinate(
+            latched: nil,
+            breadcrumbStart: recordingService.liveBreadcrumbCoordinates.first,
+            fallback: locationService.lastLocation?.coordinate
+        )
     }
 
     private var tripStopCoordinates: [CLLocationCoordinate2D] {
@@ -167,6 +177,7 @@ struct LiveFollowMapView: View {
         .statusBarHidden(false)
         .onAppear {
             uses3DLocal = settings.liveFollowMap3DEnabled
+            latchStartCoordinateIfNeeded()
             retainIdleLock()
             wasPaused = isPaused
             runOpenSequence()
@@ -210,6 +221,7 @@ struct LiveFollowMapView: View {
             }
         }
         .onChange(of: recordingService.liveBreadcrumbCoordinates.count) { _, count in
+            latchStartCoordinateIfNeeded()
             guard mapMounted else { return }
             refreshDisplaySegments(force: count != lastBreadcrumbPointCount)
         }
@@ -630,6 +642,7 @@ struct LiveFollowMapView: View {
     private func prepareMapMount() {
         guard !isClosing, !mapMounted else { return }
         bootstrapCamera()
+        latchStartCoordinateIfNeeded()
         refreshDisplaySegments(force: true)
         mapMounted = true
     }
@@ -766,6 +779,14 @@ struct LiveFollowMapView: View {
         idleLockHeld = false
     }
 
+    private func latchStartCoordinateIfNeeded() {
+        if latchedStartCoordinate == nil,
+           let first = recordingService.liveBreadcrumbCoordinates.first
+        {
+            latchedStartCoordinate = first
+        }
+    }
+
     private func refreshDisplaySegments(force: Bool) {
         let count = recordingService.liveBreadcrumbCoordinates.count
         guard force || count != lastBreadcrumbPointCount else { return }
@@ -779,42 +800,18 @@ struct LiveFollowMapView: View {
     /// Matches MapKit puck plate (opaque so the route cannot show through).
     static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
 
-    /// Decimate completed gap-split runs; keep the active tail raw so the stroke can grow.
-    /// Never rewrite stored points.
+    /// Pass the recorded runs through untouched — they are already split at GPS gaps.
+    ///
+    /// This runs on every breadcrumb (~1 Hz). Decimating here re-ran Douglas-Peucker over
+    /// the entire drive each second, which is exactly the per-second stall that showed up
+    /// at speed. MapKit-side cost is bounded by chunking the history overlay instead.
     static func polylineSegments(
         from liveSegments: [[CLLocationCoordinate2D]]
     ) -> [LiveFollowPolylineSegment] {
-        var result: [LiveFollowPolylineSegment] = []
-        let lastIndex = liveSegments.count - 1
-        for (index, coords) in liveSegments.enumerated() {
-            if index == lastIndex {
-                let piece = LiveFollowGrowingRoute.liveActiveCoordinates(coords)
-                if !piece.isEmpty {
-                    result.append(
-                        LiveFollowPolylineSegment(id: "live-\(index)-0", coordinates: piece)
-                    )
-                }
-                continue
-            }
-            guard coords.count >= 2 else { continue }
-            let samples = coords.enumerated().map { offset, coordinate in
-                RouteSample(
-                    coordinate: coordinate,
-                    timestamp: Date(timeIntervalSince1970: TimeInterval(offset)),
-                    speedMps: nil
-                )
-            }
-            let pieces = RouteDisplayPath.displaySegmentCoordinates(samples: samples)
-            for (pieceIndex, piece) in pieces.enumerated() where piece.count >= 2 {
-                result.append(
-                    LiveFollowPolylineSegment(
-                        id: "live-\(index)-\(pieceIndex)",
-                        coordinates: piece
-                    )
-                )
-            }
+        liveSegments.enumerated().compactMap { index, coords in
+            guard coords.count >= 2 else { return nil }
+            return LiveFollowPolylineSegment(id: "live-\(index)-0", coordinates: coords)
         }
-        return result
     }
 }
 

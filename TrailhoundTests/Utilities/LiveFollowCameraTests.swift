@@ -98,7 +98,7 @@ final class LiveFollowCameraTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(camera.headingDegrees, previous - 0.001)
             previous = camera.headingDegrees
         }
-        XCTAssertGreaterThan(camera.headingDegrees, 5)
+        XCTAssertGreaterThan(camera.headingDegrees, 3)
         XCTAssertLessThan(camera.headingDegrees, 90)
     }
 
@@ -163,34 +163,97 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(camera.center?.latitude ?? -1, ahead - 0.000_000_1)
     }
 
-    func testWithoutAlongTrackRewindKeepsForwardProgress() {
-        let current = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
-        let behind = CLLocationCoordinate2D(latitude: 41.0002, longitude: 29.0)
-        let clamped = LiveFollowCamera.withoutAlongTrackRewind(
-            current: current,
-            predicted: behind,
-            headingDegrees: 0
+    func testResolvedSpeedFallsBackToImpliedWhenGPSSpeedMissing() {
+        let previous = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let next = location(
+            lat: 41.0003,
+            lon: 29.0,
+            speedMps: -1,
+            course: -1,
+            courseAccuracy: -1,
+            timestamp: baseDate.addingTimeInterval(1)
         )
-        XCTAssertGreaterThan(clamped.latitude, behind.latitude)
-        XCTAssertEqual(clamped.latitude, current.latitude, accuracy: 0.00002)
+        let speed = LiveFollowCamera.resolvedSpeedMps(
+            location: next,
+            previousCoordinate: previous,
+            previousStamp: baseDate
+        )
+        XCTAssertGreaterThan(speed, 25)
+        XCTAssertLessThan(speed, 40)
     }
 
-    func testDeadReckonCapsAfterMaxAge() {
+    func testInvalidGPSSpeedStillAdvancesBetweenFixes() {
+        var camera = LiveFollowCamera()
+        let first = location(
+            lat: 41.0,
+            lon: 29.0,
+            speedMps: -1,
+            course: -1,
+            courseAccuracy: -1,
+            timestamp: baseDate
+        )
+        camera.ingest(location: first, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        let secondStamp = baseDate.addingTimeInterval(1)
+        let second = location(
+            lat: 41.0003,
+            lon: 29.0,
+            speedMps: -1,
+            course: -1,
+            courseAccuracy: -1,
+            timestamp: secondStamp
+        )
+        camera.ingest(location: second, isPaused: false, now: secondStamp)
+        _ = camera.tick(dt: frame, now: secondStamp)
+        let afterSecond = camera.center?.latitude ?? -1
+
+        var now = secondStamp
+        for _ in 0..<45 {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
+        }
+        XCTAssertGreaterThan(camera.center?.latitude ?? -1, afterSecond + 0.00003)
+    }
+
+    /// The fresh window must comfortably cover a ~1 Hz fix interval, otherwise the
+    /// puck stalls between every sample — that reads as a 1 Hz hitch on screen.
+    func testCoastSpansAFullSecondWithoutStalling() {
         var camera = LiveFollowCamera()
         let fix = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
         camera.ingest(location: fix, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
 
-        let atCap = baseDate.addingTimeInterval(LiveFollowCamera.maxDeadReckonSeconds)
-        for _ in 0..<200 {
-            _ = camera.tick(dt: frame, now: atCap)
+        var now = baseDate
+        var previous = camera.center?.latitude ?? -1
+        for _ in 0..<60 {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
+            let current = camera.center?.latitude ?? -1
+            XCTAssertGreaterThan(current, previous, "puck must advance on every frame")
+            previous = current
         }
-        let latAtCap = camera.center?.latitude ?? -1
+    }
 
-        let later = baseDate.addingTimeInterval(LiveFollowCamera.maxDeadReckonSeconds + 2)
-        for _ in 0..<30 {
-            _ = camera.tick(dt: frame, now: later)
+    func testStaleFixBleedsCoastOffAndSettles() {
+        var camera = LiveFollowCamera()
+        let fix = location(lat: 41.0, lon: 29.0, speedMps: 20, course: 0, courseAccuracy: 5)
+        camera.ingest(location: fix, isPaused: false, now: baseDate)
+        _ = camera.tick(dt: frame, now: baseDate)
+
+        var now = baseDate
+        for _ in 0..<(60 * 15) {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
         }
-        XCTAssertEqual(camera.center?.latitude ?? -1, latAtCap, accuracy: 0.000_001)
+        let settled = camera.center?.latitude ?? -1
+        XCTAssertGreaterThan(settled, 41.0)
+
+        for _ in 0..<120 {
+            now = now.addingTimeInterval(frame)
+            _ = camera.tick(dt: frame, now: now)
+        }
+        XCTAssertEqual(camera.center?.latitude ?? -1, settled, accuracy: 0.000_001)
     }
 
     func testForceRecenterUpdatesImmediately() {

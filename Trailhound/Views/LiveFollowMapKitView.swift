@@ -3,9 +3,22 @@ import SwiftUI
 import UIKit
 
 /// Live-follow route stroke — single solid (no casing, no second blue).
+///
+/// Applied to MapKit's own vector polyline renderers on purpose: `lineWidth` stays
+/// a constant screen width under any zoom *and* under camera pitch, which a custom
+/// `MKOverlayRenderer` cannot do (MapKit rasterises those flat, then warps the
+/// bitmap, so the stroke fattens toward the bottom of a 3D view and seams while panning).
 enum LiveFollowRouteStrokeStyle {
     static let solidWidth: CGFloat = 7.2
     static let solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
+
+    static func apply(to renderer: MKOverlayPathRenderer) {
+        renderer.strokeColor = solidColor
+        renderer.lineWidth = solidWidth
+        renderer.lineCap = .round
+        renderer.lineJoin = .round
+        renderer.miterLimit = 1
+    }
 }
 
 /// MapKit host for live follow — display-link camera, GPS history + two-point tip, pins + puck.
@@ -51,8 +64,6 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         context.coordinator.mapView = map
         context.coordinator.bindSession()
         context.coordinator.installGestureBreak(on: map)
-        context.coordinator.ensureHistoryOverlay(on: map)
-        context.coordinator.ensureTipOverlay(on: map)
         if let pose = session.pose {
             context.coordinator.applyCamera(pose, on: map)
         }
@@ -118,11 +129,28 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private var puckAnnotation: LiveFollowPuckAnnotation?
         private var gestureRecognizersInstalled = false
         private var lastReportedPuckPoint: CGPoint?
-        private let historyOverlay = LiveFollowHistoryOverlay()
-        private weak var historyRenderer: LiveFollowHistoryRenderer?
-        private let tipOverlay = LiveFollowTipOverlay()
-        private weak var tipRenderer: LiveFollowTipRenderer?
+        private var lastTipVehicle: CLLocationCoordinate2D?
+        private var lastTipWriteAt: CFTimeInterval = 0
+        private var tipOverlay: MKPolyline?
         private var lastCommittedPieces: [[CLLocationCoordinate2D]] = []
+
+        /// History is cut into fixed-size polylines. Everything but the growing tail
+        /// chunk is immutable, so a breadcrumb only ever re-uploads ≤ `historyChunkPoints`
+        /// vertices. Rebuilding the whole route each second stalls the main thread once
+        /// a fast drive has accumulated thousands of points.
+        private struct HistoryChunkKey: Hashable {
+            let piece: Int
+            let chunk: Int
+        }
+
+        private static let historyChunkPoints = 240
+        private var historyChunks: [HistoryChunkKey: MKPolyline] = [:]
+        private var historyChunkCounts: [HistoryChunkKey: Int] = [:]
+
+        /// Tip geometry is swapped at ~12 Hz. MapKit strokes it as a vector, so the
+        /// puck can keep moving at display rate without re-rasterising the route.
+        private static let tipRefreshInterval: CFTimeInterval = 0.08
+        private static let tipRefreshMeters: CLLocationDistance = 0.8
 
         init(
             session: LiveFollowSession,
@@ -213,45 +241,86 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             lastCommittedPieces = next
             if !unchanged {
                 replaceHistoryOverlay(next, on: map)
+                // New breadcrumb ⇒ the tip anchor moved; refresh past the throttle.
+                lastTipWriteAt = 0
+                lastTipVehicle = nil
             }
             updateRouteTip(vehicle: session.vehicleCoordinate, on: map)
         }
 
         private func updateRouteTip(vehicle: CLLocationCoordinate2D?, on map: MKMapView) {
-            ensureTipOverlay(on: map)
-            let points: [CLLocationCoordinate2D]
             if isPaused {
-                points = []
+                lastTipVehicle = nil
+                replaceTipOverlay(nil, on: map)
+                return
+            }
+            if let vehicle, let lastTipVehicle {
+                let moved = CLLocation(latitude: lastTipVehicle.latitude, longitude: lastTipVehicle.longitude)
+                    .distance(from: CLLocation(latitude: vehicle.latitude, longitude: vehicle.longitude))
+                let elapsed = CACurrentMediaTime() - lastTipWriteAt
+                if moved < Self.tipRefreshMeters, elapsed < Self.tipRefreshInterval {
+                    return
+                }
+            }
+            lastTipVehicle = vehicle
+            lastTipWriteAt = CACurrentMediaTime()
+            let points = LiveFollowGrowingRoute.tipSegment(
+                anchor: LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces),
+                vehicle: vehicle
+            )
+            replaceTipOverlay(points, on: map)
+        }
+
+        /// Adds the replacement before dropping the old overlay so the stroke never blinks.
+        private func replaceTipOverlay(_ points: [CLLocationCoordinate2D]?, on map: MKMapView) {
+            let previous = tipOverlay
+            if let points, points.count >= 2 {
+                let next = MKPolyline(coordinates: points, count: points.count)
+                tipOverlay = next
+                map.addOverlay(next, level: .aboveRoads)
             } else {
-                points = LiveFollowGrowingRoute.tipSegment(
-                    anchor: LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces),
-                    vehicle: vehicle
-                ) ?? []
+                tipOverlay = nil
             }
-            let dirty = tipOverlay.replacePoints(points)
-            guard !dirty.isNull else { return }
-            tipRenderer?.setNeedsDisplay(dirty)
-        }
-
-        func ensureTipOverlay(on map: MKMapView) {
-            if !map.overlays.contains(where: { $0 === tipOverlay }) {
-                map.addOverlay(tipOverlay, level: .aboveRoads)
-            }
-        }
-
-        func ensureHistoryOverlay(on map: MKMapView) {
-            if !map.overlays.contains(where: { $0 === historyOverlay }) {
-                map.addOverlay(historyOverlay, level: .aboveRoads)
+            if let previous {
+                map.removeOverlay(previous)
             }
         }
 
         private func replaceHistoryOverlay(_ pieces: [[CLLocationCoordinate2D]], on map: MKMapView) {
-            ensureHistoryOverlay(on: map)
             let drawable = LiveFollowGrowingRoute.historyPieces(from: pieces)
-            if let dirty = historyOverlay.replacePieces(drawable) {
-                historyRenderer?.setNeedsDisplay(dirty)
-            } else {
-                historyRenderer?.setNeedsDisplay()
+            var liveKeys = Set<HistoryChunkKey>()
+
+            for (pieceIndex, coordinates) in drawable.enumerated() {
+                var start = 0
+                var chunkIndex = 0
+                while start < coordinates.count - 1 {
+                    // Chunks share their boundary vertex so the stroke stays continuous.
+                    let end = min(start + Self.historyChunkPoints, coordinates.count - 1)
+                    let key = HistoryChunkKey(piece: pieceIndex, chunk: chunkIndex)
+                    liveKeys.insert(key)
+
+                    let count = end - start + 1
+                    if historyChunkCounts[key] != count {
+                        let slice = Array(coordinates[start...end])
+                        let line = MKPolyline(coordinates: slice, count: slice.count)
+                        let previous = historyChunks[key]
+                        historyChunks[key] = line
+                        historyChunkCounts[key] = count
+                        map.addOverlay(line, level: .aboveRoads)
+                        if let previous {
+                            map.removeOverlay(previous)
+                        }
+                    }
+
+                    start = end
+                    chunkIndex += 1
+                }
+            }
+
+            for (key, overlay) in historyChunks where !liveKeys.contains(key) {
+                map.removeOverlay(overlay)
+                historyChunks.removeValue(forKey: key)
+                historyChunkCounts.removeValue(forKey: key)
             }
         }
 
@@ -402,14 +471,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let history = overlay as? LiveFollowHistoryOverlay {
-                let renderer = LiveFollowHistoryRenderer(overlay: history)
-                historyRenderer = renderer
-                return renderer
-            }
-            if let tip = overlay as? LiveFollowTipOverlay {
-                let renderer = LiveFollowTipRenderer(overlay: tip)
-                tipRenderer = renderer
+            if let line = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: line)
+                LiveFollowRouteStrokeStyle.apply(to: renderer)
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
@@ -451,105 +515,6 @@ extension LiveFollowMapKitView.Coordinator: UIGestureRecognizerDelegate {
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
         true
-    }
-}
-
-// MARK: - History overlay (fixed world bounds — mutate in place, no 1 Hz add/remove)
-
-final class LiveFollowHistoryOverlay: NSObject, MKOverlay {
-    private(set) var pieces: [[CLLocationCoordinate2D]] = []
-
-    var coordinate: CLLocationCoordinate2D {
-        pieces.first?.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
-    }
-
-    let boundingMapRect: MKMapRect = .world
-
-    /// Returns a small dirty rect when the active run grew; `nil` means full redraw.
-    func replacePieces(_ next: [[CLLocationCoordinate2D]]) -> MKMapRect? {
-        let previousCount = pieces.count
-        let previousActiveCount = pieces.last?.count ?? 0
-        let previousLast = pieces.last?.last
-        pieces = next
-        let grewSameRun = next.count == previousCount
-            && (next.last?.count ?? 0) >= previousActiveCount
-            && previousCount > 0
-        if grewSameRun, let previousLast, let nextLast = next.last?.last {
-            return LiveFollowGrowingRoute.dirtyMapRect(around: [previousLast, nextLast])
-        }
-        return nil
-    }
-}
-
-final class LiveFollowHistoryRenderer: MKOverlayRenderer {
-    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
-        guard let overlay = overlay as? LiveFollowHistoryOverlay else { return }
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
-        context.setStrokeColor(LiveFollowRouteStrokeStyle.solidColor.cgColor)
-        context.setLineWidth(LiveFollowRouteStrokeStyle.solidWidth / zoomScale)
-
-        for piece in overlay.pieces where piece.count >= 2 {
-            let path = CGMutablePath()
-            for (index, coordinate) in piece.enumerated() {
-                let point = self.point(for: MKMapPoint(coordinate))
-                if index == 0 {
-                    path.move(to: point)
-                } else {
-                    path.addLine(to: point)
-                }
-            }
-            context.addPath(path)
-            context.strokePath()
-        }
-    }
-}
-
-// MARK: - Two-point tip overlay (fixed world bounds — MapKit never drops the renderer)
-
-final class LiveFollowTipOverlay: NSObject, MKOverlay {
-    private(set) var points: [CLLocationCoordinate2D] = []
-
-    var coordinate: CLLocationCoordinate2D {
-        points.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
-    }
-
-    /// Captured when MapKit adds the overlay. Must stay world-sized so later
-    /// coordinate updates remain drawable without swapping the overlay.
-    let boundingMapRect: MKMapRect = .world
-
-    @discardableResult
-    func replacePoints(_ next: [CLLocationCoordinate2D]) -> MKMapRect {
-        let previous = points
-        if previous.count == next.count,
-           zip(previous, next).allSatisfy({
-               abs($0.latitude - $1.latitude) < 1e-9
-                   && abs($0.longitude - $1.longitude) < 1e-9
-           })
-        {
-            return .null
-        }
-        points = next
-        return LiveFollowGrowingRoute.dirtyMapRect(around: previous + next)
-    }
-}
-
-final class LiveFollowTipRenderer: MKOverlayRenderer {
-    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
-        guard let overlay = overlay as? LiveFollowTipOverlay else { return }
-        guard overlay.points.count == 2 else { return }
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
-        context.setStrokeColor(LiveFollowRouteStrokeStyle.solidColor.cgColor)
-        context.setLineWidth(LiveFollowRouteStrokeStyle.solidWidth / zoomScale)
-
-        let path = CGMutablePath()
-        let start = point(for: MKMapPoint(overlay.points[0]))
-        let end = point(for: MKMapPoint(overlay.points[1]))
-        path.move(to: start)
-        path.addLine(to: end)
-        context.addPath(path)
-        context.strokePath()
     }
 }
 
@@ -730,15 +695,17 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
 }
 
 final class LiveFollowPinAnnotationView: MKAnnotationView {
-    private let iconView = UIImageView()
-
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         canShowCallout = false
-        zPriority = .min
+        collisionMode = .none
         displayPriority = .required
-        iconView.contentMode = .scaleAspectFit
-        addSubview(iconView)
+        // Below the puck (`.max`) so the vehicle stays on top if they overlap,
+        // but high enough that MapKit never treats the start flag as occluded.
+        zPriority = MKAnnotationViewZPriority(rawValue: 750)
+        if let pin = annotation as? LiveFollowPinAnnotation {
+            apply(pin)
+        }
     }
 
     @available(*, unavailable)
@@ -746,22 +713,27 @@ final class LiveFollowPinAnnotationView: MKAnnotationView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func prepareForDisplay() {
+        super.prepareForDisplay()
+        if let pin = annotation as? LiveFollowPinAnnotation {
+            apply(pin)
+        }
+    }
+
     func apply(_ annotation: LiveFollowPinAnnotation) {
-        zPriority = .min
         displayPriority = .required
+        collisionMode = .none
+        zPriority = MKAnnotationViewZPriority(rawValue: 750)
         let routeKind: RouteMapPinKind = {
             switch annotation.kind {
             case .start: return .start
             case .pause, .tripStop: return .stop
             }
         }()
-        let image = RouteMapPinImage.uiImage(for: routeKind)
-        iconView.image = image
-        let size = image.size
-        bounds = CGRect(origin: .zero, size: size)
-        iconView.frame = bounds
+        let pinImage = RouteMapPinImage.uiImage(for: routeKind)
+        image = pinImage
         centerOffset = routeKind.isEndpoint
-            ? CGPoint(x: 0, y: -size.height / 2)
+            ? CGPoint(x: 0, y: -pinImage.size.height / 2)
             : .zero
         accessibilityLabel = {
             switch annotation.kind {

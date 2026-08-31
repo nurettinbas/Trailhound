@@ -36,6 +36,15 @@ struct LiveFollowMapPin: Identifiable, Equatable {
 
 /// Builds the pin list shown on the live follow map.
 enum LiveFollowMapPinBuilder {
+    /// Prefer the latched first breadcrumb; otherwise the live path start; otherwise GPS.
+    static func resolvedStartCoordinate(
+        latched: CLLocationCoordinate2D?,
+        breadcrumbStart: CLLocationCoordinate2D?,
+        fallback: CLLocationCoordinate2D?
+    ) -> CLLocationCoordinate2D? {
+        latched ?? breadcrumbStart ?? fallback
+    }
+
     /// Start pin once from the first breadcrumb / trip start. Pause pins accumulate;
     /// resume must not remove them. Trip stops from automatic dwell detection are included.
     static func pins(
@@ -163,21 +172,5 @@ enum LiveFollowGrowingRoute {
         let padX = max(rect.size.width * overviewPadFraction, minPad)
         let padY = max(rect.size.height * overviewPadFraction, minPad)
         return rect.insetBy(dx: -padX, dy: -padY)
-    }
-
-    /// Cheap MapKit invalidate around a few vertices (not `.world`).
-    static func dirtyMapRect(
-        around coordinates: [CLLocationCoordinate2D],
-        meters: CLLocationDistance = 48
-    ) -> MKMapRect {
-        var rect = MKMapRect.null
-        for coordinate in coordinates {
-            let point = MKMapPoint(coordinate)
-            let metersPerPoint = MKMetersPerMapPointAtLatitude(coordinate.latitude)
-            let pad = meters / max(metersPerPoint, 1e-9)
-            let piece = MKMapRect(x: point.x - pad, y: point.y - pad, width: pad * 2, height: pad * 2)
-            rect = rect.union(piece)
-        }
-        return rect
     }
 }

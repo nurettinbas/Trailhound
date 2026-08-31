@@ -138,26 +138,25 @@ enum LiveFollowPresentation {
         puckArtworkHeight + puckFrameVerticalExtra
     }
 
-    /// Places the visual centroid of circle + chevron on the map coordinate
-    /// (screen midpoint when the camera is locked to the vehicle).
+    /// Puts the **photo circle's center** exactly on the map coordinate.
+    ///
+    /// The route tail also terminates at that coordinate, so the trail runs straight
+    /// through the middle of the puck. Centring the whole circle+chevron artwork instead
+    /// lifts the circle ~10 pt up the screen, and under a 62° pitch those points are a
+    /// long way forward on the ground — on a bend the puck then sits beside the trail.
     static var puckAnnotationCenterOffset: CGPoint {
-        let artworkMidY = puckArtworkHeight / 2
-        let viewMidY = puckAnnotationFrameHeight / 2
-        return CGPoint(x: 0, y: viewMidY - artworkMidY)
+        CGPoint(x: 0, y: puckAnnotationFrameHeight / 2 - puckCircleSize / 2)
     }
 
     /// Screen position of the puck photo-circle center from MapKit's projected annotation point.
     ///
     /// `projectedPoint` is `map.convert(coordinate, toPointTo: map)`. The annotation view's
-    /// geometric center is offset by `puckAnnotationCenterOffset`; the circle sits at the top
-    /// of that view, so its center is above the view midY.
+    /// geometric center is offset by `puckAnnotationCenterOffset`, and the circle sits at
+    /// the top of that view.
     static func puckCircleCenter(fromProjectedAnnotationPoint projectedPoint: CGPoint) -> CGPoint {
-        let viewCenter = CGPoint(
-            x: projectedPoint.x + puckAnnotationCenterOffset.x,
-            y: projectedPoint.y + puckAnnotationCenterOffset.y
-        )
-        let circleVsViewCenterY = puckCircleSize / 2 - puckAnnotationFrameHeight / 2
-        return CGPoint(x: viewCenter.x, y: viewCenter.y + circleVsViewCenterY)
+        let viewCenterY = projectedPoint.y + puckAnnotationCenterOffset.y
+        let circleCenterY = viewCenterY - puckAnnotationFrameHeight / 2 + puckCircleSize / 2
+        return CGPoint(x: projectedPoint.x + puckAnnotationCenterOffset.x, y: circleCenterY)
     }
 
     /// How far the hero arc bows off the straight chord (fraction of chord length).

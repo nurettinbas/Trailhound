@@ -48,6 +48,7 @@ Optional smoke:
 - [ ] **Manual recording** — start / pause / end from the app
 - [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** fits start + trail → pause/stop from the map (pan still works while paused)
 - [ ] **Live follow map feel** — vehicle mark at screen center while following; single blue path appears immediately (no blank window); fills in behind you with no duplicate stroke; pan keeps puck + trail updating
+- [ ] **Live follow map stroke** — path thickness identical in 2D and 3D, and uniform end-to-end while panning a pitched (3D) camera; motion glides with no per-second stall/surge
 - [ ] **Widget / Siri** — start / stop recording via widget or Siri shortcut
 - [ ] **Export** — JSON, CSV, GPX, or KML
 

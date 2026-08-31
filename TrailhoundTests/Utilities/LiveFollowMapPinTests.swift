@@ -53,6 +53,46 @@ final class LiveFollowMapPinTests: XCTestCase {
         XCTAssertTrue(pins.isEmpty)
     }
 
+    func testResolvedStartPrefersLatchedThenBreadcrumbThenFallback() {
+        let latched = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let breadcrumb = CLLocationCoordinate2D(latitude: 41.1, longitude: 29.1)
+        let fallback = CLLocationCoordinate2D(latitude: 41.2, longitude: 29.2)
+        XCTAssertEqual(
+            LiveFollowMapPinBuilder.resolvedStartCoordinate(
+                latched: latched,
+                breadcrumbStart: breadcrumb,
+                fallback: fallback
+            )?.latitude ?? 0,
+            41.0,
+            accuracy: 0.000_000_1
+        )
+        XCTAssertEqual(
+            LiveFollowMapPinBuilder.resolvedStartCoordinate(
+                latched: nil,
+                breadcrumbStart: breadcrumb,
+                fallback: fallback
+            )?.latitude ?? 0,
+            41.1,
+            accuracy: 0.000_000_1
+        )
+        XCTAssertEqual(
+            LiveFollowMapPinBuilder.resolvedStartCoordinate(
+                latched: nil,
+                breadcrumbStart: nil,
+                fallback: fallback
+            )?.latitude ?? 0,
+            41.2,
+            accuracy: 0.000_000_1
+        )
+        XCTAssertNil(
+            LiveFollowMapPinBuilder.resolvedStartCoordinate(
+                latched: nil,
+                breadcrumbStart: nil,
+                fallback: nil
+            )
+        )
+    }
+
     func testHistoryPiecesDropsEmptyAndSinglePointRuns() {
         let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
         let b = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
@@ -89,25 +129,24 @@ final class LiveFollowMapPinTests: XCTestCase {
         }
     }
 
-    func testHistoryOverlayKeepsWorldBoundsAndMutatesInPlace() {
-        let overlay = LiveFollowHistoryOverlay()
-        XCTAssertTrue(MKMapRectEqualToRect(overlay.boundingMapRect, .world))
+    /// MapKit's own renderers keep the stroke a constant screen width under pitch;
+    /// a custom `MKOverlayRenderer` fattens it in 3D and seams while panning.
+    func testRouteStrokeUsesConstantScreenWidthVectorRenderers() {
         let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
         let b = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
-        let c = CLLocationCoordinate2D(latitude: 41.002, longitude: 29.0)
-        XCTAssertNil(overlay.replacePieces([[a, b]]))
-        let dirty = overlay.replacePieces([[a, b, c]])
-        XCTAssertNotNil(dirty)
-        XCTAssertFalse(dirty?.isNull ?? true)
-        XCTAssertLessThan(dirty?.size.width ?? .greatestFiniteMagnitude, MKMapRect.world.size.width / 1_000)
-    }
+        let line = MKPolyline(coordinates: [a, b], count: 2)
 
-    func testDirtyMapRectIsLocalNotWorld() {
-        let a = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
-        let rect = LiveFollowGrowingRoute.dirtyMapRect(around: [a])
-        XCTAssertFalse(rect.isNull)
-        XCTAssertTrue(rect.contains(MKMapPoint(a)))
-        XCTAssertLessThan(rect.size.width, MKMapRect.world.size.width / 1_000)
+        let single = MKPolylineRenderer(polyline: line)
+        LiveFollowRouteStrokeStyle.apply(to: single)
+        XCTAssertEqual(single.lineWidth, LiveFollowRouteStrokeStyle.solidWidth)
+        XCTAssertEqual(single.strokeColor, LiveFollowRouteStrokeStyle.solidColor)
+        XCTAssertEqual(single.lineCap, .round)
+
+        let multi = MKMultiPolylineRenderer(multiPolyline: MKMultiPolyline([line]))
+        LiveFollowRouteStrokeStyle.apply(to: multi)
+        XCTAssertEqual(multi.lineWidth, LiveFollowRouteStrokeStyle.solidWidth)
+        XCTAssertEqual(multi.strokeColor, LiveFollowRouteStrokeStyle.solidColor)
+        XCTAssertEqual(multi.lineJoin, .round)
     }
 
     func testHistoryMultiPolylineHasNonNullBoundsCoveringCoordinates() {

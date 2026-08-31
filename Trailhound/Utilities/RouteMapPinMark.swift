@@ -86,18 +86,13 @@ enum RouteMapPinImage {
     private static var cache: [RouteMapPinKind: UIImage] = [:]
 
     static func uiImage(for kind: RouteMapPinKind) -> UIImage {
-        if let cached = cache[kind] {
+        if let cached = cache[kind], cached.size.width > 8, cached.size.height > 8 {
             return cached
         }
-        let mark = RouteMapPinBadge(kind: kind)
-            .shadow(color: kind.color.opacity(0.45), radius: 5, y: 1)
-            // Extra padding so the shadow is not clipped by ImageRenderer.
-            .padding(6)
-        let renderer = ImageRenderer(content: mark)
-        renderer.scale = UITraitCollection.current.displayScale
-        let full = renderer.uiImage ?? fallbackUIImage(for: kind)
-        // Match trip detail popped scale without leaving scaleEffect transparent margins.
-        let image = scaled(full, by: kind.visibleScale)
+        // MapKit annotation views are configured from UIViewRepresentable, often before a
+        // SwiftUI environment exists. ImageRenderer then caches a blank bitmap. Draw in
+        // UIKit so the live-follow start flag is never an empty image.
+        let image = scaled(fallbackUIImage(for: kind), by: kind.visibleScale)
         cache[kind] = image
         return image
     }
