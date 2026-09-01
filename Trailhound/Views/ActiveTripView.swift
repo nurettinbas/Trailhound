@@ -115,9 +115,11 @@ private struct RecordingLiveMapOpenButton: View {
             TrailhoundHaptics.selection()
             onOpen()
         } label: {
-            HStack(spacing: 6) {
+            HStack(alignment: .center, spacing: 6) {
                 Image(systemName: "map.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
                     .symbolEffect(.bounce, options: .nonRepeating, value: hintExpanded)
 
                 if hintExpanded {
@@ -137,8 +139,8 @@ private struct RecordingLiveMapOpenButton: View {
                 }
             }
             .foregroundStyle(TrailhoundBrandColors.brandBottom)
-            .padding(.horizontal, hintExpanded ? 11 : 0)
-            .frame(minWidth: 32, minHeight: 32)
+            .padding(.horizontal, hintExpanded ? 11 : 9)
+            .frame(width: hintExpanded ? nil : 32, height: 32, alignment: .center)
             .background {
                 Capsule(style: .continuous)
                     .fill(Color.white)
