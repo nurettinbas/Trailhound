@@ -140,9 +140,12 @@ final class StatsDisplaySnapshotTests: XCTestCase {
 
     func testPlaceFilterNarrowsSummaryAndDailyChartsButNotGoal() {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        // Mid-month so "yesterday" stays in the same calendar month as customEnd
+        // (goal ring). Using Date() fails on the 1st when yesterday is last month.
+        let today = calendar.date(from: DateComponents(year: 2026, month: 6, day: 15))!
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-        let interval = DateInterval(start: yesterday, end: Date())
+        let intervalEnd = today.addingTimeInterval(12 * 3_600)
+        let interval = DateInterval(start: yesterday, end: intervalEnd)
         let goalMonth = StatsViewModel.goalMonth(
             for: .custom,
             selectedMonth: today,
