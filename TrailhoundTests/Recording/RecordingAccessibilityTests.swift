@@ -40,6 +40,7 @@ final class RecordingAccessibilityTests: XCTestCase {
     }
 }
 
+@MainActor
 final class RecordingLiveMapHintTests: XCTestCase {
     override func setUp() {
         super.setUp()

@@ -80,6 +80,7 @@ enum RecordingMorphID {
 }
 
 /// One-shot labeled popout on the live-map chip when a trip starts.
+@MainActor
 enum RecordingLiveMapHint {
     static let appearDelay: Duration = .milliseconds(140)
     static let expandedHold: Duration = .milliseconds(3800)
