@@ -344,7 +344,7 @@ final class FuelCostCalculatorTests: XCTestCase {
         let preview = L10n.tripEditFuelPreview("₺ 19")
         XCTAssertTrue(preview.contains("₺ 19"), preview)
         XCTAssertTrue(
-            preview.contains("Avg fuel estimate") || preview.contains("Ort. yakıt tahmini"),
+            preview.contains("Avg fuel calculation") || preview.contains("Ort. yakıt hesaplama"),
             preview
         )
         XCTAssertFalse(L10n.tripEditFuelHelpTitle.isEmpty)

@@ -11540,13 +11540,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avg fuel estimate: %@"
+            "value" : "Avg fuel calculation: %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ort. yakıt tahmini: %@"
+            "value" : "Ort. yakıt hesaplama: %@"
           }
         }
       }
