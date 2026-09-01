@@ -25,6 +25,7 @@ enum DeviceTestChecklist {
         "Trip with tunnel/signal loss keeps a broken route (no bird-flight fill)",
         "Start-side Select: photo/icon + chevron only; no name text overflow",
         "Recording card: large vehicle photo; Stop uses stop.fill",
+        "Recording card: trip start — live-map chip pops into a localized “Switch to map mode” / “Harita moduna geçin” capsule, then collapses to a pulsing map chip; tap still opens live follow",
         "Live follow map: open — map already at follow pose (no world fly-in); map fade + vehicle→puck hero sync; compact HUD at bottom (Pause/Stop TR single-line; 2D/3D tappable)",
         "Live follow map: open at highway speed — curved vehicle→puck flight lands on the moving puck; blue path does not race ahead of a frozen camera",
         "Live follow map: X reverses (map fades out while nav puck flies back to list-card vehicle); Stop skips reverse and plays end credits",

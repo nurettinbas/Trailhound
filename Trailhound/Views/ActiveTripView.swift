@@ -79,6 +79,118 @@ enum RecordingMorphID {
     static let car = "recording.car"
 }
 
+/// One-shot labeled popout on the live-map chip when a trip starts.
+enum RecordingLiveMapHint {
+    static let appearDelay: Duration = .milliseconds(140)
+    static let expandedHold: Duration = .milliseconds(3800)
+
+    private static var playedTripIDs: Set<UUID> = []
+
+    static func shouldPlay(for tripID: UUID?) -> Bool {
+        guard let tripID else { return true }
+        return !playedTripIDs.contains(tripID)
+    }
+
+    static func markPlayed(for tripID: UUID?) {
+        guard let tripID else { return }
+        playedTripIDs.insert(tripID)
+    }
+
+    static func resetForTests() {
+        playedTripIDs.removeAll()
+    }
+}
+
+/// Prominent live-map chip: pulse while recording, then a labeled popout after trip start.
+private struct RecordingLiveMapOpenButton: View {
+    var hintExpanded: Bool
+    var isPulsing: Bool
+    var onOpen: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var glow: Double = 0.32
+
+    var body: some View {
+        Button {
+            TrailhoundHaptics.selection()
+            onOpen()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .symbolEffect(.bounce, options: .nonRepeating, value: hintExpanded)
+
+                if hintExpanded {
+                    HStack(spacing: 4) {
+                        Text(L10n.string("recording.live_map.open_hint"))
+                            .font(.system(size: 12, weight: .bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .opacity.combined(with: .move(edge: .leading))
+                    )
+                }
+            }
+            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .padding(.horizontal, hintExpanded ? 11 : 0)
+            .frame(minWidth: 32, minHeight: 32)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(Color.white)
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        TrailhoundBrandColors.brandTop.opacity(hintExpanded ? 0.45 : 0.28),
+                        lineWidth: 1
+                    )
+            }
+            .contentShape(Capsule())
+            .animation(reduceMotion ? nil : TrailhoundMotion.liveMapHintPop, value: hintExpanded)
+            .shadow(
+                color: TrailhoundBrandColors.brandBottom.opacity(glow),
+                radius: hintExpanded ? 10 : 6,
+                y: 1
+            )
+            .background {
+                SoftPulseRing(
+                    color: UIColor(TrailhoundBrandColors.brandBottom),
+                    isActive: isPulsing && !hintExpanded,
+                    reduceMotion: reduceMotion
+                )
+                .frame(width: 44, height: 44)
+                .allowsHitTesting(false)
+            }
+        }
+        .buttonStyle(LiveMapOpenPressStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(L10n.string("recording.live_map.open"))
+        .accessibilityIdentifier("recording.live_map.open")
+        .task(id: reduceMotion) {
+            glow = reduceMotion ? 0.4 : 0.32
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
+                glow = 0.72
+            }
+        }
+    }
+}
+
+private struct LiveMapOpenPressStyle: ButtonStyle {
+    var reduceMotion: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect((configuration.isPressed && !reduceMotion) ? 0.92 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: configuration.isPressed)
+    }
+}
+
 /// Pause / Resume / Stop label: glyph and title crossfade as one (no laggy SF replace).
 struct RecordingActionLabel: View {
     let title: String
@@ -147,6 +259,7 @@ struct ActiveTripView: View {
     @State private var carDriveIn: CGFloat = 1
     @State private var detailsReveal: CGFloat = 1
     @State private var didRunEntrance = false
+    @State private var liveMapHintExpanded = false
     @State private var anchorBox = RecordingCardAnchorBox()
     /// Optimistic pause chrome — icon + title stay in lockstep before service work finishes.
     @State private var displayedPaused = false
@@ -306,6 +419,7 @@ struct ActiveTripView: View {
         .accessibilityHidden(!cardVisible)
         .task(id: morphID) {
             await runEntranceIfNeeded()
+            await playLiveMapHintIfNeeded()
         }
         .task(id: roadPhotoIdentity) {
             await loadRoadVehiclePhoto()
@@ -326,7 +440,10 @@ struct ActiveTripView: View {
         .onChange(of: playEntranceReveal) { wasPlaying, shouldPlay in
             guard shouldPlay, !wasPlaying else { return }
             prepareEntranceReplay()
-            Task { await runEntranceIfNeeded() }
+            Task {
+                await runEntranceIfNeeded()
+                await playLiveMapHintIfNeeded()
+            }
         }
     }
 
@@ -350,43 +467,47 @@ struct ActiveTripView: View {
     private var statusRow: some View {
         HStack(spacing: 6) {
             if onOpenLiveFollow != nil {
-                Button {
-                    TrailhoundHaptics.selection()
-                    onOpenLiveFollow?(anchorBox.value)
-                } label: {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        .frame(width: 28, height: 28)
-                        .background(Color.white, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.string("recording.live_map.open"))
-                .accessibilityIdentifier("recording.live_map.open")
+                RecordingLiveMapOpenButton(
+                    hintExpanded: liveMapHintExpanded,
+                    isPulsing: !isPaused && isRecordingCardVisible,
+                    onOpen: {
+                        liveMapHintExpanded = false
+                        RecordingLiveMapHint.markPlayed(for: morphID)
+                        onOpenLiveFollow?(anchorBox.value)
+                    }
+                )
+                .layoutPriority(2)
             }
 
-            HStack(spacing: 4) {
-                Image(systemName: statusIcon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(statusColor)
-                    .contentTransition(.opacity)
-                    .symbolEffect(
-                        .pulse,
-                        options: .repeating,
-                        isActive: !isPaused && !reduceMotion && isRecordingCardVisible
-                    )
-                Text(statusText)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .contentTransition(.opacity)
+            if !liveMapHintExpanded {
+                HStack(spacing: 4) {
+                    Image(systemName: statusIcon)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(statusColor)
+                        .contentTransition(.opacity)
+                        .symbolEffect(
+                            .pulse,
+                            options: .repeating,
+                            isActive: !isPaused && !reduceMotion && isRecordingCardVisible
+                        )
+                    Text(statusText)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .contentTransition(.opacity)
+                }
+                .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: isPaused)
+                .layoutPriority(1)
+                .modifier(RecordingStatusChipMorphModifier(
+                    morphNamespace: morphNamespace
+                ))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.92))
+                )
             }
-            .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: isPaused)
-            .layoutPriority(1)
-            .modifier(RecordingStatusChipMorphModifier(
-                morphNamespace: morphNamespace
-            ))
 
             Spacer(minLength: 4)
 
@@ -459,6 +580,7 @@ struct ActiveTripView: View {
     @MainActor
     private func prepareEntranceReplay() {
         didRunEntrance = false
+        liveMapHintExpanded = false
         guard !reduceMotion else { return }
         cardReveal = 0
         carDriveIn = 0
@@ -516,6 +638,33 @@ struct ActiveTripView: View {
             settleEntrance()
         }
         onEntranceFinished?()
+    }
+
+    @MainActor
+    private func playLiveMapHintIfNeeded() async {
+        guard onOpenLiveFollow != nil else { return }
+        guard RecordingLiveMapHint.shouldPlay(for: morphID) else { return }
+        RecordingLiveMapHint.markPlayed(for: morphID)
+
+        if reduceMotion {
+            liveMapHintExpanded = true
+            try? await Task.sleep(for: RecordingLiveMapHint.expandedHold)
+            if !Task.isCancelled {
+                liveMapHintExpanded = false
+            }
+            return
+        }
+
+        try? await Task.sleep(for: RecordingLiveMapHint.appearDelay)
+        guard !Task.isCancelled else { return }
+        withAnimation(TrailhoundMotion.liveMapHintPop) {
+            liveMapHintExpanded = true
+        }
+        try? await Task.sleep(for: RecordingLiveMapHint.expandedHold)
+        guard !Task.isCancelled else { return }
+        withAnimation(TrailhoundMotion.liveMapHintCollapse) {
+            liveMapHintExpanded = false
+        }
     }
 
     private var statusIcon: String {
