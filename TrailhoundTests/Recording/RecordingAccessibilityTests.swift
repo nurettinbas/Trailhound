@@ -39,3 +39,31 @@ final class RecordingAccessibilityTests: XCTestCase {
         XCTAssertTrue(summary.contains("Paused"))
     }
 }
+
+@MainActor
+final class RecordingLiveMapHintTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        RecordingLiveMapHint.resetForTests()
+    }
+
+    func testHintPlaysOncePerTrip() {
+        let tripID = UUID()
+        XCTAssertTrue(RecordingLiveMapHint.shouldPlay(for: tripID))
+        RecordingLiveMapHint.markPlayed(for: tripID)
+        XCTAssertFalse(RecordingLiveMapHint.shouldPlay(for: tripID))
+        XCTAssertTrue(RecordingLiveMapHint.shouldPlay(for: UUID()))
+    }
+
+    func testNilTripAlwaysEligibleUntilMarkedNoOp() {
+        XCTAssertTrue(RecordingLiveMapHint.shouldPlay(for: nil))
+        RecordingLiveMapHint.markPlayed(for: nil)
+        XCTAssertTrue(RecordingLiveMapHint.shouldPlay(for: nil))
+    }
+
+    func testOpenHintIsLocalized() {
+        let text = L10n.string("recording.live_map.open_hint")
+        XCTAssertFalse(text.isEmpty)
+        XCTAssertNotEqual(text, "recording.live_map.open_hint")
+    }
+}

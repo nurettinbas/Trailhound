@@ -28,6 +28,10 @@ enum TrailhoundMotion {
     static let toastSpring = Animation.spring(response: 0.42, dampingFraction: 0.78)
     /// Toast chip exit — quick ease up/fade.
     static let toastDismiss = Animation.easeIn(duration: 0.22)
+    /// Recording card live-map CTA popout (label expands from the map chip).
+    static let liveMapHintPop = Animation.spring(response: 0.48, dampingFraction: 0.72)
+    /// Live-map CTA collapse back to the icon chip.
+    static let liveMapHintCollapse = Animation.spring(response: 0.40, dampingFraction: 0.86)
     /// Vehicle photo framing settle (rotate / expand inline controls).
     static let photoSettle = Animation.spring(response: 0.34, dampingFraction: 0.86)
     /// Side actions spawn from the photo hero.

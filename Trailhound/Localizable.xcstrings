@@ -7130,6 +7130,24 @@
         }
       }
     },
+    "recording.live_map.open_hint" : {
+      "comment" : "Pop-out label on the recording card inviting the driver to open live map mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch to map mode"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Harita moduna geçin"
+          }
+        }
+      }
+    },
     "recording.live_map.overview" : {
       "extractionState" : "manual",
       "localizations" : {
