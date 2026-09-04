@@ -66,6 +66,7 @@ enum TripMergeCore {
         privacyRadius: Double
     ) throws -> Trip {
         let completed = trips.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
+        let sourceJournalIDs = completed.map(\.journalID)
         let merged = try beginMergedTrip(from: completed, into: context)
         let fuelInputs = mergedFuelInputs(from: completed)
 
@@ -95,7 +96,36 @@ enum TripMergeCore {
             fuelUnitPrice: fuelInputs.unitPrice,
             context: context
         )
+        applyCapturedMergeMembership(
+            surviving: merged,
+            journalIDs: sourceJournalIDs,
+            in: context
+        )
         return merged
+    }
+
+    private static func applyCapturedMergeMembership(
+        surviving: Trip,
+        journalIDs: [UUID?],
+        in context: ModelContext
+    ) {
+        let unique = Set(journalIDs.compactMap { $0 })
+        if unique.count == 1, let only = unique.first {
+            surviving.journalID = only
+            let descriptor = FetchDescriptor<TravelJournal>(
+                predicate: #Predicate { $0.id == only }
+            )
+            surviving.journal = try? context.fetch(descriptor).first
+        } else {
+            surviving.journal = nil
+            surviving.journalID = nil
+        }
+        for journalID in unique {
+            TravelJournalTotals.refresh(journalID: journalID, in: context)
+        }
+        if let current = surviving.journalID, !unique.contains(current) {
+            TravelJournalTotals.refresh(journalID: current, in: context)
+        }
     }
 
     /// Copies one chronological leg onto `merged`.

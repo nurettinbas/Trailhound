@@ -1,6 +1,6 @@
 # Travel journal (Seyahat günlüğü)
 
-> **Status:** Planned (schema V19, additive) — not shipped  
+> **Status:** Implemented (schema V19, additive)  
 > **Placement:** Trips tab → cam segment **Trips | Travels** (TR: **Trip’ler | Seyahatler**). No fifth tab.
 
 A travel journal groups completed trips under one date range so the map can show **every route in that group**. It is a route archive, not a photo diary, social map, or live broadcast.

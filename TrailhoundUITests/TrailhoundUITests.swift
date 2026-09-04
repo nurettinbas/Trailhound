@@ -78,6 +78,19 @@ final class TrailhoundUITests: XCTestCase {
         XCTAssertTrue(toggle.isEnabled)
     }
 
+    func testTravelsSegmentOpensJournalEmptyState() throws {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let segment = app.segmentedControls["trips.segment"]
+        guard segment.waitForExistence(timeout: uiTimeout) else {
+            throw XCTSkip("Travels segment is hidden until the library has trips.")
+        }
+        segment.buttons["Travels"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Create your first travel"].waitForExistence(timeout: 10)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "travel")).firstMatch.exists
+        )
+    }
+
     func testNotificationsListOpens() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
 

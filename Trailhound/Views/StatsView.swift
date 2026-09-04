@@ -8,6 +8,7 @@ struct StatsView: View {
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
     @Query private var places: [SavedPlace]
+    @Query(sort: \TravelJournal.endedOn, order: .reverse) private var journals: [TravelJournal]
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -16,6 +17,7 @@ struct StatsView: View {
     @State private var selectedCategoryID: String?
     @State private var selectedVehicleID: UUID?
     @State private var selectedPlaceID: UUID?
+    @State private var selectedJournalID: UUID?
     @State private var selectedMonth = Calendar.current.date(
         from: Calendar.current.dateComponents([.year, .month], from: Date())
     ) ?? Date()
@@ -58,6 +60,7 @@ struct StatsView: View {
             categoryCount: categories.count,
             vehicleCount: vehicles.count,
             placeCount: places.count,
+            journalCount: journals.count,
             period: selectedPeriod,
             customStart: customStart,
             customEnd: customEnd,
@@ -65,7 +68,8 @@ struct StatsView: View {
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
             selectedPlaceID: selectedPlaceID,
-            selectedPlaceName: selectedPlaceName
+            selectedPlaceName: selectedPlaceName,
+            selectedJournalID: selectedJournalID
         )
     }
 
@@ -125,6 +129,9 @@ struct StatsView: View {
         if selectedPlaceID != nil {
             parts.append(selectedPlaceDisplayName)
         }
+        if selectedJournalID != nil {
+            parts.append(selectedJournalName)
+        }
         return parts.joined(separator: " · ")
     }
 
@@ -141,7 +148,8 @@ struct StatsView: View {
             selectedCategoryID ?? "",
             selectedVehicleID?.uuidString ?? "",
             selectedPlaceID?.uuidString ?? "",
-            selectedPlaceName ?? ""
+            selectedPlaceName ?? "",
+            selectedJournalID?.uuidString ?? ""
         ].joined(separator: "|")
     }
 
@@ -312,6 +320,11 @@ struct StatsView: View {
             vehicleChartPage = 0
             categoryChartPage = 0
         }
+        .onChange(of: selectedJournalID) { _, _ in
+            dailyChartPage = 0
+            vehicleChartPage = 0
+            categoryChartPage = 0
+        }
         .onChange(of: selectedMonth) { _, _ in
             dailyChartPage = 0
             vehicleChartPage = 0
@@ -380,6 +393,7 @@ struct StatsView: View {
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
             selectedPlaceName: selectedPlaceName,
+            selectedJournalID: selectedJournalID,
             categoryNames: StatsViewModel.categoryNameMap(for: categories),
             vehicleNames: StatsViewModel.vehicleNameMap(for: vehicles),
             vehicleCount: vehicles.count
@@ -434,6 +448,14 @@ struct StatsView: View {
 
     private var selectedPlaceDisplayName: String {
         selectedPlaceName ?? L10n.all
+    }
+
+    private var selectedJournalName: String {
+        guard let selectedJournalID,
+              let journal = journals.first(where: { $0.id == selectedJournalID }) else {
+            return L10n.all
+        }
+        return journal.title
     }
 
     private var statsFilterCard: some View {
@@ -555,6 +577,29 @@ struct StatsView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(L10n.filterPlace)
                 .accessibilityValue(selectedPlaceDisplayName)
+            }
+
+            if !journals.isEmpty {
+                HStack(spacing: 12) {
+                    Text(L10n.journalStatsFilter)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: 8)
+
+                    Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
+                        Text(L10n.all).tag(UUID?.none)
+                        ForEach(journals, id: \.id) { journal in
+                            Text(journal.title).tag(Optional(journal.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .labelsHidden()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(L10n.journalStatsFilter)
+                .accessibilityValue(selectedJournalName)
             }
         }
         .padding(.vertical, 6)
@@ -1782,6 +1827,7 @@ private struct StatsSnapshotInputs: Equatable {
     let categoryCount: Int
     let vehicleCount: Int
     let placeCount: Int
+    let journalCount: Int
     let period: StatsPeriod
     let customStart: Date
     let customEnd: Date
@@ -1790,6 +1836,7 @@ private struct StatsSnapshotInputs: Equatable {
     let selectedVehicleID: UUID?
     let selectedPlaceID: UUID?
     let selectedPlaceName: String?
+    let selectedJournalID: UUID?
 }
 
 private enum StatsChartPairTokens {
