@@ -19,7 +19,9 @@ enum PlaceMatchingService {
     static func rematchTrips(
         _ trips: [Trip],
         places: [SavedPlace],
-        privacyRadius: Double
+        privacyRadius: Double,
+        suggestionsEnabled: Bool = true,
+        workHours: TripCategoryWorkHours = .default
     ) {
         guard !places.isEmpty else { return }
 
@@ -29,6 +31,13 @@ enum PlaceMatchingService {
                 for: trip,
                 places: places,
                 privacyRadius: privacyRadius
+            )
+            TripCategorySuggestionService.refreshPending(
+                on: trip,
+                among: trips,
+                places: places,
+                enabled: suggestionsEnabled,
+                workHours: workHours
             )
         }
     }

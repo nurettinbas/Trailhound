@@ -925,6 +925,10 @@ struct TripDetailEditPanel: View {
         let previousRollup = TripRollupService.snapshot(of: trip)
 
         trip.note = noteText.isEmpty ? nil : noteText
+        if selectedCategoryID != trip.categoryID {
+            trip.categoryOrigin = .user
+            trip.clearPendingSuggestion()
+        }
         trip.categoryID = selectedCategoryID
         let vehicle = selectedVehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
         VehicleResolver.assign(vehicle: vehicle, to: trip)

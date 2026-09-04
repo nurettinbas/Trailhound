@@ -92,6 +92,9 @@ final class AppSettings {
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
         static let appearanceMode = "appearanceMode"
+        static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
+        static let workHourStart = "smartCategory.workHourStart"
+        static let workHourEnd = "smartCategory.workHourEnd"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -311,6 +314,40 @@ final class AppSettings {
     var developerModeEnabled: Bool {
         get { defaults.bool(forKey: Key.developerModeEnabled) }
         set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
+    }
+
+    /// Smart category suggestions after a trip ends. Default on.
+    var smartCategorySuggestionsEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.smartCategorySuggestionsEnabled) == nil { return true }
+            return defaults.bool(forKey: Key.smartCategorySuggestionsEnabled)
+        }
+        set { defaults.set(newValue, forKey: Key.smartCategorySuggestionsEnabled) }
+    }
+
+    /// Inclusive local start hour for the weekday work-hours heuristic (default 9).
+    var workHourStart: Int {
+        get { loadedHour(forKey: Key.workHourStart, default: 9) }
+        set { defaults.set(clampedHour(newValue), forKey: Key.workHourStart) }
+    }
+
+    /// Exclusive local end hour for the weekday work-hours heuristic (default 18).
+    var workHourEnd: Int {
+        get { loadedHour(forKey: Key.workHourEnd, default: 18) }
+        set { defaults.set(clampedHour(newValue), forKey: Key.workHourEnd) }
+    }
+
+    var workHours: TripCategoryWorkHours {
+        TripCategoryWorkHours(startHour: workHourStart, endHour: workHourEnd)
+    }
+
+    private func loadedHour(forKey key: String, default defaultValue: Int) -> Int {
+        guard defaults.object(forKey: key) != nil else { return defaultValue }
+        return clampedHour(defaults.integer(forKey: key))
+    }
+
+    private func clampedHour(_ hour: Int) -> Int {
+        min(max(hour, 0), 23)
     }
 
     /// Live follow map: pitched 3D camera when true; flat overview when false.

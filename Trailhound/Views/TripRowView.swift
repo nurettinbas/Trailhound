@@ -3,6 +3,7 @@ import SwiftUI
 struct TripRowView: View {
     let trip: Trip
     var places: [SavedPlace] = []
+    var categories: [UserCategory] = []
     var privacyRadius: Double = 500
     /// Resolved from `trip.vehicleID` upstream — relationship is not populated on list rows.
     var vehicle: VehicleProfile? = nil
@@ -61,6 +62,15 @@ struct TripRowView: View {
                         Image(systemName: "briefcase.fill")
                             .font(.system(size: 8))
                             .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    } else if let suggestedName = pendingSuggestedCategoryName {
+                        HStack(spacing: 2) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 7, weight: .semibold))
+                            Text(L10n.tripCategorySuggested(suggestedName))
+                                .font(.system(size: 8, weight: .medium))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
                     }
 
                     Spacer(minLength: 0)
@@ -128,12 +138,28 @@ struct TripRowView: View {
         }
     }
 
+    private var pendingSuggestedCategoryName: String? {
+        guard trip.hasPendingCategorySuggestion,
+              let pendingID = trip.pendingSuggestedCategoryID
+        else { return nil }
+        if let name = categories.first(where: { $0.id.uuidString == pendingID })?.name {
+            return name
+        }
+        if pendingID == BuiltInCategory.businessID.uuidString {
+            return L10n.categoryBusiness
+        }
+        return nil
+    }
+
     private var accessibilitySummary: String {
         var parts = [routeSummary, TripListViewModel.durationText(for: trip)]
         parts.append(TripListViewModel.dateText(for: trip))
         parts.append(TripListViewModel.distanceText(for: trip))
         if let vehicle {
             parts.append(vehicle.name)
+        }
+        if let suggestedName = pendingSuggestedCategoryName {
+            parts.append(L10n.tripCategorySuggested(suggestedName))
         }
         return parts.joined(separator: ", ")
     }

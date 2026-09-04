@@ -141,6 +141,15 @@ enum L10n {
     static var tripsFiltersClear: String { string("trips.filters.clear") }
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
+    static var actionAcceptCategory: String { string("action.accept_category") }
+
+    static func actionAcceptSuggestedCategory(_ name: String) -> String {
+        String(format: string("action.accept_suggested_category"), name)
+    }
+
+    static func tripCategorySuggested(_ name: String) -> String {
+        String(format: string("trip.category.suggested"), name)
+    }
     static var mapFullscreen: String { string("map.fullscreen") }
     static var mapExitFullscreen: String { string("map.exit_fullscreen") }
     static var mapStyleLight: String { string("map.style.light") }
@@ -228,6 +237,11 @@ enum L10n {
     static var settingsAppearanceLight: String { string("settings.appearance.light") }
     static var settingsAppearanceDark: String { string("settings.appearance.dark") }
     static var settingsAppearanceHint: String { string("settings.appearance.hint") }
+    static var settingsSmartCategorySection: String { string("settings.smart_category.section") }
+    static var settingsSmartCategoryToggle: String { string("settings.smart_category.toggle") }
+    static var settingsSmartCategoryHint: String { string("settings.smart_category.hint") }
+    static var settingsSmartCategoryWorkStart: String { string("settings.smart_category.work_start") }
+    static var settingsSmartCategoryWorkEnd: String { string("settings.smart_category.work_end") }
     static var settingsLanguageSection: String { string("settings.language.section") }
     static var settingsLanguageSystemHint: String { string("settings.language.system_hint") }
     static var settingsFuelSection: String { string("settings.fuel.section") }
@@ -486,6 +500,7 @@ enum L10n {
     static var toastTripSaved: String { string("toast.trip.saved") }
     static var toastCategoryAdded: String { string("toast.category.added") }
     static var toastCategoryDeleted: String { string("toast.category.deleted") }
+    static var toastCategoryAccepted: String { string("toast.category.accepted") }
     static var toastOrphanSaved: String { string("toast.orphan.saved") }
     static var toastTripsMerged: String { string("toast.trips.merged") }
 

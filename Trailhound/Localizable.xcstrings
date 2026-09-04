@@ -181,6 +181,40 @@
         }
       }
     },
+    "action.accept_category" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kabul et"
+          }
+        }
+      }
+    },
+    "action.accept_suggested_category" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ olarak kabul et"
+          }
+        }
+      }
+    },
     "action.add" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8849,6 +8883,91 @@
         }
       }
     },
+    "settings.smart_category.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggests a category from frequent routes, Home/Work places, and weekday work hours. Swipe to accept — nothing is applied automatically."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sık rotalar, Ev/İş yerleri ve hafta içi iş saatinden kategori önerir. Kabul için kaydırın — otomatik uygulanmaz."
+          }
+        }
+      }
+    },
+    "settings.smart_category.section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart categories"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akıllı kategoriler"
+          }
+        }
+      }
+    },
+    "settings.smart_category.toggle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggest trip categories"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk kategorisi öner"
+          }
+        }
+      }
+    },
+    "settings.smart_category.work_end" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work hours end"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İş saati bitiş"
+          }
+        }
+      }
+    },
+    "settings.smart_category.work_start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work hours start"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İş saati başlangıç"
+          }
+        }
+      }
+    },
     "settings.siri.shortcuts_hint" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11073,6 +11192,23 @@
         }
       }
     },
+    "toast.category.accepted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Category updated"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kategori güncellendi"
+          }
+        }
+      }
+    },
     "toast.category.added" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11378,6 +11514,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Favorilere ekle"
+          }
+        }
+      }
+    },
+    "trip.category.suggested" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ suggested"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ önerildi"
           }
         }
       }

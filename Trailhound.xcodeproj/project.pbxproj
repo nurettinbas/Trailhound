@@ -255,6 +255,9 @@
 		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
 		A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROUTES00000000001 /* FrequentRoutesService.swift */; };
+		A1TRIPCATSUGGEST000001 /* TripCategorySuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */; };
+		A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */; };
+		A1TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */; };
 		A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */; };
 		A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */; };
 		A1TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift */; };
@@ -555,6 +558,9 @@
 		A2LOCALIZABLE00000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleProfile.swift; sourceTree = "<group>"; };
 		A2FREQROUTES00000000001 /* FrequentRoutesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRoutesService.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggester.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggestionService.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/TripCategorySuggesterTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePrivacyClipper.swift; sourceTree = "<group>"; };
 		A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripShareCardRenderer.swift; sourceTree = "<group>"; };
 		A2TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripShareRoutePrep.swift; sourceTree = "<group>"; };
@@ -693,6 +699,8 @@
 				A5RECORDING0000000000001 /* Recording */,
 				82C9C269375F4C05AFEA8817 /* GeocodingRetryService.swift */,
 				E915A26582304556AF11A8CC /* PlaceMatchingService.swift */,
+				A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */,
+				A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */,
 				983DA16F5A6E442FAAD35B73 /* ExportService.swift */,
 				A2FREQROUTES00000000001 /* FrequentRoutesService.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
@@ -972,6 +980,7 @@
 				2CBDBEE49462477FBF036E37 /* RecordingSpeedTrustTests.swift */,
 				F252B64BE4F147579798FBDA /* AppNotificationStoreTests.swift */,
 				46836F7884634E1BB88F3B9F /* PlaceMatchingServiceTests.swift */,
+				A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */,
 				D180E864A45A410D8698E1C3 /* TripMergeServiceTests.swift */,
 				62C548D331744D5E8F29932E /* TripPostProcessorTests.swift */,
 				B0C5A50805614E01B139911D /* SharedUtilityTests.swift */,
@@ -1187,6 +1196,7 @@
 				92468C6A18F64E4AA6DD57DE /* RecordingSpeedTrustTests.swift in Sources */,
 				F9BE17E986CA4B1A9A47EB1C /* AppNotificationStoreTests.swift in Sources */,
 				7FF24D6180E44649B1AA9939 /* PlaceMatchingServiceTests.swift in Sources */,
+				A1TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift in Sources */,
 				4A8C96EC69CB47A8A9FC27C8 /* TripMergeServiceTests.swift in Sources */,
 				B9CC2FBA7E5646DBA958BA92 /* TripPostProcessorTests.swift in Sources */,
 				EC676726F5904E77B0D2DCDA /* SharedUtilityTests.swift in Sources */,
@@ -1371,6 +1381,8 @@
 				A1STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift in Sources */,
 				A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */,
 				A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */,
+				A1TRIPCATSUGGEST000001 /* TripCategorySuggester.swift in Sources */,
+				A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,
 				A1DEVLOGVIEW000000001 /* DevLogView.swift in Sources */,
