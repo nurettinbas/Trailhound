@@ -138,11 +138,11 @@ actor VehicleCostSnapshotLoader {
                     photoFileName: value.photoFileName,
                     isElectric: value.isElectric,
                     amount: value.amounts.total,
-                    fuel: value.amounts.amount(for: .fuel),
-                    service: value.amounts.amount(for: .service),
-                    insurance: value.amounts.amount(for: .insurance),
-                    casco: value.amounts.amount(for: .casco),
-                    other: value.amounts.amount(for: .other)
+                    fuel: value.amounts.amount(for: VehicleCostBucket.fuel),
+                    service: value.amounts.amount(for: VehicleCostBucket.service),
+                    insurance: value.amounts.amount(for: VehicleCostBucket.insurance),
+                    casco: value.amounts.amount(for: VehicleCostBucket.casco),
+                    other: value.amounts.amount(for: VehicleCostBucket.other)
                 )
             }
             .sorted { lhs, rhs in
