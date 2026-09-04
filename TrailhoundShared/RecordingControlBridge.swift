@@ -330,7 +330,7 @@ public enum TrailhoundDeepLink {
     @discardableResult
     public static func handle(_ url: URL) -> Bool {
         guard url.scheme == "trailhound" else { return false }
-        if url.host == "open" {
+        if url.host == "open" || url.host == "stats" || url.host == "trip" {
             return true
         }
         guard url.host == "recording" else { return false }

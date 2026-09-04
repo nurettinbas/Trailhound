@@ -19,6 +19,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
+- Extra Home Screen widgets: **goal ring**, **last trip** (privacy-clipped thumbnail, optional), **monthly cost forecast**. Deep links open Stats or the trip. Recording Pause/Stop stay on the original control widget (and on the last-trip medium family while a session is active)
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
 - **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; opening the map at speed keeps the curved vehicle→puck flight on the moving mark; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; pan (including while paused) to look back at the start; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
@@ -38,6 +39,10 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
 - Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, **stop time**, and dual **avg / estimated** fuel charts
 - Frequent routes, category filters, trip merge/split
+- **Year recap** on Stats: year-to-date hub plus a full-screen story (distance, cities, frequent corridor, night/streak, categories, cost, badges). Replay any time; December–January autoplay once
+- **Badges** (in-app only): cumulative km, business trips, streaks, cities, night km, regular corridor — locked badges show progress without spoiling the next tier
+- **Frequent-routes map** (MapKit arcs + heatmap, privacy-safe home/work labels, top 40 corridors)
+- **Month cost forecast** on Stats: driving fuel estimate + this month’s installments and other expenses (logged pump fuel is a separate line, never double-counted into the hero total)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
@@ -50,7 +55,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Personal / business categories (+ custom)
 - Vehicle management (petrol, diesel, hybrid, EV)
 - In-app notifications inbox
-- Turkish & English UI (Localizable.xcstrings)
+- Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
 ---
 

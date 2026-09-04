@@ -189,6 +189,11 @@ struct SettingsView: View {
                 .glassRow(position: .middle)
                 Toggle(L10n.settingsBlurExport, isOn: $settings.blurExportCoordinates)
                     .glassRow(position: .middle)
+                Toggle(L10n.string("settings.widget.route_preview"), isOn: $settings.widgetShowRoutePreview)
+                    .glassRow(position: .middle)
+                    .onChange(of: settings.widgetShowRoutePreview) { _, _ in
+                        TripStore.syncWidgetWeekDistance(in: modelContext)
+                    }
                 Picker(L10n.settingsAutoDelete, selection: $settings.autoDeleteDays) {
                     Text(L10n.settingsAutoDeleteNever).tag(0)
                     Text(L10n.settingsAutoDeleteDays(30)).tag(30)

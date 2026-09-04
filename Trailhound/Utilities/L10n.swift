@@ -5,6 +5,10 @@ enum L10n {
         SharedL10n.text(String(describing: key), bundle: .main)
     }
 
+    static func string(_ key: String) -> String {
+        SharedL10n.text(key, bundle: .main)
+    }
+
     static var tripStartedTitle: String { string("trip.started.title") }
     static var tripStartedBody: String { string("trip.started.body") }
     static var tripEndedTitle: String { string("trip.ended.title") }

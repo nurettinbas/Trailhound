@@ -217,21 +217,45 @@ enum TrailhoundSchemaV18: VersionedSchema {
     }
 }
 
+/// Adds optional locality / country fields on `Trip` plus derived `FrequentRouteAggregate`,
+/// `AchievementProgress`, and `VisitedLocality` tables. Additive only.
+enum TrailhoundSchemaV19: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(19, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+            FrequentRouteAggregate.self,
+            AchievementProgress.self,
+            VisitedLocality.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V18); V11–V17 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V19); V11–V18 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV18.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV19.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV18]
+        [migrateV5toV19]
     }
 
-    static let migrateV5toV18 = MigrationStage.lightweight(
+    static let migrateV5toV19 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV18.self
+        toVersion: TrailhoundSchemaV19.self
     )
 }

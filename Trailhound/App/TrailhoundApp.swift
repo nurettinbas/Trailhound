@@ -148,7 +148,13 @@ final class AppRuntime {
             // Order matters: rollups read the derived night-distance split, so they are built
             // only after every trip has one.
             await TripDerivedBackfillService.backfillIfNeeded(container: container)
+            await TripLocalityBackfillService.backfillIfNeeded(
+                container: container,
+                privacyRadius: AppSettings.shared.privacyRadiusMeters
+            )
             await TripRollupService.rebuildIfNeeded(container: container)
+            await PremiumDerivedMaintenance.rebuildIfNeeded(container: container)
+            TripStore.syncWidgetWeekDistance(in: container.mainContext)
         }
     }
 
@@ -239,6 +245,7 @@ struct TrailhoundApp: App {
                 }
                 .onOpenURL { url in
                     runtime.bootstrap(container: modelContainer)
+                    handlePremiumDeepLink(url)
                     guard TrailhoundDeepLink.handle(url) else { return }
                     runtime.processPendingRecordingRequests()
                     Task { @MainActor in
@@ -246,6 +253,29 @@ struct TrailhoundApp: App {
                         runtime.processPendingRecordingRequests()
                     }
                 }
+        }
+    }
+
+    private func handlePremiumDeepLink(_ url: URL) {
+        guard url.scheme == "trailhound" else { return }
+        switch url.host {
+        case "stats":
+            let anchor: StatsPremiumAnchor?
+            switch url.path {
+            case "/goal": anchor = .goal
+            case "/forecast": anchor = .forecast
+            case "/recap": anchor = .recap
+            case "/routes": anchor = .routes
+            default: anchor = nil
+            }
+            TabSelection.shared.openStats(anchor: anchor)
+        case "trip":
+            let idString = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            if let id = UUID(uuidString: idString) {
+                TabSelection.shared.openTrip(id: id)
+            }
+        default:
+            break
         }
     }
 
