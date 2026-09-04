@@ -67,75 +67,96 @@ struct StatsDisplaySnapshot: Sendable {
         goalDistanceMeters: 0
     )
 
-    func distanceTrendText() -> String? {
-        StatsViewModel.trendText(
-            current: stats.totalDistanceMeters,
-            previous: previousStats.totalDistanceMeters
-        )
-    }
-
-    func tripCountTrendText() -> String? {
-        StatsViewModel.trendText(
+    var tripCountTrend: StatsTrend? {
+        StatsTrend.make(
             current: Double(stats.tripCount),
-            previous: Double(previousStats.tripCount)
+            previous: Double(previousStats.tripCount),
+            polarity: .higherIsBetter
         )
     }
 
-    func durationTrendText() -> String? {
-        StatsViewModel.trendText(
+    var distanceTrend: StatsTrend? {
+        StatsTrend.make(
+            current: stats.totalDistanceMeters,
+            previous: previousStats.totalDistanceMeters,
+            polarity: .higherIsBetter
+        )
+    }
+
+    var durationTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.totalDuration,
-            previous: previousStats.totalDuration
+            previous: previousStats.totalDuration,
+            polarity: .neutral
         )
     }
 
-    func averageSpeedTrendText() -> String? {
-        StatsViewModel.trendText(
+    var averageSpeedTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.averageSpeedKmh,
-            previous: previousStats.averageSpeedKmh
+            previous: previousStats.averageSpeedKmh,
+            polarity: .neutral
         )
     }
 
-    func maxSpeedTrendText() -> String? {
-        StatsViewModel.trendText(
+    var maxSpeedTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.maxSpeedKmh,
-            previous: previousStats.maxSpeedKmh
+            previous: previousStats.maxSpeedKmh,
+            polarity: .neutral
         )
     }
 
-    func cruiseSpeedTrendText() -> String? {
-        StatsViewModel.trendText(
+    var cruiseSpeedTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.cruiseSpeedKmh,
-            previous: previousStats.cruiseSpeedKmh
+            previous: previousStats.cruiseSpeedKmh,
+            polarity: .neutral
         )
     }
 
-    func mostCommonSpeedTrendText() -> String? {
-        StatsViewModel.trendText(
+    var mostCommonSpeedTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.mostCommonSpeedKmh,
-            previous: previousStats.mostCommonSpeedKmh
+            previous: previousStats.mostCommonSpeedKmh,
+            polarity: .neutral
         )
     }
 
-    func stopDurationTrendText() -> String? {
-        StatsViewModel.trendText(
+    var stopDurationTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.stopDuration,
-            previous: previousStats.stopDuration
+            previous: previousStats.stopDuration,
+            polarity: .lowerIsBetter
         )
     }
 
-    func fuelCostTrendText() -> String? {
-        StatsViewModel.trendText(
+    var fuelCostTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.estimatedFuelCost,
-            previous: previousStats.estimatedFuelCost
+            previous: previousStats.estimatedFuelCost,
+            polarity: .lowerIsBetter
         )
     }
 
-    func dynamicFuelCostTrendText() -> String? {
-        StatsViewModel.trendText(
+    var dynamicFuelCostTrend: StatsTrend? {
+        StatsTrend.make(
             current: stats.dynamicFuelCost,
-            previous: previousStats.dynamicFuelCost
+            previous: previousStats.dynamicFuelCost,
+            polarity: .lowerIsBetter
         )
     }
+
+    func distanceTrendText() -> String? { distanceTrend?.displayText }
+    func tripCountTrendText() -> String? { tripCountTrend?.displayText }
+    func durationTrendText() -> String? { durationTrend?.displayText }
+    func averageSpeedTrendText() -> String? { averageSpeedTrend?.displayText }
+    func maxSpeedTrendText() -> String? { maxSpeedTrend?.displayText }
+    func cruiseSpeedTrendText() -> String? { cruiseSpeedTrend?.displayText }
+    func mostCommonSpeedTrendText() -> String? { mostCommonSpeedTrend?.displayText }
+    func stopDurationTrendText() -> String? { stopDurationTrend?.displayText }
+    func fuelCostTrendText() -> String? { fuelCostTrend?.displayText }
+    func dynamicFuelCostTrendText() -> String? { dynamicFuelCostTrend?.displayText }
 }
 
 enum StatsDisplaySnapshotBuilder {
@@ -222,12 +243,11 @@ enum StatsDisplaySnapshotBuilder {
             customEnd: customEnd,
             selectedMonth: selectedMonth
         )
-        let previousInterval: DateInterval = {
-            if selectedPeriod == .month {
-                return StatsViewModel.previousMonthInterval(containing: selectedMonth)
-            }
-            return StatsViewModel.previousInterval(for: selectedInterval)
-        }()
+        let previousInterval = StatsViewModel.alignedPreviousInterval(
+            for: selectedPeriod,
+            selectedInterval: selectedInterval,
+            selectedMonth: selectedMonth
+        )
 
         // Summary + charts share the same category/vehicle/place scope. The goal ring stays
         // unfiltered so monthly progress is never shrunk by a chip selection.

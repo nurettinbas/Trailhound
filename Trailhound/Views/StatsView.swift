@@ -32,6 +32,12 @@ struct StatsView: View {
     @State private var costSnapshotLoader: VehicleCostSnapshotLoader?
     @State private var costSnapshot: VehicleCostSnapshot = .empty
     @State private var costRefreshTask: Task<Void, Never>?
+    @State private var yearAwardsLoader: StatsYearAwardsLoader?
+    @State private var yearAwards: StatsYearAwardsSnapshot?
+    @State private var selectedAwardsYear = Calendar.current.component(.year, from: Date())
+    @State private var yearAwardsRefreshTask: Task<Void, Never>?
+    @State private var yearAwardsSectionAppeared = false
+    @State private var hasCompletedInitialSnapshot = false
     @State private var dailyChartPage = 0
     @State private var vehicleChartPage = 0
     @State private var categoryChartPage = 0
@@ -196,8 +202,15 @@ struct StatsView: View {
             }
 
             Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
-                summaryMetricsGrid(currencyCode: fuelCurrencyCode)
-                    .statsSummaryGlassRow(.only)
+                VStack(alignment: .leading, spacing: 12) {
+                    summaryMetricsGrid(currencyCode: fuelCurrencyCode)
+                    StatsPeriodCompareStrip(
+                        currentLabel: compareCurrentLabel,
+                        previousLabel: comparePreviousLabel,
+                        rows: periodCompareRows(currencyCode: fuelCurrencyCode)
+                    )
+                }
+                .statsSummaryGlassRow(.only)
             }
             .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
             .id(fuelCurrencyCode)
@@ -224,6 +237,13 @@ struct StatsView: View {
 
             if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
                 Section(titledWithScope("stats.chart.vehicles_section", scope: statsTripChartScopeLabel)) {
+                    if showsVehicleCompareList {
+                        StatsVehicleCompareList(
+                            rows: vehicleCompareRows,
+                            currencyCode: fuelCurrencyCode
+                        )
+                        .statsSummaryGlassRow(.first)
+                    }
                     StatsChartPager(
                         pageCount: vehicleChartKinds.count,
                         contentHeight: StatsChartPagerMetrics.donutContentHeight,
@@ -256,6 +276,21 @@ struct StatsView: View {
                 .id("categories-\(statsFilterFingerprint)")
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             }
+
+            Section {
+                StatsYearAwardsCard(
+                    snapshot: yearAwards,
+                    medals: yearAwardsMedals,
+                    years: awardsYears,
+                    selectedYear: $selectedAwardsYear,
+                    reduceMotion: reduceMotion,
+                    onAppear: {
+                        yearAwardsSectionAppeared = true
+                        scheduleYearAwardsRefresh(delayMilliseconds: 0)
+                    }
+                )
+                .glassListRow()
+            }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
@@ -277,6 +312,11 @@ struct StatsView: View {
         .onStoreSave {
             refreshEarliestTripStart()
             storeVersion &+= 1
+            if hasCompletedInitialSnapshot {
+                scheduleYearAwardsRefresh(
+                    delayMilliseconds: yearAwardsSectionAppeared ? 0 : 300
+                )
+            }
         }
         .onChange(of: snapshotInputs) { _, _ in
             scheduleSnapshotRefresh()
@@ -327,8 +367,15 @@ struct StatsView: View {
             vehicleChartPage = 0
             categoryChartPage = 0
         }
+        .onChange(of: selectedAwardsYear) { _, _ in
+            scheduleYearAwardsRefresh(delayMilliseconds: 0)
+        }
+        .onChange(of: earliestTripStart) { _, _ in
+            clampSelectedAwardsYear()
+        }
         .onDisappear {
             snapshotRefreshTask?.cancel()
+            yearAwardsRefreshTask?.cancel()
         }
     }
 
@@ -344,11 +391,18 @@ struct StatsView: View {
             customEnd: customEnd,
             selectedMonth: selectedMonth
         )
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: selectedPeriod,
+            selectedInterval: interval,
+            selectedMonth: selectedMonth
+        )
         let request = VehicleCostSnapshotRequest(
             storeVersion: storeVersion,
             periodStart: interval.start,
             periodEnd: interval.end,
-            selectedVehicleID: selectedVehicleID
+            selectedVehicleID: selectedVehicleID,
+            compareStart: previous.start,
+            compareEnd: previous.end
         )
         costRefreshTask = Task {
             try? await Task.sleep(for: .milliseconds(120))
@@ -392,7 +446,15 @@ struct StatsView: View {
             guard !Task.isCancelled else { return }
             let built = await loader.snapshot(for: request)
             guard !Task.isCancelled else { return }
-            await MainActor.run { snapshot = built }
+            await MainActor.run {
+                snapshot = built
+                if !hasCompletedInitialSnapshot {
+                    hasCompletedInitialSnapshot = true
+                    scheduleYearAwardsRefresh(
+                        delayMilliseconds: yearAwardsSectionAppeared ? 0 : 300
+                    )
+                }
+            }
         }
     }
 
@@ -706,23 +768,24 @@ struct StatsView: View {
             summaryMetricCard(
                 title: L10n.string("stats.trips"),
                 value: "\(snap.stats.tripCount)",
-                trend: snap.tripCountTrendText()
+                trend: snap.tripCountTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_distance"),
                 value: snap.stats.totalDistanceText,
-                trend: snap.distanceTrendText()
+                trend: snap.distanceTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_duration"),
                 value: snap.stats.totalDurationText,
-                trend: snap.durationTrendText()
+                trend: snap.durationTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_expenses"),
                 value: costSnapshot.total > 0
                     ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
-                    : "—"
+                    : "—",
+                trend: costSnapshot.expenseTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.average_duration"),
@@ -731,43 +794,43 @@ struct StatsView: View {
             summaryMetricCard(
                 title: L10n.string("stats.average_speed"),
                 value: snap.stats.averageSpeedText,
-                trend: snap.averageSpeedTrendText()
+                trend: snap.averageSpeedTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.max_speed"),
                 value: snap.stats.maxSpeedText,
-                trend: snap.maxSpeedTrendText()
+                trend: snap.maxSpeedTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.cruise_speed"),
                 value: snap.stats.cruiseSpeedText,
-                trend: snap.cruiseSpeedTrendText(),
+                trend: snap.cruiseSpeedTrend,
                 helpTitle: L10n.cruiseSpeedHelpTitle,
                 helpBody: L10n.cruiseSpeedHelpBody
             )
             summaryMetricCard(
                 title: L10n.string("stats.most_common_speed"),
                 value: snap.stats.mostCommonSpeedText,
-                trend: snap.mostCommonSpeedTrendText(),
+                trend: snap.mostCommonSpeedTrend,
                 helpTitle: L10n.mostCommonSpeedHelpTitle,
                 helpBody: L10n.mostCommonSpeedHelpBody
             )
             summaryMetricCard(
                 title: L10n.string("stats.stop_duration"),
                 value: snap.stats.stopDurationText,
-                trend: snap.stopDurationTrendText()
+                trend: snap.stopDurationTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_estimated_fuel"),
                 value: FuelCostCalculator.formatCost(snap.stats.estimatedFuelCost, currencyCode: currencyCode),
-                trend: snap.fuelCostTrendText()
+                trend: snap.fuelCostTrend
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_dynamic_fuel"),
                 value: snap.stats.dynamicFuelCost > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicFuelCost, currencyCode: currencyCode)
                     : "—",
-                trend: snap.dynamicFuelCostTrendText(),
+                trend: snap.dynamicFuelCostTrend,
                 helpTitle: L10n.dynamicFuelHelpTitle,
                 helpBody: L10n.dynamicFuelHelpBody
             )
@@ -805,7 +868,7 @@ struct StatsView: View {
     private func summaryMetricCard(
         title: String,
         value: String,
-        trend: String? = nil,
+        trend: StatsTrend? = nil,
         helpTitle: String? = nil,
         helpBody: String? = nil
     ) -> some View {
@@ -829,12 +892,7 @@ struct StatsView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
-            if let trend {
-                Text(trend)
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(trendColor(for: trend))
-                    .lineLimit(1)
-            }
+            StatsTrendBadge(trend: trend, metricName: title)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -843,12 +901,16 @@ struct StatsView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(summaryAccessibilityLabel(title: title, value: value, trend: trend))
     }
 
-    private func trendColor(for trend: String) -> Color {
-        if trend.hasPrefix("+") { return .green }
-        if trend.hasPrefix("-") { return .red }
-        return .secondary
+    private func summaryAccessibilityLabel(title: String, value: String, trend: StatsTrend?) -> String {
+        var parts = [title, value]
+        if let trend {
+            parts.append(trend.accessibilityLabel(metricName: title))
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var dailyChartDayCount: Int {
@@ -941,6 +1003,126 @@ struct StatsView: View {
             customEnd: customEnd,
             selectedMonth: selectedMonth
         )
+    }
+
+    private var vehicleCompareRows: [VehicleCompareRow] {
+        StatsVehicleCompareBuilder.rows(
+            seeds: costSnapshot.compareSeeds,
+            distances: snap.vehicleDistance
+        )
+    }
+
+    private var showsVehicleCompareList: Bool {
+        selectedVehicleID == nil && vehicleCompareRows.count > 1
+    }
+
+    private var compareCurrentLabel: String {
+        switch selectedPeriod {
+        case .week: L10n.string("stats.compare.this_week")
+        case .month: L10n.string("stats.compare.this_month")
+        case .custom: L10n.string("stats.compare.this_range")
+        }
+    }
+
+    private var comparePreviousLabel: String {
+        switch selectedPeriod {
+        case .week: L10n.string("stats.compare.previous_week")
+        case .month: L10n.string("stats.compare.last_month")
+        case .custom: L10n.string("stats.compare.previous_range")
+        }
+    }
+
+    private var awardsYears: [Int] {
+        StatsViewModel.selectableYears(earliestTripStart: earliestTripStart)
+    }
+
+    private var yearAwardsMedals: [StatsYearAward] {
+        guard let yearAwards else { return [] }
+        return StatsYearAwardsPresenter.medals(
+            from: yearAwards,
+            goalMetersForMonth: { settings.goalMeters(forMonthContaining: $0) },
+            currencyCode: settings.fuelCurrency.rawValue
+        )
+    }
+
+    private func periodCompareRows(currencyCode: String) -> [StatsPeriodCompareRow] {
+        let stats = snap.stats
+        let previous = snap.previousStats
+        let dash = "—"
+        let expenseCurrent = costSnapshot.total > 0
+            ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
+            : dash
+        let expensePrevious = costSnapshot.previousTotal > 0
+            ? FuelCostCalculator.formatCost(costSnapshot.previousTotal, currencyCode: currencyCode)
+            : dash
+        return [
+            StatsPeriodCompareRow(
+                id: "trips",
+                title: L10n.string("stats.trips"),
+                currentText: "\(stats.tripCount)",
+                previousText: "\(previous.tripCount)",
+                trend: snap.tripCountTrend
+            ),
+            StatsPeriodCompareRow(
+                id: "distance",
+                title: L10n.string("stats.total_distance"),
+                currentText: stats.totalDistanceText,
+                previousText: previous.totalDistanceText,
+                trend: snap.distanceTrend
+            ),
+            StatsPeriodCompareRow(
+                id: "duration",
+                title: L10n.string("stats.total_duration"),
+                currentText: stats.totalDurationText,
+                previousText: previous.totalDurationText,
+                trend: snap.durationTrend
+            ),
+            StatsPeriodCompareRow(
+                id: "expenses",
+                title: L10n.string("stats.total_expenses"),
+                currentText: expenseCurrent,
+                previousText: expensePrevious,
+                trend: costSnapshot.expenseTrend
+            ),
+            StatsPeriodCompareRow(
+                id: "fuel",
+                title: L10n.string("stats.total_estimated_fuel"),
+                currentText: FuelCostCalculator.formatCost(stats.estimatedFuelCost, currencyCode: currencyCode),
+                previousText: FuelCostCalculator.formatCost(previous.estimatedFuelCost, currencyCode: currencyCode),
+                trend: snap.fuelCostTrend
+            )
+        ]
+    }
+
+    private func clampSelectedAwardsYear() {
+        let years = awardsYears
+        if !years.contains(selectedAwardsYear) {
+            selectedAwardsYear = years.first ?? Calendar.current.component(.year, from: Date())
+        }
+    }
+
+    private func scheduleYearAwardsRefresh(delayMilliseconds: Int) {
+        guard hasCompletedInitialSnapshot else { return }
+        yearAwardsRefreshTask?.cancel()
+        let loader = yearAwardsLoader ?? StatsYearAwardsLoader(modelContainer: modelContext.container)
+        if yearAwardsLoader == nil {
+            yearAwardsLoader = loader
+        }
+        clampSelectedAwardsYear()
+        let request = StatsYearAwardsRequest(storeVersion: storeVersion, year: selectedAwardsYear)
+        yearAwardsRefreshTask = Task {
+            if delayMilliseconds > 0 {
+                try? await Task.sleep(for: .milliseconds(delayMilliseconds))
+            } else {
+                await Task.yield()
+            }
+            guard !Task.isCancelled else { return }
+            let built = await loader.snapshot(for: request)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                yearAwards = built
+            }
+        }
     }
 
     private var dailyChartKinds: [DailyChartKind] {

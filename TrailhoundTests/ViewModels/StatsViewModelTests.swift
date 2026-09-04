@@ -443,6 +443,60 @@ final class StatsViewModelTests: XCTestCase {
     func testTrendPercentCalculation() {
         XCTAssertEqual(StatsViewModel.trendPercent(current: 150, previous: 100)!, 50, accuracy: 0.1)
         XCTAssertEqual(StatsViewModel.trendPercent(current: 0, previous: 100)!, -100, accuracy: 0.1)
+        XCTAssertNil(StatsViewModel.trendPercent(current: 10, previous: 0))
+    }
+
+    func testAlignedPreviousIntervalSlicesInProgressMonth() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4, hour: 15))!
+        let selected = calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let selectedInterval = StatsViewModel.calendarMonthInterval(containing: selected, calendar: calendar)
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .month,
+            selectedInterval: selectedInterval,
+            selectedMonth: selected,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(calendar.component(.month, from: previous.start), 8)
+        XCTAssertEqual(calendar.component(.day, from: previous.start), 1)
+        XCTAssertEqual(calendar.component(.month, from: previous.end), 8)
+        XCTAssertEqual(calendar.component(.day, from: previous.end), 5)
+        let fullPrevious = StatsViewModel.previousMonthInterval(containing: selected, calendar: calendar)
+        XCTAssertEqual(fullPrevious.start, previous.start)
+        XCTAssertLessThan(previous.end, fullPrevious.end)
+        XCTAssertEqual(fullPrevious.duration, selectedInterval.duration, accuracy: 1)
+    }
+
+    func testAlignedPreviousIntervalKeepsFullPastMonth() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4))!
+        let june = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))!
+        let selectedInterval = StatsViewModel.calendarMonthInterval(containing: june, calendar: calendar)
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .month,
+            selectedInterval: selectedInterval,
+            selectedMonth: june,
+            now: now,
+            calendar: calendar
+        )
+        let expected = StatsViewModel.previousMonthInterval(containing: june, calendar: calendar)
+        XCTAssertEqual(previous.start, expected.start)
+        XCTAssertEqual(previous.end, expected.end)
+    }
+
+    func testSelectableYearsSpansFirstTripToNow() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4))!
+        let earliest = calendar.date(from: DateComponents(year: 2024, month: 11, day: 2))!
+        XCTAssertEqual(
+            StatsViewModel.selectableYears(earliestTripStart: earliest, now: now, calendar: calendar),
+            [2026, 2025, 2024]
+        )
     }
 
     func testCustomIntervalUsesOrderedBounds() {

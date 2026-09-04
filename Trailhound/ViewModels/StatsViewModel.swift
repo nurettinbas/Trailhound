@@ -374,16 +374,77 @@ struct StatsViewModel {
         return calendarMonthInterval(containing: previous, calendar: calendar)
     }
 
+    /// Previous period used for *comparison* (MTD-aligned for the in-progress month).
+    /// Does not change the Stats fetch window — that still loads the full previous calendar month.
+    static func alignedPreviousInterval(
+        for period: StatsPeriod,
+        selectedInterval: DateInterval,
+        selectedMonth: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> DateInterval {
+        switch period {
+        case .week, .custom:
+            return previousInterval(for: selectedInterval)
+        case .month:
+            let previousFull = previousMonthInterval(containing: selectedMonth, calendar: calendar)
+            let selectedFull = calendarMonthInterval(containing: selectedMonth, calendar: calendar)
+            let isInProgress = calendar.isDate(selectedFull.start, equalTo: now, toGranularity: .month)
+                && now < selectedFull.end
+            guard isInProgress else { return previousFull }
+
+            let nowDay = calendar.startOfDay(for: now)
+            let dayAfterNow = calendar.date(byAdding: .day, value: 1, to: nowDay) ?? now
+            let elapsed = dayAfterNow.timeIntervalSince(selectedFull.start)
+            let alignedEnd = min(previousFull.start.addingTimeInterval(elapsed), previousFull.end)
+            return DateInterval(start: previousFull.start, end: alignedEnd)
+        }
+    }
+
+    /// Half-open calendar year `[1 Jan, 1 Jan next)`.
+    static func calendarYearInterval(
+        containing date: Date,
+        calendar: Calendar = .current
+    ) -> DateInterval {
+        let year = calendar.component(.year, from: date)
+        let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1))
+            ?? calendar.startOfDay(for: date)
+        let end = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))
+            ?? start.addingTimeInterval(365 * 86_400)
+        return DateInterval(start: start, end: end)
+    }
+
+    static func calendarYearInterval(
+        year: Int,
+        calendar: Calendar = .current
+    ) -> DateInterval {
+        let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1))
+            ?? Date()
+        return calendarYearInterval(containing: start, calendar: calendar)
+    }
+
+    /// Newest year first. With no trips, only the current year.
+    static func selectableYears(
+        earliestTripStart: Date?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [Int] {
+        let currentYear = calendar.component(.year, from: now)
+        let earliestYear: Int = {
+            guard let earliestTripStart else { return currentYear }
+            return calendar.component(.year, from: earliestTripStart)
+        }()
+        guard earliestYear <= currentYear else { return [currentYear] }
+        return Array((earliestYear...currentYear).reversed())
+    }
+
     static func trendPercent(current: Double, previous: Double) -> Double? {
-        guard previous > 0 else { return current > 0 ? 100 : nil }
+        guard previous > 0 else { return nil }
         return ((current - previous) / previous) * 100
     }
 
     static func trendText(current: Double, previous: Double) -> String? {
-        guard let percent = trendPercent(current: current, previous: previous) else { return nil }
-        let format = L10n.string("stats.trend.format")
-        let sign = percent > 0 ? "+" : ""
-        return String(format: format, sign, Int(percent.rounded()))
+        StatsTrend.make(current: current, previous: previous, polarity: .neutral)?.displayText
     }
 
     static func dailyDistances<T: TripStatsAggregable>(

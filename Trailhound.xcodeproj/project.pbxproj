@@ -37,6 +37,8 @@
 		A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2COORDPARSETEST0000001 /* CoordinateParsingTests.swift */; };
 		8EE124A3BEEB447299237EDD /* SpeedChartSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C2A011B0E248E8B77BA691 /* SpeedChartSeriesTests.swift */; };
 		80CB6A46FDA6490B804E250C /* StatsDisplaySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77155D86D74469AA74CA7B9 /* StatsDisplaySnapshotTests.swift */; };
+		A1STATSTRENDTEST000001 /* StatsTrendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSTRENDTEST000001 /* StatsTrendTests.swift */; };
+		A1STATSYEARTEST0000001 /* StatsYearAwardsLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARTEST0000001 /* StatsYearAwardsLoaderTests.swift */; };
 		A1STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift */; };
 		979FF46CCB2247BB8C580DBB /* StatsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F634826B514B26A20A8473 /* StatsViewModelTests.swift */; };
 		F2981320F3DD41979D1BD272 /* TripDetailRevealPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116237F503BF4707BB66E0E9 /* TripDetailRevealPolicyTests.swift */; };
@@ -136,6 +138,12 @@
 		A1VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift */; };
 		A1VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */; };
 		A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */; };
+		A1STATSTREND0000000001 /* StatsTrend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSTREND0000000001 /* StatsTrend.swift */; };
+		A1STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift */; };
+		A1STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */; };
+		A1STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */; };
+		A1STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */; };
+		A1STATSYEARCARD0000001 /* StatsYearAwardsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */; };
 		A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */; };
 		A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */; };
 		A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSTATSROW000000001 /* TripStatsRow.swift */; };
@@ -434,6 +442,14 @@
 		A2VEHICLEPHOTOHANDOFFTEST /* VehiclePhotoCaptureHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehiclePhotoCaptureHandoffTests.swift; sourceTree = SOURCE_ROOT; };
 		A2VEHICLEICONOPTIONTEST1 /* VehicleIconOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/VehicleIconOptionTests.swift; sourceTree = SOURCE_ROOT; };
 		A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDisplaySnapshot.swift; sourceTree = "<group>"; };
+		A2STATSTREND0000000001 /* StatsTrend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsTrend.swift; sourceTree = "<group>"; };
+		A2STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsSnapshot.swift; sourceTree = "<group>"; };
+		A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsLoader.swift; sourceTree = "<group>"; };
+		A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsPeriodCompareStrip.swift; sourceTree = "<group>"; };
+		A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsVehicleCompareList.swift; sourceTree = "<group>"; };
+		A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsCard.swift; sourceTree = "<group>"; };
+		A2STATSTRENDTEST000001 /* StatsTrendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsTrendTests.swift; sourceTree = SOURCE_ROOT; };
+		A2STATSYEARTEST0000001 /* StatsYearAwardsLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/StatsYearAwardsLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSnapshotLoader.swift; sourceTree = "<group>"; };
 		A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedChartSeries.swift; sourceTree = "<group>"; };
 		A2TRIPSTATSROW000000001 /* TripStatsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStatsRow.swift; sourceTree = "<group>"; };
@@ -738,8 +754,11 @@
 			isa = PBXGroup;
 			children = (
 				D171349C59CE45DEA7298678 /* StatsViewModel.swift */,
+				A2STATSTREND0000000001 /* StatsTrend.swift */,
 				A2STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift */,
 				A2STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift */,
+				A2STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift */,
+				A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */,
 				A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */,
 				A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
@@ -792,6 +811,9 @@
 			isa = PBXGroup;
 			children = (
 				809405DA3B0A4D33AFE11517 /* StatsView.swift */,
+				A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */,
+				A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */,
+				A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */,
 				A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */,
 				A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */,
 				A2STATSCHARTPAGER000001 /* StatsChartPager.swift */,
@@ -994,6 +1016,8 @@
 				B4C2A011B0E248E8B77BA691 /* SpeedChartSeriesTests.swift */,
 				D77155D86D74469AA74CA7B9 /* StatsDisplaySnapshotTests.swift */,
 				A2STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift */,
+				A2STATSTRENDTEST000001 /* StatsTrendTests.swift */,
+				A2STATSYEARTEST0000001 /* StatsYearAwardsLoaderTests.swift */,
 				D9F634826B514B26A20A8473 /* StatsViewModelTests.swift */,
 				116237F503BF4707BB66E0E9 /* TripDetailRevealPolicyTests.swift */,
 				848376E3B54145A189F322CA /* TripDetailViewModelRevealTests.swift */,
@@ -1208,6 +1232,8 @@
 				A1COORDPARSETEST0000001 /* CoordinateParsingTests.swift in Sources */,
 				8EE124A3BEEB447299237EDD /* SpeedChartSeriesTests.swift in Sources */,
 				80CB6A46FDA6490B804E250C /* StatsDisplaySnapshotTests.swift in Sources */,
+				A1STATSTRENDTEST000001 /* StatsTrendTests.swift in Sources */,
+				A1STATSYEARTEST0000001 /* StatsYearAwardsLoaderTests.swift in Sources */,
 				A1STATSSNAPLOADTEST0001 /* StatsSnapshotLoaderTests.swift in Sources */,
 				979FF46CCB2247BB8C580DBB /* StatsViewModelTests.swift in Sources */,
 				F2981320F3DD41979D1BD272 /* TripDetailRevealPolicyTests.swift in Sources */,
@@ -1287,6 +1313,9 @@
 				A1VEHICLEPHOTOLIBLOAD01 /* VehiclePhotoLibraryLoader.swift in Sources */,
 				A1VEHICLEINLINECAMERA01 /* VehicleInlineCameraView.swift in Sources */,
 				A1STATSDISPSNAP00000001 /* StatsDisplaySnapshot.swift in Sources */,
+				A1STATSTREND0000000001 /* StatsTrend.swift in Sources */,
+				A1STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift in Sources */,
+				A1STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift in Sources */,
 				A1STATSSNAPLOAD0000001 /* StatsSnapshotLoader.swift in Sources */,
 				A1SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift in Sources */,
 				A1TRIPSTATSROW000000001 /* TripStatsRow.swift in Sources */,
@@ -1384,6 +1413,9 @@
 				A2VEHICLEENTITYSRC00001 /* VehicleEntity.swift in Sources */,
 				C34CA953FA9445FC9738421B /* StatsViewModel.swift in Sources */,
 				E5BA2FB0704F498A84A79A26 /* StatsView.swift in Sources */,
+				A1STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift in Sources */,
+				A1STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift in Sources */,
+				A1STATSYEARCARD0000001 /* StatsYearAwardsCard.swift in Sources */,
 				3B1BCB066B68458F963D7027 /* PlacePickerView.swift in Sources */,
 				4ED9865E047546A39C7E466C /* AppLockView.swift in Sources */,
 				B70278C1D5B446EC8DE991B4 /* TripFilterChips.swift in Sources */,

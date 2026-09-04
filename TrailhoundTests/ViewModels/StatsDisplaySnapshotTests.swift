@@ -96,6 +96,55 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.stats.totalDistanceMeters, 12_000, accuracy: 0.1)
     }
 
+    func testInProgressMonthPreviousStatsUsesMTDSliceNotFullPreviousMonth() {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentStart = StatsViewModel.calendarMonthInterval(containing: now).start
+        let selectedInterval = StatsViewModel.calendarMonthInterval(containing: currentStart)
+        let previousFull = StatsViewModel.previousMonthInterval(containing: currentStart)
+        let aligned = StatsViewModel.alignedPreviousInterval(
+            for: .month,
+            selectedInterval: selectedInterval,
+            selectedMonth: currentStart,
+            now: now
+        )
+        let latePrevious = aligned.end.addingTimeInterval(2 * 86_400)
+        guard latePrevious < previousFull.end else { return }
+
+        let earlyPreviousTrip = Trip(
+            startedAt: previousFull.start.addingTimeInterval(3_600),
+            endedAt: previousFull.start.addingTimeInterval(7_200),
+            distanceMeters: 1_000
+        )
+        let latePreviousTrip = Trip(
+            startedAt: latePrevious,
+            endedAt: latePrevious.addingTimeInterval(3_600),
+            distanceMeters: 9_000
+        )
+        let currentTrip = Trip(
+            startedAt: currentStart.addingTimeInterval(3_600),
+            endedAt: currentStart.addingTimeInterval(7_200),
+            distanceMeters: 2_000
+        )
+
+        let snapshot = StatsDisplaySnapshotBuilder.build(
+            completedTrips: [earlyPreviousTrip, latePreviousTrip, currentTrip],
+            categories: [],
+            vehicles: [],
+            selectedPeriod: .month,
+            customStart: now,
+            customEnd: now,
+            selectedMonth: currentStart,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            goalMonth: currentStart
+        )
+
+        XCTAssertEqual(snapshot.previousStats.totalDistanceMeters, 1_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.stats.totalDistanceMeters, 2_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.distanceTrend?.isFavorable, true)
+    }
+
     func testWeekGoalDistanceUsesCurrentMonthNotWeekWindow() {
         let calendar = Calendar.current
         let currentMonthStart = StatsViewModel.calendarMonthInterval(containing: Date()).start

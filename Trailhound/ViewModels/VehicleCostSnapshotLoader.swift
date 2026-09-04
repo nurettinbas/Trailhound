@@ -42,13 +42,18 @@ actor VehicleCostSnapshotLoader {
 
     private func build(_ request: VehicleCostSnapshotRequest) -> VehicleCostSnapshot {
         let calendar = Calendar.current
-        let lowerBound = request.periodStart
-        let upperBound = request.periodEnd
+        let currentStart = request.periodStart
+        let currentEnd = request.periodEnd
+        let compareStart = request.compareStart
+        let compareEnd = request.compareEnd
+        let lowerBound = min(compareStart, currentStart)
+        let upperBound = max(compareEnd, currentEnd)
 
         var monthBuckets: [Date: VehicleExpenseCategoryAmounts] = [:]
         var dayBuckets: [Date: VehicleExpenseCategoryAmounts] = [:]
         var categoryTotals: [VehicleExpenseCategory: Double] = [:]
-        var vehicleTotals: [String: (name: String, amount: Double)] = [:]
+        var vehicleTotals: [String: VehicleAccumulator] = [:]
+        var previousTotal = 0.0
 
         let expenses = fetchExpenses(
             from: lowerBound,
@@ -56,10 +61,19 @@ actor VehicleCostSnapshotLoader {
             vehicleID: request.selectedVehicleID
         )
         for expense in expenses {
+            let occurredAt = expense.occurredAt
+            let inCurrent = occurredAt >= currentStart && occurredAt <= currentEnd
+            let inPrevious = occurredAt >= compareStart && occurredAt < compareEnd
+
+            if inPrevious {
+                previousTotal += expense.amount
+            }
+            guard inCurrent else { continue }
+
             let month = calendar.date(
-                from: calendar.dateComponents([.year, .month], from: expense.occurredAt)
-            ) ?? expense.occurredAt
-            let day = calendar.startOfDay(for: expense.occurredAt)
+                from: calendar.dateComponents([.year, .month], from: occurredAt)
+            ) ?? occurredAt
+            let day = calendar.startOfDay(for: occurredAt)
             let category = expense.category
 
             var monthBucket = monthBuckets[month] ?? VehicleExpenseCategoryAmounts()
@@ -74,11 +88,23 @@ actor VehicleCostSnapshotLoader {
 
             let vehicleKey = expense.vehicle?.id.uuidString ?? VehicleExpenseShare.unassignedID
             let vehicleName = expense.vehicle?.name ?? ""
-            let existing = vehicleTotals[vehicleKey]
-            vehicleTotals[vehicleKey] = (
-                name: existing?.name.isEmpty == false ? existing!.name : vehicleName,
-                amount: (existing?.amount ?? 0) + expense.amount
+            let iconName = expense.vehicle?.iconName ?? VehicleIconOption.default.rawValue
+            let photoFileName = expense.vehicle?.photoFileName
+            let isElectric = expense.vehicle?.fuelType == .electric
+            var accumulator = vehicleTotals[vehicleKey] ?? VehicleAccumulator(
+                name: vehicleName,
+                iconName: iconName,
+                photoFileName: photoFileName,
+                isElectric: isElectric
             )
+            if accumulator.name.isEmpty, !vehicleName.isEmpty {
+                accumulator.name = vehicleName
+            }
+            if accumulator.photoFileName == nil {
+                accumulator.photoFileName = photoFileName
+            }
+            accumulator.amounts.add(expense.amount, category: category)
+            vehicleTotals[vehicleKey] = accumulator
         }
 
         let months = monthBuckets.keys.sorted().map {
@@ -103,21 +129,39 @@ actor VehicleCostSnapshotLoader {
             return lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
         }
 
-        let vehicleBreakdown: [VehicleExpenseShare] = vehicleTotals
+        let compareSeeds: [VehicleCompareSeed] = vehicleTotals
             .map { key, value in
-                VehicleExpenseShare(id: key, storedName: value.name, amount: value.amount)
+                VehicleCompareSeed(
+                    id: key,
+                    storedName: value.name,
+                    iconName: value.iconName,
+                    photoFileName: value.photoFileName,
+                    isElectric: value.isElectric,
+                    amount: value.amounts.total,
+                    fuel: value.amounts.amount(for: .fuel),
+                    service: value.amounts.amount(for: .service),
+                    insurance: value.amounts.amount(for: .insurance),
+                    casco: value.amounts.amount(for: .casco),
+                    other: value.amounts.amount(for: .other)
+                )
             }
             .sorted { lhs, rhs in
                 if lhs.amount != rhs.amount { return lhs.amount > rhs.amount }
                 return lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
             }
 
+        let vehicleBreakdown: [VehicleExpenseShare] = compareSeeds.map { seed in
+            VehicleExpenseShare(id: seed.id, storedName: seed.storedName, amount: seed.amount)
+        }
+
         return VehicleCostSnapshot(
             months: months,
             days: days,
             categoryBreakdown: categoryBreakdown,
             vehicleBreakdown: vehicleBreakdown,
+            compareSeeds: compareSeeds,
             total: months.reduce(0) { $0 + $1.total },
+            previousTotal: previousTotal,
             fuelTotal: months.reduce(0) { $0 + $1.amount(for: VehicleCostBucket.fuel) },
             serviceTotal: months.reduce(0) { $0 + $1.amount(for: VehicleCostBucket.service) },
             insuranceTotal: months.reduce(0) { $0 + $1.amount(for: VehicleCostBucket.insurance) },
@@ -137,4 +181,12 @@ actor VehicleCostSnapshotLoader {
         guard let vehicleID else { return all }
         return all.filter { $0.vehicle?.id == vehicleID }
     }
+}
+
+private struct VehicleAccumulator {
+    var name: String
+    var iconName: String
+    var photoFileName: String?
+    var isElectric: Bool
+    var amounts = VehicleExpenseCategoryAmounts()
 }

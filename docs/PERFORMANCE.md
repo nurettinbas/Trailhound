@@ -209,6 +209,17 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
   build all five Swift Charts when the section first appears — only the visible page (after the row
   scrolls into view). Vehicle cost charts use the same pattern via `VehicleCostSnapshotLoader`.
+- **Comparison surfaces stay off the tab-open critical path.** Month-over-month trends are
+  `StatsTrend` values on the existing trip/cost snapshots (MTD is a *slice* of the already-fetched
+  previous month — the fetch window is still `selected ∪ previous ∪ goalMonth`). Vehicle ranking
+  rows are built from `VehicleCompareSeed` + trip distances with Capsule bars, not Swift Charts, and
+  live in the vehicles section (below the fold). The year Awards card has its own
+  `StatsYearAwardsLoader` (`StatsYearAwardsBuild` signpost) that must **not** start in Stats
+  `onAppear`: it waits until the first `StatsDisplaySnapshot` lands, then idles ~300 ms (or runs
+  immediately if the Awards row has appeared). Year data is rollups + expenses only — never
+  `FetchDescriptor<Trip>` / GPS / `walkNightDistanceShare`. Filter chips do not rebuild the year
+  snapshot; `storeVersion` does, still on that idle path. Cost MoM uses **one** expense fetch covering
+  current ∪ previous (`previousTotal` on the same snapshot).
 
 ## Reacting to saves
 
@@ -273,6 +284,8 @@ places that used to leak it across a browsing session:
 Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performance`:
 
 - `StatsSnapshotBuild` — one interval per snapshot rebuild.
+- `StatsYearAwardsBuild` — calendar-year rollup + expense aggregation; must not overlap tab-open
+  `StatsSnapshotBuild`.
 - `NightDistanceWalk` — appears only for trips that have not been backfilled yet. Seeing these
   steadily in a warmed-up app means the backfill is not completing.
 
