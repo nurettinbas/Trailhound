@@ -109,9 +109,9 @@ final class TrailhoundUITests: XCTestCase {
         XCTAssertTrue(saveButton.waitForExistence(timeout: 10))
     }
 
-    func testStatsTabShowsContent() {
+    func testStatsTabShowsPremiumRecapCard() {
         XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
         statsTab.tap()
-        XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any)["stats.premium.recap"].waitForExistence(timeout: uiTimeout))
     }
 }

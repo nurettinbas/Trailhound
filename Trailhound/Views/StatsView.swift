@@ -32,6 +32,18 @@ struct StatsView: View {
     @State private var costSnapshotLoader: VehicleCostSnapshotLoader?
     @State private var costSnapshot: VehicleCostSnapshot = .empty
     @State private var costRefreshTask: Task<Void, Never>?
+    @State private var forecastLoader: MonthCostForecastLoader?
+    @State private var forecast: MonthCostForecast = .empty
+    @State private var recapLoader: YearRecapSnapshotLoader?
+    @State private var recapSnapshot: YearRecapSnapshot?
+    @State private var achievements: [AchievementDisplay] = []
+    @State private var routeAggregates: [FrequentRouteAggregate] = []
+    @State private var showForecastDetail = false
+    @State private var showAchievements = false
+    @State private var showRoutesMap = false
+    @State private var showRecapStory = false
+    @State private var unlockQueue: [AchievementDisplay] = []
+    @Bindable private var tabSelection = TabSelection.shared
     @State private var dailyChartPage = 0
     @State private var vehicleChartPage = 0
     @State private var categoryChartPage = 0
@@ -193,6 +205,28 @@ struct StatsView: View {
                 }
                 .padding(.vertical, 4)
                 .glassListRow()
+                .id("stats.goal")
+            }
+
+            Section(L10n.string("premium.section.title")) {
+                YearRecapHubCard(
+                    snapshot: recapSnapshot ?? .empty(year: Calendar.current.component(.year, from: Date())),
+                    onPlay: { showRecapStory = true }
+                )
+                .glassListRow()
+
+                StatsAchievementsStrip(achievements: achievements, onOpen: { showAchievements = true })
+                    .glassListRow()
+
+                FrequentRoutesPreviewCard(aggregates: routeAggregates, onOpen: { showRoutesMap = true })
+                    .glassListRow()
+
+                StatsForecastCard(
+                    forecast: forecast,
+                    currencyCode: fuelCurrencyCode,
+                    onOpen: { showForecastDetail = true }
+                )
+                .glassListRow()
             }
 
             Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
@@ -268,11 +302,20 @@ struct StatsView: View {
             if costSnapshotLoader == nil {
                 costSnapshotLoader = VehicleCostSnapshotLoader(modelContainer: modelContext.container)
             }
+            if forecastLoader == nil {
+                forecastLoader = MonthCostForecastLoader(modelContainer: modelContext.container)
+            }
+            if recapLoader == nil {
+                recapLoader = YearRecapSnapshotLoader(modelContainer: modelContext.container)
+            }
             refreshEarliestTripStart()
             normalizeSelectedMonth()
             updateAnimatedProgress(animated: false)
             scheduleSnapshotRefresh()
             scheduleCostSnapshotRefresh()
+            schedulePremiumRefresh()
+            consumeStatsDeepLink()
+            maybeAutoplayRecap()
         }
         .onStoreSave {
             refreshEarliestTripStart()
@@ -281,6 +324,7 @@ struct StatsView: View {
         .onChange(of: snapshotInputs) { _, _ in
             scheduleSnapshotRefresh()
             scheduleCostSnapshotRefresh()
+            schedulePremiumRefresh()
         }
         .onChange(of: selectedPeriod) { _, newPeriod in
             if newPeriod == .month {
@@ -330,6 +374,34 @@ struct StatsView: View {
         .onDisappear {
             snapshotRefreshTask?.cancel()
         }
+        .sheet(isPresented: $showForecastDetail) {
+            StatsForecastDetailSheet(forecast: forecast, currencyCode: fuelCurrencyCode)
+        }
+        .sheet(isPresented: $showAchievements) {
+            AchievementGalleryView(achievements: achievements)
+        }
+        .fullScreenCover(isPresented: $showRoutesMap) {
+            FrequentRoutesMapView(aggregates: routeAggregates)
+        }
+        .fullScreenCover(isPresented: $showRecapStory) {
+            YearRecapStoryView(snapshot: recapSnapshot ?? .empty(year: Calendar.current.component(.year, from: Date()))) {
+                showRecapStory = false
+                markRecapSeen()
+            }
+        }
+        .overlay {
+            if let item = unlockQueue.first {
+                Color.black.opacity(0.28).ignoresSafeArea()
+                AchievementUnlockOverlay(item: item) {
+                    AchievementEvaluator.markSeen([item.id], in: modelContext)
+                    if !unlockQueue.isEmpty {
+                        unlockQueue.removeFirst()
+                    }
+                    try? modelContext.save()
+                    achievements = AchievementEvaluator.displays(in: modelContext)
+                }
+            }
+        }
     }
 
     private func scheduleCostSnapshotRefresh() {
@@ -359,6 +431,72 @@ struct StatsView: View {
                 costSnapshot = built
             }
         }
+    }
+
+    private func schedulePremiumRefresh() {
+        let forecastActor = forecastLoader ?? MonthCostForecastLoader(modelContainer: modelContext.container)
+        if forecastLoader == nil { forecastLoader = forecastActor }
+        let recapActor = recapLoader ?? YearRecapSnapshotLoader(modelContainer: modelContext.container)
+        if recapLoader == nil { recapLoader = recapActor }
+        let year = Calendar.current.component(.year, from: Date())
+        let request = MonthCostForecastRequest(
+            storeVersion: storeVersion,
+            selectedVehicleID: selectedVehicleID,
+            now: Date()
+        )
+        Task {
+            let builtForecast = await forecastActor.forecast(for: request)
+            let builtRecap = await recapActor.snapshot(year: year, storeVersion: storeVersion)
+            await MainActor.run {
+                forecast = builtForecast
+                recapSnapshot = builtRecap
+                achievements = AchievementEvaluator.displays(in: modelContext)
+                routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
+                let pending = achievements.filter(\.needsCelebration)
+                if unlockQueue.isEmpty {
+                    unlockQueue = pending
+                }
+                PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
+            }
+        }
+    }
+
+    private func consumeStatsDeepLink() {
+        guard let anchor = tabSelection.consumePendingStatsAnchor() else { return }
+        switch anchor {
+        case .goal:
+            break
+        case .forecast:
+            showForecastDetail = true
+        case .recap:
+            if recapSnapshot?.hasData == true {
+                showRecapStory = true
+            }
+        case .routes:
+            showRoutesMap = true
+        case .achievements:
+            showAchievements = true
+        }
+    }
+
+    private func recapSeenKey(for year: Int) -> String {
+        "recap.seen.\(year)"
+    }
+
+    private func markRecapSeen() {
+        let year = Calendar.current.component(.year, from: Date())
+        UserDefaults.standard.set(true, forKey: recapSeenKey(for: year))
+    }
+
+    private func maybeAutoplayRecap() {
+        guard !UITestSupport.isEnabled, !UITestSupport.isUnitTesting else { return }
+        let year = Calendar.current.component(.year, from: Date())
+        let month = Calendar.current.component(.month, from: Date())
+        guard month == 12 || month == 1 else { return }
+        guard recapSnapshot?.hasData == true else { return }
+        guard !UserDefaults.standard.bool(forKey: recapSeenKey(for: year)) else { return }
+        showRecapStory = true
+        markRecapSeen()
     }
 
     private func scheduleSnapshotRefresh() {

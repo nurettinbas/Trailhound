@@ -138,6 +138,18 @@ enum TrailhoundMotion {
         )
     }
 
+    static func recapPage(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.45)
+    }
+
+    static func recapCountUp(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: 1.15)
+    }
+
+    static func badgeUnlock(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.78)
+    }
+
     static func fadeScaleTransition(reduceMotion: Bool) -> AnyTransition {
         guard !reduceMotion else { return .identity }
         return .opacity.combined(with: .scale(scale: 0.98))
@@ -180,6 +192,10 @@ enum TrailhoundHaptics {
     }
 
     static func pairingSucceeded() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    static func badgeUnlocked() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 

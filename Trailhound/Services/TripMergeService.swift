@@ -162,6 +162,14 @@ enum TripMergeCore {
         merged.startPlaceName = first.startPlaceName
         merged.endAddress = last.endAddress
         merged.endPlaceName = last.endPlaceName
+        merged.startLocality = first.startLocality
+        merged.endLocality = last.endLocality
+        merged.startCountryCode = first.startCountryCode
+        merged.endCountryCode = last.endCountryCode
+        merged.startLatitude = first.startLatitude
+        merged.startLongitude = first.startLongitude
+        merged.endLatitude = last.endLatitude
+        merged.endLongitude = last.endLongitude
         merged.note = mergedNotes(from: completed)
         // Insert before copying points so inverse relationships resolve against a registered trip.
         context.insert(merged)

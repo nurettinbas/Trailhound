@@ -256,6 +256,27 @@ six-figure library viable.
   or a month holds few enough trips to read directly. The fetch window is
   `selected ∪ previous ∪ goalMonth`; a single calendar month still stays under the threshold.
 
+## Premium derived caches (schema V19+)
+
+Year recap, frequent-route overlays, badges, and the month cost forecast all sit on the same
+write path as daily rollups. They are **derived**, not a second source of truth: `Trip` (and
+`VehicleExpense` for cash costs) still wins, and a rebuild version bump regenerates the tables.
+
+- **Delta hook.** `TripRollupDelta` also runs `PremiumDerivedDelta` on finalize, merge, delete, and
+  category/vehicle edits. GPS points are never faulted on that path.
+- **Year recap.** `YearRecapSnapshotLoader` reads that year's `TripDailyRollup` rows plus trip
+  *endpoint* fields (locality, start/end coordinates, category). The JSON cache lives in Application
+  Support and is not copied to the App Group. Story pages are built before the cover appears; there
+  is no fetch on page turn.
+- **Frequent-route map.** Overlay budget is **40 arcs**. Heatmap samples come from quadratic bezier
+  control points (≤8 per corridor), never from a GPS polyline. Rendering uses `MKMapView` overlay
+  renderers with `canDraw` / zoom fade — not thousands of SwiftUI `MapPolyline` views. The Stats
+  mini-preview is an `MKMapSnapshotter` JPEG (`FrequentRoutesSnapshotCache`).
+- **Widgets.** Goal ring, last trip, and cost summary read App Group `UserDefaults` plus optional
+  `LastTrip.jpg` (kept under 100 KB). The widget extension does not open SwiftData.
+  `PremiumWidgetBridge.reloadPremiumWidgetTimelines` runs on stop / finalize / expense / Stats
+  refresh — not on every GPS tick. Recording control widgets keep their own home/lock reload path.
+
 ## Memory
 
 `Trip.sortedPointsCache` is a `@Transient` array of materialised `TripPoint`s, so anything that

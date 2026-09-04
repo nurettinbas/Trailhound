@@ -1439,20 +1439,33 @@ enum TripPostProcessor {
         geocodingService: GeocodingService
     ) async {
         var success = true
+        var startPlace = GeocodedPlace(suggestedName: nil, address: nil, locality: nil, countryCode: nil)
+        var endPlace = GeocodedPlace(suggestedName: nil, address: nil, locality: nil, countryCode: nil)
 
         if let startCoordinate = trip.startCoordinate {
             let startLocation = CLLocation(latitude: startCoordinate.latitude, longitude: startCoordinate.longitude)
-            let address = await geocodingService.reverseGeocode(startLocation)
-            trip.startAddress = address
-            if address == nil { success = false }
+            startPlace = await geocodingService.lookupPlace(at: startLocation)
+            trip.startAddress = startPlace.address ?? startPlace.suggestedName
+            if trip.startAddress == nil { success = false }
         }
 
         if let endCoordinate = trip.endCoordinate {
             let endLocation = CLLocation(latitude: endCoordinate.latitude, longitude: endCoordinate.longitude)
-            let address = await geocodingService.reverseGeocode(endLocation)
-            trip.endAddress = address
-            if address == nil { success = false }
+            endPlace = await geocodingService.lookupPlace(at: endLocation)
+            trip.endAddress = endPlace.address ?? endPlace.suggestedName
+            if trip.endAddress == nil { success = false }
         }
+
+        let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        TripLocalityResolver.apply(
+            to: trip,
+            startLocality: startPlace.locality,
+            startCountryCode: startPlace.countryCode,
+            endLocality: endPlace.locality,
+            endCountryCode: endPlace.countryCode,
+            places: places,
+            privacyRadius: AppSettings.shared.privacyRadiusMeters
+        )
 
         trip.geocodeStatus = success ? .complete : .failed
         try? context.save()
