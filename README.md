@@ -48,6 +48,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Organization
 - Personal / business categories (+ custom)
+- **Travel journal** — group trips under a Seyahat (Trips tab segment); all member routes on one map
 - Vehicle management (petrol, diesel, hybrid, EV)
 - In-app notifications inbox
 - Turkish & English UI (Localizable.xcstrings)

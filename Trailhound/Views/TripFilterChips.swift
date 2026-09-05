@@ -9,6 +9,7 @@ struct TripListFiltersBar: View {
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
     @Binding var selectedPlaceID: UUID?
+    @Binding var listMode: TripsTabListMode
     var vehicles: [VehicleProfile] = []
     var places: [SavedPlace] = []
     /// Compact “This week” strip shown above search when non-empty.
@@ -55,20 +56,24 @@ struct TripListFiltersBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if showsWeekSummary {
+            listModePicker
+
+            if showsWeekSummary && listMode == .trips {
                 weekSummaryRow
             }
 
             HStack(alignment: .center, spacing: 8) {
                 searchField
-                filtersToggleButton
-                if hasChipFiltersActive {
-                    clearFiltersButton
+                if listMode == .trips {
+                    filtersToggleButton
+                    if hasChipFiltersActive {
+                        clearFiltersButton
+                    }
                 }
             }
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasChipFiltersActive)
 
-            if isFiltersExpanded {
+            if listMode == .trips, isFiltersExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     dateFilterRow
                     TripFilterChips(selectedCategoryID: $selectedCategoryID, usesCardInsets: false)
@@ -84,6 +89,16 @@ struct TripListFiltersBar: View {
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+    }
+
+    private var listModePicker: some View {
+        Picker(L10n.tripsSegmentTravels, selection: $listMode) {
+            ForEach(TripsTabListMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("trips.segment")
     }
 
     private var weekSummaryRow: some View {
@@ -119,7 +134,7 @@ struct TripListFiltersBar: View {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-            TextField(L10n.searchTrips, text: $searchText)
+            TextField(listMode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips, text: $searchText)
                 .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

@@ -52,7 +52,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleSchedule>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 18)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 19)
     }
 
     func testTripDataSurvivesAlongsideCareModels() throws {
