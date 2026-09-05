@@ -92,6 +92,10 @@ final class AppSettings {
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
         static let appearanceMode = "appearanceMode"
+        static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
+        static let workHourStart = "smartCategory.workHourStart"
+        static let workHourEnd = "smartCategory.workHourEnd"
+        static let dismissedJournalSuggestions = "journal.dismissedSuggestions"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -117,6 +121,32 @@ final class AppSettings {
            let mode = AppearanceMode(rawValue: raw) {
             appearanceMode = mode
         }
+        dismissedJournalSuggestionFingerprints = Set(
+            resolvedDefaults.stringArray(forKey: Key.dismissedJournalSuggestions) ?? []
+        )
+        if resolvedDefaults.object(forKey: Key.smartCategorySuggestionsEnabled) != nil {
+            smartCategorySuggestionsEnabled = resolvedDefaults.bool(forKey: Key.smartCategorySuggestionsEnabled)
+        }
+        workHourStart = Self.clampedHourValue(
+            resolvedDefaults.object(forKey: Key.workHourStart) == nil
+                ? 9
+                : resolvedDefaults.integer(forKey: Key.workHourStart)
+        )
+        workHourEnd = Self.clampedHourValue(
+            resolvedDefaults.object(forKey: Key.workHourEnd) == nil
+                ? 18
+                : resolvedDefaults.integer(forKey: Key.workHourEnd)
+        )
+    }
+
+    var dismissedJournalSuggestionFingerprints: Set<String> = [] {
+        didSet {
+            defaults.set(Array(dismissedJournalSuggestionFingerprints), forKey: Key.dismissedJournalSuggestions)
+        }
+    }
+
+    func dismissJournalSuggestion(_ fingerprint: String) {
+        dismissedJournalSuggestionFingerprints.insert(fingerprint)
     }
 
     /// Stable `"yyyy-MM"` key for a calendar month.
@@ -311,6 +341,43 @@ final class AppSettings {
     var developerModeEnabled: Bool {
         get { defaults.bool(forKey: Key.developerModeEnabled) }
         set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
+    }
+
+    /// Smart category suggestions after a trip ends. Default on.
+    var smartCategorySuggestionsEnabled: Bool = true {
+        didSet { defaults.set(smartCategorySuggestionsEnabled, forKey: Key.smartCategorySuggestionsEnabled) }
+    }
+
+    /// Inclusive local start hour for the weekday work-hours heuristic (default 9).
+    var workHourStart: Int = 9 {
+        didSet {
+            let clamped = Self.clampedHourValue(workHourStart)
+            if workHourStart != clamped {
+                workHourStart = clamped
+                return
+            }
+            defaults.set(workHourStart, forKey: Key.workHourStart)
+        }
+    }
+
+    /// Exclusive local end hour for the weekday work-hours heuristic (default 18).
+    var workHourEnd: Int = 18 {
+        didSet {
+            let clamped = Self.clampedHourValue(workHourEnd)
+            if workHourEnd != clamped {
+                workHourEnd = clamped
+                return
+            }
+            defaults.set(workHourEnd, forKey: Key.workHourEnd)
+        }
+    }
+
+    var workHours: TripCategoryWorkHours {
+        TripCategoryWorkHours(startHour: workHourStart, endHour: workHourEnd)
+    }
+
+    private static func clampedHourValue(_ hour: Int) -> Int {
+        min(max(hour, 0), 23)
     }
 
     /// Live follow map: pitched 3D camera when true; flat overview when false.

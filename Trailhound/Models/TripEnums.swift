@@ -12,6 +12,56 @@ enum TripCategory: String, Codable, CaseIterable {
     }
 }
 
+/// How the trip's current category was chosen. `nil` storage means legacy / default.
+enum TripCategoryOrigin: String, Codable {
+    case `default`
+    case user
+    case accepted
+    case dismissed
+
+    var blocksSuggestion: Bool {
+        switch self {
+        case .user, .accepted, .dismissed: true
+        case .default: false
+        }
+    }
+
+    var countsTowardLearning: Bool {
+        switch self {
+        case .user, .accepted: true
+        case .default, .dismissed: false
+        }
+    }
+}
+
+enum TripCategorySuggestionReason: String, Codable {
+    case route
+    case place
+    case hours
+}
+
+struct TripCategoryWorkHours: Equatable, Sendable {
+    var startHour: Int
+    var endHour: Int
+
+    static let `default` = TripCategoryWorkHours(startHour: 9, endHour: 18)
+
+    func contains(_ date: Date, calendar: Calendar) -> Bool {
+        let hour = calendar.component(.hour, from: date)
+        if startHour == endHour { return false }
+        if startHour < endHour {
+            return hour >= startHour && hour < endHour
+        }
+        return hour >= startHour || hour < endHour
+    }
+}
+
+struct TripCategorySuggestion: Equatable, Sendable {
+    let categoryID: String
+    let reason: TripCategorySuggestionReason
+    let confidence: Double
+}
+
 enum GeocodeStatus: String, Codable {
     case pending
     case complete

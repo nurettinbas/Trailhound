@@ -70,6 +70,20 @@ Optional smoke:
 - [ ] **Edit plan** — change total or count from any slice; all siblings update
 - [ ] **Delete** — delete one installment vs delete entire plan
 
+## Travel journal (V19)
+
+- [ ] **Create travel** — Trips tab → Travels → create a journal, pick completed trips; map shows every member route
+- [ ] **Suggestion chip** — away-from-home run appears as Suggested travel; Accept files trips, Dismiss does not nag the same fingerprint
+- [ ] **Add to travel** — trip detail under the note; Move / Remove does not delete the trip
+
+## Share card
+
+- [ ] **Share from trip detail** — preview then system share; home/work privacy radius clips the route (no raw GPS at saved places)
+
+## Smart category (V20)
+
+- [ ] **Suggestion** — Settings toggle on; a completed commute/work-hours trip shows a pending category on the list row; swipe accepts; nothing applies automatically
+
 ## Auto-record with Shortcuts
 
 - Auto start/stop is set up via **Shortcuts** (guide under the Pairing tab): named Shortcut with **Vehicle**, then Personal Automation → **Run Shortcut**.

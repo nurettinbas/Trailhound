@@ -45,13 +45,8 @@ struct NotificationsListView: View {
                             .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    store.delete(item.id)
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                store.delete(item.id)
                             }
                     }
                 }
@@ -65,7 +60,9 @@ struct NotificationsListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button(L10n.notificationsClearAll, role: .destructive) {
-                        store.clearAll()
+                        DeleteConfirmPresenter.shared.confirm(.notificationsAll) {
+                            store.clearAll()
+                        }
                     }
                     .disabled(store.items.isEmpty)
                 } label: {
@@ -184,10 +181,12 @@ struct NotificationsListView: View {
                     .buttonStyle(.borderedProminent)
 
                     Button(role: .destructive) {
-                        if TripRecoveryService.deleteOrphan(trip, in: modelContext) {
-                            store.delete(item.id)
-                            store.reload()
-                            ToastPresenter.shared.show(.deleted)
+                        DeleteConfirmPresenter.shared.confirm(.generic) {
+                            if TripRecoveryService.deleteOrphan(trip, in: modelContext) {
+                                store.delete(item.id)
+                                store.reload()
+                                ToastPresenter.shared.show(.deleted)
+                            }
                         }
                     } label: {
                         Label(L10n.delete, systemImage: "trash")

@@ -87,13 +87,8 @@ struct SettingsView: View {
                             trailing: GlassTokens.listContentHorizontalInset
                         )
                     )
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            deletePlace(place)
-                        } label: {
-                            Label(L10n.delete, systemImage: "trash")
-                        }
-                        .destructiveTint()
+                    .confirmingDeleteSwipe {
+                        deletePlace(place)
                     }
                 }
 
@@ -115,6 +110,40 @@ struct SettingsView: View {
             }
 
             CategoryManagementView(focusedField: $focusedField)
+
+            Section {
+                Toggle(L10n.settingsSmartCategoryToggle, isOn: $settings.smartCategorySuggestionsEnabled)
+                    .accessibilityIdentifier("settings.smartCategory")
+                    .glassRow(position: settings.smartCategorySuggestionsEnabled ? .first : .only)
+                if settings.smartCategorySuggestionsEnabled {
+                    LabeledContent(L10n.settingsSmartCategoryWorkStart) {
+                        Picker(L10n.settingsSmartCategoryWorkStart, selection: $settings.workHourStart) {
+                            ForEach(Array(0..<24), id: \.self) { hour in
+                                Text(Self.hourLabel(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    }
+                    .accessibilityIdentifier("settings.smartCategory.workStart")
+                    .glassRow(position: .middle)
+                    LabeledContent(L10n.settingsSmartCategoryWorkEnd) {
+                        Picker(L10n.settingsSmartCategoryWorkEnd, selection: $settings.workHourEnd) {
+                            ForEach(Array(0..<24), id: \.self) { hour in
+                                Text(Self.hourLabel(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    }
+                    .accessibilityIdentifier("settings.smartCategory.workEnd")
+                    .glassRow(position: .last)
+                }
+            } header: {
+                Text(L10n.settingsSmartCategorySection)
+            } footer: {
+                Text(L10n.settingsSmartCategoryHint)
+            }
 
             Section {
                 Picker(L10n.settingsAppearancePicker, selection: $settings.appearanceMode) {
@@ -332,6 +361,10 @@ struct SettingsView: View {
     private func favoritePlacePosition(placeIndex: Int) -> GlassRowPosition {
         let offset = places.isEmpty ? 1 : 0
         return GlassRowPosition.index(placeIndex + offset, in: favoritePlacesRowCount)
+    }
+
+    private static func hourLabel(_ hour: Int) -> String {
+        String(format: "%02d:00", hour)
     }
 
     private enum ExportFormat {

@@ -8,7 +8,6 @@ import UniformTypeIdentifiers
 struct DevLogView: View {
     @State private var lines: [String] = []
     @State private var filter: DevLogCategory?
-    @State private var showClearConfirmation = false
     @State private var refreshTask: Task<Void, Never>?
 
     private var filteredLines: [String] {
@@ -70,7 +69,10 @@ struct DevLogView: View {
                         Label(L10n.string("Yenile"), systemImage: "arrow.clockwise")
                     }
                     Button(role: .destructive) {
-                        showClearConfirmation = true
+                        DeleteConfirmPresenter.shared.confirm(.generic) {
+                            DevLog.shared.clear()
+                            lines = []
+                        }
                     } label: {
                         Label(L10n.string("Günlüğü Temizle"), systemImage: "trash")
                     }
@@ -78,17 +80,6 @@ struct DevLogView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
-        }
-        .confirmationDialog(
-            L10n.string("Günlüğü temizlemek istediğine emin misin?"),
-            isPresented: $showClearConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(L10n.string("Temizle"), role: .destructive) {
-                DevLog.shared.clear()
-                lines = []
-            }
-            Button(L10n.cancel, role: .cancel) {}
         }
         .onAppear {
             reload()

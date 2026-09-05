@@ -30,6 +30,7 @@ protocol TripStatsAggregable {
     var vehicleID: UUID? { get }
     var startPlaceName: String? { get }
     var endPlaceName: String? { get }
+    var journalID: UUID? { get }
     var resolvedFuelCost: Double { get }
     /// Trip-specific VSP/Willans cost. 0 when unknown or not yet computed.
     var resolvedDynamicFuelCost: Double { get }
@@ -52,6 +53,7 @@ protocol TripStatsAggregable {
 
 extension TripStatsAggregable {
     var tripCount: Int { 1 }
+    var journalID: UUID? { nil }
 }
 
 /// A trip flattened to plain values so aggregation can leave the main actor.
@@ -66,6 +68,7 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
     let vehicleID: UUID?
     let startPlaceName: String?
     let endPlaceName: String?
+    let journalID: UUID?
     let resolvedFuelCost: Double
     let resolvedDynamicFuelCost: Double
     let nightDistanceShare: NightDistanceShare?
@@ -93,6 +96,7 @@ extension TripStatsRow {
             vehicleID: trip.vehicleID,
             startPlaceName: trip.startPlaceName,
             endPlaceName: trip.endPlaceName,
+            journalID: trip.journalID,
             resolvedFuelCost: StatsViewModel.fuelCost(for: trip),
             resolvedDynamicFuelCost: trip.dynamicFuelCost ?? 0,
             nightDistanceShare: trip.nightDistanceShare,
@@ -124,6 +128,7 @@ extension TripStatsRow {
             vehicleID: UUID(uuidString: rollup.vehicleKey),
             startPlaceName: nil,
             endPlaceName: nil,
+            journalID: nil,
             resolvedFuelCost: rollup.estimatedFuelCost,
             resolvedDynamicFuelCost: rollup.dynamicFuelCost,
             nightDistanceShare: NightDistanceShare(

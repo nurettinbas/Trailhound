@@ -812,7 +812,9 @@ struct PlacePickerView: View {
     PlaceMatchingService.rematchTrips(
       trips,
       places: allPlaces,
-      privacyRadius: settings.privacyRadiusMeters
+      privacyRadius: settings.privacyRadiusMeters,
+      suggestionsEnabled: settings.smartCategorySuggestionsEnabled,
+      workHours: settings.workHours
     )
 
     try? modelContext.save()

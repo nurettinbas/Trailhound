@@ -70,15 +70,12 @@ struct CategoryManagementView: View {
                 }
                 .glassRow(position: GlassRowPosition.index(index, in: rowCount))
                 .listRowInsets(compactRowInsets)
-                .swipeActions(edge: .trailing, allowsFullSwipe: !category.isBuiltIn) {
-                    if !category.isBuiltIn {
-                        Button(role: .destructive) {
-                            deleteCategory(category)
-                        } label: {
-                            Label(L10n.delete, systemImage: "trash")
-                        }
-                        .destructiveTint()
-                    }
+                .confirmingDeleteSwipe(
+                    .category,
+                    allowsFullSwipe: !category.isBuiltIn,
+                    enabled: !category.isBuiltIn
+                ) {
+                    deleteCategory(category)
                 }
             }
 

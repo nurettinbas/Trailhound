@@ -45,6 +45,16 @@ final class Trip {
     var stopDurationSeconds: Double?
     /// Driving-pace mode from `TripSpeedProfile`. `nil` = not computed; `0` = nothing to report.
     var mostCommonSpeedKmh: Double?
+    /// Pending smart-category suggestion (`UserCategory` id). `nil` = none / already decided.
+    var pendingSuggestedCategoryID: String?
+    /// `TripCategorySuggestionReason` raw value for the pending suggestion.
+    var pendingSuggestionReasonRaw: String?
+    /// `TripCategoryOrigin` raw value. `nil` on older trips — inferred from `categoryID`.
+    var categoryOriginRaw: String?
+    /// Mirror of `journal` for `#Predicate`. `nil` = not in a travel.
+    var journalID: UUID?
+    @Relationship(deleteRule: .nullify)
+    var journal: TravelJournal?
     @Relationship(deleteRule: .nullify)
     var vehicle: VehicleProfile?
     @Relationship(deleteRule: .cascade, inverse: \TripPoint.trip)
@@ -79,6 +89,8 @@ final class Trip {
         endPlaceName: String? = nil,
         vehicleID: UUID? = nil,
         vehicle: VehicleProfile? = nil,
+        journalID: UUID? = nil,
+        journal: TravelJournal? = nil,
         points: [TripPoint] = [],
         stops: [TripStop] = [],
         matchedPoints: [MatchedRoutePoint] = []
@@ -104,9 +116,14 @@ final class Trip {
         self.endPlaceName = endPlaceName
         self.vehicleID = vehicleID
         self.vehicle = vehicle
+        self.journalID = journalID
+        self.journal = journal
         self.points = points
         self.stops = stops
         self.matchedPoints = matchedPoints
+        self.pendingSuggestedCategoryID = nil
+        self.pendingSuggestionReasonRaw = nil
+        self.categoryOriginRaw = nil
     }
 
     func invalidatePointCaches() {
@@ -135,6 +152,34 @@ final class Trip {
     var geocodeStatus: GeocodeStatus {
         get { GeocodeStatus(rawValue: geocodeStatusRaw) ?? .pending }
         set { geocodeStatusRaw = newValue.rawValue }
+    }
+
+    /// Legacy rows with a non-personal category and no stored origin count as user-set so they
+    /// can teach the suggester without poisoning it with default Personal trips.
+    var categoryOrigin: TripCategoryOrigin {
+        get {
+            if let categoryOriginRaw, let origin = TripCategoryOrigin(rawValue: categoryOriginRaw) {
+                return origin
+            }
+            if categoryID != BuiltInCategory.personalID.uuidString {
+                return .user
+            }
+            return .default
+        }
+        set { categoryOriginRaw = newValue.rawValue }
+    }
+
+    var pendingSuggestionReason: TripCategorySuggestionReason? {
+        pendingSuggestionReasonRaw.flatMap(TripCategorySuggestionReason.init(rawValue:))
+    }
+
+    var hasPendingCategorySuggestion: Bool {
+        pendingSuggestedCategoryID != nil && !categoryOrigin.blocksSuggestion
+    }
+
+    func clearPendingSuggestion() {
+        pendingSuggestedCategoryID = nil
+        pendingSuggestionReasonRaw = nil
     }
 
     var duration: TimeInterval? {

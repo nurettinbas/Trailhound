@@ -8,6 +8,7 @@ struct StatsView: View {
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
     @Query private var places: [SavedPlace]
+    @Query(sort: \TravelJournal.endedOn, order: .reverse) private var journals: [TravelJournal]
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -16,6 +17,7 @@ struct StatsView: View {
     @State private var selectedCategoryID: String?
     @State private var selectedVehicleID: UUID?
     @State private var selectedPlaceID: UUID?
+    @State private var selectedJournalID: UUID?
     @State private var selectedMonth = Calendar.current.date(
         from: Calendar.current.dateComponents([.year, .month], from: Date())
     ) ?? Date()
@@ -64,6 +66,7 @@ struct StatsView: View {
             categoryCount: categories.count,
             vehicleCount: vehicles.count,
             placeCount: places.count,
+            journalCount: journals.count,
             period: selectedPeriod,
             customStart: customStart,
             customEnd: customEnd,
@@ -71,7 +74,8 @@ struct StatsView: View {
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
             selectedPlaceID: selectedPlaceID,
-            selectedPlaceName: selectedPlaceName
+            selectedPlaceName: selectedPlaceName,
+            selectedJournalID: selectedJournalID
         )
     }
 
@@ -131,6 +135,9 @@ struct StatsView: View {
         if selectedPlaceID != nil {
             parts.append(selectedPlaceDisplayName)
         }
+        if selectedJournalID != nil {
+            parts.append(selectedJournalName)
+        }
         return parts.joined(separator: " · ")
     }
 
@@ -147,7 +154,8 @@ struct StatsView: View {
             selectedCategoryID ?? "",
             selectedVehicleID?.uuidString ?? "",
             selectedPlaceID?.uuidString ?? "",
-            selectedPlaceName ?? ""
+            selectedPlaceName ?? "",
+            selectedJournalID?.uuidString ?? ""
         ].joined(separator: "|")
     }
 
@@ -352,6 +360,11 @@ struct StatsView: View {
             vehicleChartPage = 0
             categoryChartPage = 0
         }
+        .onChange(of: selectedJournalID) { _, _ in
+            dailyChartPage = 0
+            vehicleChartPage = 0
+            categoryChartPage = 0
+        }
         .onChange(of: selectedMonth) { _, _ in
             dailyChartPage = 0
             vehicleChartPage = 0
@@ -434,6 +447,7 @@ struct StatsView: View {
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
             selectedPlaceName: selectedPlaceName,
+            selectedJournalID: selectedJournalID,
             categoryNames: StatsViewModel.categoryNameMap(for: categories),
             vehicleNames: StatsViewModel.vehicleNameMap(for: vehicles),
             vehicleCount: vehicles.count
@@ -496,6 +510,14 @@ struct StatsView: View {
 
     private var selectedPlaceDisplayName: String {
         selectedPlaceName ?? L10n.all
+    }
+
+    private var selectedJournalName: String {
+        guard let selectedJournalID,
+              let journal = journals.first(where: { $0.id == selectedJournalID }) else {
+            return L10n.all
+        }
+        return journal.title
     }
 
     private var statsFilterCard: some View {
@@ -618,6 +640,29 @@ struct StatsView: View {
                 .accessibilityLabel(L10n.filterPlace)
                 .accessibilityValue(selectedPlaceDisplayName)
             }
+
+            if !journals.isEmpty {
+                HStack(spacing: 12) {
+                    Text(L10n.journalStatsFilter)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: 8)
+
+                    Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
+                        Text(L10n.all).tag(UUID?.none)
+                        ForEach(journals, id: \.id) { journal in
+                            Text(journal.title).tag(Optional(journal.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .labelsHidden()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(L10n.journalStatsFilter)
+                .accessibilityValue(selectedJournalName)
+            }
         }
         .padding(.vertical, 6)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
@@ -664,55 +709,82 @@ struct StatsView: View {
     }
 
     private var statsMonthPicker: some View {
-        HStack(spacing: 10) {
-            Button {
-                selectedMonth = StatsViewModel.clampedMonth(
-                    StatsViewModel.shiftMonth(selectedMonth, by: -1),
-                    earliestTripStart: earliestTripStart
-                )
-                TrailhoundHaptics.selection()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 36, height: 36)
+        HStack(spacing: 0) {
+            monthStepButton(
+                systemImage: "chevron.left",
+                enabled: canGoToPreviousMonth,
+                accessibilityKey: "stats.period.previous_month"
+            ) {
+                shiftSelectedMonth(by: -1)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoToPreviousMonth)
-            .accessibilityLabel(L10n.string("stats.period.previous_month"))
 
-            Picker(L10n.string("stats.period.select_month"), selection: selectedMonthBinding) {
-                ForEach(selectableMonths, id: \.self) { month in
-                    Text(DateFormatters.monthYear.string(from: month))
-                        .tag(month)
+            Menu {
+                Picker(L10n.string("stats.period.select_month"), selection: selectedMonthBinding) {
+                    ForEach(selectableMonths, id: \.self) { month in
+                        Text(DateFormatters.monthYear.string(from: month))
+                            .tag(month)
+                    }
                 }
+                .pickerStyle(.inline)
+            } label: {
+                HStack(spacing: 5) {
+                    Text(selectedMonthTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
-            .pickerStyle(.menu)
-            .tint(TrailhoundBrandColors.brandBottom)
-            .frame(maxWidth: .infinity)
             .accessibilityLabel(L10n.string("stats.period.select_month"))
             .accessibilityValue(selectedMonthTitle)
 
-            Button {
-                selectedMonth = StatsViewModel.clampedMonth(
-                    StatsViewModel.shiftMonth(selectedMonth, by: 1),
-                    earliestTripStart: earliestTripStart
-                )
-                TrailhoundHaptics.selection()
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 36, height: 36)
+            monthStepButton(
+                systemImage: "chevron.right",
+                enabled: canGoToNextMonth,
+                accessibilityKey: "stats.period.next_month"
+            ) {
+                shiftSelectedMonth(by: 1)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoToNextMonth)
-            .accessibilityLabel(L10n.string("stats.period.next_month"))
         }
+        .padding(.horizontal, 4)
+        .glassField(cornerRadius: 12)
         .onAppear {
             selectedMonth = StatsViewModel.clampedMonth(
                 selectedMonth,
                 earliestTripStart: earliestTripStart
             )
         }
+    }
+
+    private func shiftSelectedMonth(by value: Int) {
+        selectedMonth = StatsViewModel.clampedMonth(
+            StatsViewModel.shiftMonth(selectedMonth, by: value),
+            earliestTripStart: earliestTripStart
+        )
+        TrailhoundHaptics.selection()
+    }
+
+    private func monthStepButton(
+        systemImage: String,
+        enabled: Bool,
+        accessibilityKey: StaticString,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(enabled ? Color.primary : Color.primary.opacity(0.28))
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(L10n.string(accessibilityKey))
     }
 
     private func statsCustomDateField(title: String, date: Binding<Date>) -> some View {
@@ -1964,6 +2036,7 @@ private struct StatsSnapshotInputs: Equatable {
     let categoryCount: Int
     let vehicleCount: Int
     let placeCount: Int
+    let journalCount: Int
     let period: StatsPeriod
     let customStart: Date
     let customEnd: Date
@@ -1972,6 +2045,7 @@ private struct StatsSnapshotInputs: Equatable {
     let selectedVehicleID: UUID?
     let selectedPlaceID: UUID?
     let selectedPlaceName: String?
+    let selectedJournalID: UUID?
 }
 
 private enum StatsChartPairTokens {

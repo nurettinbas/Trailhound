@@ -68,6 +68,18 @@
 		9FC941CE9E154F36B46E5A02 /* PlaceMatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E915A26582304556AF11A8CC /* PlaceMatchingService.swift */; };
 		A10000000000000000000001 /* TrailhoundApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* TrailhoundApp.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
+		A1TRAVELJOURNALMDL0001 /* TravelJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */; };
+		A1TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */; };
+		A1TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */; };
+		A1TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */; };
+		A1TRAVELJOURNALPAGE001 /* TravelJournalPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */; };
+		A1TRAVELJOURNALROW0001 /* TravelJournalRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */; };
+		A1TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */; };
+		A1TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */; };
+		A1TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */; };
+		A1TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */; };
+		A1TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */; };
+		A1TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */; };
 		A10000000000000000000003 /* Trip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Trip.swift */; };
 		A10000000000000000000004 /* TripPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* TripPoint.swift */; };
 		A10000000000000000000005 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* LocationService.swift */; };
@@ -91,6 +103,7 @@
 		A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */; };
 		A1LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */; };
 		A1LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */; };
+		A1SMARTCATSETTINGSTEST1 /* SmartCategorySettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SMARTCATSETTINGSTEST1 /* SmartCategorySettingsTests.swift */; };
 		A1LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */; };
 		A1SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */; };
 		A1LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */; };
@@ -260,9 +273,14 @@
 		A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
 		A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTPRESENTER000001 /* ToastPresenter.swift */; };
+		A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */; };
+		A1DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */; };
 		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
 		A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROUTES00000000001 /* FrequentRoutesService.swift */; };
+		A1TRIPCATSUGGEST000001 /* TripCategorySuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */; };
+		A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */; };
+		A1TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */; };
 		A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */; };
 		A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */; };
 		A1TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift */; };
@@ -372,6 +390,18 @@
 		983DA16F5A6E442FAAD35B73 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		A20000000000000000000001 /* TrailhoundApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournal.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalTotals.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalSuggester.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalMapBudget.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalPage.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalRowView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalEditorSheet.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalMapLayer.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalEditPanel.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalDetailView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalSuggesterTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalMembershipTests.swift; sourceTree = SOURCE_ROOT; };
 		A20000000000000000000003 /* Trip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trip.swift; sourceTree = "<group>"; };
 		A20000000000000000000004 /* TripPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPoint.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
@@ -395,6 +425,7 @@
 		A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLinkClock.swift; sourceTree = "<group>"; };
 		A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowCameraTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowPresentationTests.swift; sourceTree = SOURCE_ROOT; };
+		A2SMARTCATSETTINGSTEST1 /* SmartCategorySettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/SmartCategorySettingsTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapViewTests.swift; sourceTree = SOURCE_ROOT; };
 		A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/ScreenIdleLockTests.swift; sourceTree = SOURCE_ROOT; };
 		A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapPinTests.swift; sourceTree = SOURCE_ROOT; };
@@ -541,6 +572,8 @@
 		A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDisplaySampler.swift; sourceTree = "<group>"; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
 		A2TOASTPRESENTER000001 /* ToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastPresenter.swift; sourceTree = "<group>"; };
+		A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteConfirmPresenter.swift; sourceTree = "<group>"; };
+		A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/DeleteConfirmPresenterTests.swift; sourceTree = SOURCE_ROOT; };
 		A2TOASTVIEW00000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000005 /* TrailhoundWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundWidget.swift; sourceTree = "<group>"; };
@@ -571,6 +604,9 @@
 		A2LOCALIZABLE00000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleProfile.swift; sourceTree = "<group>"; };
 		A2FREQROUTES00000000001 /* FrequentRoutesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRoutesService.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggester.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggestionService.swift; sourceTree = "<group>"; };
+		A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/TripCategorySuggesterTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePrivacyClipper.swift; sourceTree = "<group>"; };
 		A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripShareCardRenderer.swift; sourceTree = "<group>"; };
 		A2TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripShareRoutePrep.swift; sourceTree = "<group>"; };
@@ -690,6 +726,7 @@
 				C22C35A8C7504120981649DC /* SavedPlace.swift */,
 				A2PLACEDRAFT00000000001 /* PlaceDraft.swift */,
 				AF0E09B4CEDD485E9B744E57 /* TripStop.swift */,
+				A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */,
 				A20000000000000000000003 /* Trip.swift */,
 				A20000000000000000000004 /* TripPoint.swift */,
 				A2MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift */,
@@ -709,6 +746,8 @@
 				A5RECORDING0000000000001 /* Recording */,
 				82C9C269375F4C05AFEA8817 /* GeocodingRetryService.swift */,
 				E915A26582304556AF11A8CC /* PlaceMatchingService.swift */,
+				A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */,
+				A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */,
 				983DA16F5A6E442FAAD35B73 /* ExportService.swift */,
 				A2FREQROUTES00000000001 /* FrequentRoutesService.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
@@ -726,6 +765,7 @@
 				7E7218250D954707A753EAFC /* RecordingLiveActivityService.swift */,
 				A2REC0BSERVER00000000001 /* RecordingRequestObserver.swift */,
 				A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */,
+				A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */,
 				A2TRIPDERIVEDMETRICS0001 /* TripDerivedMetrics.swift */,
 				A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */,
 				A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */,
@@ -763,6 +803,7 @@
 				A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
 				A2TRIPSTATSROW000000001 /* TripStatsRow.swift */,
+				A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */,
 				A2TRIPLISTPAGE000000001 /* TripListPage.swift */,
 				A20000000000000000000011 /* TripListViewModel.swift */,
 				A20000000000000000000012 /* TripDetailViewModel.swift */,
@@ -822,6 +863,11 @@
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
 				A20000000000000000000013 /* TripListView.swift */,
 				A20000000000000000000014 /* TripRowView.swift */,
+				A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */,
+				A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */,
+				A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */,
+				A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */,
+				A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */,
 				A20000000000000000000015 /* TripDetailView.swift */,
 				A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */,
 				A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */,
@@ -860,7 +906,10 @@
 				A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */,
 				A2APPERRORPRES0000001 /* AppErrorPresenter.swift */,
 				A2TOASTPRESENTER000001 /* ToastPresenter.swift */,
+				A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */,
 				A20000000000000000000018 /* DistanceCalculator.swift */,
+				A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */,
+				A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */,
 				A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */,
 				A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */,
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
@@ -966,6 +1015,8 @@
 			children = (
 				A5VCARETESTGRP00000001 /* VehicleCare */,
 				66F2CDC576CA4E4980281099 /* CoreUtilityTests.swift */,
+				A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */,
+				A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */,
 				AE5D44F9163D4B5EB57A78C0 /* SchemaAndRoutesTests.swift */,
 				994D139325B34A9BA98B2E46 /* TripDerivedMetricsTests.swift */,
 				F022AE590A614050A20CB2B5 /* TripRollupServiceTests.swift */,
@@ -987,6 +1038,7 @@
 				127F1AFD073D45CEB1B0DF12 /* RecordingDisplaySamplerTests.swift */,
 				A2LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift */,
 				A2LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift */,
+				A2SMARTCATSETTINGSTEST1 /* SmartCategorySettingsTests.swift */,
 				A2LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift */,
 				A2SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift */,
 				A2LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift */,
@@ -994,6 +1046,7 @@
 				2CBDBEE49462477FBF036E37 /* RecordingSpeedTrustTests.swift */,
 				F252B64BE4F147579798FBDA /* AppNotificationStoreTests.swift */,
 				46836F7884634E1BB88F3B9F /* PlaceMatchingServiceTests.swift */,
+				A2TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift */,
 				D180E864A45A410D8698E1C3 /* TripMergeServiceTests.swift */,
 				62C548D331744D5E8F29932E /* TripPostProcessorTests.swift */,
 				B0C5A50805614E01B139911D /* SharedUtilityTests.swift */,
@@ -1009,6 +1062,7 @@
 				A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */,
 				A2TRIPDETAILMAPSTYLETST1 /* TripDetailMapStyleTests.swift */,
 				A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */,
+				A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */,
 				A2BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift */,
@@ -1177,6 +1231,8 @@
 			files = (
 				0409D7365A5F41A883051C4B /* CoreUtilityTests.swift in Sources */,
 				5C5B758AE6234A8289107144 /* SchemaAndRoutesTests.swift in Sources */,
+				A1TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift in Sources */,
+				A1TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift in Sources */,
 				6ADDA79C515B463AB571EDCF /* TripDerivedMetricsTests.swift in Sources */,
 				1106DC3D0A4643D7AE5043BA /* TripRollupServiceTests.swift in Sources */,
 				8EE14521465F43329E77A5ED /* ExportServiceTests.swift in Sources */,
@@ -1204,6 +1260,7 @@
 				129AB149E7A744238CEDB118 /* RecordingDisplaySamplerTests.swift in Sources */,
 				A1LIVEFOLLOWCAMTEST001 /* LiveFollowCameraTests.swift in Sources */,
 				A1LIVEFOLLOWPRESTEST001 /* LiveFollowPresentationTests.swift in Sources */,
+				A1SMARTCATSETTINGSTEST1 /* SmartCategorySettingsTests.swift in Sources */,
 				A1LIVEFOLLOWMAPTEST001 /* LiveFollowMapViewTests.swift in Sources */,
 				A1SCREENIDLELOCKTEST001 /* ScreenIdleLockTests.swift in Sources */,
 				A1LIVEFOLLOWMAPPINTEST1 /* LiveFollowMapPinTests.swift in Sources */,
@@ -1211,6 +1268,7 @@
 				92468C6A18F64E4AA6DD57DE /* RecordingSpeedTrustTests.swift in Sources */,
 				F9BE17E986CA4B1A9A47EB1C /* AppNotificationStoreTests.swift in Sources */,
 				7FF24D6180E44649B1AA9939 /* PlaceMatchingServiceTests.swift in Sources */,
+				A1TRIPCATSUGTEST00001 /* TripCategorySuggesterTests.swift in Sources */,
 				4A8C96EC69CB47A8A9FC27C8 /* TripMergeServiceTests.swift in Sources */,
 				B9CC2FBA7E5646DBA958BA92 /* TripPostProcessorTests.swift in Sources */,
 				EC676726F5904E77B0D2DCDA /* SharedUtilityTests.swift in Sources */,
@@ -1226,6 +1284,7 @@
 				A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */,
 				A1TRIPDETAILMAPSTYLETST1 /* TripDetailMapStyleTests.swift in Sources */,
 				A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */,
+				A1DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift in Sources */,
 				A1BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift in Sources */,
@@ -1257,6 +1316,16 @@
 			files = (
 				A10000000000000000000001 /* TrailhoundApp.swift in Sources */,
 				A10000000000000000000002 /* ContentView.swift in Sources */,
+				A1TRAVELJOURNALMDL0001 /* TravelJournal.swift in Sources */,
+				A1TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift in Sources */,
+				A1TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift in Sources */,
+				A1TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift in Sources */,
+				A1TRAVELJOURNALPAGE001 /* TravelJournalPage.swift in Sources */,
+				A1TRAVELJOURNALROW0001 /* TravelJournalRowView.swift in Sources */,
+				A1TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift in Sources */,
+				A1TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift in Sources */,
+				A1TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift in Sources */,
+				A1TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift in Sources */,
 				A10000000000000000000003 /* Trip.swift in Sources */,
 				A10000000000000000000004 /* TripPoint.swift in Sources */,
 				A10000000000000000000005 /* LocationService.swift in Sources */,
@@ -1372,6 +1441,7 @@
 				A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
 				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
+				A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */,
 				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,
 				A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */,
@@ -1400,6 +1470,8 @@
 				A1STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift in Sources */,
 				A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */,
 				A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */,
+				A1TRIPCATSUGGEST000001 /* TripCategorySuggester.swift in Sources */,
+				A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,
 				A1DEVLOGVIEW000000001 /* DevLogView.swift in Sources */,

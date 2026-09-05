@@ -3,6 +3,7 @@ import SwiftUI
 struct TripRowView: View {
     let trip: Trip
     var places: [SavedPlace] = []
+    var categories: [UserCategory] = []
     var privacyRadius: Double = 500
     /// Resolved from `trip.vehicleID` upstream — relationship is not populated on list rows.
     var vehicle: VehicleProfile? = nil
@@ -10,6 +11,8 @@ struct TripRowView: View {
     var morphID: UUID?
     /// Soft-lands the map thumbnail after stop→row morph.
     var emphasizeLanding: Bool = false
+    /// Set on the combined row element so XCTest sees it (a parent `NavigationLink` id is easy to lose).
+    var rowAccessibilityIdentifier: String? = nil
 
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -61,6 +64,16 @@ struct TripRowView: View {
                         Image(systemName: "briefcase.fill")
                             .font(.system(size: 8))
                             .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    } else if let suggestedName = pendingSuggestedCategoryName {
+                        HStack(spacing: 2) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 7, weight: .semibold))
+                            Text(L10n.tripCategorySuggested(suggestedName))
+                                .font(.system(size: 8, weight: .medium))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .accessibilityHidden(true)
                     }
 
                     Spacer(minLength: 0)
@@ -106,6 +119,7 @@ struct TripRowView: View {
         .animation(TrailhoundMotion.recordingMorph, value: emphasizeLanding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
+        .optionalAccessibilityIdentifier(rowAccessibilityIdentifier)
         .task(id: trip.id) {
             thumbnailLoaded = false
             thumbnail = nil
@@ -128,12 +142,28 @@ struct TripRowView: View {
         }
     }
 
+    private var pendingSuggestedCategoryName: String? {
+        guard trip.hasPendingCategorySuggestion,
+              let pendingID = trip.pendingSuggestedCategoryID
+        else { return nil }
+        if let name = categories.first(where: { $0.id.uuidString == pendingID })?.name {
+            return name
+        }
+        if pendingID == BuiltInCategory.businessID.uuidString {
+            return L10n.categoryBusiness
+        }
+        return nil
+    }
+
     private var accessibilitySummary: String {
         var parts = [routeSummary, TripListViewModel.durationText(for: trip)]
         parts.append(TripListViewModel.dateText(for: trip))
         parts.append(TripListViewModel.distanceText(for: trip))
         if let vehicle {
             parts.append(vehicle.name)
+        }
+        if let suggestedName = pendingSuggestedCategoryName {
+            parts.append(L10n.tripCategorySuggested(suggestedName))
         }
         return parts.joined(separator: ", ")
     }
@@ -198,6 +228,17 @@ struct TripRowView: View {
                 .lineLimit(1)
         }
         .foregroundStyle(tint)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func optionalAccessibilityIdentifier(_ identifier: String?) -> some View {
+        if let identifier, !identifier.isEmpty {
+            self.accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
     }
 }
 

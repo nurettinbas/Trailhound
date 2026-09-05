@@ -137,10 +137,20 @@ enum L10n {
     static var sectionThisMonth: String { string("section.this_month") }
     static var sectionOlder: String { string("section.older") }
     static var searchTrips: String { string("search.trips") }
+    static var searchWorking: String { string("search.working") }
     static var tripsFilters: String { string("trips.filters") }
     static var tripsFiltersClear: String { string("trips.filters.clear") }
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
+    static var actionAcceptCategory: String { string("action.accept_category") }
+
+    static func actionAcceptSuggestedCategory(_ name: String) -> String {
+        String(format: string("action.accept_suggested_category"), name)
+    }
+
+    static func tripCategorySuggested(_ name: String) -> String {
+        String(format: string("trip.category.suggested"), name)
+    }
     static var mapFullscreen: String { string("map.fullscreen") }
     static var mapExitFullscreen: String { string("map.exit_fullscreen") }
     static var mapStyleLight: String { string("map.style.light") }
@@ -228,6 +238,11 @@ enum L10n {
     static var settingsAppearanceLight: String { string("settings.appearance.light") }
     static var settingsAppearanceDark: String { string("settings.appearance.dark") }
     static var settingsAppearanceHint: String { string("settings.appearance.hint") }
+    static var settingsSmartCategorySection: String { string("settings.smart_category.section") }
+    static var settingsSmartCategoryToggle: String { string("settings.smart_category.toggle") }
+    static var settingsSmartCategoryHint: String { string("settings.smart_category.hint") }
+    static var settingsSmartCategoryWorkStart: String { string("settings.smart_category.work_start") }
+    static var settingsSmartCategoryWorkEnd: String { string("settings.smart_category.work_end") }
     static var settingsLanguageSection: String { string("settings.language.section") }
     static var settingsLanguageSystemHint: String { string("settings.language.system_hint") }
     static var settingsFuelSection: String { string("settings.fuel.section") }
@@ -290,6 +305,19 @@ enum L10n {
     static var externalStartConfirmMessage: String { string("recording.external_start.message") }
     static var externalStartConfirmAction: String { string("recording.external_start.confirm") }
     static var cancel: String { string("action.cancel") }
+    static var deleteConfirmTitle: String { string("delete.confirm.title") }
+    static var deleteConfirmMessage: String { string("delete.confirm.message") }
+    static var deleteConfirmCategoryMessage: String { string("delete.confirm.category.message") }
+    static var deleteConfirmJournalRemoveTitle: String { string("delete.confirm.journal.remove.title") }
+    static var deleteConfirmJournalRemoveMessage: String { string("delete.confirm.journal.remove.message") }
+    static var deleteConfirmInstallmentPlanMessage: String { string("delete.confirm.installment_plan.message") }
+    static var deleteConfirmNotificationsAllMessage: String { string("delete.confirm.notifications.all.message") }
+    static var vehicleExpenseDeletePlanTitle: String { string("vehicles.care.expense.delete_plan_title") }
+
+    static func vehicleExpenseDeletePlan(_ count: Int) -> String {
+        String(format: string("vehicles.care.expense.delete_plan"), count)
+    }
+
     static var ok: String { string("action.ok") }
     static var settingsSiriShortcutsHint: String { string("settings.siri.shortcuts_hint") }
     static var settingsSiriShortcutsLink: String { string("settings.siri.shortcuts_link") }
@@ -486,6 +514,7 @@ enum L10n {
     static var toastTripSaved: String { string("toast.trip.saved") }
     static var toastCategoryAdded: String { string("toast.category.added") }
     static var toastCategoryDeleted: String { string("toast.category.deleted") }
+    static var toastCategoryAccepted: String { string("toast.category.accepted") }
     static var toastOrphanSaved: String { string("toast.orphan.saved") }
     static var toastTripsMerged: String { string("toast.trips.merged") }
 
@@ -558,5 +587,45 @@ enum L10n {
 
     static func autoLogMotionStopped(_ time: String, _ distance: String) -> String {
         String(format: string("auto_log.motion.stopped"), time, distance)
+    }
+
+    static var tripsSegmentTrips: String { string("trips.segment.trips") }
+    static var tripsSegmentTravels: String { string("trips.segment.travels") }
+    static var journalEmptyTitle: String { string("journal.empty.title") }
+    static var journalEmptyMessage: String { string("journal.empty.message") }
+    static var journalEmptySearchTitle: String { string("journal.empty.search.title") }
+    static var journalEmptySearchMessage: String { string("journal.empty.search.message") }
+    static var journalSuggestChip: String { string("journal.suggest.chip") }
+    static var journalSuggestAccept: String { string("journal.suggest.accept") }
+    static var journalSuggestDismiss: String { string("journal.suggest.dismiss") }
+    static var journalAdd: String { string("journal.add") }
+    static var journalAddHelpTitle: String { string("journal.add.help.title") }
+    static var journalAddHelpBody: String { string("journal.add.help.body") }
+    static var journalNew: String { string("journal.new") }
+    static var journalRemove: String { string("journal.remove") }
+    static var journalMove: String { string("journal.move") }
+    static var journalSave: String { string("journal.save") }
+    static var journalTitle: String { string("journal.title") }
+    static var journalTitlePlaceholder: String { string("journal.title.placeholder") }
+    static var journalTitleRequired: String { string("journal.title.required") }
+    static var journalNote: String { string("journal.note") }
+    static var journalNotePlaceholder: String { string("journal.note.placeholder") }
+    static var journalTrips: String { string("journal.trips") }
+    static var journalDelete: String { string("journal.delete") }
+    static var journalStatsFilter: String { string("journal.stats.filter") }
+    static var journalSearchPlaceholder: String { string("journal.search.placeholder") }
+    static var journalCreate: String { string("journal.create") }
+    static var journalNone: String { string("journal.none") }
+
+    static func journalTripCount(_ count: Int) -> String {
+        String(format: string("journal.trip_count"), count)
+    }
+
+    static func journalDateRange(start: Date, end: Date) -> String {
+        let startText = DateFormatters.tripDateOnly.string(from: start)
+        if Calendar.current.isDate(start, inSameDayAs: end) {
+            return startText
+        }
+        return "\(startText) – \(DateFormatters.tripDateOnly.string(from: end))"
     }
 }

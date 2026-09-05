@@ -157,13 +157,8 @@ struct VehicleDetailView: View {
                     ForEach(Array(schedules.enumerated()), id: \.element.id) { index, schedule in
                         trackingCardRow(schedule)
                             .listRowInsets(cardRowInsets(index: index))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteSchedule(schedule)
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                deleteSchedule(schedule)
                             }
                             .swipeActions(edge: .leading) {
                                 Button {
@@ -202,13 +197,8 @@ struct VehicleDetailView: View {
                     ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
                             .listRowInsets(cardRowInsets(index: index))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteExpense(expense)
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                deleteExpense(expense)
                             }
                     }
                 }
@@ -235,13 +225,8 @@ struct VehicleDetailView: View {
                     ForEach(Array(upcomingInstallments.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
                             .listRowInsets(cardRowInsets(index: index))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteExpense(expense)
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                deleteExpense(expense)
                             }
                     }
                 } header: {

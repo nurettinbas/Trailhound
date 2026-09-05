@@ -137,7 +137,9 @@ struct VehicleScheduleEditorView: View {
             if schedule != nil {
                 Section {
                     Button(L10n.delete, role: .destructive) {
-                        deleteSchedule()
+                        DeleteConfirmPresenter.shared.confirm(.generic) {
+                            deleteSchedule()
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .destructiveTint()
@@ -177,6 +179,7 @@ struct VehicleScheduleEditorView: View {
                     ?? VehicleScheduleEditorDraft()
             }
         }
+        .deleteConfirmHost()
     }
 
     private func draftBinding<Value>(_ keyPath: WritableKeyPath<VehicleScheduleEditorDraft, Value>) -> Binding<Value> {

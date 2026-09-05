@@ -9,6 +9,8 @@ struct TripListFiltersBar: View {
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
     @Binding var selectedPlaceID: UUID?
+    @Binding var listMode: TripsTabListMode
+    var isSearchBusy: Bool = false
     var vehicles: [VehicleProfile] = []
     var places: [SavedPlace] = []
     /// Compact “This week” strip shown above search when non-empty.
@@ -55,20 +57,24 @@ struct TripListFiltersBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if showsWeekSummary {
+            listModePicker
+
+            if showsWeekSummary && listMode == .trips {
                 weekSummaryRow
             }
 
             HStack(alignment: .center, spacing: 8) {
                 searchField
-                filtersToggleButton
-                if hasChipFiltersActive {
-                    clearFiltersButton
+                if listMode == .trips {
+                    filtersToggleButton
+                    if hasChipFiltersActive {
+                        clearFiltersButton
+                    }
                 }
             }
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasChipFiltersActive)
 
-            if isFiltersExpanded {
+            if listMode == .trips, isFiltersExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     dateFilterRow
                     TripFilterChips(selectedCategoryID: $selectedCategoryID, usesCardInsets: false)
@@ -81,9 +87,20 @@ struct TripListFiltersBar: View {
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: isFiltersExpanded)
+        .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: isSearchBusy)
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+    }
+
+    private var listModePicker: some View {
+        Picker(L10n.tripsSegmentTravels, selection: $listMode) {
+            ForEach(TripsTabListMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("trips.segment")
     }
 
     private var weekSummaryRow: some View {
@@ -118,8 +135,11 @@ struct TripListFiltersBar: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-            TextField(L10n.searchTrips, text: $searchText)
+                .foregroundStyle(isSearchBusy ? TrailhoundBrandColors.brandBottom : Color.secondary)
+                .symbolEffect(.pulse, options: .repeating, isActive: isSearchBusy && !reduceMotion)
+                .accessibilityHidden(true)
+
+            TextField(listMode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips, text: $searchText)
                 .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -144,6 +164,28 @@ struct TripListFiltersBar: View {
         .padding(.vertical, 7)
         .frame(minHeight: 36)
         .glassField(cornerRadius: 10)
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    TrailhoundBrandColors.brandBottom.opacity(isSearchBusy ? 0.38 : 0),
+                    lineWidth: 1
+                )
+        }
+        .shadow(
+            color: TrailhoundBrandColors.brandBottom.opacity(isSearchBusy && !reduceMotion ? 0.22 : 0),
+            radius: 10,
+            y: 0
+        )
+        .overlay(alignment: .bottom) {
+            if isSearchBusy {
+                SearchFieldScanComet(reduceMotion: reduceMotion)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 3)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("trips.search.activity")
+            }
+        }
+        .accessibilityValue(isSearchBusy ? L10n.searchWorking : "")
     }
 
     private var filtersToggleButton: some View {
@@ -561,5 +603,48 @@ struct TripFilterChips: View {
             }
         )
         .id(key)
+    }
+}
+
+/// Brand comet that travels along the search field — no spinner, no extra copy.
+private struct SearchFieldScanComet: View {
+    var reduceMotion: Bool
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let barWidth = max(40, width * 0.36)
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            TrailhoundBrandColors.brandTop.opacity(0.55),
+                            TrailhoundBrandColors.brandBottom,
+                            TrailhoundBrandColors.brandTop.opacity(0.55),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: barWidth, height: 2)
+                .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.65), radius: 4, y: 0)
+                .offset(x: (width - barWidth) * phase)
+        }
+        .frame(height: 2)
+        .accessibilityHidden(true)
+        .task(id: reduceMotion) {
+            if reduceMotion {
+                phase = 0.5
+                return
+            }
+            phase = 0
+            try? await Task.sleep(for: .milliseconds(20))
+            withAnimation(.easeInOut(duration: 1.12).repeatForever(autoreverses: true)) {
+                phase = 1
+            }
+        }
     }
 }

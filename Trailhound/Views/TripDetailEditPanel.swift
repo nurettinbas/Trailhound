@@ -10,6 +10,12 @@ private enum TripSummaryMetricCardLayout {
     static let minHeight: CGFloat = 52
 }
 
+private enum JournalPickerValue: Hashable {
+    case none
+    case journal(UUID)
+    case createNew
+}
+
 private struct FavoritePlaceSheetItem: Identifiable {
     enum Endpoint {
         case start
@@ -56,6 +62,7 @@ struct TripDetailEditPanel: View {
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
+    @Query(sort: \TravelJournal.endedOn, order: .reverse) private var journals: [TravelJournal]
     @Bindable private var settings = AppSettings.shared
 
     @State private var noteText: String = ""
@@ -73,6 +80,7 @@ struct TripDetailEditPanel: View {
     @State private var trimHeadCount: Int = 0
     @State private var trimTailCount: Int = 0
     @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
+    @State private var journalEditor: TravelJournalEditorDraft?
     @State private var keyboardOverlap: CGFloat = 0
     @State private var keyboardAnimationDuration: TimeInterval = 0.25
     @FocusState private var focusedField: TripDetailFocusedField?
@@ -205,6 +213,9 @@ struct TripDetailEditPanel: View {
             NavigationStack {
                 favoritePlacePicker(for: item)
             }
+        }
+        .sheet(item: $journalEditor) { draft in
+            TravelJournalEditorSheet(draft: draft)
         }
         .onAppear {
             loadEditStateFromTrip()
@@ -460,6 +471,10 @@ struct TripDetailEditPanel: View {
                     .id(TripDetailFocusedField.note)
             }
 
+            if trip.endedAt != nil {
+                journalMembershipRow
+            }
+
             Button(L10n.tripEditSave) {
                 saveEdits()
                 dismissKeyboard()
@@ -487,6 +502,95 @@ struct TripDetailEditPanel: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var journalMembershipRow: some View {
+        detailSection(
+            title: L10n.journalAdd,
+            helpTitle: L10n.journalAddHelpTitle,
+            helpBody: L10n.journalAddHelpBody,
+            helpSheetHeight: 380
+        ) {
+            detailMenuPicker(
+                title: L10n.journalAdd,
+                selection: journalPickerValue,
+                leading: {
+                    Image(systemName: trip.journalID == nil ? "map" : "map.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                }
+            ) {
+                Section {
+                    Label(L10n.journalNew, systemImage: "plus")
+                        .tag(JournalPickerValue.createNew)
+                }
+                Section {
+                    Text(L10n.journalNone)
+                        .tag(JournalPickerValue.none)
+                    ForEach(journals, id: \.id) { journal in
+                        Text(journal.title)
+                            .tag(JournalPickerValue.journal(journal.id))
+                    }
+                }
+            }
+            .accessibilityLabel(L10n.journalAdd)
+            .accessibilityValue(selectedJournalTitle)
+        }
+    }
+
+    private var selectedJournalTitle: String {
+        guard let journalID = trip.journalID,
+              let journal = journals.first(where: { $0.id == journalID }) else {
+            return L10n.journalNone
+        }
+        return journal.title
+    }
+
+    private var journalPickerValue: Binding<JournalPickerValue> {
+        Binding(
+            get: {
+                guard let journalID = trip.journalID,
+                      journals.contains(where: { $0.id == journalID }) else {
+                    return .none
+                }
+                return .journal(journalID)
+            },
+            set: { newValue in
+                switch newValue {
+                case .none:
+                    journalSelection.wrappedValue = nil
+                case .journal(let id):
+                    journalSelection.wrappedValue = id
+                case .createNew:
+                    openNewTravelEditor()
+                }
+            }
+        )
+    }
+
+    private func openNewTravelEditor() {
+        dismissKeyboard()
+        TrailhoundHaptics.selection()
+        let tripID = trip.id
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            journalEditor = .create(preselectedTripIDs: [tripID])
+        }
+    }
+
+    private var journalSelection: Binding<UUID?> {
+        Binding(
+            get: { trip.journalID },
+            set: { newValue in
+                dismissKeyboard()
+                let journal = newValue.flatMap { id in journals.first { $0.id == id } }
+                TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+                try? modelContext.save()
+                TrailhoundHaptics.selection()
+            }
+        )
     }
 
     @ViewBuilder
@@ -722,6 +826,7 @@ struct TripDetailEditPanel: View {
         title: String,
         helpTitle: String? = nil,
         helpBody: String? = nil,
+        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -732,7 +837,8 @@ struct TripDetailEditPanel: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 22
+                        side: 22,
+                        sheetHeight: helpSheetHeight
                     )
                 }
             }
@@ -743,12 +849,17 @@ struct TripDetailEditPanel: View {
 
     private func detailSection<Content: View>(
         title: String,
+        helpTitle: String? = nil,
+        helpBody: String? = nil,
+        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-
+        detailSelectionSection(
+            title: title,
+            helpTitle: helpTitle,
+            helpBody: helpBody,
+            helpSheetHeight: helpSheetHeight
+        ) {
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
@@ -925,6 +1036,10 @@ struct TripDetailEditPanel: View {
         let previousRollup = TripRollupService.snapshot(of: trip)
 
         trip.note = noteText.isEmpty ? nil : noteText
+        if selectedCategoryID != trip.categoryID {
+            trip.categoryOrigin = .user
+            trip.clearPendingSuggestion()
+        }
         trip.categoryID = selectedCategoryID
         let vehicle = selectedVehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: modelContext) }
         VehicleResolver.assign(vehicle: vehicle, to: trip)
@@ -951,6 +1066,11 @@ struct TripDetailEditPanel: View {
             fuelType: vehicle?.fuelType ?? .petrol
         )
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
+        if let journal = trip.journal {
+            TravelJournalTotals.refresh(journal)
+        } else {
+            TravelJournalTotals.refresh(journalID: trip.journalID, in: modelContext)
+        }
         originalNoteText = noteText
         try? modelContext.save()
         ToastPresenter.shared.show(.tripSaved)
