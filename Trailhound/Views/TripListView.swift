@@ -879,6 +879,11 @@ struct TripListView: View {
         }
     }
 
+    private func tripRowIdentifier(for trip: Trip, isFirst: Bool) -> String {
+        let base = isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)"
+        return trip.hasPendingCategorySuggestion ? "\(base).suggested" : base
+    }
+
     @ViewBuilder
     private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
@@ -894,6 +899,7 @@ struct TripListView: View {
                         TripRowView(
                             trip: trip,
                             places: places,
+                            categories: categories,
                             privacyRadius: settings.privacyRadiusMeters,
                             vehicle: vehicle,
                             morphNamespace: tripMorphNamespace,
@@ -909,6 +915,7 @@ struct TripListView: View {
                     TripRowView(
                         trip: trip,
                         places: places,
+                        categories: categories,
                         privacyRadius: settings.privacyRadiusMeters,
                         vehicle: vehicle,
                         morphNamespace: tripMorphNamespace,
@@ -917,7 +924,7 @@ struct TripListView: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .accessibilityIdentifier(isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)")
+                .accessibilityIdentifier(tripRowIdentifier(for: trip, isFirst: isFirst))
                 .buttonStyle(.plain)
             }
         }
@@ -935,7 +942,20 @@ struct TripListView: View {
             }
             .destructiveTint()
         }
-        .swipeActions(edge: .leading) {
+        .swipeActions(edge: .leading, allowsFullSwipe: trip.hasPendingCategorySuggestion) {
+            if trip.hasPendingCategorySuggestion {
+                Button {
+                    acceptSuggestedCategory(trip)
+                } label: {
+                    Label(
+                        suggestedCategoryAcceptLabel(for: trip),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                }
+                .tint(TrailhoundBrandColors.brandBottom)
+                .accessibilityIdentifier("trips.row.acceptSuggestedCategory")
+            }
+
             Button {
                 addToMergeSelection(trip.id)
             } label: {
@@ -1158,8 +1178,27 @@ struct TripListView: View {
     }
 
     private func updateCategory(_ trip: Trip, categoryID: String) {
-        trip.categoryID = categoryID
+        TripCategorySuggestionService.applyUserCategory(categoryID, to: trip, in: modelContext)
         try? modelContext.save()
+        ToastPresenter.shared.show(.categoryAccepted)
+    }
+
+    private func acceptSuggestedCategory(_ trip: Trip) {
+        TripCategorySuggestionService.acceptPending(trip, in: modelContext)
+        try? modelContext.save()
+        ToastPresenter.shared.show(.categoryAccepted)
+    }
+
+    private func suggestedCategoryName(for trip: Trip) -> String? {
+        guard let pendingID = trip.pendingSuggestedCategoryID else { return nil }
+        return categories.first(where: { $0.id.uuidString == pendingID })?.name
+    }
+
+    private func suggestedCategoryAcceptLabel(for trip: Trip) -> String {
+        if let name = suggestedCategoryName(for: trip) {
+            return L10n.actionAcceptSuggestedCategory(name)
+        }
+        return L10n.actionAcceptCategory
     }
 
     private func deleteTrip(_ trip: Trip) {

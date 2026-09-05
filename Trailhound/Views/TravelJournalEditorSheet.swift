@@ -8,12 +8,12 @@ struct TravelJournalEditorDraft: Identifiable {
     var selectedTripIDs: Set<UUID>
     var existing: TravelJournal?
 
-    static func create() -> TravelJournalEditorDraft {
+    static func create(preselectedTripIDs: Set<UUID> = []) -> TravelJournalEditorDraft {
         TravelJournalEditorDraft(
             id: UUID(),
             title: "",
             note: "",
-            selectedTripIDs: [],
+            selectedTripIDs: preselectedTripIDs,
             existing: nil
         )
     }
@@ -50,7 +50,10 @@ struct TravelJournalEditorSheet: View {
                             .glassInputField()
                     }
                     .glassListRow()
+                }
+                .listSectionSpacing(8)
 
+                Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(L10n.journalNote)
                             .font(.caption.weight(.semibold))
@@ -64,25 +67,31 @@ struct TravelJournalEditorSheet: View {
 
                 Section(L10n.journalTrips) {
                     ForEach(selectableTrips, id: \.id) { trip in
+                        let isSelected = draft.selectedTripIDs.contains(trip.id)
                         Button {
                             toggle(trip.id)
                         } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
+                            HStack(alignment: .center, spacing: 10) {
+                                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                                    .font(.body)
+                                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                    .accessibilityHidden(true)
+
+                                VStack(alignment: .leading, spacing: 1) {
                                     Text(TripListViewModel.routeSummary(for: trip))
-                                        .font(.subheadline.weight(.semibold))
+                                        .font(.caption.weight(.semibold))
                                         .foregroundStyle(.primary)
                                         .lineLimit(2)
                                     Text(TripListViewModel.dateText(for: trip))
-                                        .font(.caption)
+                                        .font(.caption2)
                                         .foregroundStyle(.secondary)
+                                        .lineLimit(1)
                                 }
-                                Spacer()
-                                Image(systemName: draft.selectedTripIDs.contains(trip.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                                }
+                                Spacer(minLength: 0)
+                            }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .glassListRow()
                     }
                 }

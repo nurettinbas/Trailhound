@@ -16,8 +16,10 @@ final class TravelJournal {
     /// Denormalized sum of `dynamicFuelCost ?? estimatedFuelCost ?? 0`.
     var fuelCost: Double
     var searchIndex: String?
-    /// Comma-separated trip UUIDs for the mosaic (cover first, then next-longest). Max 3.
+    /// Comma-separated trip UUIDs for the mosaic (cover first, then next-longest). Fits the 2×2 list tile.
     var mosaicTripIDsRaw: String
+
+    static let mosaicSlotCount = 4
 
     @Relationship(deleteRule: .nullify, inverse: \Trip.journal)
     var trips: [Trip]

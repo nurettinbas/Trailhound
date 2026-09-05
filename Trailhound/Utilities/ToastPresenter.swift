@@ -14,6 +14,7 @@ enum ToastKind {
     case orphanSaved
     case tripsMerged
     case shortcutsGuideFinished
+    case categoryAccepted
     case journalTitleRequired
 
     var message: String {
@@ -30,13 +31,14 @@ enum ToastKind {
         case .orphanSaved: L10n.toastOrphanSaved
         case .tripsMerged: L10n.toastTripsMerged
         case .shortcutsGuideFinished: L10n.toastShortcutsGuideFinished
+        case .categoryAccepted: L10n.toastCategoryAccepted
         case .journalTitleRequired: L10n.journalTitleRequired
         }
     }
 
     var systemImage: String {
         switch self {
-        case .saved, .tripSaved, .orphanSaved, .shortcutsGuideFinished, .vehicleReminderSaved, .vehicleExpenseSaved:
+        case .saved, .tripSaved, .orphanSaved, .shortcutsGuideFinished, .vehicleReminderSaved, .vehicleExpenseSaved, .categoryAccepted:
             "checkmark.circle.fill"
         case .placeSaved:
             "mappin.circle.fill"
