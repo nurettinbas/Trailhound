@@ -3,13 +3,38 @@ import Foundation
 import SwiftData
 
 enum PlaceMatchingService {
-    static func matchPlaces(for trip: Trip, places: [SavedPlace]) {
+    /// Same radius the trip row uses: the place's own radius, or the privacy radius for
+    /// home / privacy-zone places so "Ev yakını" rows also get `startPlaceName == "Ev"`.
+    static func matchingPlace(
+        at coordinate: CLLocationCoordinate2D,
+        places: [SavedPlace],
+        privacyRadius: Double
+    ) -> SavedPlace? {
+        if let exact = places.first(where: { $0.contains(coordinate) }) {
+            return exact
+        }
+        let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        for place in places where place.isPrivacyZone || place.kind == .home {
+            let center = CLLocation(latitude: place.latitude, longitude: place.longitude)
+            let radius = max(place.radiusMeters, privacyRadius)
+            if center.distance(from: target) <= radius {
+                return place
+            }
+        }
+        return nil
+    }
+
+    static func matchPlaces(
+        for trip: Trip,
+        places: [SavedPlace],
+        privacyRadius: Double = 500
+    ) {
         if let start = trip.startCoordinate,
-           let startPlace = places.first(where: { $0.contains(start) }) {
+           let startPlace = matchingPlace(at: start, places: places, privacyRadius: privacyRadius) {
             trip.startPlaceName = startPlace.name
         }
         if let end = trip.endCoordinate,
-           let endPlace = places.first(where: { $0.contains(end) }) {
+           let endPlace = matchingPlace(at: end, places: places, privacyRadius: privacyRadius) {
             trip.endPlaceName = endPlace.name
         }
     }
@@ -26,7 +51,7 @@ enum PlaceMatchingService {
         guard !places.isEmpty else { return }
 
         for trip in trips {
-            matchPlaces(for: trip, places: places)
+            matchPlaces(for: trip, places: places, privacyRadius: privacyRadius)
             TripDerivedMetrics.refreshSearchIndex(
                 for: trip,
                 places: places,

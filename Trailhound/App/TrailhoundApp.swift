@@ -145,6 +145,8 @@ final class AppRuntime {
         }
 
         Task(priority: .utility) { @MainActor in
+            // Avg-fuel journal totals don't depend on GPS-derived estimates, so rewrite them first.
+            TravelJournalTotals.refreshAvgFuelTotalsIfNeeded(in: container.mainContext)
             // Order matters: rollups read the derived night-distance split, so they are built
             // only after every trip has one.
             await TripDerivedBackfillService.backfillIfNeeded(container: container)

@@ -137,6 +137,7 @@ enum L10n {
     static var sectionThisMonth: String { string("section.this_month") }
     static var sectionOlder: String { string("section.older") }
     static var searchTrips: String { string("search.trips") }
+    static var searchWorking: String { string("search.working") }
     static var tripsFilters: String { string("trips.filters") }
     static var tripsFiltersClear: String { string("trips.filters.clear") }
     static var actionMerge: String { string("action.merge") }

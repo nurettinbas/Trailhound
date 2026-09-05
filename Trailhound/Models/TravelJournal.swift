@@ -13,7 +13,7 @@ final class TravelJournal {
     var tripCount: Int
     /// Denormalized sum of member `distanceMeters`.
     var distanceMeters: Double
-    /// Denormalized sum of `dynamicFuelCost ?? estimatedFuelCost ?? 0`.
+    /// Denormalized sum of avg fuel (`estimatedFuelCost`, with catalog fallback).
     var fuelCost: Double
     var searchIndex: String?
     /// Comma-separated trip UUIDs for the mosaic (cover first, then next-longest). Fits the 2×2 list tile.

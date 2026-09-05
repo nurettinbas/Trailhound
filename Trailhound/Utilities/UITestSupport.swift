@@ -38,7 +38,9 @@ enum UITestSupport {
         var descriptor = FetchDescriptor<Trip>()
         descriptor.fetchLimit = 1
         let existing = (try? context.fetch(descriptor)) ?? []
-        if existing.isEmpty {
+        // Smart-category UI tests need the commute fixture to be the newest row. Skip the
+        // generic sample trip on a fresh store so "first row" is unambiguous.
+        if existing.isEmpty, !seedsSmartCategory {
             let trip = PreviewData.sampleTrip
             context.insert(trip)
             for point in trip.points {
@@ -52,15 +54,12 @@ enum UITestSupport {
     }
 
     @MainActor
-    private static func seedSmartCategoryFixtures(in context: ModelContext) {
+    static func seedSmartCategoryFixtures(in context: ModelContext) {
         let seedID = smartCategorySeedTripID
         var existingSeed = FetchDescriptor<Trip>(predicate: #Predicate { $0.id == seedID })
         existingSeed.fetchLimit = 1
         if let trip = try? context.fetch(existingSeed).first {
-            trip.categoryID = BuiltInCategory.personalID.uuidString
-            trip.categoryOriginRaw = nil
-            trip.pendingSuggestedCategoryID = BuiltInCategory.businessID.uuidString
-            trip.pendingSuggestionReasonRaw = TripCategorySuggestionReason.place.rawValue
+            applySmartCategoryPendingState(to: trip)
             return
         }
 
@@ -81,12 +80,8 @@ enum UITestSupport {
         context.insert(home)
         context.insert(work)
 
-        let startedAt = Date().addingTimeInterval(-1_800)
-        let endedAt = Date().addingTimeInterval(-300)
         let trip = Trip(
             id: seedID,
-            startedAt: startedAt,
-            endedAt: endedAt,
             distanceMeters: 8_000,
             category: .personal,
             startPlaceName: "Home",
@@ -96,8 +91,19 @@ enum UITestSupport {
         trip.startLongitude = home.longitude
         trip.endLatitude = work.latitude
         trip.endLongitude = work.longitude
+        applySmartCategoryPendingState(to: trip)
+        context.insert(trip)
+    }
+
+    /// Newest completed personal commute with a pending Business suggestion.
+    @MainActor
+    private static func applySmartCategoryPendingState(to trip: Trip) {
+        let endedAt = Date().addingTimeInterval(-60)
+        trip.startedAt = endedAt.addingTimeInterval(-1_500)
+        trip.endedAt = endedAt
+        trip.categoryID = BuiltInCategory.personalID.uuidString
+        trip.categoryOriginRaw = TripCategoryOrigin.default.rawValue
         trip.pendingSuggestedCategoryID = BuiltInCategory.businessID.uuidString
         trip.pendingSuggestionReasonRaw = TripCategorySuggestionReason.place.rawValue
-        context.insert(trip)
     }
 }

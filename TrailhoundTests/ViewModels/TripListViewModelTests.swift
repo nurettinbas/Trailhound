@@ -114,6 +114,104 @@ final class TripListViewModelTests: XCTestCase {
         XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "   "))
     }
 
+    func testSearchActivityVisibleWhileTypingOrApplying() {
+        XCTAssertTrue(
+            TripListViewModel.isSearchActivityVisible(
+                searchText: "ev",
+                debouncedSearchText: "",
+                isApplying: false
+            )
+        )
+        XCTAssertTrue(
+            TripListViewModel.isSearchActivityVisible(
+                searchText: "ev",
+                debouncedSearchText: "ev",
+                isApplying: true
+            )
+        )
+        XCTAssertFalse(
+            TripListViewModel.isSearchActivityVisible(
+                searchText: "ev",
+                debouncedSearchText: "ev",
+                isApplying: false
+            )
+        )
+        XCTAssertFalse(
+            TripListViewModel.isSearchActivityVisible(
+                searchText: "",
+                debouncedSearchText: "",
+                isApplying: true
+            )
+        )
+        XCTAssertFalse(
+            TripListViewModel.isSearchActivityVisible(
+                searchText: "   ",
+                debouncedSearchText: "",
+                isApplying: false
+            )
+        )
+    }
+
+    func testMatchesSearchFindsPrivacyMaskedHomeName() throws {
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0082,
+            longitude: 28.9784,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 1200,
+            startAddress: "Old Street",
+            endPlaceName: "Ofis"
+        )
+        trip.startLatitude = 41.0082
+        trip.startLongitude = 28.9784
+        trip.endLatitude = 41.05
+        trip.endLongitude = 29.0
+
+        PlaceMatchingService.matchPlaces(for: trip, places: [home], privacyRadius: 500)
+        TripDerivedMetrics.refreshSearchIndex(for: trip, places: [home], privacyRadius: 500)
+
+        let summary = TripListViewModel.routeSummary(for: trip, places: [home], privacyRadius: 500)
+        XCTAssertEqual(
+            summary.split(separator: "→").first?.trimmingCharacters(in: .whitespaces),
+            L10n.placeNearName("Ev")
+        )
+        XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "ev", places: [home], privacyRadius: 500))
+        XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "Ev", places: [home], privacyRadius: 500))
+        XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(trip.searchIndex)).contains(SearchFolding.fold("Ev")))
+    }
+
+    func testMatchesSearchUsesLivePlacesWhenIndexIsStale() {
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0,
+            longitude: 29.0,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let trip = Trip(
+            startedAt: Date(),
+            endedAt: Date(),
+            startAddress: "Old Street"
+        )
+        trip.startLatitude = 41.0
+        trip.startLongitude = 29.0
+        trip.searchIndex = "old street"
+
+        XCTAssertTrue(
+            TripListViewModel.matchesSearch(trip, searchText: "ev", places: [home], privacyRadius: 500)
+        )
+        XCTAssertFalse(
+            TripListViewModel.matchesSearch(trip, searchText: "bakkal", places: [home], privacyRadius: 500)
+        )
+    }
+
     func testDurationAndDistanceTextForCompletedTrip() {
         let startedAt = Date().addingTimeInterval(-3900)
         let endedAt = Date()
@@ -122,6 +220,20 @@ final class TripListViewModelTests: XCTestCase {
         XCTAssertFalse(TripListViewModel.durationText(for: trip).isEmpty)
         XCTAssertFalse(TripListViewModel.distanceText(for: trip).isEmpty)
         XCTAssertNotNil(TripListViewModel.fuelText(for: trip))
+    }
+
+    func testFuelTextUsesAvgFuelNotEstimated() {
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 10_000,
+            estimatedFuelCost: 40,
+            dynamicFuelCost: 99
+        )
+        XCTAssertEqual(
+            TripListViewModel.fuelText(for: trip),
+            FuelCostCalculator.formatCost(40)
+        )
     }
 }
 
@@ -269,6 +381,53 @@ final class TripListPagePlaceFilterTests: XCTestCase {
         )
 
         XCTAssertEqual(filtered.map(\.id), [trip.id])
+    }
+
+    func testDescriptorSearchFindsFoldedHomeName() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let now = Date()
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0,
+            longitude: 29.0,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let trip = Trip(
+            startedAt: now.addingTimeInterval(-1_200),
+            endedAt: now.addingTimeInterval(-600),
+            distanceMeters: 500,
+            startAddress: "Old Street"
+        )
+        trip.startLatitude = 41.0
+        trip.startLongitude = 29.0
+        let other = Trip(
+            startedAt: now.addingTimeInterval(-2_400),
+            endedAt: now.addingTimeInterval(-1_800),
+            distanceMeters: 400,
+            startAddress: "Market"
+        )
+        context.insert(home)
+        context.insert(trip)
+        context.insert(other)
+        PlaceMatchingService.matchPlaces(for: trip, places: [home], privacyRadius: 500)
+        TripDerivedMetrics.refreshSearchIndex(for: trip, places: [home], privacyRadius: 500)
+        TripDerivedMetrics.refreshSearchIndex(for: other, places: [home], privacyRadius: 500)
+        try context.save()
+
+        let fetched = try context.fetch(
+            TripListPage.descriptor(
+                filters: TripListPage.Filters(searchText: "ev"),
+                limit: TripListPage.pageSize
+            )
+        )
+        let matching = fetched.filter {
+            TripListViewModel.matchesSearch($0, searchText: "ev", places: [home], privacyRadius: 500)
+        }
+
+        XCTAssertEqual(matching.map(\.id), [trip.id])
     }
 
     func testFiltersIsActiveWhenPlaceSelected() {

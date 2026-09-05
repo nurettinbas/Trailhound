@@ -71,7 +71,9 @@ struct TripRowView: View {
                                 .lineLimit(1)
                         }
                         .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        .accessibilityIdentifier("trips.row.suggestedCategory")
+                        // Combined rows already expose this in `accessibilityLabel`; a nested
+                        // identifier here hides `trips.row.first.suggested` from XCTest.
+                        .accessibilityHidden(true)
                     }
 
                     Spacer(minLength: 0)

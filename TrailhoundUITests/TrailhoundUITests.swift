@@ -207,9 +207,13 @@ final class TrailhoundSmartCategoryUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["settings.smartCategory.workEnd"].exists)
     }
 
+    private func element(identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
     func testSuggestedCategoryChipAppearsOnTripRow() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
-        let suggestedRow = app.buttons["trips.row.first.suggested"]
+        let suggestedRow = element(identifier: "trips.row.first.suggested")
         XCTAssertTrue(
             suggestedRow.waitForExistence(timeout: uiTimeout),
             "Seeded commute trip should be the first row with a pending suggestion"
@@ -218,17 +222,20 @@ final class TrailhoundSmartCategoryUITests: XCTestCase {
 
     func testSwipeAcceptsSuggestedCategory() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
-        let suggestedRow = app.buttons["trips.row.first.suggested"]
-        XCTAssertTrue(suggestedRow.waitForExistence(timeout: uiTimeout))
+        let suggestedRow = element(identifier: "trips.row.first.suggested")
+        XCTAssertTrue(
+            suggestedRow.waitForExistence(timeout: uiTimeout),
+            "Seeded commute trip should be the first row with a pending suggestion"
+        )
 
         suggestedRow.swipeRight()
-        let accept = app.buttons["trips.row.acceptSuggestedCategory"]
+        let accept = element(identifier: "trips.row.acceptSuggestedCategory")
         if accept.waitForExistence(timeout: 3) {
             accept.tap()
         }
 
-        XCTAssertFalse(app.buttons["trips.row.first.suggested"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["trips.row.first"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element(identifier: "trips.row.first.suggested").waitForExistence(timeout: 3))
+        XCTAssertTrue(element(identifier: "trips.row.first").waitForExistence(timeout: 5))
 
         let toast = app.staticTexts["Category updated"]
         _ = toast.waitForExistence(timeout: 2)

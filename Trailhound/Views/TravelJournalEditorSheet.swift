@@ -29,6 +29,11 @@ struct TravelJournalEditorDraft: Identifiable {
     }
 }
 
+private enum TravelJournalEditorFocusedField: Hashable {
+    case title
+    case note
+}
+
 struct TravelJournalEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -37,6 +42,18 @@ struct TravelJournalEditorSheet: View {
     private var completedTrips: [Trip]
 
     @State var draft: TravelJournalEditorDraft
+    @FocusState private var focusedField: TravelJournalEditorFocusedField?
+
+    private var focusedFieldTitle: String {
+        switch focusedField {
+        case .title:
+            return L10n.journalTitle
+        case .note:
+            return L10n.journalNote
+        case .none:
+            return ""
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -48,6 +65,9 @@ struct TravelJournalEditorSheet: View {
                             .foregroundStyle(.secondary)
                         TextField(L10n.journalTitlePlaceholder, text: $draft.title)
                             .glassInputField()
+                            .focused($focusedField, equals: .title)
+                            .submitLabel(.done)
+                            .onSubmit { dismissEditorKeyboard() }
                     }
                     .glassListRow()
                 }
@@ -61,6 +81,9 @@ struct TravelJournalEditorSheet: View {
                         TextField(L10n.journalNotePlaceholder, text: $draft.note, axis: .vertical)
                             .lineLimit(2...4)
                             .glassInputField()
+                            .focused($focusedField, equals: .note)
+                            .submitLabel(.done)
+                            .onSubmit { dismissEditorKeyboard() }
                     }
                     .glassListRow()
                 }
@@ -73,8 +96,17 @@ struct TravelJournalEditorSheet: View {
                         } label: {
                             HStack(alignment: .center, spacing: 10) {
                                 Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                                    .font(.body)
-                                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                    .font(.system(size: 23, weight: .semibold))
+                                    .foregroundStyle(
+                                        isSelected
+                                            ? TrailhoundBrandColors.brandBottom
+                                            : Color.secondary
+                                    )
+                                    .symbolEffect(
+                                        .bounce,
+                                        options: .nonRepeating,
+                                        value: reduceMotion ? false : isSelected
+                                    )
                                     .accessibilityHidden(true)
 
                                 VStack(alignment: .leading, spacing: 1) {
@@ -89,6 +121,8 @@ struct TravelJournalEditorSheet: View {
                                 }
                                 Spacer(minLength: 0)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -97,6 +131,13 @@ struct TravelJournalEditorSheet: View {
                 }
             }
             .glassListChrome()
+            .dismissKeyboardOnTap(focus: $focusedField)
+            .dismissKeyboardOnScroll()
+            .fieldKeyboardAccessory(
+                title: focusedFieldTitle,
+                focusID: focusedField.map { AnyHashable($0) },
+                onDone: { dismissEditorKeyboard() }
+            )
             .navigationTitle(draft.existing == nil ? L10n.journalNew : L10n.journalTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -117,12 +158,22 @@ struct TravelJournalEditorSheet: View {
     }
 
     private var selectableTrips: [Trip] {
-        completedTrips.filter { trip in
+        let trips = completedTrips.filter { trip in
             trip.journalID == nil || trip.journalID == draft.existing?.id || draft.selectedTripIDs.contains(trip.id)
         }
+        // Query is already newest-first; keep that order inside each group.
+        let selected = trips.filter { draft.selectedTripIDs.contains($0.id) }
+        let unselected = trips.filter { !draft.selectedTripIDs.contains($0.id) }
+        return selected + unselected
+    }
+
+    private func dismissEditorKeyboard() {
+        focusedField = nil
+        KeyboardDismiss.dismiss()
     }
 
     private func toggle(_ id: UUID) {
+        TrailhoundHaptics.selection()
         if draft.selectedTripIDs.contains(id) {
             draft.selectedTripIDs.remove(id)
         } else {

@@ -75,10 +75,6 @@ struct TripListViewModel {
     }
 
     static func fuelText(for trip: Trip) -> String? {
-        let dynamic = trip.dynamicFuelCost ?? 0
-        if dynamic > 0 {
-            return FuelCostCalculator.formatCost(dynamic)
-        }
         let cost = StatsViewModel.fuelCost(for: trip)
         guard cost > 0 else { return nil }
         return FuelCostCalculator.formatCost(cost)
@@ -112,34 +108,64 @@ struct TripListViewModel {
         return "\(L10n.avgAbbr) \(speed)"
     }
 
+    /// Note, addresses, stored place names, the live route summary (including "Ev yakını"),
+    /// and the canonical saved-place name even when the row privacy-masks it.
+    static func searchCorpus(
+        for trip: Trip,
+        places: [SavedPlace] = [],
+        privacyRadius: Double = 500
+    ) -> String {
+        var parts: [String] = [
+            routeSummary(for: trip, places: places, privacyRadius: privacyRadius)
+        ]
+        if let note = trip.note, !note.isEmpty { parts.append(note) }
+        if let startAddress = trip.startAddress, !startAddress.isEmpty { parts.append(startAddress) }
+        if let endAddress = trip.endAddress, !endAddress.isEmpty { parts.append(endAddress) }
+        if let startPlaceName = trip.startPlaceName, !startPlaceName.isEmpty { parts.append(startPlaceName) }
+        if let endPlaceName = trip.endPlaceName, !endPlaceName.isEmpty { parts.append(endPlaceName) }
+
+        if let start = trip.startCoordinate,
+           let name = PlaceMatchingService.matchingPlace(
+               at: start, places: places, privacyRadius: privacyRadius
+           )?.name {
+            parts.append(name)
+        }
+        if let end = trip.endCoordinate,
+           let name = PlaceMatchingService.matchingPlace(
+               at: end, places: places, privacyRadius: privacyRadius
+           )?.name {
+            parts.append(name)
+        }
+
+        return parts.joined(separator: "\n")
+    }
+
     static func matchesSearch(
         _ trip: Trip,
         searchText: String,
         places: [SavedPlace] = [],
         privacyRadius: Double = 500
     ) -> Bool {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return true }
+        let needle = SearchFolding.fold(searchText)
+        guard !needle.isEmpty else { return true }
 
-        let lowercasedQuery = query.lowercased()
-
-        // Precomputed by `TripDerivedMetrics`, which keeps filtering off the GPS relationship.
-        if let searchIndex = trip.searchIndex {
-            return searchIndex.contains(lowercasedQuery)
+        if let searchIndex = trip.searchIndex, SearchFolding.fold(searchIndex).contains(needle) {
+            return true
         }
 
-        let candidates = [
-            routeSummary(for: trip, places: places, privacyRadius: privacyRadius),
-            trip.note,
-            trip.startAddress,
-            trip.endAddress,
-            trip.startPlaceName,
-            trip.endPlaceName
-        ]
+        return SearchFolding.fold(
+            searchCorpus(for: trip, places: places, privacyRadius: privacyRadius)
+        ).contains(needle)
+    }
 
-        return candidates.contains { value in
-            guard let value, !value.isEmpty else { return false }
-            return value.lowercased().contains(lowercasedQuery)
-        }
+    /// Visible while the user is typing (debounce pending) or results are applying.
+    static func isSearchActivityVisible(
+        searchText: String,
+        debouncedSearchText: String,
+        isApplying: Bool
+    ) -> Bool {
+        let typed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !typed.isEmpty else { return false }
+        return isApplying || searchText != debouncedSearchText
     }
 }

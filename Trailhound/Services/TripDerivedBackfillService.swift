@@ -16,6 +16,9 @@ actor TripDerivedBackfiller {
     private static let dynamicFuelVersionKey = "trailhound.derived.dynamicFuelVersion"
     /// Bump when `TripFuelEstimate` changes so already-filled trips are recomputed.
     private static let dynamicFuelVersion = 1
+    private static let searchIndexVersionKey = "trailhound.derived.searchIndexVersion"
+    /// Bump when search-index contents change (place names, folding) so existing rows are rewritten.
+    private static let searchIndexVersion = 1
 
     func run(privacyRadius: Double) async {
         // Fetched on this actor's own context: `SavedPlace` cannot cross actor boundaries.
@@ -128,6 +131,58 @@ actor TripDerivedBackfiller {
         defaults.set(Self.dynamicFuelVersion, forKey: Self.dynamicFuelVersionKey)
     }
 
+    /// Re-runs place matching + search index after the corpus gained canonical saved-place names
+    /// and SearchFolding. Does not rewrite GPS, notes, or other user fields.
+    ///
+    /// Must persist on this actor's context (not a second main-thread context): another
+    /// `ModelContext` can still hold pre-backfill snapshots and a later save would clobber
+    /// derived fields. SwiftUI is kept off this thread by `onStoreSave`'s main-thread receive.
+    func refreshSearchIndexesIfNeeded(privacyRadius: Double) async {
+        let defaults = UserDefaults.standard
+        guard defaults.integer(forKey: Self.searchIndexVersionKey) < Self.searchIndexVersion else {
+            return
+        }
+
+        let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        var offset = 0
+        while !Task.isCancelled {
+            var descriptor = FetchDescriptor<Trip>(
+                predicate: #Predicate { $0.endedAt != nil },
+                sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+            )
+            descriptor.fetchOffset = offset
+            descriptor.fetchLimit = Self.batchSize
+
+            let batch = (try? modelContext.fetch(descriptor)) ?? []
+            guard !batch.isEmpty else { break }
+
+            for trip in batch {
+                PlaceMatchingService.matchPlaces(
+                    for: trip,
+                    places: places,
+                    privacyRadius: privacyRadius
+                )
+                TripDerivedMetrics.refreshSearchIndex(
+                    for: trip,
+                    places: places,
+                    privacyRadius: privacyRadius
+                )
+            }
+
+            do {
+                try modelContext.save()
+            } catch {
+                return
+            }
+
+            offset += batch.count
+            await Task.yield()
+        }
+
+        guard !Task.isCancelled else { return }
+        defaults.set(Self.searchIndexVersion, forKey: Self.searchIndexVersionKey)
+    }
+
     /// Completed trips are the only ones read paths aggregate, and an unfinished trip would be
     /// recomputed again the moment it is finalized.
     private func fetchPendingBatch() -> [Trip] {
@@ -188,5 +243,6 @@ enum TripDerivedBackfillService {
         // After formula fixes, rewrite cruise / stop before rollups rebuild.
         await backfiller.refreshSpeedProfilesIfNeeded()
         await backfiller.refreshDynamicFuelIfNeeded()
+        await backfiller.refreshSearchIndexesIfNeeded(privacyRadius: privacyRadius)
     }
 }

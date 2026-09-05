@@ -37,6 +37,8 @@ struct TripListView: View {
     @State private var showMergeConfirm = false
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
+    @State private var isSearchApplying = false
+    @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var isSearchFocused: Bool
     @Namespace private var tripMorphNamespace
     @State private var morphingTripID: UUID?
@@ -66,6 +68,14 @@ struct TripListView: View {
     @State private var hasMorePages = false
     @State private var hasAnyTrips = false
     @State private var weekSummaryText = ""
+
+    private var isSearchBusy: Bool {
+        TripListViewModel.isSearchActivityVisible(
+            searchText: searchText,
+            debouncedSearchText: debouncedSearchText,
+            isApplying: isSearchApplying
+        )
+    }
 
     private var hasActiveFilters: Bool {
         pageFilters.isActive
@@ -101,17 +111,21 @@ struct TripListView: View {
             TripListPage.descriptor(filters: filters, limit: pageLimit)
         )) ?? []
 
-        hasMorePages = fetched.count > pageLimit
-        let visible = Array(fetched.prefix(pageLimit)).filter { matchesInMemoryFilters($0, filters) }
+        let matching = fetched.filter { matchesInMemoryFilters($0, filters) }
+        let searching = !filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        hasMorePages = searching
+            ? matching.count > pageLimit
+            : fetched.count > pageLimit
+        let visible = Array(matching.prefix(pageLimit))
         loadedTrips = visible
         tripGroups = TripDateGrouping.groupedSections(from: visible)
     }
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
-    /// the wall clock, and trips still awaiting a search index need the
-    /// legacy field scan. Place names are also re-checked so a renamed favorite stays consistent
-    /// with the chip's current `SavedPlace.name`. When a place chip is active the SQLite
-    /// predicate omits `searchIndex` (type-checker limit), so search is always verified here.
+    /// the wall clock, and a stale `searchIndex` can miss a live saved-place name. Place names
+    /// are also re-checked so a renamed favorite stays consistent with the chip's current
+    /// `SavedPlace.name`. Text search is always applied here: SwiftData rejects optional
+    /// `searchIndex` unwraps in `#Predicate`, so the fetch is over-inclusive.
     private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
         if let section = filters.dateSection,
            !TripDateGrouping.matches(section, date: trip.startedAt) {
@@ -124,16 +138,15 @@ struct TripListView: View {
         ) {
             return false
         }
-        let needsSearchScan = trip.searchIndex == nil || filters.placeName != nil
-        if needsSearchScan {
-            return TripListViewModel.matchesSearch(
-                trip,
-                searchText: filters.searchText,
-                places: places,
-                privacyRadius: settings.privacyRadiusMeters
-            )
+        if filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
         }
-        return true
+        return TripListViewModel.matchesSearch(
+            trip,
+            searchText: filters.searchText,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
     }
 
     private func loadNextPage() {
@@ -145,6 +158,31 @@ struct TripListView: View {
     private func resetPagingAndReload() {
         pageLimit = TripListPage.pageSize
         reloadTrips()
+    }
+
+    private func scheduleSearchApply(_ pending: String) {
+        searchDebounceTask?.cancel()
+        if pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            isSearchApplying = false
+        }
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, searchText == pending else { return }
+            let showActivity = !pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if showActivity {
+                isSearchApplying = true
+            }
+            debouncedSearchText = pending
+            if showActivity {
+                try? await Task.sleep(for: .milliseconds(280))
+                guard !Task.isCancelled else { return }
+                if searchText == pending {
+                    isSearchApplying = false
+                }
+            } else {
+                isSearchApplying = false
+            }
+        }
     }
 
     private func reloadJournals() {
@@ -228,24 +266,26 @@ struct TripListView: View {
         }
 
         if loadedJournals.isEmpty {
-            GlassEmptyState(
-                title: isSearching ? L10n.journalEmptySearchTitle : L10n.journalEmptyTitle,
-                systemImage: isSearching ? "magnifyingglass" : "map",
-                message: isSearching ? L10n.journalEmptySearchMessage : L10n.journalEmptyMessage,
-                bounceTrigger: isSearching
-            )
-            .glassListRow()
-            if !isSearching {
-                Button {
-                    journalEditor = .create()
-                } label: {
-                    Text(L10n.journalCreate)
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(TrailhoundBrandColors.brandBottom)
+            if !isSearchBusy {
+                GlassEmptyState(
+                    title: isSearching ? L10n.journalEmptySearchTitle : L10n.journalEmptyTitle,
+                    systemImage: isSearching ? "magnifyingglass" : "map",
+                    message: isSearching ? L10n.journalEmptySearchMessage : L10n.journalEmptyMessage,
+                    bounceTrigger: isSearching
+                )
                 .glassListRow()
+                if !isSearching {
+                    Button {
+                        journalEditor = .create()
+                    } label: {
+                        Text(L10n.journalCreate)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .glassListRow()
+                }
             }
         } else {
             Section {
@@ -264,6 +304,7 @@ struct TripListView: View {
                         } label: {
                             Label(L10n.journalDelete, systemImage: "trash")
                         }
+                        .destructiveTint()
                     }
                 }
             }
@@ -470,6 +511,7 @@ struct TripListView: View {
                         selectedVehicleFilter: $selectedVehicleFilter,
                         selectedPlaceID: $selectedPlaceID,
                         listMode: $listMode,
+                        isSearchBusy: isSearchBusy,
                         vehicles: vehicles,
                         places: places,
                         weekSummaryText: weekSummary
@@ -502,11 +544,12 @@ struct TripListView: View {
             if listMode == .travels {
                 journalListContent
             } else if visibleTrips.isEmpty {
-                let showFilteredEmpty = hasActiveFilters && hasAnyTrips
+                let showFilteredEmpty = hasActiveFilters && hasAnyTrips && !isSearchBusy
                 let showDefaultEmpty = !hasAnyTrips
                     && !recordingService.state.isActiveSession
                     && endCredits == nil
                     && coldOpenTripID == nil
+                    && !isSearchBusy
                 if showFilteredEmpty || showDefaultEmpty {
                     GlassEmptyState(
                         title: hasActiveFilters ? L10n.tripsEmptyFilteredTitle : L10n.tripsEmptyTitle,
@@ -551,7 +594,7 @@ struct TripListView: View {
         .scrollDismissesKeyboard(.interactively)
         .dismissKeyboardOnTap(focus: $isSearchFocused)
         .fieldKeyboardAccessory(
-            title: L10n.searchTrips,
+            title: listMode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips,
             focusID: isSearchFocused ? AnyHashable(true) : nil,
             onDone: {
                 isSearchFocused = false
@@ -562,12 +605,7 @@ struct TripListView: View {
         // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
         .listSectionSpacing(6)
         .onChange(of: searchText) { _, newValue in
-            let pending = newValue
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(250))
-                guard !Task.isCancelled, searchText == pending else { return }
-                debouncedSearchText = pending
-            }
+            scheduleSearchApply(newValue)
         }
         .onPreferenceChange(CreditsListLandingYKey.self) { newY in
             guard endCredits != nil else { return }
@@ -614,6 +652,8 @@ struct TripListView: View {
             resetPagingAndReload()
         }
         .onChange(of: listMode) { _, _ in
+            searchDebounceTask?.cancel()
+            isSearchApplying = false
             searchText = ""
             debouncedSearchText = ""
             reloadJournals()
@@ -888,6 +928,7 @@ struct TripListView: View {
     private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
         let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
+        let rowID = tripRowIdentifier(for: trip, isFirst: isFirst)
         Group {
             if isMergeMode {
                 Button {
@@ -910,6 +951,7 @@ struct TripListView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(rowID)
             } else {
                 NavigationLink(value: trip) {
                     TripRowView(
@@ -924,7 +966,7 @@ struct TripListView: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .accessibilityIdentifier(tripRowIdentifier(for: trip, isFirst: isFirst))
+                .accessibilityIdentifier(rowID)
                 .buttonStyle(.plain)
             }
         }
