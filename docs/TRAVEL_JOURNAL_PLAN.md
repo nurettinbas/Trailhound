@@ -51,7 +51,7 @@ Stats: a **Travel** chip next to the favorite-place filter (same independent-per
 
 ## Data (schema V19, additive)
 
-Current live schema is **V18** ([`ModelContainerFactory.currentSchemaVersion`](../Trailhound/Utilities/ModelContainerFactory.swift)). Journals add a model and optional fields only — no store reset, no property rename.
+Journals shipped as **V19** (additive). Live tip schema is **V20** ([`ModelContainerFactory.currentSchemaVersion`](../Trailhound/Utilities/ModelContainerFactory.swift)), which also adds smart-category fields. Journals add a model and optional fields only — no store reset, no property rename.
 
 ### `TravelJournal` (new)
 

@@ -170,15 +170,8 @@ struct TravelJournalEditPanel: View {
         )
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                DeleteConfirmPresenter.shared.confirm(.journalRemove) {
-                    onRemoveTrip(trip)
-                }
-            } label: {
-                Label(L10n.journalRemove, systemImage: "trash")
-            }
-            .destructiveTint()
+        .confirmingDeleteSwipe(.journalRemove, title: L10n.journalRemove) {
+            onRemoveTrip(trip)
         }
         .contextMenu {
             Button { onOpenTrip(trip) } label: {

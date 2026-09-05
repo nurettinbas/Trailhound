@@ -87,15 +87,8 @@ struct SettingsView: View {
                             trailing: GlassTokens.listContentHorizontalInset
                         )
                     )
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            DeleteConfirmPresenter.shared.confirm(.generic) {
-                                deletePlace(place)
-                            }
-                        } label: {
-                            Label(L10n.delete, systemImage: "trash")
-                        }
-                        .destructiveTint()
+                    .confirmingDeleteSwipe {
+                        deletePlace(place)
                     }
                 }
 

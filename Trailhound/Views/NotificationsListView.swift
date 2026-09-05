@@ -45,16 +45,8 @@ struct NotificationsListView: View {
                             .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    let id = item.id
-                                    DeleteConfirmPresenter.shared.confirm(.generic) {
-                                        store.delete(id)
-                                    }
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                store.delete(item.id)
                             }
                     }
                 }

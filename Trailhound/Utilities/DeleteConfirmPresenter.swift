@@ -116,20 +116,41 @@ struct DeleteConfirmHostModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.overlay {
-            if let request = presenter.request {
-                DeleteConfirmOverlay(request: request)
-                    .transition(overlayTransition)
-                    .zIndex(2_000)
+        let isPresented = presenter.request != nil
+        content
+            // Do not implicit-animate the tab/list tree when the dialog appears.
+            .animation(nil, value: isPresented)
+            // Swipe-open List rows steal the first tap. Block the tree under the
+            // dialog so Cancel/Delete land on the overlay, not the list.
+            .allowsHitTesting(!isPresented)
+            .overlay {
+                ZStack {
+                    if let request = presenter.request {
+                        Color.black.opacity(0.46)
+                            .ignoresSafeArea()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                DeleteConfirmPresenter.shared.cancel()
+                            }
+                            .accessibilityLabel(L10n.cancel)
+                            .accessibilityAddTraits(.isButton)
+                            .transition(.opacity)
+
+                        DeleteConfirmCard(request: request)
+                            .transition(cardTransition)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(overlayAnimation, value: isPresented)
             }
-        }
-        .animation(
-            reduceMotion ? .easeOut(duration: 0.15) : TrailhoundMotion.cardSpring,
-            value: presenter.request != nil
-        )
     }
 
-    private var overlayTransition: AnyTransition {
+    private var overlayAnimation: Animation? {
+        reduceMotion ? .easeOut(duration: 0.15) : TrailhoundMotion.cardSpring
+    }
+
+    private var cardTransition: AnyTransition {
         if reduceMotion {
             return .opacity
         }
@@ -137,71 +158,93 @@ struct DeleteConfirmHostModifier: ViewModifier {
     }
 }
 
-private struct DeleteConfirmOverlay: View {
+private struct DeleteConfirmCard: View {
     let request: DeleteConfirmRequest
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.46)
-                .ignoresSafeArea()
-                .onTapGesture {
+        VStack(spacing: 16) {
+            Image(systemName: "trash.circle.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.red)
+                .symbolRenderingMode(.hierarchical)
+                .accessibilityHidden(true)
+
+            Text(request.title)
+                .font(.title3.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+
+            Text(request.message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 10) {
+                actionButton(title: L10n.cancel, tint: Color(.systemGray)) {
                     DeleteConfirmPresenter.shared.cancel()
                 }
-                .accessibilityLabel(L10n.cancel)
-                .accessibilityAddTraits(.isButton)
 
-            VStack(spacing: 16) {
-                Image(systemName: "trash.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.red)
-                    .symbolRenderingMode(.hierarchical)
-                    .accessibilityHidden(true)
-
-                Text(request.title)
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .accessibilityAddTraits(.isHeader)
-
-                Text(request.message)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-
-                VStack(spacing: 10) {
-                    Button {
-                        DeleteConfirmPresenter.shared.cancel()
-                    } label: {
-                        Text(L10n.cancel)
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.plain)
-                    .glassChrome(cornerRadius: 14)
-
-                    Button(role: .destructive) {
-                        DeleteConfirmPresenter.shared.performConfirm()
-                    } label: {
-                        Text(request.confirmTitle)
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                actionButton(title: request.confirmTitle, tint: .red, role: .destructive) {
+                    DeleteConfirmPresenter.shared.performConfirm()
                 }
             }
-            .padding(22)
-            .frame(maxWidth: 320)
-            .glassChrome(cornerRadius: GlassTokens.cardRadius)
-            .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
-            .accessibilityElement(children: .contain)
         }
+        .padding(22)
+        .frame(maxWidth: 320)
+        .glassChrome(cornerRadius: GlassTokens.cardRadius)
+        .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+        .contentShape(RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func actionButton(
+        title: String,
+        tint: Color,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Text(title)
+                .font(.body.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
+        .frame(maxWidth: .infinity)
     }
 }
 
 extension View {
     func deleteConfirmHost() -> some View {
         modifier(DeleteConfirmHostModifier())
+    }
+
+    /// Trailing swipe that only presents confirm. Do not use `Button(role: .destructive)`
+    /// here — List treats that role as an immediate row delete, so Cancel would leave
+    /// the row gone even though the model was not deleted.
+    @ViewBuilder
+    func confirmingDeleteSwipe(
+        _ kind: DeleteConfirmKind = .generic,
+        title: String = L10n.delete,
+        systemImage: String = "trash",
+        allowsFullSwipe: Bool = true,
+        enabled: Bool = true,
+        perform: @escaping () -> Void
+    ) -> some View {
+        if enabled {
+            swipeActions(edge: .trailing, allowsFullSwipe: allowsFullSwipe) {
+                Button {
+                    DeleteConfirmPresenter.shared.confirm(kind, perform: perform)
+                } label: {
+                    Label(title, systemImage: systemImage)
+                }
+                .destructiveTint()
+            }
+        } else {
+            self
+        }
     }
 }

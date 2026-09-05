@@ -8,6 +8,9 @@ final class DeleteConfirmPresenterTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Cancel must not run `onConfirm`. Swipe-to-delete uses `confirmingDeleteSwipe`,
+    /// which must not use `Button(role: .destructive)` or List removes the row first.
+    /// The overlay host must not implicit-animate the list when this request changes.
     func testCancelDoesNotPerform() {
         var didRun = false
         DeleteConfirmPresenter.shared.confirm(.generic) {

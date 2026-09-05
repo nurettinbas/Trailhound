@@ -296,17 +296,10 @@ struct TripListView: View {
                         TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
                     }
                     .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            DeleteConfirmPresenter.shared.confirm(.generic) {
-                                TravelJournalTotals.prepareForDelete(journal)
-                                modelContext.delete(journal)
-                                try? modelContext.save()
-                            }
-                        } label: {
-                            Label(L10n.journalDelete, systemImage: "trash")
-                        }
-                        .destructiveTint()
+                    .confirmingDeleteSwipe(title: L10n.journalDelete) {
+                        TravelJournalTotals.prepareForDelete(journal)
+                        modelContext.delete(journal)
+                        try? modelContext.save()
                     }
                 }
             }
@@ -982,15 +975,8 @@ struct TripListView: View {
             isSource: false
         )
         .transition(.opacity)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                DeleteConfirmPresenter.shared.confirm(.generic) {
-                    deleteTrip(trip)
-                }
-            } label: {
-                Label(L10n.delete, systemImage: "trash")
-            }
-            .destructiveTint()
+        .confirmingDeleteSwipe {
+            deleteTrip(trip)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: trip.hasPendingCategorySuggestion) {
             if trip.hasPendingCategorySuggestion {

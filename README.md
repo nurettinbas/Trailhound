@@ -28,27 +28,30 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Offline-first recording; geocoding retries when online
 - Home/work saved places with privacy radius (route clipping)
 - Optional Face ID app lock (device passcode required)
-- Configurable auto-delete (30/90/365 days)
-- Export: JSON, CSV, GPX, KML, monthly business PDF
+- Optional blur of coordinates on export
+- Configurable auto-delete (Never, or 30/90/365 days)
+- Export: JSON, CSV, GPX, KML
 
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
 - Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
-- Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, **stop time**, and dual **avg / estimated** fuel charts
-- Frequent routes, category filters, trip merge/split
+- Swift Charts stats, trends, monthly distance goals — including daily **cruise speed**, **most common** speed, **stop time**, **night driving** share, and dual **avg / estimated** fuel charts
+- Category filters, trip merge (select completed trips on the list; there is no split)
+- **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
 - **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue); mark done from the row (Done) to log cost and roll the next due date
 - **Expenses** — log fuel, traffic insurance, casco, service, inspection, repair, accessory, and other costs separately from reminders; split a purchase into **monthly installments** (up to 24) so each month’s share appears on Stats in that month
-- One vehicle detail screen under **Vehicles**: profile → reminders → expenses; cost charts live on **Stats**
+- One vehicle detail screen under the **Pairing** tab: profile → reminders → expenses; cost charts live on **Stats**
 - Overdue care also shown as an in-app banner; push fires once when overdue (no daily spam)
 
 ### Organization
 - Personal / business categories (+ custom)
-- **Travel journal** — group trips under a Seyahat (Trips tab segment); all member routes on one map
+- **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
+- **Travel journal** — Trips tab segment **Trips | Travels**; group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
 - In-app notifications inbox
 - Turkish & English UI (Localizable.xcstrings)
@@ -169,7 +172,7 @@ Trailhound/
 ├── Services/         # Location, recording, geocoding, export, pairing
 ├── Views/            # SwiftUI screens (incl. Pairing Shortcuts guide)
 ├── Intents/          # App Intents & Siri Shortcuts
-├── Utilities/        # L10n, PDF reports, migrations
+├── Utilities/        # L10n, migrations
 TrailhoundShared/        # App Group bridge (widget, Live Activity, deep links)
 TrailhoundWidget/        # WidgetKit + Live Activity extension
 TrailhoundTests/         # Unit + integration tests
@@ -186,8 +189,10 @@ docs/                 # Battery, TestFlight, vehicle care notes
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll
+- [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
+- [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19
 
 ---
 

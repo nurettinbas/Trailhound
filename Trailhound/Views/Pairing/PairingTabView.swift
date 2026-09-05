@@ -84,16 +84,10 @@ struct PairingTabView: View {
                     ForEach(Array(sortedVehicles.enumerated()), id: \.element.id) { index, vehicle in
                         vehicleRow(vehicle)
                             .glassRow(position: GlassRowPosition.index(index, in: sortedVehicles.count + 1))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    let vehicleID = vehicle.id
-                                    DeleteConfirmPresenter.shared.confirm(.vehicle(isActivePaired: vehicle.isDefault)) {
-                                        deleteVehicle(vehicleID)
-                                    }
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe(
+                                .vehicle(isActivePaired: vehicle.isDefault)
+                            ) {
+                                deleteVehicle(vehicle.id)
                             }
                     }
 
