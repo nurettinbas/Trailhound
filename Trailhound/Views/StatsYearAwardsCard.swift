@@ -14,6 +14,9 @@ struct StatsYearAwardsCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L10n.string("stats.awards.section"))
                         .font(.subheadline.weight(.semibold))
+                    Text(L10n.string("stats.awards.unfiltered_hint"))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                     if let snapshot, snapshot.hasData {
                         Text(DateFormatters.formatDistance(snapshot.totalDistanceMeters))
                             .font(.title3.weight(.bold))

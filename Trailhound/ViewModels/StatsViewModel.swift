@@ -378,6 +378,19 @@ struct StatsViewModel {
         return calendarMonthInterval(containing: previous, calendar: calendar)
     }
 
+    /// True when the selected month is the in-progress calendar month — comparison uses MTD, not the full prior month.
+    static func usesMonthToDatePrevious(
+        for period: StatsPeriod,
+        selectedMonth: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard period == .month else { return false }
+        let selectedFull = calendarMonthInterval(containing: selectedMonth, calendar: calendar)
+        return calendar.isDate(selectedFull.start, equalTo: now, toGranularity: .month)
+            && now < selectedFull.end
+    }
+
     /// Previous period used for *comparison* (MTD-aligned for the in-progress month).
     /// Does not change the Stats fetch window — that still loads the full previous calendar month.
     static func alignedPreviousInterval(
@@ -392,17 +405,45 @@ struct StatsViewModel {
             return previousInterval(for: selectedInterval)
         case .month:
             let previousFull = previousMonthInterval(containing: selectedMonth, calendar: calendar)
-            let selectedFull = calendarMonthInterval(containing: selectedMonth, calendar: calendar)
-            let isInProgress = calendar.isDate(selectedFull.start, equalTo: now, toGranularity: .month)
-                && now < selectedFull.end
-            guard isInProgress else { return previousFull }
+            guard usesMonthToDatePrevious(
+                for: .month,
+                selectedMonth: selectedMonth,
+                now: now,
+                calendar: calendar
+            ) else { return previousFull }
 
+            let selectedFull = calendarMonthInterval(containing: selectedMonth, calendar: calendar)
             let nowDay = calendar.startOfDay(for: now)
             let dayAfterNow = calendar.date(byAdding: .day, value: 1, to: nowDay) ?? now
             let elapsed = dayAfterNow.timeIntervalSince(selectedFull.start)
             let alignedEnd = min(previousFull.start.addingTimeInterval(elapsed), previousFull.end)
             return DateInterval(start: previousFull.start, end: alignedEnd)
         }
+    }
+
+    /// Place, journal, and category have no expense dimension — hide cost MoM and $/km so they cannot mix with scoped trip stats.
+    static func hidesUnscopedCostComparison(
+        categoryID: String?,
+        placeName: String?,
+        journalID: UUID?
+    ) -> Bool {
+        let hasCategory = !(categoryID ?? "").isEmpty
+        let hasPlace = !(placeName ?? "").isEmpty
+        return hasCategory || hasPlace || journalID != nil
+    }
+
+    static func showsVehicleCompareList(
+        hidesUnscopedCosts: Bool,
+        selectedVehicleID: UUID?,
+        rowCount: Int
+    ) -> Bool {
+        !hidesUnscopedCosts && selectedVehicleID == nil && rowCount > 1
+    }
+
+    static func periodCompareMetricIDs(includeExpenses: Bool) -> [String] {
+        includeExpenses
+            ? ["trips", "distance", "duration", "expenses", "fuel"]
+            : ["trips", "distance", "duration", "fuel"]
     }
 
     /// Half-open calendar year `[1 Jan, 1 Jan next)`.

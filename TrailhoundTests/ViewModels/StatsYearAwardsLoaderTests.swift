@@ -176,4 +176,86 @@ final class VehicleCostCompareSnapshotTests: XCTestCase {
         XCTAssertEqual(snap.compareSeeds.count, 1)
         XCTAssertEqual(snap.compareSeeds.first?.amount ?? 0, 100, accuracy: 0.01)
     }
+
+    func testCompareSeedsSplitFuelAndServiceBuckets() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let vehicle = VehicleProfile(name: "Bucket Car")
+        context.insert(vehicle)
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let periodStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let periodEnd = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+
+        context.insert(VehicleExpense(
+            category: .fuel,
+            amount: 80,
+            occurredAt: periodStart.addingTimeInterval(86_400),
+            vehicle: vehicle
+        ))
+        context.insert(VehicleExpense(
+            category: .service,
+            amount: 120,
+            occurredAt: periodStart.addingTimeInterval(2 * 86_400),
+            vehicle: vehicle
+        ))
+        try context.save()
+
+        let loader = VehicleCostSnapshotLoader(modelContainer: container)
+        let snap = await loader.snapshot(
+            for: VehicleCostSnapshotRequest(
+                storeVersion: 1,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                selectedVehicleID: nil
+            )
+        )
+
+        let seed = try XCTUnwrap(snap.compareSeeds.first)
+        XCTAssertEqual(seed.fuel, 80, accuracy: 0.01)
+        XCTAssertEqual(seed.service, 120, accuracy: 0.01)
+        XCTAssertEqual(seed.amount, 200, accuracy: 0.01)
+        XCTAssertEqual(snap.fuelTotal, 80, accuracy: 0.01)
+        XCTAssertEqual(snap.serviceTotal, 120, accuracy: 0.01)
+    }
+
+    func testCurrentWindowIsHalfOpenAtPeriodEnd() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let vehicle = VehicleProfile(name: "Boundary Car")
+        context.insert(vehicle)
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let periodStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let periodEnd = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+
+        context.insert(VehicleExpense(
+            category: .fuel,
+            amount: 50,
+            occurredAt: periodStart,
+            vehicle: vehicle
+        ))
+        context.insert(VehicleExpense(
+            category: .fuel,
+            amount: 999,
+            occurredAt: periodEnd,
+            vehicle: vehicle
+        ))
+        try context.save()
+
+        let loader = VehicleCostSnapshotLoader(modelContainer: container)
+        let snap = await loader.snapshot(
+            for: VehicleCostSnapshotRequest(
+                storeVersion: 1,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                selectedVehicleID: nil
+            )
+        )
+
+        XCTAssertEqual(snap.total, 50, accuracy: 0.01)
+        XCTAssertEqual(snap.fuelTotal, 50, accuracy: 0.01)
+    }
 }

@@ -62,7 +62,7 @@ actor VehicleCostSnapshotLoader {
         )
         for expense in expenses {
             let occurredAt = expense.occurredAt
-            let inCurrent = occurredAt >= currentStart && occurredAt <= currentEnd
+            let inCurrent = occurredAt >= currentStart && occurredAt < currentEnd
             let inPrevious = occurredAt >= compareStart && occurredAt < compareEnd
 
             if inPrevious {
@@ -173,7 +173,7 @@ actor VehicleCostSnapshotLoader {
     private func fetchExpenses(from: Date, to: Date, vehicleID: UUID?) -> [VehicleExpense] {
         let descriptor = FetchDescriptor<VehicleExpense>(
             predicate: #Predicate { expense in
-                expense.occurredAt >= from && expense.occurredAt <= to
+                expense.occurredAt >= from && expense.occurredAt < to
             },
             sortBy: [SortDescriptor(\.occurredAt, order: .reverse)]
         )

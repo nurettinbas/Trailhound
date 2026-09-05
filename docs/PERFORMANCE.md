@@ -202,9 +202,9 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `@MainActor`, so that task would inherit the main actor and still block the UI.
 - Filter changes are debounced (~120 ms) after the first load, and the loader keeps an 8-entry
   request cache cleared whenever `storeVersion` bumps, so week ↔ month ↔ back is instant.
-- Category, vehicle, and favorite-place filters scope **summary and chart series** together.
-  The monthly goal ring stays unfiltered. Place filter forces the trip fetch path (daily rollups
-  have no place dimension); without a place filter the 92-day rollup path is unchanged.
+- Category, vehicle, favorite-place, and travel-journal filters scope **trip summary and chart series** together.
+  The monthly goal ring stays unfiltered. Place or journal filter forces the trip fetch path (daily rollups
+  have neither dimension); without those chips the 92-day rollup path is unchanged.
 - **Pager charts mount lazily per slide.** `StatsDeferredChart` / `StatsDeferredContent` take an
   `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
   build all five Swift Charts when the section first appears — only the visible page (after the row
@@ -219,7 +219,9 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   immediately if the Awards row has appeared). Year data is rollups + expenses only — never
   `FetchDescriptor<Trip>` / GPS / `walkNightDistanceShare`. Filter chips do not rebuild the year
   snapshot; `storeVersion` does, still on that idle path. Cost MoM uses **one** expense fetch covering
-  current ∪ previous (`previousTotal` on the same snapshot).
+  current ∪ previous (`previousTotal` on the same snapshot). Place, journal, or category chips
+  **hide** expense MoM and the vehicle $/km list — expenses have no those dimensions, so mixing them
+  with scoped trip stats would be wrong. Vehicle filter still scopes the cost snapshot.
 
 ## Reacting to saves
 

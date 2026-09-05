@@ -11787,6 +11787,23 @@
         }
       }
     },
+    "stats.compare.same_days_last_month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same days last month"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçen ayın aynı günleri"
+          }
+        }
+      }
+    },
     "stats.compare.this_range" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11936,6 +11953,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bu yıl henüz yolculuk veya gider yok."
+          }
+        }
+      }
+    },
+    "stats.awards.unfiltered_hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full year — ignores filters"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm yıl — filtreler yok sayılır"
           }
         }
       }

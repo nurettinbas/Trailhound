@@ -436,7 +436,7 @@ final class StatsViewModelTests: XCTestCase {
     }
 
     func testTrendTextWhenPreviousIsZero() {
-        XCTAssertEqual(StatsViewModel.trendText(current: 10, previous: 0), StatsViewModel.trendText(current: 10, previous: 0))
+        XCTAssertEqual(StatsViewModel.trendText(current: 10, previous: 0), L10n.string("stats.trend.new"))
         XCTAssertNil(StatsViewModel.trendText(current: 0, previous: 0))
     }
 
@@ -467,7 +467,14 @@ final class StatsViewModelTests: XCTestCase {
         let fullPrevious = StatsViewModel.previousMonthInterval(containing: selected, calendar: calendar)
         XCTAssertEqual(fullPrevious.start, previous.start)
         XCTAssertLessThan(previous.end, fullPrevious.end)
-        XCTAssertEqual(fullPrevious.duration, selectedInterval.duration, accuracy: 1)
+        XCTAssertTrue(
+            StatsViewModel.usesMonthToDatePrevious(
+                for: .month,
+                selectedMonth: selected,
+                now: now,
+                calendar: calendar
+            )
+        )
     }
 
     func testAlignedPreviousIntervalKeepsFullPastMonth() {
@@ -486,6 +493,74 @@ final class StatsViewModelTests: XCTestCase {
         let expected = StatsViewModel.previousMonthInterval(containing: june, calendar: calendar)
         XCTAssertEqual(previous.start, expected.start)
         XCTAssertEqual(previous.end, expected.end)
+        XCTAssertFalse(
+            StatsViewModel.usesMonthToDatePrevious(
+                for: .month,
+                selectedMonth: june,
+                now: now,
+                calendar: calendar
+            )
+        )
+    }
+
+    func testHidesUnscopedCostComparisonForTripOnlyFilters() {
+        XCTAssertFalse(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: nil,
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: BuiltInCategory.personalID.uuidString,
+                placeName: nil,
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: "Home",
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: nil,
+                journalID: UUID()
+            )
+        )
+        XCTAssertEqual(
+            StatsViewModel.periodCompareMetricIDs(includeExpenses: true),
+            ["trips", "distance", "duration", "expenses", "fuel"]
+        )
+        XCTAssertEqual(
+            StatsViewModel.periodCompareMetricIDs(includeExpenses: false),
+            ["trips", "distance", "duration", "fuel"]
+        )
+        XCTAssertTrue(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: false,
+                selectedVehicleID: nil,
+                rowCount: 2
+            )
+        )
+        XCTAssertFalse(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: true,
+                selectedVehicleID: nil,
+                rowCount: 3
+            )
+        )
+        XCTAssertFalse(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: false,
+                selectedVehicleID: UUID(),
+                rowCount: 3
+            )
+        )
     }
 
     func testSelectableYearsSpansFirstTripToNow() {

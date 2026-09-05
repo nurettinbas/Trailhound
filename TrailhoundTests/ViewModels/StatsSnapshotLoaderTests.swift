@@ -282,4 +282,83 @@ final class StatsSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.stats.totalDistanceMeters, 4_000, accuracy: 0.1)
         XCTAssertEqual(snapshot.goalDistanceMeters, 13_000, accuracy: 0.1)
     }
+
+    func testJournalFilterPreviousStatsStayJournalScopedOnLongWindow() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let end = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -120, to: end)!
+        let previousPoint = start.addingTimeInterval(-10 * 86_400)
+
+        func makeTrip(startedAt: Date, distanceMeters: Double) -> Trip {
+            let trip = Trip(
+                startedAt: startedAt,
+                endedAt: startedAt.addingTimeInterval(1_800),
+                distanceMeters: distanceMeters
+            )
+            trip.nightDistanceMeters = 0
+            trip.trackedDistanceMeters = distanceMeters
+            context.insert(trip)
+            return trip
+        }
+
+        let journalCurrent = makeTrip(
+            startedAt: end.addingTimeInterval(-2 * 86_400).addingTimeInterval(3_600),
+            distanceMeters: 4_000
+        )
+        let otherCurrent = makeTrip(
+            startedAt: end.addingTimeInterval(-3 * 86_400).addingTimeInterval(3_600),
+            distanceMeters: 9_000
+        )
+        let journalPrevious = makeTrip(
+            startedAt: previousPoint.addingTimeInterval(3_600),
+            distanceMeters: 2_500
+        )
+        let otherPrevious = makeTrip(
+            startedAt: previousPoint.addingTimeInterval(-5 * 86_400),
+            distanceMeters: 8_000
+        )
+
+        let journal = TravelJournal(title: "Filter")
+        context.insert(journal)
+        TravelJournalTotals.assign(trip: journalCurrent, to: journal, in: context)
+        TravelJournalTotals.assign(trip: journalPrevious, to: journal, in: context)
+
+        TripRollupService.add(journalCurrent, in: context)
+        TripRollupService.add(otherCurrent, in: context)
+        TripRollupService.add(journalPrevious, in: context)
+        TripRollupService.add(otherPrevious, in: context)
+        try context.save()
+
+        let goalMonth = StatsViewModel.goalMonth(
+            for: .custom,
+            selectedMonth: end,
+            customStart: start,
+            customEnd: end
+        )
+        let request = StatsSnapshotRequest(
+            storeVersion: 1,
+            selectedPeriod: .custom,
+            customStart: start,
+            customEnd: end,
+            selectedMonth: end,
+            goalMonth: goalMonth,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            selectedPlaceName: nil,
+            selectedJournalID: journal.id,
+            categoryNames: StatsNameMap(names: [:], fallback: "Other"),
+            vehicleNames: StatsNameMap(names: [VehicleDistance.unassignedID: "Unassigned"], fallback: "Unknown"),
+            vehicleCount: 0
+        )
+
+        let loader = StatsSnapshotLoader(modelContainer: container)
+        let snapshot = await loader.snapshot(for: request)
+
+        XCTAssertEqual(snapshot.stats.tripCount, 1)
+        XCTAssertEqual(snapshot.stats.totalDistanceMeters, 4_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.previousStats.tripCount, 1)
+        XCTAssertEqual(snapshot.previousStats.totalDistanceMeters, 2_500, accuracy: 0.1)
+    }
 }

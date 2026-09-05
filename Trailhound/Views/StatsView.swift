@@ -389,6 +389,7 @@ struct StatsView: View {
         .onDisappear {
             snapshotRefreshTask?.cancel()
             yearAwardsRefreshTask?.cancel()
+            costRefreshTask?.cancel()
         }
     }
 
@@ -852,13 +853,15 @@ struct StatsView: View {
                 value: snap.stats.totalDurationText,
                 trend: snap.durationTrend
             )
-            summaryMetricCard(
-                title: L10n.string("stats.total_expenses"),
-                value: costSnapshot.total > 0
-                    ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
-                    : "—",
-                trend: costSnapshot.expenseTrend
-            )
+            if !hidesUnscopedCostComparison {
+                summaryMetricCard(
+                    title: L10n.string("stats.total_expenses"),
+                    value: costSnapshot.total > 0
+                        ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
+                        : "—",
+                    trend: costSnapshot.expenseTrend
+                )
+            }
             summaryMetricCard(
                 title: L10n.string("stats.average_duration"),
                 value: snap.stats.averageDurationText
@@ -1077,6 +1080,14 @@ struct StatsView: View {
         )
     }
 
+    private var hidesUnscopedCostComparison: Bool {
+        StatsViewModel.hidesUnscopedCostComparison(
+            categoryID: selectedCategoryID,
+            placeName: selectedPlaceName,
+            journalID: selectedJournalID
+        )
+    }
+
     private var vehicleCompareRows: [VehicleCompareRow] {
         StatsVehicleCompareBuilder.rows(
             seeds: costSnapshot.compareSeeds,
@@ -1085,7 +1096,11 @@ struct StatsView: View {
     }
 
     private var showsVehicleCompareList: Bool {
-        selectedVehicleID == nil && vehicleCompareRows.count > 1
+        StatsViewModel.showsVehicleCompareList(
+            hidesUnscopedCosts: hidesUnscopedCostComparison,
+            selectedVehicleID: selectedVehicleID,
+            rowCount: vehicleCompareRows.count
+        )
     }
 
     private var compareCurrentLabel: String {
@@ -1099,7 +1114,12 @@ struct StatsView: View {
     private var comparePreviousLabel: String {
         switch selectedPeriod {
         case .week: L10n.string("stats.compare.previous_week")
-        case .month: L10n.string("stats.compare.last_month")
+        case .month:
+            if StatsViewModel.usesMonthToDatePrevious(for: .month, selectedMonth: selectedMonth) {
+                L10n.string("stats.compare.same_days_last_month")
+            } else {
+                L10n.string("stats.compare.last_month")
+            }
         case .custom: L10n.string("stats.compare.previous_range")
         }
     }
@@ -1121,42 +1141,43 @@ struct StatsView: View {
         let stats = snap.stats
         let previous = snap.previousStats
         let dash = "—"
+        let includeExpenses = !hidesUnscopedCostComparison
         let expenseCurrent = costSnapshot.total > 0
             ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
             : dash
         let expensePrevious = costSnapshot.previousTotal > 0
             ? FuelCostCalculator.formatCost(costSnapshot.previousTotal, currencyCode: currencyCode)
             : dash
-        return [
-            StatsPeriodCompareRow(
+        let byID: [String: StatsPeriodCompareRow] = [
+            "trips": StatsPeriodCompareRow(
                 id: "trips",
                 title: L10n.string("stats.trips"),
                 currentText: "\(stats.tripCount)",
                 previousText: "\(previous.tripCount)",
                 trend: snap.tripCountTrend
             ),
-            StatsPeriodCompareRow(
+            "distance": StatsPeriodCompareRow(
                 id: "distance",
                 title: L10n.string("stats.total_distance"),
                 currentText: stats.totalDistanceText,
                 previousText: previous.totalDistanceText,
                 trend: snap.distanceTrend
             ),
-            StatsPeriodCompareRow(
+            "duration": StatsPeriodCompareRow(
                 id: "duration",
                 title: L10n.string("stats.total_duration"),
                 currentText: stats.totalDurationText,
                 previousText: previous.totalDurationText,
                 trend: snap.durationTrend
             ),
-            StatsPeriodCompareRow(
+            "expenses": StatsPeriodCompareRow(
                 id: "expenses",
                 title: L10n.string("stats.total_expenses"),
                 currentText: expenseCurrent,
                 previousText: expensePrevious,
                 trend: costSnapshot.expenseTrend
             ),
-            StatsPeriodCompareRow(
+            "fuel": StatsPeriodCompareRow(
                 id: "fuel",
                 title: L10n.string("stats.total_estimated_fuel"),
                 currentText: FuelCostCalculator.formatCost(stats.estimatedFuelCost, currencyCode: currencyCode),
@@ -1164,6 +1185,7 @@ struct StatsView: View {
                 trend: snap.fuelCostTrend
             )
         ]
+        return StatsViewModel.periodCompareMetricIDs(includeExpenses: includeExpenses).compactMap { byID[$0] }
     }
 
     private func clampSelectedAwardsYear() {
