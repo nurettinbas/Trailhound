@@ -56,6 +56,7 @@ struct TripDetailEditPanel: View {
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
+    @Query(sort: \TravelJournal.endedOn, order: .reverse) private var journals: [TravelJournal]
     @Bindable private var settings = AppSettings.shared
 
     @State private var noteText: String = ""
@@ -460,6 +461,10 @@ struct TripDetailEditPanel: View {
                     .id(TripDetailFocusedField.note)
             }
 
+            if trip.endedAt != nil {
+                journalMembershipRow
+            }
+
             Button(L10n.tripEditSave) {
                 saveEdits()
                 dismissKeyboard()
@@ -487,6 +492,44 @@ struct TripDetailEditPanel: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var journalMembershipRow: some View {
+        detailSection(title: L10n.journalAdd) {
+            Picker(L10n.journalAdd, selection: journalSelection) {
+                Text(L10n.journalNone).tag(UUID?.none)
+                ForEach(journals, id: \.id) { journal in
+                    Text(journal.title).tag(Optional(journal.id))
+                }
+            }
+            .tint(TrailhoundBrandColors.brandBottom)
+
+            Button(L10n.journalNew) {
+                createJournalForThisTrip()
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+        }
+    }
+
+    private var journalSelection: Binding<UUID?> {
+        Binding(
+            get: { trip.journalID },
+            set: { newValue in
+                let journal = newValue.flatMap { id in journals.first { $0.id == id } }
+                TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+                try? modelContext.save()
+            }
+        )
+    }
+
+    private func createJournalForThisTrip() {
+        let title = viewModel.routeSummary
+        let journal = TravelJournal(title: title)
+        modelContext.insert(journal)
+        TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+        try? modelContext.save()
     }
 
     @ViewBuilder
@@ -955,6 +998,11 @@ struct TripDetailEditPanel: View {
             fuelType: vehicle?.fuelType ?? .petrol
         )
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
+        if let journal = trip.journal {
+            TravelJournalTotals.refresh(journal)
+        } else {
+            TravelJournalTotals.refresh(journalID: trip.journalID, in: modelContext)
+        }
         originalNoteText = noteText
         try? modelContext.save()
         ToastPresenter.shared.show(.tripSaved)

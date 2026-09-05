@@ -574,4 +574,42 @@ enum L10n {
     static func autoLogMotionStopped(_ time: String, _ distance: String) -> String {
         String(format: string("auto_log.motion.stopped"), time, distance)
     }
+
+    static var tripsSegmentTrips: String { string("trips.segment.trips") }
+    static var tripsSegmentTravels: String { string("trips.segment.travels") }
+    static var journalEmptyTitle: String { string("journal.empty.title") }
+    static var journalEmptyMessage: String { string("journal.empty.message") }
+    static var journalEmptySearchTitle: String { string("journal.empty.search.title") }
+    static var journalEmptySearchMessage: String { string("journal.empty.search.message") }
+    static var journalSuggestChip: String { string("journal.suggest.chip") }
+    static var journalSuggestAccept: String { string("journal.suggest.accept") }
+    static var journalSuggestDismiss: String { string("journal.suggest.dismiss") }
+    static var journalAdd: String { string("journal.add") }
+    static var journalNew: String { string("journal.new") }
+    static var journalRemove: String { string("journal.remove") }
+    static var journalMove: String { string("journal.move") }
+    static var journalSave: String { string("journal.save") }
+    static var journalTitle: String { string("journal.title") }
+    static var journalTitlePlaceholder: String { string("journal.title.placeholder") }
+    static var journalTitleRequired: String { string("journal.title.required") }
+    static var journalNote: String { string("journal.note") }
+    static var journalNotePlaceholder: String { string("journal.note.placeholder") }
+    static var journalTrips: String { string("journal.trips") }
+    static var journalDelete: String { string("journal.delete") }
+    static var journalStatsFilter: String { string("journal.stats.filter") }
+    static var journalSearchPlaceholder: String { string("journal.search.placeholder") }
+    static var journalCreate: String { string("journal.create") }
+    static var journalNone: String { string("journal.none") }
+
+    static func journalTripCount(_ count: Int) -> String {
+        String(format: string("journal.trip_count"), count)
+    }
+
+    static func journalDateRange(start: Date, end: Date) -> String {
+        let startText = DateFormatters.tripDateOnly.string(from: start)
+        if Calendar.current.isDate(start, inSameDayAs: end) {
+            return startText
+        }
+        return "\(startText) – \(DateFormatters.tripDateOnly.string(from: end))"
+    }
 }

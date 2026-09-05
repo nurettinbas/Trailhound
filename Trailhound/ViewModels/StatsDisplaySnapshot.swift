@@ -151,6 +151,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
         selectedPlaceName: String? = nil,
+        selectedJournalID: UUID? = nil,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         build(
@@ -165,6 +166,7 @@ enum StatsDisplaySnapshotBuilder {
             selectedCategoryID: selectedCategoryID,
             selectedVehicleID: selectedVehicleID,
             selectedPlaceName: selectedPlaceName,
+            selectedJournalID: selectedJournalID,
             goalMonth: goalMonth
         )
     }
@@ -182,6 +184,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
         selectedPlaceName: String? = nil,
+        selectedJournalID: UUID? = nil,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         PerformanceSignposts.measure("StatsSnapshotBuild") {
@@ -197,6 +200,7 @@ enum StatsDisplaySnapshotBuilder {
                 selectedCategoryID: selectedCategoryID,
                 selectedVehicleID: selectedVehicleID,
                 selectedPlaceName: selectedPlaceName,
+                selectedJournalID: selectedJournalID,
                 goalMonth: goalMonth
             )
         }
@@ -214,6 +218,7 @@ enum StatsDisplaySnapshotBuilder {
         selectedCategoryID: String?,
         selectedVehicleID: UUID?,
         selectedPlaceName: String?,
+        selectedJournalID: UUID?,
         goalMonth: Date
     ) -> StatsDisplaySnapshot {
         let selectedInterval = StatsViewModel.interval(
@@ -235,7 +240,8 @@ enum StatsDisplaySnapshotBuilder {
             completedTrips,
             categoryID: selectedCategoryID,
             vehicleID: selectedVehicleID,
-            placeName: selectedPlaceName
+            placeName: selectedPlaceName,
+            journalID: selectedJournalID
         )
         let periodTrips = StatsViewModel.trips(in: selectedInterval, from: scopedTrips)
         let previousTrips = StatsViewModel.trips(in: previousInterval, from: scopedTrips)

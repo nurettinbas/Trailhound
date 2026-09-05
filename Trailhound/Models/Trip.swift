@@ -51,6 +51,10 @@ final class Trip {
     var pendingSuggestionReasonRaw: String?
     /// `TripCategoryOrigin` raw value. `nil` on older trips — inferred from `categoryID`.
     var categoryOriginRaw: String?
+    /// Mirror of `journal` for `#Predicate`. `nil` = not in a travel.
+    var journalID: UUID?
+    @Relationship(deleteRule: .nullify)
+    var journal: TravelJournal?
     @Relationship(deleteRule: .nullify)
     var vehicle: VehicleProfile?
     @Relationship(deleteRule: .cascade, inverse: \TripPoint.trip)
@@ -85,6 +89,8 @@ final class Trip {
         endPlaceName: String? = nil,
         vehicleID: UUID? = nil,
         vehicle: VehicleProfile? = nil,
+        journalID: UUID? = nil,
+        journal: TravelJournal? = nil,
         points: [TripPoint] = [],
         stops: [TripStop] = [],
         matchedPoints: [MatchedRoutePoint] = []
@@ -110,6 +116,8 @@ final class Trip {
         self.endPlaceName = endPlaceName
         self.vehicleID = vehicleID
         self.vehicle = vehicle
+        self.journalID = journalID
+        self.journal = journal
         self.points = points
         self.stops = stops
         self.matchedPoints = matchedPoints

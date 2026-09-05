@@ -66,6 +66,18 @@
 		9FC941CE9E154F36B46E5A02 /* PlaceMatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E915A26582304556AF11A8CC /* PlaceMatchingService.swift */; };
 		A10000000000000000000001 /* TrailhoundApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* TrailhoundApp.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
+		A1TRAVELJOURNALMDL0001 /* TravelJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */; };
+		A1TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */; };
+		A1TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */; };
+		A1TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */; };
+		A1TRAVELJOURNALPAGE001 /* TravelJournalPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */; };
+		A1TRAVELJOURNALROW0001 /* TravelJournalRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */; };
+		A1TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */; };
+		A1TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */; };
+		A1TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */; };
+		A1TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */; };
+		A1TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */; };
+		A1TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */; };
 		A10000000000000000000003 /* Trip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Trip.swift */; };
 		A10000000000000000000004 /* TripPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* TripPoint.swift */; };
 		A10000000000000000000005 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* LocationService.swift */; };
@@ -367,6 +379,18 @@
 		983DA16F5A6E442FAAD35B73 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		A20000000000000000000001 /* TrailhoundApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournal.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalTotals.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalSuggester.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalMapBudget.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalPage.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalRowView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalEditorSheet.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalMapLayer.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalEditPanel.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelJournalDetailView.swift; sourceTree = "<group>"; };
+		A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalSuggesterTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalMembershipTests.swift; sourceTree = SOURCE_ROOT; };
 		A20000000000000000000003 /* Trip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trip.swift; sourceTree = "<group>"; };
 		A20000000000000000000004 /* TripPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPoint.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
@@ -680,6 +704,7 @@
 				C22C35A8C7504120981649DC /* SavedPlace.swift */,
 				A2PLACEDRAFT00000000001 /* PlaceDraft.swift */,
 				AF0E09B4CEDD485E9B744E57 /* TripStop.swift */,
+				A2TRAVELJOURNALMDL0001 /* TravelJournal.swift */,
 				A20000000000000000000003 /* Trip.swift */,
 				A20000000000000000000004 /* TripPoint.swift */,
 				A2MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift */,
@@ -718,6 +743,7 @@
 				7E7218250D954707A753EAFC /* RecordingLiveActivityService.swift */,
 				A2REC0BSERVER00000000001 /* RecordingRequestObserver.swift */,
 				A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */,
+				A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */,
 				A2TRIPDERIVEDMETRICS0001 /* TripDerivedMetrics.swift */,
 				A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */,
 				A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */,
@@ -752,6 +778,7 @@
 				A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
 				A2TRIPSTATSROW000000001 /* TripStatsRow.swift */,
+				A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */,
 				A2TRIPLISTPAGE000000001 /* TripListPage.swift */,
 				A20000000000000000000011 /* TripListViewModel.swift */,
 				A20000000000000000000012 /* TripDetailViewModel.swift */,
@@ -808,6 +835,11 @@
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
 				A20000000000000000000013 /* TripListView.swift */,
 				A20000000000000000000014 /* TripRowView.swift */,
+				A2TRAVELJOURNALROW0001 /* TravelJournalRowView.swift */,
+				A2TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift */,
+				A2TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift */,
+				A2TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift */,
+				A2TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift */,
 				A20000000000000000000015 /* TripDetailView.swift */,
 				A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */,
 				A2HELPPOPOVERBTN0000001 /* HelpPopoverButton.swift */,
@@ -847,6 +879,8 @@
 				A2APPERRORPRES0000001 /* AppErrorPresenter.swift */,
 				A2TOASTPRESENTER000001 /* ToastPresenter.swift */,
 				A20000000000000000000018 /* DistanceCalculator.swift */,
+				A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */,
+				A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */,
 				A2ROUTEDISPPATH00000001 /* RouteDisplayPath.swift */,
 				A2RECACCESSIBILITY00001 /* RecordingAccessibility.swift */,
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
@@ -952,6 +986,8 @@
 			children = (
 				A5VCARETESTGRP00000001 /* VehicleCare */,
 				66F2CDC576CA4E4980281099 /* CoreUtilityTests.swift */,
+				A2TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift */,
+				A2TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift */,
 				AE5D44F9163D4B5EB57A78C0 /* SchemaAndRoutesTests.swift */,
 				994D139325B34A9BA98B2E46 /* TripDerivedMetricsTests.swift */,
 				F022AE590A614050A20CB2B5 /* TripRollupServiceTests.swift */,
@@ -1162,6 +1198,8 @@
 			files = (
 				0409D7365A5F41A883051C4B /* CoreUtilityTests.swift in Sources */,
 				5C5B758AE6234A8289107144 /* SchemaAndRoutesTests.swift in Sources */,
+				A1TRAVELJOURNALSUGTEST /* TravelJournalSuggesterTests.swift in Sources */,
+				A1TRAVELJOURNALMEMTEST /* TravelJournalMembershipTests.swift in Sources */,
 				6ADDA79C515B463AB571EDCF /* TripDerivedMetricsTests.swift in Sources */,
 				1106DC3D0A4643D7AE5043BA /* TripRollupServiceTests.swift in Sources */,
 				8EE14521465F43329E77A5ED /* ExportServiceTests.swift in Sources */,
@@ -1241,6 +1279,16 @@
 			files = (
 				A10000000000000000000001 /* TrailhoundApp.swift in Sources */,
 				A10000000000000000000002 /* ContentView.swift in Sources */,
+				A1TRAVELJOURNALMDL0001 /* TravelJournal.swift in Sources */,
+				A1TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift in Sources */,
+				A1TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift in Sources */,
+				A1TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift in Sources */,
+				A1TRAVELJOURNALPAGE001 /* TravelJournalPage.swift in Sources */,
+				A1TRAVELJOURNALROW0001 /* TravelJournalRowView.swift in Sources */,
+				A1TRAVELJOURNALSHT0001 /* TravelJournalEditorSheet.swift in Sources */,
+				A1TRAVELJOURNALMAP0001 /* TravelJournalMapLayer.swift in Sources */,
+				A1TRAVELJOURNALPNL0001 /* TravelJournalEditPanel.swift in Sources */,
+				A1TRAVELJOURNALDET0001 /* TravelJournalDetailView.swift in Sources */,
 				A10000000000000000000003 /* Trip.swift in Sources */,
 				A10000000000000000000004 /* TripPoint.swift in Sources */,
 				A10000000000000000000005 /* LocationService.swift in Sources */,

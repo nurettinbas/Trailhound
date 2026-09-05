@@ -15,6 +15,7 @@ enum ToastKind {
     case tripsMerged
     case shortcutsGuideFinished
     case categoryAccepted
+    case journalTitleRequired
 
     var message: String {
         switch self {
@@ -31,6 +32,7 @@ enum ToastKind {
         case .tripsMerged: L10n.toastTripsMerged
         case .shortcutsGuideFinished: L10n.toastShortcutsGuideFinished
         case .categoryAccepted: L10n.toastCategoryAccepted
+        case .journalTitleRequired: L10n.journalTitleRequired
         }
     }
 
@@ -48,12 +50,14 @@ enum ToastKind {
             "trash.circle.fill"
         case .tripsMerged:
             "arrow.triangle.merge"
+        case .journalTitleRequired:
+            "exclamationmark.circle.fill"
         }
     }
 
     var tint: Color {
         switch self {
-        case .deleted, .categoryDeleted:
+        case .deleted, .categoryDeleted, .journalTitleRequired:
             .orange
         case .tripsMerged:
             TrailhoundBrandColors.brandBottom
@@ -64,7 +68,7 @@ enum ToastKind {
 
     var usesSuccessHaptic: Bool {
         switch self {
-        case .deleted, .categoryDeleted:
+        case .deleted, .categoryDeleted, .journalTitleRequired:
             false
         default:
             true

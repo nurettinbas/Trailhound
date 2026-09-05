@@ -95,6 +95,7 @@ final class AppSettings {
         static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
         static let workHourStart = "smartCategory.workHourStart"
         static let workHourEnd = "smartCategory.workHourEnd"
+        static let dismissedJournalSuggestions = "journal.dismissedSuggestions"
     }
 
     init(userDefaults: UserDefaults? = nil) {
@@ -120,6 +121,19 @@ final class AppSettings {
            let mode = AppearanceMode(rawValue: raw) {
             appearanceMode = mode
         }
+        dismissedJournalSuggestionFingerprints = Set(
+            resolvedDefaults.stringArray(forKey: Key.dismissedJournalSuggestions) ?? []
+        )
+    }
+
+    var dismissedJournalSuggestionFingerprints: Set<String> = [] {
+        didSet {
+            defaults.set(Array(dismissedJournalSuggestionFingerprints), forKey: Key.dismissedJournalSuggestions)
+        }
+    }
+
+    func dismissJournalSuggestion(_ fingerprint: String) {
+        dismissedJournalSuggestionFingerprints.insert(fingerprint)
     }
 
     /// Stable `"yyyy-MM"` key for a calendar month.

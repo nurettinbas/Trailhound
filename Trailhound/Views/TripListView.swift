@@ -20,6 +20,13 @@ struct TripListView: View {
     @State private var selectedDateSection: TripDateSection?
     @State private var selectedVehicleFilter: TripListPage.VehicleFilter?
     @State private var selectedPlaceID: UUID?
+    @State private var listMode: TripsTabListMode = .trips
+    @State private var loadedJournals: [TravelJournal] = []
+    @State private var journalPageLimit = TravelJournalPage.pageSize
+    @State private var hasMoreJournals = false
+    @State private var hasAnyJournals = false
+    @State private var journalEditor: TravelJournalEditorDraft?
+    @State private var travelSuggestion: TravelJournalSuggestion?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
     @State private var isMerging = false
@@ -138,6 +145,141 @@ struct TripListView: View {
     private func resetPagingAndReload() {
         pageLimit = TripListPage.pageSize
         reloadTrips()
+    }
+
+    private func reloadJournals() {
+        let filters = TravelJournalPage.Filters(searchText: debouncedSearchText)
+        let page = (try? TravelJournalPage.fetch(
+            filters: filters,
+            limit: journalPageLimit,
+            in: modelContext
+        )) ?? (journals: [], hasMore: false)
+        hasMoreJournals = page.hasMore
+        loadedJournals = page.journals
+        hasAnyJournals = (try? modelContext.fetchCount(TravelJournalPage.countDescriptor())).map { $0 > 0 } ?? false
+        refreshTravelSuggestion()
+    }
+
+    private func loadNextJournalPage() {
+        guard hasMoreJournals else { return }
+        journalPageLimit += TravelJournalPage.pageSize
+        reloadJournals()
+    }
+
+    private func refreshTravelSuggestion() {
+        let homes = TravelJournalSuggester.homeSnapshots(from: places)
+        let descriptor = TripListPage.completedCountDescriptor()
+        let completed = (try? modelContext.fetch(descriptor)) ?? []
+        let tripSnapshots = completed.map(TravelJournalSuggester.snapshot(from:))
+        let ranges = loadedJournals.map { (start: $0.startedOn, end: $0.endedOn) }
+        travelSuggestion = TravelJournalSuggester.suggest(
+            trips: tripSnapshots,
+            homes: homes,
+            existingJournalRanges: ranges,
+            dismissedFingerprints: settings.dismissedJournalSuggestionFingerprints
+        )
+    }
+
+    private func acceptTravelSuggestion(_ suggestion: TravelJournalSuggestion) {
+        let journal = TravelJournal(title: suggestion.title)
+        modelContext.insert(journal)
+        let ids = suggestion.tripIDs
+        let members = (try? modelContext.fetch(TripListPage.descriptor(forIDs: Set(ids)))) ?? []
+        for trip in members {
+            TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+        }
+        TravelJournalTotals.refresh(journal)
+        try? modelContext.save()
+        travelSuggestion = nil
+    }
+
+    @ViewBuilder
+    private var journalListContent: some View {
+        let isSearching = TravelJournalPage.Filters(searchText: debouncedSearchText).isActive
+
+        if let suggestion = travelSuggestion, !isSearching {
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.journalSuggestChip)
+                            .font(.subheadline.weight(.semibold))
+                        Text(suggestion.title)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(L10n.journalSuggestAccept) {
+                        acceptTravelSuggestion(suggestion)
+                    }
+                    .font(.caption.weight(.semibold))
+                    Button {
+                        settings.dismissJournalSuggestion(suggestion.fingerprint)
+                        travelSuggestion = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(L10n.journalSuggestDismiss)
+                }
+                .padding(.vertical, 4)
+            }
+            .glassListRow()
+        }
+
+        if loadedJournals.isEmpty {
+            GlassEmptyState(
+                title: isSearching ? L10n.journalEmptySearchTitle : L10n.journalEmptyTitle,
+                systemImage: isSearching ? "magnifyingglass" : "map",
+                message: isSearching ? L10n.journalEmptySearchMessage : L10n.journalEmptyMessage,
+                bounceTrigger: isSearching
+            )
+            .glassListRow()
+            if !isSearching {
+                Button {
+                    journalEditor = .create()
+                } label: {
+                    Text(L10n.journalCreate)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(TrailhoundBrandColors.brandBottom)
+                .glassListRow()
+            }
+        } else {
+            Section {
+                ForEach(Array(loadedJournals.enumerated()), id: \.element.id) { index, journal in
+                    NavigationLink {
+                        TravelJournalDetailView(journal: journal)
+                    } label: {
+                        TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
+                    }
+                    .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            TravelJournalTotals.prepareForDelete(journal)
+                            modelContext.delete(journal)
+                            try? modelContext.save()
+                        } label: {
+                            Label(L10n.journalDelete, systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: loadedJournals.count)
+        }
+
+        if hasMoreJournals {
+            Section {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .onAppear(perform: loadNextJournalPage)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
     }
 
     private func refreshListAggregates() {
@@ -318,7 +460,7 @@ struct TripListView: View {
                 .listSectionSpacing(6)
             }
 
-            if hasAnyTrips {
+            if hasAnyTrips || hasAnyJournals {
                 Section {
                     TripListFiltersBar(
                         searchText: $searchText,
@@ -327,6 +469,7 @@ struct TripListView: View {
                         selectedCategoryID: $selectedCategoryID,
                         selectedVehicleFilter: $selectedVehicleFilter,
                         selectedPlaceID: $selectedPlaceID,
+                        listMode: $listMode,
                         vehicles: vehicles,
                         places: places,
                         weekSummaryText: weekSummary
@@ -356,7 +499,9 @@ struct TripListView: View {
                 .listSectionSpacing(6)
             }
 
-            if visibleTrips.isEmpty {
+            if listMode == .travels {
+                journalListContent
+            } else if visibleTrips.isEmpty {
                 let showFilteredEmpty = hasActiveFilters && hasAnyTrips
                 let showDefaultEmpty = !hasAnyTrips
                     && !recordingService.state.isActiveSession
@@ -389,7 +534,7 @@ struct TripListView: View {
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: visibleTrips.count)
             }
 
-            if hasMorePages {
+            if hasMorePages && listMode != .travels {
                 // Sits below the last section rather than on the last row, so a page whose rows
                 // were all filtered out in memory still pulls the next one instead of dead-ending.
                 Section {
@@ -431,6 +576,9 @@ struct TripListView: View {
         .navigationDestination(for: Trip.self) { trip in
             TripDetailView(trip: trip)
         }
+        .sheet(item: $journalEditor) { draft in
+            TravelJournalEditorSheet(draft: draft)
+        }
         .navigationDestination(isPresented: $showNotificationsList) {
             NotificationsListView()
         }
@@ -445,12 +593,14 @@ struct TripListView: View {
             refreshOrphans()
             refreshListAggregates()
             reloadTrips()
+            reloadJournals()
             careSummary.refresh(in: modelContext)
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
         }
         .onStoreSave {
             // Row identity must refresh before the next body pass or a deleted model crashes.
             reloadTrips()
+            reloadJournals()
             careSummary.refresh(in: modelContext)
             // Week summary is display-only — coalesce rapid saves (merge + post-process).
             aggregatesRefreshTask?.cancel()
@@ -462,6 +612,17 @@ struct TripListView: View {
         }
         .onChange(of: pageFilters) { _, _ in
             resetPagingAndReload()
+        }
+        .onChange(of: listMode) { _, _ in
+            searchText = ""
+            debouncedSearchText = ""
+            reloadJournals()
+        }
+        .onChange(of: debouncedSearchText) { _, _ in
+            if listMode == .travels {
+                journalPageLimit = TravelJournalPage.pageSize
+                reloadJournals()
+            }
         }
         .onChange(of: recordingService.state) { _, newState in
             if !newState.isActiveSession {
@@ -570,10 +731,19 @@ struct TripListView: View {
                     .disabled(isMerging)
                 } else {
                     HStack(spacing: 16) {
-                        Button { isMergeMode = true } label: {
-                            Image(systemName: "arrow.triangle.merge")
+                        if listMode == .travels {
+                            Button {
+                                journalEditor = .create()
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                            .accessibilityLabel(L10n.journalNew)
+                        } else {
+                            Button { isMergeMode = true } label: {
+                                Image(systemName: "arrow.triangle.merge")
+                            }
+                            .accessibilityLabel(L10n.actionMerge)
                         }
-                        .accessibilityLabel(L10n.actionMerge)
 
                         Button {
                             notificationStore.markAllRead()
@@ -1029,6 +1199,7 @@ struct TripListView: View {
         TrailhoundHaptics.destructive()
         TripMapSnapshotCache.shared.remove(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
+        TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
         TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
         mergeSelection.remove(trip.id)
