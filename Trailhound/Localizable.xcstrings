@@ -8009,6 +8009,23 @@
         }
       }
     },
+    "search.working" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aranıyor…"
+          }
+        }
+      }
+    },
     "Seçili" : {
       "comment" : "A label that indicates that a trip is selected.",
       "extractionState" : "stale",

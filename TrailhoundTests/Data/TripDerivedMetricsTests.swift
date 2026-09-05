@@ -125,7 +125,9 @@ final class TripDerivedMetricsMigrationTests: XCTestCase {
         XCTAssertNotNil(trip.trackedDistanceMeters)
         XCTAssertEqual(try XCTUnwrap(trip.startLatitude), 41.0, accuracy: 0.0001)
         XCTAssertEqual(try XCTUnwrap(trip.endLatitude), 41.011, accuracy: 0.0001)
-        XCTAssertEqual(try XCTUnwrap(trip.searchIndex).contains("kadıköy"), true)
+        XCTAssertTrue(
+            SearchFolding.fold(try XCTUnwrap(trip.searchIndex)).contains(SearchFolding.fold("kadıköy"))
+        )
 
         XCTAssertEqual(trip.distanceMeters, 4_200, accuracy: 0.1, "recorded distance must be untouched")
         XCTAssertEqual(trip.points.count, 12, "backfill must never reduce GPS points")
@@ -181,6 +183,55 @@ final class TripDerivedMetricsMigrationTests: XCTestCase {
         let context = ModelContext(container)
         let trip = try XCTUnwrap(try context.fetch(FetchDescriptor<Trip>()).first)
         XCTAssertNil(trip.nightDistanceMeters, "an unfinished trip is recomputed when it ends")
+    }
+
+    func testSearchIndexRefreshRewritesStalePlaceNamesWithoutTouchingUserData() async throws {
+        let versionKey = "trailhound.derived.searchIndexVersion"
+        let previousVersion = UserDefaults.standard.integer(forKey: versionKey)
+        UserDefaults.standard.set(0, forKey: versionKey)
+        defer { UserDefaults.standard.set(previousVersion, forKey: versionKey) }
+
+        let container = try makeDiskContainer()
+        let context = container.mainContext
+        let startedAt = Date().addingTimeInterval(-86_400)
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(1_800),
+            distanceMeters: 4_200,
+            startAddress: "Old Street",
+            note: "Keep this note"
+        )
+        trip.startLatitude = 41.0
+        trip.startLongitude = 29.0
+        trip.endLatitude = 41.01
+        trip.endLongitude = 29.01
+        trip.nightDistanceMeters = 0
+        trip.trackedDistanceMeters = 4_200
+        trip.stopDurationSeconds = 0
+        trip.dynamicFuelCost = 0
+        trip.searchIndex = "old street"
+        context.insert(trip)
+
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0,
+            longitude: 29.0,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        context.insert(home)
+        try context.save()
+
+        await TripDerivedBackfillService.backfillIfNeeded(container: container)
+
+        let verifyContext = ModelContext(container)
+        let updated = try XCTUnwrap(try verifyContext.fetch(FetchDescriptor<Trip>()).first)
+        XCTAssertEqual(updated.note, "Keep this note")
+        XCTAssertEqual(updated.distanceMeters, 4_200, accuracy: 0.1)
+        XCTAssertEqual(updated.startPlaceName, "Ev")
+        XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(updated.searchIndex)).contains(SearchFolding.fold("Ev")))
+        XCTAssertTrue(TripListViewModel.matchesSearch(updated, searchText: "ev"))
     }
 }
 
@@ -381,6 +432,8 @@ final class TripDerivedMetricsTests: XCTestCase {
 
         XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "ofis"))
         XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "havalimanı"))
+        XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "ev"))
         XCTAssertFalse(TripListViewModel.matchesSearch(trip, searchText: "bakkal"))
+        XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(trip.searchIndex)).contains(SearchFolding.fold("Ev")))
     }
 }

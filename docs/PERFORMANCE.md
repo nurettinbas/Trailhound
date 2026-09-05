@@ -217,13 +217,13 @@ with it, so both reload on `ModelContext.didSave` through the `onStoreSave` modi
 about that notification make a plain `onReceive` wrong:
 
 - **It is delivered on whichever thread performed the save.** `TripDerivedBackfiller` and
-  `TripRollupRebuilder` save from their own `@ModelActor`, so a plain handler mutates SwiftUI state
-  off the main thread and trips "Publishing changes from background threads is not allowed".
-  `onStoreSave` hops to the main thread when it did not start there.
-- **It cannot simply be `receive(on: .main)` either.** That defers *every* reload by a runloop turn,
-  including the main-thread save that a deletion performs. For that one turn the view still holds
-  the deleted model in its own fetched array, and rendering a row from it is a crash rather than a
-  glitch. So saves already on the main thread run the handler synchronously.
+  `TripRollupRebuilder` save from their own `@ModelActor`. SwiftUI's `onReceive` requires the
+  publisher itself to emit on the main thread — hopping only the handler still trips
+  "Publishing changes from background threads is not allowed".
+- **It cannot simply be `receive(on: DispatchQueue.main)` either.** That defers *every* reload by a
+  runloop turn, including the main-thread save that a deletion performs. For that one turn the view
+  still holds the deleted model in its own fetched array, and rendering a row from it is a crash
+  rather than a glitch. `onStoreSave` uses a scheduler that runs immediately when already on main.
 
 ## Daily rollups (schema V11+)
 

@@ -3,9 +3,12 @@ import SwiftData
 
 /// The only writer of denormalized journal totals, mosaic IDs, and `searchIndex`.
 enum TravelJournalTotals {
+    static let avgFuelTotalsVersionKey = "trailhound.journal.avgFuelTotalsVersion"
+    static let avgFuelTotalsVersion = 1
+
+    /// Avg fuel (catalog: distance × consumption × unit price). Not VSP estimated fuel.
     static func fuelCost(for trip: Trip) -> Double {
-        if let dynamic = trip.dynamicFuelCost, dynamic > 0 { return dynamic }
-        return trip.estimatedFuelCost ?? 0
+        FuelCostCalculator.estimateCost(for: trip)
     }
 
     static func refresh(_ journal: TravelJournal) {
@@ -38,6 +41,24 @@ enum TravelJournalTotals {
         )
         guard let journal = try? context.fetch(descriptor).first else { return }
         refresh(journal)
+    }
+
+    /// One-shot rewrite of denormalized `fuelCost` after list totals switched from estimated to avg fuel.
+    /// Existing trip rows are left untouched.
+    static func refreshAvgFuelTotalsIfNeeded(in context: ModelContext) {
+        let defaults = UserDefaults.standard
+        guard defaults.integer(forKey: avgFuelTotalsVersionKey) < avgFuelTotalsVersion else { return }
+
+        let journals = (try? context.fetch(FetchDescriptor<TravelJournal>())) ?? []
+        for journal in journals {
+            refresh(journal)
+        }
+        do {
+            try context.save()
+            defaults.set(avgFuelTotalsVersion, forKey: avgFuelTotalsVersionKey)
+        } catch {
+            return
+        }
     }
 
     /// Assigns `trip` to `journal` (or unassigns when `journal` is nil). A trip has at most one parent.

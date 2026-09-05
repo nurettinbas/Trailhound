@@ -1,6 +1,53 @@
+import CoreGraphics
 import CoreLocation
 import XCTest
 @testable import Trailhound
+
+final class TravelJournalPanelLayoutTests: XCTestCase {
+    func testCompactLeavesMostOfTheMapVisible() {
+        let compact = TravelJournalPanelLayout.compactHeight(containerHeight: 852)
+        XCTAssertLessThan(compact, 852 * 0.40)
+        XCTAssertGreaterThanOrEqual(compact, TravelJournalPanelLayout.compactMinimum)
+        XCTAssertGreaterThan(852 - compact, compact)
+    }
+
+    func testExpandedKeepsMapPeek() {
+        let mapPeek: CGFloat = 120
+        let expanded = TravelJournalPanelLayout.expandedHeight(containerHeight: 852, mapPeek: mapPeek)
+        XCTAssertLessThanOrEqual(expanded, 852 - mapPeek)
+        XCTAssertGreaterThan(expanded, TravelJournalPanelLayout.compactHeight(containerHeight: 852))
+    }
+
+    func testDragUpFromCompactGrowsTowardExpanded() {
+        let height = TravelJournalPanelLayout.draggedHeight(
+            detent: .compact,
+            translation: -200,
+            containerHeight: 852,
+            mapPeek: 120
+        )
+        XCTAssertGreaterThan(height, TravelJournalPanelLayout.compactHeight(containerHeight: 852))
+    }
+
+    func testFlickUpSnapsToExpanded() {
+        let snapped = TravelJournalPanelLayout.snappedDetent(
+            predictedTranslation: -320,
+            from: .compact,
+            containerHeight: 852,
+            mapPeek: 120
+        )
+        XCTAssertEqual(snapped, .expanded)
+    }
+
+    func testFlickDownSnapsToCompact() {
+        let snapped = TravelJournalPanelLayout.snappedDetent(
+            predictedTranslation: 320,
+            from: .expanded,
+            containerHeight: 852,
+            mapPeek: 120
+        )
+        XCTAssertEqual(snapped, .compact)
+    }
+}
 
 final class TravelJournalMapBudgetTests: XCTestCase {
     func testTwelveTripsStayAtOrBelowCap() {

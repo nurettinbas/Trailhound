@@ -23,7 +23,7 @@ final class TravelJournalMembershipTests: XCTestCase {
         TravelJournalTotals.assign(trip: trip, to: alpha, in: context)
         XCTAssertEqual(trip.journalID, alpha.id)
         XCTAssertEqual(alpha.tripCount, 1)
-        XCTAssertEqual(alpha.fuelCost, 42, accuracy: 0.01)
+        XCTAssertEqual(alpha.fuelCost, 40, accuracy: 0.01)
 
         TravelJournalTotals.assign(trip: trip, to: beta, in: context)
         XCTAssertEqual(trip.journalID, beta.id)
@@ -32,30 +32,63 @@ final class TravelJournalMembershipTests: XCTestCase {
         XCTAssertTrue(alpha.trips.isEmpty)
     }
 
-    func testTotalsUseDynamicFuelThenEstimated() throws {
+    func testTotalsUseAvgFuelNotEstimated() throws {
         let container = try ModelContainerFactory.makeInMemory()
         let context = container.mainContext
-        let withDynamic = Trip(
+        let withBoth = Trip(
             startedAt: Date().addingTimeInterval(-7200),
             endedAt: Date().addingTimeInterval(-3600),
             distanceMeters: 5_000,
             estimatedFuelCost: 10,
             dynamicFuelCost: 15
         )
-        let estimatedOnly = Trip(
+        let avgOnly = Trip(
             startedAt: Date().addingTimeInterval(-3600),
             endedAt: Date(),
             distanceMeters: 5_000,
             estimatedFuelCost: 12
         )
-        context.insert(withDynamic)
-        context.insert(estimatedOnly)
+        context.insert(withBoth)
+        context.insert(avgOnly)
         let journal = TravelJournal(title: "Costs")
         context.insert(journal)
-        TravelJournalTotals.assign(trip: withDynamic, to: journal, in: context)
-        TravelJournalTotals.assign(trip: estimatedOnly, to: journal, in: context)
-        XCTAssertEqual(journal.fuelCost, 27, accuracy: 0.01)
+        TravelJournalTotals.assign(trip: withBoth, to: journal, in: context)
+        TravelJournalTotals.assign(trip: avgOnly, to: journal, in: context)
+        XCTAssertEqual(journal.fuelCost, 22, accuracy: 0.01)
         XCTAssertEqual(journal.distanceMeters, 10_000, accuracy: 0.01)
+    }
+
+    func testRefreshAvgFuelTotalsRewritesStaleEstimatedSum() throws {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: TravelJournalTotals.avgFuelTotalsVersionKey)
+        defer { defaults.removeObject(forKey: TravelJournalTotals.avgFuelTotalsVersionKey) }
+
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 5_000,
+            estimatedFuelCost: 10,
+            dynamicFuelCost: 15
+        )
+        context.insert(trip)
+        let journal = TravelJournal(title: "Stale")
+        context.insert(journal)
+        TravelJournalTotals.assign(trip: trip, to: journal, in: context)
+        journal.fuelCost = 15
+        try context.save()
+
+        TravelJournalTotals.refreshAvgFuelTotalsIfNeeded(in: context)
+        XCTAssertEqual(journal.fuelCost, 10, accuracy: 0.01)
+        XCTAssertEqual(
+            defaults.integer(forKey: TravelJournalTotals.avgFuelTotalsVersionKey),
+            TravelJournalTotals.avgFuelTotalsVersion
+        )
+
+        journal.fuelCost = 99
+        TravelJournalTotals.refreshAvgFuelTotalsIfNeeded(in: context)
+        XCTAssertEqual(journal.fuelCost, 99, accuracy: 0.01)
     }
 
     func testSameJournalMergeKeepsMembership() throws {
