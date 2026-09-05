@@ -1028,6 +1028,125 @@
         }
       }
     },
+    "delete.confirm.category.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travels stay; only this label is removed."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahatler durur; yalnızca bu etiket kaldırılır."
+          }
+        }
+      }
+    },
+    "delete.confirm.installment_plan.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This cannot be undone. All installments will be permanently deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem geri alınamaz. Tüm taksitler kalıcı olarak silinir."
+          }
+        }
+      }
+    },
+    "delete.confirm.journal.remove.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trip stays in your history. It is only removed from this travel."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk geçmişte kalır; yalnızca bu seyahatten düşer."
+          }
+        }
+      }
+    },
+    "delete.confirm.journal.remove.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from travel?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahatten çıkarılsın mı?"
+          }
+        }
+      }
+    },
+    "delete.confirm.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This cannot be undone. Related data will be permanently deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem geri alınamaz. İlgili veriler kalıcı olarak silinir."
+          }
+        }
+      }
+    },
+    "delete.confirm.notifications.all.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All notifications will be permanently deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm bildirimler kalıcı olarak silinir."
+          }
+        }
+      }
+    },
+    "delete.confirm.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silinsin mi?"
+          }
+        }
+      }
+    },
     "Demo" : {
       "extractionState" : "stale",
       "localizations" : {

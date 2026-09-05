@@ -296,11 +296,13 @@ struct TripListView: View {
                         TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
                     }
                     .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
-                    .swipeActions {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
-                            TravelJournalTotals.prepareForDelete(journal)
-                            modelContext.delete(journal)
-                            try? modelContext.save()
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
+                                TravelJournalTotals.prepareForDelete(journal)
+                                modelContext.delete(journal)
+                                try? modelContext.save()
+                            }
                         } label: {
                             Label(L10n.journalDelete, systemImage: "trash")
                         }
@@ -453,9 +455,11 @@ struct TripListView: View {
                             }
                             .buttonStyle(.bordered)
                             Button(L10n.delete, role: .destructive) {
-                                if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
-                                    ToastPresenter.shared.show(.deleted, playHaptic: false)
-                                    refreshOrphans()
+                                DeleteConfirmPresenter.shared.confirm(.generic) {
+                                    if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
+                                        ToastPresenter.shared.show(.deleted, playHaptic: false)
+                                        refreshOrphans()
+                                    }
                                 }
                             }
                             .destructiveTint()
@@ -980,7 +984,9 @@ struct TripListView: View {
         .transition(.opacity)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                deleteTrip(trip)
+                DeleteConfirmPresenter.shared.confirm(.generic) {
+                    deleteTrip(trip)
+                }
             } label: {
                 Label(L10n.delete, systemImage: "trash")
             }

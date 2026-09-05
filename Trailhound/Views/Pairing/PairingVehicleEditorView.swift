@@ -92,6 +92,7 @@ struct PairingVehicleEditorView: View {
                 dismiss()
             }
         }
+        .deleteConfirmHost()
     }
 }
 
@@ -126,7 +127,6 @@ struct PairingVehicleEditorForm: View {
     @State private var isFraming = false
     @State private var frameScale = VehiclePhotoCropMath.defaultUserScale
     @State private var frameOffset: CGSize = .zero
-    @State private var showDeleteConfirm = false
     @State private var isSaving = false
     @State private var isProcessingPhoto = false
     @State private var showPhotoActions = false
@@ -223,18 +223,6 @@ struct PairingVehicleEditorForm: View {
                 try? await Task.sleep(for: .milliseconds(200))
                 beginInlineFraming(with: image)
             }
-        }
-        .confirmationDialog(
-            L10n.pairingTabVehiclePhotoDeleteTitle,
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(L10n.pairingTabVehiclePhotoRemove, role: .destructive) {
-                removePhoto()
-            }
-            Button(L10n.cancel, role: .cancel) {}
-        } message: {
-            Text(L10n.pairingTabVehiclePhotoDeleteMessage)
         }
     }
 
@@ -415,7 +403,9 @@ struct PairingVehicleEditorForm: View {
                     systemImage: "trash",
                     role: .destructive
                 ) {
-                    showDeleteConfirm = true
+                    DeleteConfirmPresenter.shared.confirm(.vehiclePhoto) {
+                        removePhoto()
+                    }
                 }
                 .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
             }
@@ -577,7 +567,9 @@ struct PairingVehicleEditorForm: View {
             photoSheet.wrappedValue = .flow
         }
         .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionDelete) {
-            showDeleteConfirm = true
+            DeleteConfirmPresenter.shared.confirm(.vehiclePhoto) {
+                removePhoto()
+            }
         }
         .onAppear(perform: playTapHintIntroIfNeeded)
         .onChange(of: photoGlintID) { _, _ in

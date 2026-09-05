@@ -73,7 +73,9 @@ struct CategoryManagementView: View {
                 .swipeActions(edge: .trailing, allowsFullSwipe: !category.isBuiltIn) {
                     if !category.isBuiltIn {
                         Button(role: .destructive) {
-                            deleteCategory(category)
+                            DeleteConfirmPresenter.shared.confirm(.category) {
+                                deleteCategory(category)
+                            }
                         } label: {
                             Label(L10n.delete, systemImage: "trash")
                         }

@@ -265,6 +265,8 @@
 		A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
 		A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTPRESENTER000001 /* ToastPresenter.swift */; };
+		A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */; };
+		A1DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */; };
 		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
 		A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROUTES00000000001 /* FrequentRoutesService.swift */; };
@@ -554,6 +556,8 @@
 		A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDisplaySampler.swift; sourceTree = "<group>"; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
 		A2TOASTPRESENTER000001 /* ToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastPresenter.swift; sourceTree = "<group>"; };
+		A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteConfirmPresenter.swift; sourceTree = "<group>"; };
+		A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/DeleteConfirmPresenterTests.swift; sourceTree = SOURCE_ROOT; };
 		A2TOASTVIEW00000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000005 /* TrailhoundWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundWidget.swift; sourceTree = "<group>"; };
@@ -880,6 +884,7 @@
 				A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */,
 				A2APPERRORPRES0000001 /* AppErrorPresenter.swift */,
 				A2TOASTPRESENTER000001 /* ToastPresenter.swift */,
+				A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */,
 				A20000000000000000000018 /* DistanceCalculator.swift */,
 				A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */,
 				A2TRAVELJOURNALBUD0001 /* TravelJournalMapBudget.swift */,
@@ -1035,6 +1040,7 @@
 				A2TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift */,
 				A2TRIPDETAILMAPSTYLETST1 /* TripDetailMapStyleTests.swift */,
 				A2KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift */,
+				A2DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift */,
 				A2BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift */,
 				A2TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift */,
 				A2TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift */,
@@ -1254,6 +1260,7 @@
 				A1TRIPDETAILKEYBLAYTEST1 /* TripDetailKeyboardLayoutTests.swift in Sources */,
 				A1TRIPDETAILMAPSTYLETST1 /* TripDetailMapStyleTests.swift in Sources */,
 				A1KEYBOARDFIELDTITLETEST1 /* KeyboardFieldTitleTests.swift in Sources */,
+				A1DELETECONFTEST000001 /* DeleteConfirmPresenterTests.swift in Sources */,
 				A1BUNDLEBRANDASSETTEST01 /* BundleBrandAssetTests.swift in Sources */,
 				A1TRIPSHARECAPTIONTEST01 /* TripShareCaptionTests.swift in Sources */,
 				A1TRIPSHAREROUTEPREPTST /* TripShareRoutePrepTests.swift in Sources */,
@@ -1405,6 +1412,7 @@
 				A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
 				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
+				A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */,
 				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,
 				A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */,

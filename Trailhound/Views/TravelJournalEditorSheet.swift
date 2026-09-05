@@ -155,6 +155,7 @@ struct TravelJournalEditorSheet: View {
             }
         }
         .toastHost()
+        .deleteConfirmHost()
     }
 
     private var selectableTrips: [Trip] {

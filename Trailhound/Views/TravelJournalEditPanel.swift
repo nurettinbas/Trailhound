@@ -172,7 +172,9 @@ struct TravelJournalEditPanel: View {
         .listRowSeparator(.hidden)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                onRemoveTrip(trip)
+                DeleteConfirmPresenter.shared.confirm(.journalRemove) {
+                    onRemoveTrip(trip)
+                }
             } label: {
                 Label(L10n.journalRemove, systemImage: "trash")
             }
@@ -183,7 +185,9 @@ struct TravelJournalEditPanel: View {
                 Text(L10n.string("journal.open.trip"))
             }
             Button(role: .destructive) {
-                onRemoveTrip(trip)
+                DeleteConfirmPresenter.shared.confirm(.journalRemove) {
+                    onRemoveTrip(trip)
+                }
             } label: {
                 Text(L10n.journalRemove)
             }

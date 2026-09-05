@@ -305,6 +305,19 @@ enum L10n {
     static var externalStartConfirmMessage: String { string("recording.external_start.message") }
     static var externalStartConfirmAction: String { string("recording.external_start.confirm") }
     static var cancel: String { string("action.cancel") }
+    static var deleteConfirmTitle: String { string("delete.confirm.title") }
+    static var deleteConfirmMessage: String { string("delete.confirm.message") }
+    static var deleteConfirmCategoryMessage: String { string("delete.confirm.category.message") }
+    static var deleteConfirmJournalRemoveTitle: String { string("delete.confirm.journal.remove.title") }
+    static var deleteConfirmJournalRemoveMessage: String { string("delete.confirm.journal.remove.message") }
+    static var deleteConfirmInstallmentPlanMessage: String { string("delete.confirm.installment_plan.message") }
+    static var deleteConfirmNotificationsAllMessage: String { string("delete.confirm.notifications.all.message") }
+    static var vehicleExpenseDeletePlanTitle: String { string("vehicles.care.expense.delete_plan_title") }
+
+    static func vehicleExpenseDeletePlan(_ count: Int) -> String {
+        String(format: string("vehicles.care.expense.delete_plan"), count)
+    }
+
     static var ok: String { string("action.ok") }
     static var settingsSiriShortcutsHint: String { string("settings.siri.shortcuts_hint") }
     static var settingsSiriShortcutsLink: String { string("settings.siri.shortcuts_link") }

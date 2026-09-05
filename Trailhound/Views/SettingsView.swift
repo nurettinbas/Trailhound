@@ -89,7 +89,9 @@ struct SettingsView: View {
                     )
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
-                            deletePlace(place)
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
+                                deletePlace(place)
+                            }
                         } label: {
                             Label(L10n.delete, systemImage: "trash")
                         }

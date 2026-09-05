@@ -159,7 +159,9 @@ struct VehicleDetailView: View {
                             .listRowInsets(cardRowInsets(index: index))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    deleteSchedule(schedule)
+                                    DeleteConfirmPresenter.shared.confirm(.generic) {
+                                        deleteSchedule(schedule)
+                                    }
                                 } label: {
                                     Label(L10n.delete, systemImage: "trash")
                                 }
@@ -204,7 +206,9 @@ struct VehicleDetailView: View {
                             .listRowInsets(cardRowInsets(index: index))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    deleteExpense(expense)
+                                    DeleteConfirmPresenter.shared.confirm(.generic) {
+                                        deleteExpense(expense)
+                                    }
                                 } label: {
                                     Label(L10n.delete, systemImage: "trash")
                                 }
@@ -237,7 +241,9 @@ struct VehicleDetailView: View {
                             .listRowInsets(cardRowInsets(index: index))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    deleteExpense(expense)
+                                    DeleteConfirmPresenter.shared.confirm(.generic) {
+                                        deleteExpense(expense)
+                                    }
                                 } label: {
                                     Label(L10n.delete, systemImage: "trash")
                                 }

@@ -30,7 +30,6 @@ struct VehicleExpenseEditorView: View {
 
     @State private var draft: VehicleExpenseEditorDraft?
     @State private var isSaving = false
-    @State private var showDeletePlanConfirm = false
     @FocusState private var focusedField: VehicleExpenseFocusedField?
 
     private var vehicle: VehicleProfile? {
@@ -142,21 +141,28 @@ struct VehicleExpenseEditorView: View {
                 Section {
                     if expense?.isInstallment == true {
                         Button(L10n.string("vehicles.care.expense.delete_this"), role: .destructive) {
-                            deleteThisInstallment()
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
+                                deleteThisInstallment()
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         .destructiveTint()
                         .glassRow(position: .first)
 
                         Button(deletePlanLabel, role: .destructive) {
-                            showDeletePlanConfirm = true
+                            let count = expense?.installmentCount ?? activeDraft.installmentCount
+                            DeleteConfirmPresenter.shared.confirm(.installmentPlan(count: count)) {
+                                deletePlan()
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         .destructiveTint()
                         .glassRow(position: .last)
                     } else {
                         Button(L10n.delete, role: .destructive) {
-                            deleteExpense()
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
+                                deleteExpense()
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         .destructiveTint()
@@ -187,16 +193,6 @@ struct VehicleExpenseEditorView: View {
                     .disabled(isSaving || activeDraft.amount == nil)
             }
         }
-        .confirmationDialog(
-            L10n.string("vehicles.care.expense.delete_plan_title"),
-            isPresented: $showDeletePlanConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(deletePlanLabel, role: .destructive) {
-                deletePlan()
-            }
-            Button(L10n.cancel, role: .cancel) {}
-        }
         .onAppear {
             if draft == nil {
                 if let expense {
@@ -209,6 +205,7 @@ struct VehicleExpenseEditorView: View {
                 }
             }
         }
+        .deleteConfirmHost()
     }
 
     private var navigationTitle: String {

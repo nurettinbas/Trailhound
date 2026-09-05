@@ -19,6 +19,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .toastHost()
+        .deleteConfirmHost()
     }
 
     private var isRecordingSession: Bool {
