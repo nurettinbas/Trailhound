@@ -11,6 +11,8 @@ struct TripRowView: View {
     var morphID: UUID?
     /// Soft-lands the map thumbnail after stop→row morph.
     var emphasizeLanding: Bool = false
+    /// Set on the combined row element so XCTest sees it (a parent `NavigationLink` id is easy to lose).
+    var rowAccessibilityIdentifier: String? = nil
 
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -71,8 +73,6 @@ struct TripRowView: View {
                                 .lineLimit(1)
                         }
                         .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        // Combined rows already expose this in `accessibilityLabel`; a nested
-                        // identifier here hides `trips.row.first.suggested` from XCTest.
                         .accessibilityHidden(true)
                     }
 
@@ -119,6 +119,7 @@ struct TripRowView: View {
         .animation(TrailhoundMotion.recordingMorph, value: emphasizeLanding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
+        .optionalAccessibilityIdentifier(rowAccessibilityIdentifier)
         .task(id: trip.id) {
             thumbnailLoaded = false
             thumbnail = nil
@@ -227,6 +228,17 @@ struct TripRowView: View {
                 .lineLimit(1)
         }
         .foregroundStyle(tint)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func optionalAccessibilityIdentifier(_ identifier: String?) -> some View {
+        if let identifier, !identifier.isEmpty {
+            self.accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
     }
 }
 

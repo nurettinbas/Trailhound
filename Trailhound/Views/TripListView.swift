@@ -945,7 +945,8 @@ struct TripListView: View {
                             vehicle: vehicle,
                             morphNamespace: tripMorphNamespace,
                             morphID: morphingTripID,
-                            emphasizeLanding: isMorphing
+                            emphasizeLanding: isMorphing,
+                            rowAccessibilityIdentifier: rowID
                         )
                     }
                 }
@@ -962,7 +963,8 @@ struct TripListView: View {
                         vehicle: vehicle,
                         morphNamespace: tripMorphNamespace,
                         morphID: morphingTripID,
-                        emphasizeLanding: isMorphing
+                        emphasizeLanding: isMorphing,
+                        rowAccessibilityIdentifier: rowID
                     )
                     .contentShape(Rectangle())
                 }
