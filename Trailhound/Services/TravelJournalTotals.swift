@@ -27,7 +27,7 @@ enum TravelJournalTotals {
 
         let byDistance = members.sorted { $0.distanceMeters > $1.distanceMeters }
         journal.coverTripID = byDistance.first?.id
-        journal.mosaicTripIDsRaw = byDistance.prefix(3).map(\.id.uuidString).joined(separator: ",")
+        journal.mosaicTripIDsRaw = byDistance.prefix(TravelJournal.mosaicSlotCount).map(\.id.uuidString).joined(separator: ",")
         journal.searchIndex = searchIndex(for: journal)
     }
 

@@ -9,6 +9,8 @@ struct HelpPopoverButton: View {
     let message: String
     /// Layout side of the `?` control. Default 44 pt for accessibility; metric cards pass 16.
     var side: CGFloat = 44
+    /// Sheet height. Longer copy (travel help) passes a taller detent so the text is not clipped.
+    var sheetHeight: CGFloat = 240
 
     @State private var isPresented = false
 
@@ -33,16 +35,18 @@ struct HelpPopoverButton: View {
                     Button(L10n.ok) { isPresented = false }
                         .fontWeight(.semibold)
                 }
-                Text(message)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 0)
+                ScrollView {
+                    Text(message)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .padding(20)
-            .presentationDetents([.height(240)])
+            .presentationDetents([.height(sheetHeight), .medium])
             .presentationDragIndicator(.visible)
         }
     }

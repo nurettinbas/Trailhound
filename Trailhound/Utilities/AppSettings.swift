@@ -124,6 +124,19 @@ final class AppSettings {
         dismissedJournalSuggestionFingerprints = Set(
             resolvedDefaults.stringArray(forKey: Key.dismissedJournalSuggestions) ?? []
         )
+        if resolvedDefaults.object(forKey: Key.smartCategorySuggestionsEnabled) != nil {
+            smartCategorySuggestionsEnabled = resolvedDefaults.bool(forKey: Key.smartCategorySuggestionsEnabled)
+        }
+        workHourStart = Self.clampedHourValue(
+            resolvedDefaults.object(forKey: Key.workHourStart) == nil
+                ? 9
+                : resolvedDefaults.integer(forKey: Key.workHourStart)
+        )
+        workHourEnd = Self.clampedHourValue(
+            resolvedDefaults.object(forKey: Key.workHourEnd) == nil
+                ? 18
+                : resolvedDefaults.integer(forKey: Key.workHourEnd)
+        )
     }
 
     var dismissedJournalSuggestionFingerprints: Set<String> = [] {
@@ -331,36 +344,39 @@ final class AppSettings {
     }
 
     /// Smart category suggestions after a trip ends. Default on.
-    var smartCategorySuggestionsEnabled: Bool {
-        get {
-            if defaults.object(forKey: Key.smartCategorySuggestionsEnabled) == nil { return true }
-            return defaults.bool(forKey: Key.smartCategorySuggestionsEnabled)
-        }
-        set { defaults.set(newValue, forKey: Key.smartCategorySuggestionsEnabled) }
+    var smartCategorySuggestionsEnabled: Bool = true {
+        didSet { defaults.set(smartCategorySuggestionsEnabled, forKey: Key.smartCategorySuggestionsEnabled) }
     }
 
     /// Inclusive local start hour for the weekday work-hours heuristic (default 9).
-    var workHourStart: Int {
-        get { loadedHour(forKey: Key.workHourStart, default: 9) }
-        set { defaults.set(clampedHour(newValue), forKey: Key.workHourStart) }
+    var workHourStart: Int = 9 {
+        didSet {
+            let clamped = Self.clampedHourValue(workHourStart)
+            if workHourStart != clamped {
+                workHourStart = clamped
+                return
+            }
+            defaults.set(workHourStart, forKey: Key.workHourStart)
+        }
     }
 
     /// Exclusive local end hour for the weekday work-hours heuristic (default 18).
-    var workHourEnd: Int {
-        get { loadedHour(forKey: Key.workHourEnd, default: 18) }
-        set { defaults.set(clampedHour(newValue), forKey: Key.workHourEnd) }
+    var workHourEnd: Int = 18 {
+        didSet {
+            let clamped = Self.clampedHourValue(workHourEnd)
+            if workHourEnd != clamped {
+                workHourEnd = clamped
+                return
+            }
+            defaults.set(workHourEnd, forKey: Key.workHourEnd)
+        }
     }
 
     var workHours: TripCategoryWorkHours {
         TripCategoryWorkHours(startHour: workHourStart, endHour: workHourEnd)
     }
 
-    private func loadedHour(forKey key: String, default defaultValue: Int) -> Int {
-        guard defaults.object(forKey: key) != nil else { return defaultValue }
-        return clampedHour(defaults.integer(forKey: key))
-    }
-
-    private func clampedHour(_ hour: Int) -> Int {
+    private static func clampedHourValue(_ hour: Int) -> Int {
         min(max(hour, 0), 23)
     }
 

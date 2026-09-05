@@ -173,6 +173,161 @@ final class TripCategorySuggesterTests: XCTestCase {
         )
         XCTAssertEqual(trip.pendingSuggestedCategoryID, BuiltInCategory.businessID.uuidString)
         XCTAssertEqual(trip.pendingSuggestionReason, .place)
+        XCTAssertEqual(trip.categoryID, BuiltInCategory.personalID.uuidString)
+        XCTAssertEqual(trip.categoryOrigin, .default)
+    }
+
+    func testWorkOnlyPlaceSuggestsBusiness() {
+        let candidate = makeWorkOnlyTrip(startedAt: saturday(hour: 11))
+        let suggestion = TripCategorySuggester.suggestion(
+            for: candidate,
+            places: commutePlaces(),
+            histogram: [:],
+            calendar: calendar
+        )
+
+        XCTAssertEqual(suggestion?.categoryID, BuiltInCategory.businessID.uuidString)
+        XCTAssertEqual(suggestion?.reason, .place)
+    }
+
+    func testRouteBelowThreeSamplesDoesNotSuggestRoute() {
+        let history = (0..<2).map { index in
+            makeTrip(
+                startPlace: "Ev",
+                endPlace: "Ofis",
+                category: .business,
+                startedAt: weekday(hour: 10).addingTimeInterval(TimeInterval(index * 86_400))
+            )
+        }
+        let candidate = makeTrip(startPlace: "Ev", endPlace: "Ofis", startedAt: saturday(hour: 10))
+        let histogram = FrequentRoutesService.categoryHistogram(from: history)
+
+        let suggestion = TripCategorySuggester.suggestion(
+            for: candidate,
+            places: [],
+            histogram: histogram,
+            calendar: calendar
+        )
+        XCTAssertNil(suggestion)
+    }
+
+    func testRouteMajorityBelowThresholdDoesNotSuggestRoute() {
+        let customID = UUID().uuidString
+        let business = (0..<2).map { index in
+            makeTrip(
+                startPlace: "Ev",
+                endPlace: "Ofis",
+                category: .business,
+                startedAt: weekday(hour: 10).addingTimeInterval(TimeInterval(index * 86_400))
+            )
+        }
+        let other = makeTrip(
+            startPlace: "Ev",
+            endPlace: "Ofis",
+            category: .personal,
+            startedAt: weekday(hour: 10).addingTimeInterval(172_800)
+        )
+        other.categoryID = customID
+        other.categoryOrigin = .user
+        let candidate = makeTrip(startPlace: "Ev", endPlace: "Ofis", startedAt: saturday(hour: 10))
+        let histogram = FrequentRoutesService.categoryHistogram(from: business + [other])
+
+        let suggestion = TripCategorySuggester.suggestion(
+            for: candidate,
+            places: [],
+            histogram: histogram,
+            calendar: calendar
+        )
+        XCTAssertNil(suggestion)
+        XCTAssertNotEqual(suggestion?.reason, .route)
+    }
+
+    func testWeekdayHourNineSuggestsHoursAndEighteenDoesNot() {
+        let atNine = TripCategorySuggester.suggestion(
+            for: makeTrip(startedAt: weekday(hour: 9)),
+            places: [],
+            histogram: [:],
+            calendar: calendar
+        )
+        XCTAssertEqual(atNine?.categoryID, BuiltInCategory.businessID.uuidString)
+        XCTAssertEqual(atNine?.reason, .hours)
+
+        let atEighteen = TripCategorySuggester.suggestion(
+            for: makeTrip(startedAt: weekday(hour: 18)),
+            places: [],
+            histogram: [:],
+            calendar: calendar
+        )
+        XCTAssertNil(atEighteen)
+    }
+
+    func testOvernightWorkHoursWindow() {
+        let overnight = TripCategoryWorkHours(startHour: 22, endHour: 6)
+        XCTAssertTrue(overnight.contains(weekday(hour: 23), calendar: calendar))
+        XCTAssertTrue(overnight.contains(weekday(hour: 5), calendar: calendar))
+        XCTAssertFalse(overnight.contains(weekday(hour: 10), calendar: calendar))
+
+        let late = TripCategorySuggester.suggestion(
+            for: makeTrip(startedAt: weekday(hour: 23)),
+            places: [],
+            histogram: [:],
+            workHours: overnight,
+            calendar: calendar
+        )
+        XCTAssertEqual(late?.reason, .hours)
+
+        let early = TripCategorySuggester.suggestion(
+            for: makeTrip(startedAt: weekday(hour: 5)),
+            places: [],
+            histogram: [:],
+            workHours: overnight,
+            calendar: calendar
+        )
+        XCTAssertEqual(early?.reason, .hours)
+
+        let midday = TripCategorySuggester.suggestion(
+            for: makeTrip(startedAt: weekday(hour: 10)),
+            places: [],
+            histogram: [:],
+            workHours: overnight,
+            calendar: calendar
+        )
+        XCTAssertNil(midday)
+    }
+
+    func testAcceptedOriginBlocksSuggestion() {
+        let candidate = makeCommuteTrip(startedAt: weekday(hour: 10))
+        candidate.categoryOrigin = .accepted
+        let suggestion = TripCategorySuggester.suggestion(
+            for: candidate,
+            places: commutePlaces(),
+            histogram: [:],
+            calendar: calendar
+        )
+        XCTAssertNil(suggestion)
+    }
+
+    func testUnfinishedTripDoesNotSuggestOrWritePending() {
+        let trip = makeCommuteTrip(startedAt: weekday(hour: 10))
+        trip.endedAt = nil
+
+        let suggestion = TripCategorySuggester.suggestion(
+            for: trip,
+            places: commutePlaces(),
+            histogram: [:],
+            calendar: calendar
+        )
+        XCTAssertNil(suggestion)
+
+        TripCategorySuggestionService.refreshPending(
+            on: trip,
+            among: [trip],
+            places: commutePlaces(),
+            enabled: true,
+            calendar: calendar
+        )
+        XCTAssertNil(trip.pendingSuggestedCategoryID)
+        XCTAssertEqual(trip.categoryID, BuiltInCategory.personalID.uuidString)
     }
 
     func testRefreshPendingClearsWhenDisabled() {
@@ -245,6 +400,8 @@ final class TripCategorySuggesterTests: XCTestCase {
         )
         XCTAssertEqual(trip.pendingSuggestedCategoryID, BuiltInCategory.businessID.uuidString)
         XCTAssertEqual(trip.pendingSuggestionReason, .place)
+        XCTAssertEqual(trip.categoryID, BuiltInCategory.personalID.uuidString)
+        XCTAssertEqual(trip.categoryOrigin, .default)
     }
 
     // MARK: - Helpers
@@ -278,6 +435,20 @@ final class TripCategorySuggesterTests: XCTestCase {
                 kind: .work
             )
         ]
+    }
+
+    private func makeWorkOnlyTrip(startedAt: Date) -> Trip {
+        let other = CLLocationCoordinate2D(latitude: 40.9, longitude: 28.9)
+        let trip = makeTrip(
+            startPlace: "Kafe",
+            endPlace: "İş",
+            startedAt: startedAt
+        )
+        trip.startLatitude = other.latitude
+        trip.startLongitude = other.longitude
+        trip.endLatitude = workCoordinate.latitude
+        trip.endLongitude = workCoordinate.longitude
+        return trip
     }
 
     private func makeCommuteTrip(

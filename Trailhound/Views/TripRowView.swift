@@ -71,6 +71,7 @@ struct TripRowView: View {
                                 .lineLimit(1)
                         }
                         .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .accessibilityIdentifier("trips.row.suggestedCategory")
                     }
 
                     Spacer(minLength: 0)

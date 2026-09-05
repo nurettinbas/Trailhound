@@ -879,6 +879,11 @@ struct TripListView: View {
         }
     }
 
+    private func tripRowIdentifier(for trip: Trip, isFirst: Bool) -> String {
+        let base = isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)"
+        return trip.hasPendingCategorySuggestion ? "\(base).suggested" : base
+    }
+
     @ViewBuilder
     private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
@@ -919,7 +924,7 @@ struct TripListView: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .accessibilityIdentifier(isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)")
+                .accessibilityIdentifier(tripRowIdentifier(for: trip, isFirst: isFirst))
                 .buttonStyle(.plain)
             }
         }
@@ -948,6 +953,7 @@ struct TripListView: View {
                     )
                 }
                 .tint(TrailhoundBrandColors.brandBottom)
+                .accessibilityIdentifier("trips.row.acceptSuggestedCategory")
             }
 
             Button {

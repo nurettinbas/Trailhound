@@ -349,6 +349,8 @@ final class FuelCostCalculatorTests: XCTestCase {
         )
         XCTAssertFalse(L10n.tripEditFuelHelpTitle.isEmpty)
         XCTAssertFalse(L10n.tripEditFuelHelpBody.isEmpty)
+        XCTAssertFalse(L10n.journalAddHelpTitle.isEmpty)
+        XCTAssertFalse(L10n.journalAddHelpBody.isEmpty)
     }
 }
 

@@ -130,6 +130,7 @@ struct SettingsView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                     }
+                    .accessibilityIdentifier("settings.smartCategory.workStart")
                     .glassRow(position: .middle)
                     LabeledContent(L10n.settingsSmartCategoryWorkEnd) {
                         Picker(L10n.settingsSmartCategoryWorkEnd, selection: $settings.workHourEnd) {
@@ -140,6 +141,7 @@ struct SettingsView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                     }
+                    .accessibilityIdentifier("settings.smartCategory.workEnd")
                     .glassRow(position: .last)
                 }
             } header: {

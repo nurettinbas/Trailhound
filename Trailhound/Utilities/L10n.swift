@@ -585,6 +585,8 @@ enum L10n {
     static var journalSuggestAccept: String { string("journal.suggest.accept") }
     static var journalSuggestDismiss: String { string("journal.suggest.dismiss") }
     static var journalAdd: String { string("journal.add") }
+    static var journalAddHelpTitle: String { string("journal.add.help.title") }
+    static var journalAddHelpBody: String { string("journal.add.help.body") }
     static var journalNew: String { string("journal.new") }
     static var journalRemove: String { string("journal.remove") }
     static var journalMove: String { string("journal.move") }

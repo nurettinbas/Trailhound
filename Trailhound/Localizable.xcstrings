@@ -2189,6 +2189,40 @@
         }
       }
     },
+    "journal.add.help.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A travel is a named group of trips — a weekend away, a road trip, a few days in the same region.\n\nOpen it later to see every route on one map, with combined distance and fuel. That is quicker than hunting through the trip list day by day.\n\nAdding this trip does not copy it, and it does not change category, vehicle, fuel, or Stats. A trip belongs to one travel at a time.\n\nPick an existing travel, or create a new one with New travel. Find your groups under Trips → Travels."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahat, trip’leri isim verdiğiniz bir grupta toplar — bir hafta sonu, bir yolculuk, aynı bölgedeki birkaç gün.\n\nSonra tek haritada tüm rotaları, toplam mesafeyi ve yakıtı bir arada görürsünüz. Trip listesinde gün gün aramaktan daha hızlıdır.\n\nBu trip’i eklemek onu kopyalamaz; kategori, araç, yakıt veya İstatistikler değişmez. Bir trip aynı anda tek bir seyahatte durur.\n\nMevcut bir seyahat seçin veya Yeni seyahat ile oluşturun. Gruplar Trip’ler → Seyahatler altındadır."
+          }
+        }
+      }
+    },
+    "journal.add.help.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is a travel?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahat nedir?"
+          }
+        }
+      }
+    },
     "journal.create" : {
       "extractionState" : "manual",
       "localizations" : {

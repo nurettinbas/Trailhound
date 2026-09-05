@@ -176,12 +176,22 @@ final class TravelJournalMembershipTests: XCTestCase {
             distanceMeters: 1_000
         )
         let journal = TravelJournal(title: "Opened")
+        trip.pendingSuggestedCategoryID = BuiltInCategory.businessID.uuidString
+        trip.pendingSuggestionReasonRaw = TripCategorySuggestionReason.place.rawValue
+        trip.categoryOriginRaw = TripCategoryOrigin.default.rawValue
         container.mainContext.insert(journal)
         container.mainContext.insert(trip)
         try container.mainContext.save()
 
-        XCTAssertNil(trip.pendingSuggestedCategoryID)
-        XCTAssertNil(trip.journalID)
+        let tripID = trip.id
+        let fetched = try container.mainContext.fetch(
+            FetchDescriptor<Trip>(predicate: #Predicate { $0.id == tripID })
+        )
+        let reloaded = try XCTUnwrap(fetched.first)
+        XCTAssertEqual(reloaded.pendingSuggestedCategoryID, BuiltInCategory.businessID.uuidString)
+        XCTAssertEqual(reloaded.pendingSuggestionReasonRaw, TripCategorySuggestionReason.place.rawValue)
+        XCTAssertEqual(reloaded.categoryOriginRaw, TripCategoryOrigin.default.rawValue)
+        XCTAssertNil(reloaded.journalID)
         XCTAssertEqual(try container.mainContext.fetch(FetchDescriptor<TravelJournal>()).count, 1)
         XCTAssertEqual(try container.mainContext.fetch(FetchDescriptor<Trip>()).count, 1)
     }
