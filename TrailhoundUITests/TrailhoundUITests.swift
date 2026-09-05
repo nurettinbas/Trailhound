@@ -208,36 +208,57 @@ final class TrailhoundSmartCategoryUITests: XCTestCase {
     }
 
     private func element(identifier: String) -> XCUIElement {
-        app.descendants(matching: .any)[identifier]
+        let button = app.buttons[identifier]
+        if button.exists { return button }
+        let cell = app.cells[identifier]
+        if cell.exists { return cell }
+        let other = app.otherElements[identifier]
+        if other.exists { return other }
+        return button
+    }
+
+    private func waitForIdentifier(_ identifier: String) -> Bool {
+        if app.buttons[identifier].waitForExistence(timeout: uiTimeout) {
+            return true
+        }
+        if app.cells[identifier].waitForExistence(timeout: 3) {
+            return true
+        }
+        if app.otherElements[identifier].waitForExistence(timeout: 3) {
+            return true
+        }
+        return app.descendants(matching: .any)[identifier].waitForExistence(timeout: 3)
     }
 
     func testSuggestedCategoryChipAppearsOnTripRow() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
-        let suggestedRow = element(identifier: "trips.row.first.suggested")
         XCTAssertTrue(
-            suggestedRow.waitForExistence(timeout: uiTimeout),
+            waitForIdentifier("trips.row.first.suggested"),
             "Seeded commute trip should be the first row with a pending suggestion"
         )
     }
 
     func testSwipeAcceptsSuggestedCategory() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
-        let suggestedRow = element(identifier: "trips.row.first.suggested")
         XCTAssertTrue(
-            suggestedRow.waitForExistence(timeout: uiTimeout),
+            waitForIdentifier("trips.row.first.suggested"),
             "Seeded commute trip should be the first row with a pending suggestion"
         )
 
-        suggestedRow.swipeRight()
+        element(identifier: "trips.row.first.suggested").swipeRight()
         let accept = element(identifier: "trips.row.acceptSuggestedCategory")
         if accept.waitForExistence(timeout: 3) {
             accept.tap()
         }
 
-        XCTAssertFalse(element(identifier: "trips.row.first.suggested").waitForExistence(timeout: 3))
-        XCTAssertTrue(element(identifier: "trips.row.first").waitForExistence(timeout: 5))
+        XCTAssertFalse(waitForIdentifierGone("trips.row.first.suggested"))
+        XCTAssertTrue(waitForIdentifier("trips.row.first"))
 
         let toast = app.staticTexts["Category updated"]
         _ = toast.waitForExistence(timeout: 2)
+    }
+
+    private func waitForIdentifierGone(_ identifier: String) -> Bool {
+        app.descendants(matching: .any)[identifier].waitForExistence(timeout: 3)
     }
 }

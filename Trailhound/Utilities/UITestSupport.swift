@@ -48,6 +48,11 @@ enum UITestSupport {
             }
         }
         if seedsSmartCategory {
+            let seedID = smartCategorySeedTripID
+            let leftovers = (try? context.fetch(FetchDescriptor<Trip>())) ?? []
+            for trip in leftovers where trip.id != seedID {
+                context.delete(trip)
+            }
             seedSmartCategoryFixtures(in: context)
         }
         try? context.save()
@@ -98,7 +103,7 @@ enum UITestSupport {
     /// Newest completed personal commute with a pending Business suggestion.
     @MainActor
     private static func applySmartCategoryPendingState(to trip: Trip) {
-        let endedAt = Date().addingTimeInterval(-60)
+        let endedAt = Date().addingTimeInterval(-5)
         trip.startedAt = endedAt.addingTimeInterval(-1_500)
         trip.endedAt = endedAt
         trip.categoryID = BuiltInCategory.personalID.uuidString
