@@ -2223,6 +2223,40 @@
         }
       }
     },
+    "journal.empty.search.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try a different name or clear the search."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farklı bir ad deneyin veya aramayı temizleyin."
+          }
+        }
+      }
+    },
+    "journal.empty.search.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching travels"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aradığınız sonuç bulunamadı"
+          }
+        }
+      }
+    },
     "journal.empty.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2525,6 +2559,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ege hafta sonu"
+          }
+        }
+      }
+    },
+    "journal.title.required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name can't be empty"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İsim alanı boş bırakılamaz"
           }
         }
       }

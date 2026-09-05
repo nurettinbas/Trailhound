@@ -102,6 +102,54 @@ final class TravelJournalMembershipTests: XCTestCase {
 
         let merged = try TripMergeService.merge(trips: [first, second], into: context)
         XCTAssertNil(merged.journalID)
+        XCTAssertEqual(alpha.tripCount, 0)
+        XCTAssertEqual(beta.tripCount, 0)
+    }
+
+    func testDeletingJournalNullifiesMembership() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 8_000
+        )
+        context.insert(trip)
+        let journal = TravelJournal(title: "Gone")
+        context.insert(journal)
+        TravelJournalTotals.assign(trip: trip, to: journal, in: context)
+        XCTAssertEqual(trip.journalID, journal.id)
+
+        TravelJournalTotals.prepareForDelete(journal)
+        context.delete(journal)
+        try context.save()
+
+        XCTAssertNil(trip.journalID)
+        XCTAssertNil(trip.journal)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Trip>()).count, 1)
+    }
+
+    func testDeletingTripKeepsEmptyJournal() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 8_000
+        )
+        context.insert(trip)
+        let journal = TravelJournal(title: "Stays")
+        context.insert(journal)
+        TravelJournalTotals.assign(trip: trip, to: journal, in: context)
+        XCTAssertEqual(journal.tripCount, 1)
+
+        TravelJournalTotals.handleTripDeletion(trip, in: context)
+        context.delete(trip)
+        try context.save()
+
+        XCTAssertEqual(journal.tripCount, 0)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TravelJournal>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Trip>()).count, 0)
     }
 
     func testSchemaV19OpensTravelJournal() throws {
@@ -115,5 +163,81 @@ final class TravelJournalMembershipTests: XCTestCase {
         let fetched = try container.mainContext.fetch(FetchDescriptor<TravelJournal>())
         XCTAssertEqual(fetched.count, 1)
         XCTAssertEqual(fetched.first?.title, "Opened")
+    }
+
+    func testSearchFindsTitleIgnoringCase() throws {
+        let journal = makeJournal(title: "Deneme")
+        TravelJournalTotals.refresh(journal)
+
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "deneme"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "DENEME"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "DeNe"))
+        XCTAssertFalse(TravelJournalPage.matchesSearch(journal, searchText: "yok"))
+        journal.searchIndex = nil
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "deneme"))
+    }
+
+    func testSearchFindsTurkishTitlesWithoutDiacritics() throws {
+        let journal = makeJournal(title: "Türkiye Tatili")
+        TravelJournalTotals.refresh(journal)
+
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "turkiye"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "TÜRKİYE"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "tatili"))
+        XCTAssertEqual(try XCTUnwrap(journal.searchIndex).contains("turkiye"), true)
+    }
+
+    func testSearchFoldsDottedAndDotlessI() throws {
+        let istanbul = makeJournal(title: "İstanbul")
+        TravelJournalTotals.refresh(istanbul)
+
+        XCTAssertTrue(TravelJournalPage.matchesSearch(istanbul, searchText: "istanbul"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(istanbul, searchText: "ISTANBUL"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(istanbul, searchText: "ıstanbul"))
+
+        let isik = makeJournal(title: "Işık")
+        TravelJournalTotals.refresh(isik)
+        XCTAssertTrue(TravelJournalPage.matchesSearch(isik, searchText: "isik"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(isik, searchText: "ışık"))
+    }
+
+    func testSearchMatchesNoteAndIgnoresEmptyQuery() throws {
+        let journal = makeJournal(title: "Yol", note: "Ege sahil")
+        TravelJournalTotals.refresh(journal)
+
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "sahil"))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: ""))
+        XCTAssertTrue(TravelJournalPage.matchesSearch(journal, searchText: "   "))
+    }
+
+    func testDescriptorFetchFindsDenemeByName() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let journal = TravelJournal(title: "Deneme")
+        let other = TravelJournal(title: "Tatil")
+        context.insert(journal)
+        context.insert(other)
+        TravelJournalTotals.refresh(journal)
+        TravelJournalTotals.refresh(other)
+        try context.save()
+
+        let found = try TravelJournalPage.fetch(
+            filters: .init(searchText: "deneme"),
+            limit: 50,
+            in: context
+        )
+        XCTAssertEqual(found.journals.map(\.id), [journal.id])
+        XCTAssertFalse(found.hasMore)
+
+        let missed = try TravelJournalPage.fetch(
+            filters: .init(searchText: "yok"),
+            limit: 50,
+            in: context
+        )
+        XCTAssertTrue(missed.journals.isEmpty)
+    }
+
+    private func makeJournal(title: String, note: String? = nil) -> TravelJournal {
+        TravelJournal(title: title, note: note)
     }
 }

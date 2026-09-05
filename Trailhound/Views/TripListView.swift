@@ -149,11 +149,13 @@ struct TripListView: View {
 
     private func reloadJournals() {
         let filters = TravelJournalPage.Filters(searchText: debouncedSearchText)
-        let fetched = (try? modelContext.fetch(
-            TravelJournalPage.descriptor(filters: filters, limit: journalPageLimit)
-        )) ?? []
-        hasMoreJournals = fetched.count > journalPageLimit
-        loadedJournals = Array(fetched.prefix(journalPageLimit))
+        let page = (try? TravelJournalPage.fetch(
+            filters: filters,
+            limit: journalPageLimit,
+            in: modelContext
+        )) ?? (journals: [], hasMore: false)
+        hasMoreJournals = page.hasMore
+        loadedJournals = page.journals
         hasAnyJournals = (try? modelContext.fetchCount(TravelJournalPage.countDescriptor())).map { $0 > 0 } ?? false
         refreshTravelSuggestion()
     }
@@ -193,7 +195,9 @@ struct TripListView: View {
 
     @ViewBuilder
     private var journalListContent: some View {
-        if let suggestion = travelSuggestion {
+        let isSearching = TravelJournalPage.Filters(searchText: debouncedSearchText).isActive
+
+        if let suggestion = travelSuggestion, !isSearching {
             Section {
                 HStack(spacing: 10) {
                     Image(systemName: "sparkles")
@@ -225,22 +229,24 @@ struct TripListView: View {
 
         if loadedJournals.isEmpty {
             GlassEmptyState(
-                title: L10n.journalEmptyTitle,
-                systemImage: "map",
-                message: L10n.journalEmptyMessage,
-                bounceTrigger: false
+                title: isSearching ? L10n.journalEmptySearchTitle : L10n.journalEmptyTitle,
+                systemImage: isSearching ? "magnifyingglass" : "map",
+                message: isSearching ? L10n.journalEmptySearchMessage : L10n.journalEmptyMessage,
+                bounceTrigger: isSearching
             )
             .glassListRow()
-            Button {
-                journalEditor = .create()
-            } label: {
-                Text(L10n.journalCreate)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+            if !isSearching {
+                Button {
+                    journalEditor = .create()
+                } label: {
+                    Text(L10n.journalCreate)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(TrailhoundBrandColors.brandBottom)
+                .glassListRow()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(TrailhoundBrandColors.brandBottom)
-            .glassListRow()
         } else {
             Section {
                 ForEach(Array(loadedJournals.enumerated()), id: \.element.id) { index, journal in

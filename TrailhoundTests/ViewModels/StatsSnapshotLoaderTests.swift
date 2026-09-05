@@ -218,4 +218,68 @@ final class StatsSnapshotLoaderTests: XCTestCase {
         // Goal stays unfiltered across the month containing `goalMonth`.
         XCTAssertGreaterThanOrEqual(snapshot.goalDistanceMeters, 0)
     }
+
+    func testJournalFilterUsesTripPathAndNarrowsSummaryOnLongWindow() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let end = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -120, to: end)!
+        let inMonth = end.addingTimeInterval(-2 * 86_400).addingTimeInterval(3_600)
+
+        let journalTrip = Trip(
+            startedAt: inMonth,
+            endedAt: inMonth.addingTimeInterval(1_800),
+            distanceMeters: 4_000
+        )
+        journalTrip.nightDistanceMeters = 0
+        journalTrip.trackedDistanceMeters = 4_000
+        context.insert(journalTrip)
+
+        let otherTrip = Trip(
+            startedAt: inMonth.addingTimeInterval(-86_400),
+            endedAt: inMonth.addingTimeInterval(-86_400 + 1_800),
+            distanceMeters: 9_000
+        )
+        otherTrip.nightDistanceMeters = 0
+        otherTrip.trackedDistanceMeters = 9_000
+        context.insert(otherTrip)
+
+        let journal = TravelJournal(title: "Filter")
+        context.insert(journal)
+        TravelJournalTotals.assign(trip: journalTrip, to: journal, in: context)
+
+        TripRollupService.add(journalTrip, in: context)
+        TripRollupService.add(otherTrip, in: context)
+        try context.save()
+
+        let goalMonth = StatsViewModel.goalMonth(
+            for: .custom,
+            selectedMonth: end,
+            customStart: start,
+            customEnd: end
+        )
+        let request = StatsSnapshotRequest(
+            storeVersion: 1,
+            selectedPeriod: .custom,
+            customStart: start,
+            customEnd: end,
+            selectedMonth: end,
+            goalMonth: goalMonth,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            selectedPlaceName: nil,
+            selectedJournalID: journal.id,
+            categoryNames: StatsNameMap(names: [:], fallback: "Other"),
+            vehicleNames: StatsNameMap(names: [VehicleDistance.unassignedID: "Unassigned"], fallback: "Unknown"),
+            vehicleCount: 0
+        )
+
+        let loader = StatsSnapshotLoader(modelContainer: container)
+        let snapshot = await loader.snapshot(for: request)
+
+        XCTAssertEqual(snapshot.stats.tripCount, 1)
+        XCTAssertEqual(snapshot.stats.totalDistanceMeters, 4_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.goalDistanceMeters, 13_000, accuracy: 0.1)
+    }
 }

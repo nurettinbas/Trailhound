@@ -77,6 +77,35 @@ final class TravelJournalSuggesterTests: XCTestCase {
         XCTAssertNil(skipped)
     }
 
+    func testLongDistanceAwayDaySuggestsWithoutTwoNights() {
+        let friday = date(2026, 3, 6, 18)
+        let trips = [
+            trip("km", start: friday, hours: 4, fromHome: false, toHome: false, distance: 150_000)
+        ]
+        let suggestion = TravelJournalSuggester.suggest(trips: trips, homes: [home], calendar: calendar)
+        XCTAssertNotNil(suggestion)
+        XCTAssertEqual(suggestion?.tripIDs.count, 1)
+    }
+
+    func testInProgressTripIsIgnored() {
+        let friday = date(2026, 3, 6, 18)
+        let trips = [
+            trip("km", start: friday, hours: 4, fromHome: false, toHome: false, distance: 150_000, isInProgress: true)
+        ]
+        XCTAssertNil(TravelJournalSuggester.suggest(trips: trips, homes: [home], calendar: calendar))
+    }
+
+    func testWorkOnlyPlaceYieldsNoSuggestion() {
+        let friday = date(2026, 3, 6, 18)
+        let trips = [
+            trip("km", start: friday, hours: 4, fromHome: false, toHome: false, distance: 200_000)
+        ]
+        let work = SavedPlace(name: "Office", latitude: 41.0, longitude: 29.0, kind: .work)
+        let homes = TravelJournalSuggester.homeSnapshots(from: [work])
+        XCTAssertTrue(homes.isEmpty)
+        XCTAssertNil(TravelJournalSuggester.suggest(trips: trips, homes: homes, calendar: calendar))
+    }
+
     private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int) -> Date {
         calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
     }
@@ -87,14 +116,15 @@ final class TravelJournalSuggesterTests: XCTestCase {
         hours: Double,
         fromHome: Bool,
         toHome: Bool,
-        distance: Double = 10_000
+        distance: Double = 10_000,
+        isInProgress: Bool = false
     ) -> TravelJournalTripSnapshot {
         let startLat = fromHome ? 41.0 : 40.0
         let endLat = toHome ? 41.0 : 40.0
         return TravelJournalTripSnapshot(
             id: UUID(uuidString: "00000000-0000-0000-0000-\(id.padding(toLength: 12, withPad: "0", startingAt: 0))") ?? UUID(),
             startedAt: start,
-            endedAt: start.addingTimeInterval(hours * 3600),
+            endedAt: isInProgress ? nil : start.addingTimeInterval(hours * 3600),
             distanceMeters: distance,
             startLatitude: startLat,
             startLongitude: 29.0,

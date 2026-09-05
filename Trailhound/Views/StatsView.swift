@@ -647,55 +647,82 @@ struct StatsView: View {
     }
 
     private var statsMonthPicker: some View {
-        HStack(spacing: 10) {
-            Button {
-                selectedMonth = StatsViewModel.clampedMonth(
-                    StatsViewModel.shiftMonth(selectedMonth, by: -1),
-                    earliestTripStart: earliestTripStart
-                )
-                TrailhoundHaptics.selection()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 36, height: 36)
+        HStack(spacing: 0) {
+            monthStepButton(
+                systemImage: "chevron.left",
+                enabled: canGoToPreviousMonth,
+                accessibilityKey: "stats.period.previous_month"
+            ) {
+                shiftSelectedMonth(by: -1)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoToPreviousMonth)
-            .accessibilityLabel(L10n.string("stats.period.previous_month"))
 
-            Picker(L10n.string("stats.period.select_month"), selection: selectedMonthBinding) {
-                ForEach(selectableMonths, id: \.self) { month in
-                    Text(DateFormatters.monthYear.string(from: month))
-                        .tag(month)
+            Menu {
+                Picker(L10n.string("stats.period.select_month"), selection: selectedMonthBinding) {
+                    ForEach(selectableMonths, id: \.self) { month in
+                        Text(DateFormatters.monthYear.string(from: month))
+                            .tag(month)
+                    }
                 }
+                .pickerStyle(.inline)
+            } label: {
+                HStack(spacing: 5) {
+                    Text(selectedMonthTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
-            .pickerStyle(.menu)
-            .tint(TrailhoundBrandColors.brandBottom)
-            .frame(maxWidth: .infinity)
             .accessibilityLabel(L10n.string("stats.period.select_month"))
             .accessibilityValue(selectedMonthTitle)
 
-            Button {
-                selectedMonth = StatsViewModel.clampedMonth(
-                    StatsViewModel.shiftMonth(selectedMonth, by: 1),
-                    earliestTripStart: earliestTripStart
-                )
-                TrailhoundHaptics.selection()
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 36, height: 36)
+            monthStepButton(
+                systemImage: "chevron.right",
+                enabled: canGoToNextMonth,
+                accessibilityKey: "stats.period.next_month"
+            ) {
+                shiftSelectedMonth(by: 1)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoToNextMonth)
-            .accessibilityLabel(L10n.string("stats.period.next_month"))
         }
+        .padding(.horizontal, 4)
+        .glassField(cornerRadius: 12)
         .onAppear {
             selectedMonth = StatsViewModel.clampedMonth(
                 selectedMonth,
                 earliestTripStart: earliestTripStart
             )
         }
+    }
+
+    private func shiftSelectedMonth(by value: Int) {
+        selectedMonth = StatsViewModel.clampedMonth(
+            StatsViewModel.shiftMonth(selectedMonth, by: value),
+            earliestTripStart: earliestTripStart
+        )
+        TrailhoundHaptics.selection()
+    }
+
+    private func monthStepButton(
+        systemImage: String,
+        enabled: Bool,
+        accessibilityKey: StaticString,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(enabled ? Color.primary : Color.primary.opacity(0.28))
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(L10n.string(accessibilityKey))
     }
 
     private func statsCustomDateField(title: String, date: Binding<Date>) -> some View {

@@ -20,7 +20,7 @@ enum TravelJournalMapBudget {
             return max(2, min(count, share))
         }
 
-        var used = allocated.reduce(0, +)
+        let used = allocated.reduce(0, +)
         if used > totalCap {
             var overflow = used - totalCap
             for index in allocated.indices.reversed() where overflow > 0 {

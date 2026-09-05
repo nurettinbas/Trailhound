@@ -564,6 +564,8 @@ enum L10n {
     static var tripsSegmentTravels: String { string("trips.segment.travels") }
     static var journalEmptyTitle: String { string("journal.empty.title") }
     static var journalEmptyMessage: String { string("journal.empty.message") }
+    static var journalEmptySearchTitle: String { string("journal.empty.search.title") }
+    static var journalEmptySearchMessage: String { string("journal.empty.search.message") }
     static var journalSuggestChip: String { string("journal.suggest.chip") }
     static var journalSuggestAccept: String { string("journal.suggest.accept") }
     static var journalSuggestDismiss: String { string("journal.suggest.dismiss") }
@@ -574,6 +576,7 @@ enum L10n {
     static var journalSave: String { string("journal.save") }
     static var journalTitle: String { string("journal.title") }
     static var journalTitlePlaceholder: String { string("journal.title.placeholder") }
+    static var journalTitleRequired: String { string("journal.title.required") }
     static var journalNote: String { string("journal.note") }
     static var journalNotePlaceholder: String { string("journal.note.placeholder") }
     static var journalTrips: String { string("journal.trips") }

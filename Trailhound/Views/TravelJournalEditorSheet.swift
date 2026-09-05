@@ -94,13 +94,17 @@ struct TravelJournalEditorSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L10n.cancel) { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L10n.journalSave) { save() }
-                        .disabled(draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .glassToolbarSaveControl()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        save()
+                    } label: {
+                        GlassToolbarSaveButton(title: L10n.journalSave)
+                    }
+                    .glassToolbarSaveControl()
                 }
             }
         }
+        .toastHost()
     }
 
     private var selectableTrips: [Trip] {
@@ -119,7 +123,10 @@ struct TravelJournalEditorSheet: View {
 
     private func save() {
         let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
+        guard !title.isEmpty else {
+            ToastPresenter.shared.show(.journalTitleRequired)
+            return
+        }
         let journal: TravelJournal
         if let existing = draft.existing {
             journal = existing

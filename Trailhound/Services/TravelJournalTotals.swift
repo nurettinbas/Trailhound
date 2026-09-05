@@ -95,13 +95,13 @@ enum TravelJournalTotals {
         }
     }
 
-    private static func searchIndex(for journal: TravelJournal) -> String {
+    static func searchIndex(for journal: TravelJournal) -> String {
         let parts = [
             journal.title,
             journal.note ?? "",
             DateFormatters.tripDateOnly.string(from: journal.startedOn),
             DateFormatters.tripDateOnly.string(from: journal.endedOn)
         ]
-        return parts.joined(separator: " ").lowercased()
+        return SearchFolding.fold(parts.joined(separator: " "))
     }
 }
