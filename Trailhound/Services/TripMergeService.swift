@@ -42,12 +42,15 @@ enum TripMergeService {
         into context: ModelContext,
         privacyRadius: Double = AppSettings.shared.privacyRadiusMeters
     ) throws -> Trip {
+        let sourceJournalIDs = trips.map(\.journalID)
         let merged = try TripMergeCore.merge(
             trips: trips,
             into: context,
             privacyRadius: privacyRadius
         )
         let deletedIDs = trips.map(\.id)
+        try context.save()
+        TripMergeCore.refreshJournals(ids: sourceJournalIDs, extra: merged.journalID, in: context)
         try context.save()
         for id in deletedIDs {
             TripMapSnapshotCache.shared.remove(for: id)
@@ -66,6 +69,7 @@ enum TripMergeCore {
         privacyRadius: Double
     ) throws -> Trip {
         let completed = trips.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
+        let sourceJournalIDs = completed.map(\.journalID)
         let merged = try beginMergedTrip(from: completed, into: context)
         let fuelInputs = mergedFuelInputs(from: completed)
 
@@ -95,7 +99,39 @@ enum TripMergeCore {
             fuelUnitPrice: fuelInputs.unitPrice,
             context: context
         )
+        applyCapturedMergeMembership(
+            surviving: merged,
+            journalIDs: sourceJournalIDs,
+            in: context
+        )
         return merged
+    }
+
+    static func applyCapturedMergeMembership(
+        surviving: Trip,
+        journalIDs: [UUID?],
+        in context: ModelContext
+    ) {
+        let unique = Set(journalIDs.compactMap { $0 })
+        if unique.count == 1, let only = unique.first {
+            surviving.journalID = only
+            let descriptor = FetchDescriptor<TravelJournal>(
+                predicate: #Predicate { $0.id == only }
+            )
+            surviving.journal = try? context.fetch(descriptor).first
+        } else {
+            surviving.journal = nil
+            surviving.journalID = nil
+        }
+    }
+
+    /// Call after `save()` so deleted legs have left the journal relationship.
+    static func refreshJournals(ids: [UUID?], extra: UUID? = nil, in context: ModelContext) {
+        var unique = Set(ids.compactMap { $0 })
+        if let extra { unique.insert(extra) }
+        for journalID in unique {
+            TravelJournalTotals.refresh(journalID: journalID, in: context)
+        }
     }
 
     /// Copies one chronological leg onto `merged`.
@@ -257,6 +293,7 @@ actor TripMergeWorker {
         )) ?? []
 
         let completed = fetched.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
+        let sourceJournalIDs = completed.map(\.journalID)
         let merged = try TripMergeCore.beginMergedTrip(from: completed, into: modelContext)
 
         var sequence = 0
@@ -285,6 +322,13 @@ actor TripMergeWorker {
             privacyRadius: privacyRadius,
             context: modelContext
         )
+        TripMergeCore.applyCapturedMergeMembership(
+            surviving: merged,
+            journalIDs: sourceJournalIDs,
+            in: modelContext
+        )
+        try modelContext.save()
+        TripMergeCore.refreshJournals(ids: sourceJournalIDs, extra: merged.journalID, in: modelContext)
         try modelContext.save()
         return merged.id
     }

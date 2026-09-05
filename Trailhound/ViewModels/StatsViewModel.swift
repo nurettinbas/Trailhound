@@ -139,13 +139,15 @@ struct StatsViewModel {
         _ trips: [T],
         categoryID: String? = nil,
         vehicleID: UUID? = nil,
-        placeName: String? = nil
+        placeName: String? = nil,
+        journalID: UUID? = nil
     ) -> [T] {
         trips.filter { trip in
             guard trip.endedAt != nil else { return false }
             if let categoryID, trip.categoryID != categoryID { return false }
             if let vehicleID, trip.vehicleID != vehicleID { return false }
             if !TripPlaceFilter.matches(trip, placeName: placeName) { return false }
+            if let journalID, trip.journalID != journalID { return false }
             return true
         }
     }
@@ -155,13 +157,15 @@ struct StatsViewModel {
         categoryID: String? = nil,
         vehicleID: UUID? = nil,
         placeName: String? = nil,
+        journalID: UUID? = nil,
         includeNightRatio: Bool = true
     ) -> TripStats {
         let completed = filtered(
             trips,
             categoryID: categoryID,
             vehicleID: vehicleID,
-            placeName: placeName
+            placeName: placeName,
+            journalID: journalID
         )
 
         let totalDistance = completed.reduce(0) { $0 + $1.distanceMeters }

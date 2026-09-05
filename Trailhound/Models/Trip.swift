@@ -45,6 +45,10 @@ final class Trip {
     var stopDurationSeconds: Double?
     /// Driving-pace mode from `TripSpeedProfile`. `nil` = not computed; `0` = nothing to report.
     var mostCommonSpeedKmh: Double?
+    /// Mirror of `journal` for `#Predicate`. `nil` = not in a travel.
+    var journalID: UUID?
+    @Relationship(deleteRule: .nullify)
+    var journal: TravelJournal?
     @Relationship(deleteRule: .nullify)
     var vehicle: VehicleProfile?
     @Relationship(deleteRule: .cascade, inverse: \TripPoint.trip)
@@ -79,6 +83,8 @@ final class Trip {
         endPlaceName: String? = nil,
         vehicleID: UUID? = nil,
         vehicle: VehicleProfile? = nil,
+        journalID: UUID? = nil,
+        journal: TravelJournal? = nil,
         points: [TripPoint] = [],
         stops: [TripStop] = [],
         matchedPoints: [MatchedRoutePoint] = []
@@ -104,6 +110,8 @@ final class Trip {
         self.endPlaceName = endPlaceName
         self.vehicleID = vehicleID
         self.vehicle = vehicle
+        self.journalID = journalID
+        self.journal = journal
         self.points = points
         self.stops = stops
         self.matchedPoints = matchedPoints
