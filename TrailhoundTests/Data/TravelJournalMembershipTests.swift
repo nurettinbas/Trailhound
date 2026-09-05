@@ -165,6 +165,37 @@ final class TravelJournalMembershipTests: XCTestCase {
         XCTAssertEqual(fetched.first?.title, "Opened")
     }
 
+    func testSchemaV20OpensJournalAndSmartCategoryFields() throws {
+        let container = try ModelContainer(
+            for: Schema(versionedSchema: TrailhoundSchemaV20.self),
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 1_000
+        )
+        let journal = TravelJournal(title: "Opened")
+        trip.pendingSuggestedCategoryID = BuiltInCategory.businessID.uuidString
+        trip.pendingSuggestionReasonRaw = TripCategorySuggestionReason.place.rawValue
+        trip.categoryOriginRaw = TripCategoryOrigin.default.rawValue
+        container.mainContext.insert(journal)
+        container.mainContext.insert(trip)
+        try container.mainContext.save()
+
+        let tripID = trip.id
+        let fetched = try container.mainContext.fetch(
+            FetchDescriptor<Trip>(predicate: #Predicate { $0.id == tripID })
+        )
+        let reloaded = try XCTUnwrap(fetched.first)
+        XCTAssertEqual(reloaded.pendingSuggestedCategoryID, BuiltInCategory.businessID.uuidString)
+        XCTAssertEqual(reloaded.pendingSuggestionReasonRaw, TripCategorySuggestionReason.place.rawValue)
+        XCTAssertEqual(reloaded.categoryOriginRaw, TripCategoryOrigin.default.rawValue)
+        XCTAssertNil(reloaded.journalID)
+        XCTAssertEqual(try container.mainContext.fetch(FetchDescriptor<TravelJournal>()).count, 1)
+        XCTAssertEqual(try container.mainContext.fetch(FetchDescriptor<Trip>()).count, 1)
+    }
+
     func testSearchFindsTitleIgnoringCase() throws {
         let journal = makeJournal(title: "Deneme")
         TravelJournalTotals.refresh(journal)

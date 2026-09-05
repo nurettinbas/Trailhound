@@ -1096,6 +1096,14 @@ final class TripRecordingService {
             TripDerivedMetrics.recomputeEndpoints(for: trip)
             let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
             PlaceMatchingService.matchPlaces(for: trip, places: places)
+            let allTrips = (try? modelContext.fetch(FetchDescriptor<Trip>())) ?? []
+            TripCategorySuggestionService.refreshPending(
+                on: trip,
+                among: allTrips,
+                places: places,
+                enabled: settings.smartCategorySuggestionsEnabled,
+                workHours: settings.workHours
+            )
             let privacyRadius = settings.privacyRadiusMeters
             let routeSummary = TripListViewModel.routeSummary(
                 for: trip,
@@ -1428,6 +1436,14 @@ enum TripPostProcessor {
             places: places,
             privacyRadius: AppSettings.shared.privacyRadiusMeters,
             fuelType: fuelType
+        )
+        let allTrips = (try? context.fetch(FetchDescriptor<Trip>())) ?? []
+        TripCategorySuggestionService.refreshPending(
+            on: trip,
+            among: allTrips,
+            places: places,
+            enabled: AppSettings.shared.smartCategorySuggestionsEnabled,
+            workHours: AppSettings.shared.workHours
         )
         try? context.save()
         TripRoutePathCache.shared.prewarm(tripID: tripUUID, container: container)

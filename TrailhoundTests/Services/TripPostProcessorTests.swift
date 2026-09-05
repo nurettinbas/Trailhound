@@ -41,6 +41,78 @@ final class TripPostProcessorTests: XCTestCase {
         XCTAssertEqual(reloaded.sortedPoints.filter { ($0.speedMps ?? 0) > 0 }.count, 1200)
     }
 
+    func testProcessWritesPendingCategoryWithoutChangingCategory() async throws {
+        let settings = AppSettings.shared
+        let previousEnabled = settings.smartCategorySuggestionsEnabled
+        settings.smartCategorySuggestionsEnabled = true
+        defer { settings.smartCategorySuggestionsEnabled = previousEnabled }
+
+        let home = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let work = CLLocationCoordinate2D(latitude: 41.1, longitude: 29.1)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let startedAt = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 11))!
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(1_800),
+            distanceMeters: 8_000,
+            category: .personal,
+            startPlaceName: "Ev",
+            endPlaceName: "İş"
+        )
+        trip.startLatitude = home.latitude
+        trip.startLongitude = home.longitude
+        trip.endLatitude = work.latitude
+        trip.endLongitude = work.longitude
+        let points = [
+            TripPoint(
+                timestamp: startedAt,
+                latitude: home.latitude,
+                longitude: home.longitude,
+                sequence: 0,
+                speedMps: 10,
+                trip: trip
+            ),
+            TripPoint(
+                timestamp: startedAt.addingTimeInterval(900),
+                latitude: 41.05,
+                longitude: 29.05,
+                sequence: 1,
+                speedMps: 12,
+                trip: trip
+            ),
+            TripPoint(
+                timestamp: startedAt.addingTimeInterval(1_800),
+                latitude: work.latitude,
+                longitude: work.longitude,
+                sequence: 2,
+                speedMps: 8,
+                trip: trip
+            )
+        ]
+        trip.points = points
+        container.mainContext.insert(trip)
+        for point in points { container.mainContext.insert(point) }
+        container.mainContext.insert(
+            SavedPlace(name: "Ev", latitude: home.latitude, longitude: home.longitude, kind: .home)
+        )
+        container.mainContext.insert(
+            SavedPlace(name: "İş", latitude: work.latitude, longitude: work.longitude, kind: .work)
+        )
+        try container.mainContext.save()
+
+        await TripPostProcessor.process(tripUUID: trip.id, container: container)
+
+        let reloaded = try XCTUnwrap(
+            try container.mainContext.fetch(FetchDescriptor<Trip>()).first { $0.id == trip.id }
+        )
+        XCTAssertEqual(reloaded.pendingSuggestedCategoryID, BuiltInCategory.businessID.uuidString)
+        XCTAssertEqual(reloaded.pendingSuggestionReason, .place)
+        XCTAssertEqual(reloaded.categoryID, BuiltInCategory.personalID.uuidString)
+        XCTAssertEqual(reloaded.categoryOrigin, .default)
+        XCTAssertEqual(reloaded.points.count, 3)
+    }
+
     private func makeTrip(pointCount: Int) -> Trip {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
         let trip = Trip(startedAt: start, endedAt: start.addingTimeInterval(Double(pointCount)), distanceMeters: 24_000)
