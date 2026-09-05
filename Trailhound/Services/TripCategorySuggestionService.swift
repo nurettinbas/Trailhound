@@ -11,14 +11,32 @@ enum TripCategorySuggestionService {
         workHours: TripCategoryWorkHours = .default,
         calendar: Calendar = .current
     ) {
-        guard trip.endedAt != nil else { return }
+        guard trip.endedAt != nil else {
+            DevLog.shared.log(
+                .recording,
+                "categorySuggest skip unfinished trip=\(trip.id.uuidString.prefix(8))"
+            )
+            return
+        }
 
         guard enabled else {
             trip.clearPendingSuggestion()
+            DevLog.shared.log(
+                .recording,
+                "categorySuggest skip disabled trip=\(trip.id.uuidString.prefix(8))"
+            )
             return
         }
 
         let histogram = FrequentRoutesService.categoryHistogram(from: trips, excluding: trip.id)
+        let note = TripCategorySuggester.explain(
+            for: trip,
+            places: places,
+            histogram: histogram,
+            workHours: workHours,
+            calendar: calendar
+        )
+        DevLog.shared.log(.recording, "categorySuggest \(note)")
         if let suggestion = TripCategorySuggester.suggestion(
             for: trip,
             places: places,
@@ -37,6 +55,10 @@ enum TripCategorySuggestionService {
     @MainActor
     static func acceptPending(_ trip: Trip, in context: ModelContext) {
         guard let categoryID = trip.pendingSuggestedCategoryID else { return }
+        DevLog.shared.log(
+            .recording,
+            "categorySuggest accepted trip=\(trip.id.uuidString.prefix(8))"
+        )
         applyCategory(categoryID, to: trip, origin: .accepted, in: context)
     }
 

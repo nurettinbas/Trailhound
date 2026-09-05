@@ -9,21 +9,22 @@ struct TravelJournalRowView: View {
     @State private var mosaic: [UIImage] = []
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 10) {
             mosaicView
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(journal.title)
-                    .font(.headline)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
 
                 Text(L10n.journalDateRange(start: journal.startedOn, end: journal.endedOn))
-                    .font(.caption)
+                    .font(.system(size: 9))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     metaChip(icon: "map", text: L10n.journalTripCount(journal.tripCount))
                     metaChip(icon: "road.lanes", text: DateFormatters.formatDistance(journal.distanceMeters))
                     if journal.fuelCost > 0 {
@@ -33,6 +34,7 @@ struct TravelJournalRowView: View {
             }
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
         .task(id: journal.mosaicTripIDsRaw) {
@@ -54,8 +56,8 @@ struct TravelJournalRowView: View {
         return parts.joined(separator: ", ")
     }
 
-    private var mosaicSize: CGFloat { 44 }
-    private var mosaicCorner: CGFloat { 10 }
+    private var mosaicSize: CGFloat { 40 }
+    private var mosaicCorner: CGFloat { 9 }
     private var mosaicGap: CGFloat { 1.5 }
 
     private var mosaicView: some View {
@@ -65,7 +67,7 @@ struct TravelJournalRowView: View {
                     .fill(TrailhoundBrandColors.brandBottom.opacity(0.18))
                     .overlay {
                         Image(systemName: "map")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(TrailhoundBrandColors.brandBottom)
                     }
             } else if mosaic.count == 1 {
@@ -110,9 +112,9 @@ struct TravelJournalRowView: View {
     private func metaChip(icon: String, text: String) -> some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 7, weight: .semibold))
             Text(text)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 9, weight: .medium))
                 .lineLimit(1)
         }
         .foregroundStyle(.secondary)

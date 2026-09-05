@@ -27,6 +27,61 @@ enum TripCategorySuggester {
         return nil
     }
 
+    /// One-line reason for DevLog: why a pending suggestion was or was not written.
+    static func explain(
+        for trip: Trip,
+        places: [SavedPlace],
+        histogram: [String: [String: Int]],
+        workHours: TripCategoryWorkHours = .default,
+        calendar: Calendar = .current
+    ) -> String {
+        let tripTag = String(trip.id.uuidString.prefix(8))
+        let category = categoryLabel(trip.categoryID)
+        if trip.endedAt == nil {
+            return "skip unfinished trip=\(tripTag) category=\(category)"
+        }
+        if trip.categoryOrigin.blocksSuggestion {
+            return "skip locked origin=\(trip.categoryOrigin.rawValue) trip=\(tripTag) category=\(category)"
+        }
+        if let suggestion = suggestion(
+            for: trip,
+            places: places,
+            histogram: histogram,
+            workHours: workHours,
+            calendar: calendar
+        ) {
+            return "suggest \(categoryLabel(suggestion.categoryID)) reason=\(suggestion.reason.rawValue) trip=\(tripTag) category stays \(category)"
+        }
+
+        let hour = calendar.component(.hour, from: trip.startedAt)
+        let weekend = calendar.isDateInWeekend(trip.startedAt)
+        let inHours = workHours.contains(trip.startedAt, calendar: calendar)
+        let startKind = placeKind(
+            name: trip.startPlaceName,
+            coordinate: trip.startCoordinate,
+            places: places
+        )
+        let endKind = placeKind(
+            name: trip.endPlaceName,
+            coordinate: trip.endCoordinate,
+            places: places
+        )
+        let routeSamples: Int
+        if let pairKey = FrequentRoutesService.pairKey(for: trip),
+           let counts = histogram[pairKey] {
+            routeSamples = counts.values.reduce(0, +)
+        } else {
+            routeSamples = 0
+        }
+        return "skip no-match trip=\(tripTag) category=\(category) weekend=\(weekend) hour=\(hour) workHours=\(workHours.startHour)-\(workHours.endHour) inHours=\(inHours) startKind=\(startKind?.rawValue ?? "none") endKind=\(endKind?.rawValue ?? "none") places=\(places.count) routeSamples=\(routeSamples)"
+    }
+
+    private static func categoryLabel(_ id: String) -> String {
+        if id == BuiltInCategory.personalID.uuidString { return "Personal" }
+        if id == BuiltInCategory.businessID.uuidString { return "Business" }
+        return String(id.prefix(8))
+    }
+
     private static func routeSuggestion(
         for trip: Trip,
         histogram: [String: [String: Int]]
