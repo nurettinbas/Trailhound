@@ -36,7 +36,7 @@ final class TripCategorySuggesterTests: XCTestCase {
 
         XCTAssertEqual(suggestion?.categoryID, BuiltInCategory.businessID.uuidString)
         XCTAssertEqual(suggestion?.reason, .route)
-        XCTAssertEqual(suggestion?.confidence, 1, accuracy: 0.001)
+        XCTAssertEqual(suggestion?.confidence ?? -1, 1, accuracy: 0.001)
     }
 
     func testDefaultPersonalTripsDoNotTeachTheHistogram() {
@@ -217,7 +217,7 @@ final class TripCategorySuggesterTests: XCTestCase {
     func testApplyUserCategoryClearsPendingAndSetsOrigin() throws {
         let container = try ModelContainerFactory.makeInMemory()
         let context = container.mainContext
-        let trip = makeTrip(startedAt: weekday(hour: 10), category: .personal)
+        let trip = makeTrip(category: .personal, startedAt: weekday(hour: 10))
         context.insert(trip)
         try context.save()
         TripRollupService.add(trip, in: context)

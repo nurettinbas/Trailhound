@@ -34,16 +34,19 @@ enum TripCategorySuggestionService {
     }
 
     /// Applies the pending suggestion. Updates daily rollups to the new category.
+    @MainActor
     static func acceptPending(_ trip: Trip, in context: ModelContext) {
         guard let categoryID = trip.pendingSuggestedCategoryID else { return }
         applyCategory(categoryID, to: trip, origin: .accepted, in: context)
     }
 
     /// User picked a category from the menu or trip detail. Clears any pending suggestion.
+    @MainActor
     static func applyUserCategory(_ categoryID: String, to trip: Trip, in context: ModelContext) {
         applyCategory(categoryID, to: trip, origin: .user, in: context)
     }
 
+    @MainActor
     static func applyCategory(
         _ categoryID: String,
         to trip: Trip,
