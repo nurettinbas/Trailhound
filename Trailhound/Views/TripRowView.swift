@@ -15,6 +15,7 @@ struct TripRowView: View {
     var rowAccessibilityIdentifier: String? = nil
 
     @Bindable private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: UIImage?
     @State private var thumbnailLoaded = false
@@ -120,7 +121,7 @@ struct TripRowView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
         .optionalAccessibilityIdentifier(rowAccessibilityIdentifier)
-        .task(id: trip.id) {
+        .task(id: thumbnailTaskID) {
             thumbnailLoaded = false
             thumbnail = nil
 
@@ -129,7 +130,8 @@ struct TripRowView: View {
                 try? await Task.sleep(for: .milliseconds(140))
             }
 
-            let image = await TripMapSnapshotCache.shared.snapshot(for: trip)
+            let appearance = MapSnapshotAppearance(colorScheme)
+            let image = await TripMapSnapshotCache.shared.snapshot(for: trip, appearance: appearance)
             if !reduceMotion {
                 withAnimation(emphasizeLanding ? TrailhoundMotion.recordingMorph : TrailhoundMotion.gentle) {
                     thumbnail = image
@@ -140,6 +142,10 @@ struct TripRowView: View {
                 thumbnailLoaded = true
             }
         }
+    }
+
+    private var thumbnailTaskID: String {
+        "\(trip.id.uuidString)-\(MapSnapshotAppearance(colorScheme).rawValue)"
     }
 
     private var pendingSuggestedCategoryName: String? {

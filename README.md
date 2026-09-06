@@ -36,9 +36,9 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
 - Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
-- Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
+- Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge — list and travel-mosaic maps follow light/dark appearance (share cards stay dark)
 - Swift Charts stats, trends, monthly distance goals — including daily **cruise speed**, **most common** speed, **stop time**, **night driving** share, and dual **avg / estimated** fuel charts
-- **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered
+- **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered. The Stats filter card uses titled selection fields (category, vehicle, place, travel) that keep long names on one line, plus **Clear All** to return to Last 7 days. Summary tiles show a packed skeleton while the filtered snapshot loads, so the grid does not leave empty holes
 - Category filters, trip merge (select completed trips on the list; there is no split)
 - **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
@@ -190,7 +190,7 @@ docs/                 # Battery, TestFlight, vehicle care notes
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards
-- [Stats tab](docs/STATS_TAB.md) — card spans, nested tiles, deferred charts
+- [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)

@@ -1,12 +1,50 @@
 import MapKit
+import SwiftUI
 import UIKit
+
+/// Light vs dark MapKit snapshot. Disk and memory keep both; share cards stay dark separately.
+enum MapSnapshotAppearance: String, Hashable, CaseIterable, Sendable {
+    case light
+    case dark
+
+    init(_ colorScheme: ColorScheme) {
+        self = colorScheme == .dark ? .dark : .light
+    }
+
+    var userInterfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    func fileName(for tripID: UUID) -> String {
+        "\(tripID.uuidString)-\(rawValue).jpg"
+    }
+
+    static func fileNames(for tripID: UUID) -> [String] {
+        allCases.map { $0.fileName(for: tripID) }
+    }
+
+    /// Pre-theme files were `{uuid}.jpg` with whatever style happened to render first.
+    static func isLegacyUnstyledFileName(_ name: String) -> Bool {
+        guard name.lowercased().hasSuffix(".jpg") else { return false }
+        let stem = String(name.dropLast(4))
+        return UUID(uuidString: stem) != nil
+    }
+}
 
 @MainActor
 final class TripMapSnapshotCache {
     static let shared = TripMapSnapshotCache()
 
-    private var memoryCache: [UUID: UIImage] = [:]
-    private var inFlight: [UUID: Task<UIImage?, Never>] = [:]
+    private struct SnapshotKey: Hashable {
+        let tripID: UUID
+        let appearance: MapSnapshotAppearance
+    }
+
+    private var memoryCache: [SnapshotKey: UIImage] = [:]
+    private var inFlight: [SnapshotKey: Task<UIImage?, Never>] = [:]
 
     /// Resolved once. As a computed property this issued a `fileExists` syscall for every row
     /// that scrolled into view.
@@ -19,26 +57,35 @@ final class TripMapSnapshotCache {
         if !fileManager.fileExists(atPath: cacheDirectory.path) {
             try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
+        let directory = cacheDirectory
+        Self.diskQueue.async {
+            Self.purgeLegacyUnstyledSnapshots(in: directory)
+        }
     }
 
     /// Memory hit only — never touches disk, so it is safe to call while scrolling.
-    func cachedImage(for tripID: UUID) -> UIImage? {
-        memoryCache[tripID]
+    func cachedImage(for tripID: UUID, appearance: MapSnapshotAppearance) -> UIImage? {
+        memoryCache[SnapshotKey(tripID: tripID, appearance: appearance)]
     }
 
-    func snapshot(for trip: Trip, size: CGSize = CGSize(width: 88, height: 88)) async -> UIImage? {
-        if let cached = memoryCache[trip.id] {
+    func snapshot(
+        for trip: Trip,
+        appearance: MapSnapshotAppearance,
+        size: CGSize = CGSize(width: 88, height: 88)
+    ) async -> UIImage? {
+        let key = SnapshotKey(tripID: trip.id, appearance: appearance)
+        if let cached = memoryCache[key] {
             return cached
         }
 
-        if let existingTask = inFlight[trip.id] {
+        if let existingTask = inFlight[key] {
             return await existingTask.value
         }
 
         // Reading and decoding the JPEG on the main actor stalled scrolling once the list had
         // more than a handful of trips.
-        if let stored = await Self.readImage(at: fileURL(for: trip.id)) {
-            memoryCache[trip.id] = stored
+        if let stored = await Self.readImage(at: fileURL(for: trip.id, appearance: appearance)) {
+            memoryCache[key] = stored
             return stored
         }
 
@@ -49,34 +96,48 @@ final class TripMapSnapshotCache {
         // than keeping every scrolled row's GPS history alive for the rest of the session.
         trip.invalidatePointCaches()
         let task = Task<UIImage?, Never> { @MainActor in
-            defer { inFlight[trip.id] = nil }
+            defer { inFlight[key] = nil }
             guard pieces.contains(where: { $0.count >= 2 }) else { return nil }
-            guard let image = await renderSnapshot(pieces: pieces, size: size) else { return nil }
-            store(image, for: trip.id)
+            guard let image = await renderSnapshot(
+                pieces: pieces,
+                size: size,
+                appearance: appearance
+            ) else { return nil }
+            store(image, for: key)
             return image
         }
 
-        inFlight[trip.id] = task
+        inFlight[key] = task
         return await task.value
     }
 
     func remove(for tripID: UUID) {
-        memoryCache.removeValue(forKey: tripID)
-        inFlight[tripID]?.cancel()
-        inFlight.removeValue(forKey: tripID)
-        let url = fileURL(for: tripID)
+        for appearance in MapSnapshotAppearance.allCases {
+            let key = SnapshotKey(tripID: tripID, appearance: appearance)
+            memoryCache.removeValue(forKey: key)
+            inFlight[key]?.cancel()
+            inFlight.removeValue(forKey: key)
+        }
+        let urls = MapSnapshotAppearance.allCases.map { fileURL(for: tripID, appearance: $0) }
+            + [legacyFileURL(for: tripID)]
         Self.diskQueue.async {
-            try? FileManager.default.removeItem(at: url)
+            for url in urls {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
     }
 
-    private func fileURL(for tripID: UUID) -> URL {
+    private func fileURL(for tripID: UUID, appearance: MapSnapshotAppearance) -> URL {
+        cacheDirectory.appendingPathComponent(appearance.fileName(for: tripID))
+    }
+
+    private func legacyFileURL(for tripID: UUID) -> URL {
         cacheDirectory.appendingPathComponent("\(tripID.uuidString).jpg")
     }
 
-    private func store(_ image: UIImage, for tripID: UUID) {
-        memoryCache[tripID] = image
-        let url = fileURL(for: tripID)
+    private func store(_ image: UIImage, for key: SnapshotKey) {
+        memoryCache[key] = image
+        let url = fileURL(for: key.tripID, appearance: key.appearance)
         Self.diskQueue.async {
             guard let data = image.jpegData(compressionQuality: 0.85) else { return }
             try? data.write(to: url, options: .atomic)
@@ -103,13 +164,31 @@ final class TripMapSnapshotCache {
         }
     }
 
-    private func renderSnapshot(pieces: [[CLLocationCoordinate2D]], size: CGSize) async -> UIImage? {
+    nonisolated private static func purgeLegacyUnstyledSnapshots(in directory: URL) {
+        let fileManager = FileManager.default
+        guard let names = try? fileManager.contentsOfDirectory(atPath: directory.path) else { return }
+        for name in names where MapSnapshotAppearance.isLegacyUnstyledFileName(name) {
+            try? fileManager.removeItem(at: directory.appendingPathComponent(name))
+        }
+    }
+
+    private func renderSnapshot(
+        pieces: [[CLLocationCoordinate2D]],
+        size: CGSize,
+        appearance: MapSnapshotAppearance
+    ) async -> UIImage? {
         guard let region = mapRegion(for: pieces.flatMap { $0 }) else { return nil }
 
+        let scale = UIScreen.main.scale
         let options = MKMapSnapshotter.Options()
         options.region = region
         options.size = size
-        options.scale = UIScreen.main.scale
+        options.scale = scale
+        options.mapType = .standard
+        options.traitCollection = UITraitCollection { mutableTraits in
+            mutableTraits.userInterfaceStyle = appearance.userInterfaceStyle
+            mutableTraits.displayScale = scale
+        }
 
         let snapshotter = MKMapSnapshotter(options: options)
 

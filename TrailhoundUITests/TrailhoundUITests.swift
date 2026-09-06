@@ -126,6 +126,36 @@ final class TrailhoundUITests: XCTestCase {
         XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
         statsTab.tap()
         XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 15))
+        let summary = app.descendants(matching: .any)["stats.summary.grid"]
+        let skeleton = app.descendants(matching: .any)["stats.summary.skeleton"]
+        let summaryAppeared = summary.waitForExistence(timeout: uiTimeout)
+        XCTAssertTrue(
+            summaryAppeared || skeleton.exists,
+            "Summary should show packed tiles or a skeleton, not an empty hole"
+        )
+    }
+
+    func testStatsFiltersClearResetsToLast7Days() {
+        XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
+        statsTab.tap()
+
+        let week = app.buttons["stats.filters.period.week"]
+        XCTAssertTrue(week.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["stats.filters.category"].waitForExistence(timeout: 10))
+
+        let month = app.buttons["stats.filters.period.month"]
+        XCTAssertTrue(month.waitForExistence(timeout: 5))
+        month.tap()
+
+        let clear = app.buttons["stats.filters.clear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5))
+        clear.tap()
+
+        XCTAssertTrue(week.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            clear.waitForNonExistence(timeout: 5),
+            "Clear All should hide after filters reset to Last 7 days"
+        )
     }
 }
 

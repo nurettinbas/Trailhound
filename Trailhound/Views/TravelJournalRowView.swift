@@ -6,6 +6,7 @@ struct TravelJournalRowView: View {
     var reduceMotion: Bool = false
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @State private var mosaic: [UIImage] = []
 
     var body: some View {
@@ -37,7 +38,7 @@ struct TravelJournalRowView: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
-        .task(id: journal.mosaicTripIDsRaw) {
+        .task(id: mosaicTaskID) {
             backfillMosaicIDsIfNeeded()
             await loadMosaic()
         }
@@ -54,6 +55,10 @@ struct TravelJournalRowView: View {
             parts.append(FuelCostCalculator.formatCost(journal.fuelCost))
         }
         return parts.joined(separator: ", ")
+    }
+
+    private var mosaicTaskID: String {
+        "\(journal.mosaicTripIDsRaw)-\(MapSnapshotAppearance(colorScheme).rawValue)"
     }
 
     private var mosaicSize: CGFloat { 40 }
@@ -130,15 +135,16 @@ struct TravelJournalRowView: View {
 
     @MainActor
     private func loadMosaic() async {
+        let appearance = MapSnapshotAppearance(colorScheme)
         var images: [UIImage] = []
         for tripID in journal.mosaicTripIDs.prefix(TravelJournal.mosaicSlotCount) {
-            if let cached = TripMapSnapshotCache.shared.cachedImage(for: tripID) {
+            if let cached = TripMapSnapshotCache.shared.cachedImage(for: tripID, appearance: appearance) {
                 images.append(cached)
                 continue
             }
             let descriptor = FetchDescriptor<Trip>(predicate: #Predicate { $0.id == tripID })
             guard let trip = try? modelContext.fetch(descriptor).first else { continue }
-            if let image = await TripMapSnapshotCache.shared.snapshot(for: trip) {
+            if let image = await TripMapSnapshotCache.shared.snapshot(for: trip, appearance: appearance) {
                 images.append(image)
                 trip.invalidatePointCaches()
             }

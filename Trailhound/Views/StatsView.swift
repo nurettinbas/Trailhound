@@ -12,19 +12,19 @@ struct StatsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedPeriod: StatsPeriod = .week
     @State private var selectedCategoryID: String?
     @State private var selectedVehicleID: UUID?
     @State private var selectedPlaceID: UUID?
     @State private var selectedJournalID: UUID?
-    @State private var selectedMonth = Calendar.current.date(
-        from: Calendar.current.dateComponents([.year, .month], from: Date())
-    ) ?? Date()
-    @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    @State private var selectedMonth = StatsFilterDefaults.selectedMonth()
+    @State private var customStart = StatsFilterDefaults.customStart()
     @State private var customEnd = Date()
     @State private var animatedProgress: Double = 0
     @State private var snapshot: StatsDisplaySnapshot?
+    @State private var renderedSnapshotFingerprint: String?
     @State private var snapshotRefreshTask: Task<Void, Never>?
     @State private var earliestTripStart: Date?
     /// Bumped whenever the store reports a save, standing in for the change tracking a `@Query`
@@ -157,6 +157,35 @@ struct StatsView: View {
             selectedPlaceName ?? "",
             selectedJournalID?.uuidString ?? ""
         ].joined(separator: "|")
+    }
+
+    private var showsSummarySkeleton: Bool {
+        snapshot == nil || renderedSnapshotFingerprint != statsFilterFingerprint
+    }
+
+    private var activeStatsFilterCount: Int {
+        var count = 0
+        if selectedPeriod != .week { count += 1 }
+        if selectedCategoryID != nil { count += 1 }
+        if selectedVehicleID != nil { count += 1 }
+        if selectedPlaceID != nil { count += 1 }
+        if selectedJournalID != nil { count += 1 }
+        return count
+    }
+
+    private var hasResettableStatsFilters: Bool {
+        activeStatsFilterCount > 0
+    }
+
+    private var statsFilterMenuColumns: [GridItem] {
+        let spacing: CGFloat = 8
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible(), spacing: spacing)]
+        }
+        return [
+            GridItem(.flexible(), spacing: spacing),
+            GridItem(.flexible(), spacing: spacing)
+        ]
     }
 
     private func titledWithScope(_ baseKey: StaticString, scope: String) -> String {
@@ -417,6 +446,7 @@ struct StatsView: View {
             vehicleCount: vehicles.count
         )
 
+        let requestFingerprint = statsFilterFingerprint
         snapshotRefreshTask = Task {
             if !isFirstLoad {
                 try? await Task.sleep(for: .milliseconds(120))
@@ -426,6 +456,7 @@ struct StatsView: View {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 snapshot = built
+                renderedSnapshotFingerprint = requestFingerprint
                 if !hasCompletedInitialSnapshot {
                     hasCompletedInitialSnapshot = true
                     scheduleYearAwardsRefresh(
@@ -453,11 +484,12 @@ struct StatsView: View {
     }
 
     private var selectedVehicleName: String {
-        guard let selectedVehicleID,
-              let vehicle = vehicles.first(where: { $0.id == selectedVehicleID }) else {
-            return L10n.all
-        }
-        return vehicle.name
+        selectedVehicle?.name ?? L10n.all
+    }
+
+    private var selectedVehicle: VehicleProfile? {
+        guard let selectedVehicleID else { return nil }
+        return vehicles.first(where: { $0.id == selectedVehicleID })
     }
 
     private var vehiclePhotoPrefetchID: String {
@@ -485,30 +517,13 @@ struct StatsView: View {
     }
 
     private var statsFilterCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                ForEach(StatsPeriod.allCases) { period in
-                    GlassFilterChip(
-                        title: period.title,
-                        isSelected: selectedPeriod == period,
-                        namespace: periodChipNamespace,
-                        highlightID: "statsPeriodHighlight",
-                        expands: true,
-                        size: .compact
-                    ) {
-                        if reduceMotion {
-                            selectedPeriod = period
-                        } else {
-                            withAnimation(TrailhoundMotion.gentle) {
-                                selectedPeriod = period
-                            }
-                        }
-                        TrailhoundHaptics.selection()
-                    }
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            if hasResettableStatsFilters {
+                statsFilterHeader
+                    .transition(reduceMotion ? .identity : .opacity)
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(L10n.string("stats.period.title"))
+
+            statsPeriodChipRow
 
             if selectedPeriod == .month {
                 statsMonthPicker
@@ -516,6 +531,176 @@ struct StatsView: View {
             }
 
             if selectedPeriod == .custom {
+                statsCustomDateFields
+                    .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
+            }
+
+            LazyVGrid(columns: statsFilterMenuColumns, alignment: .leading, spacing: 8) {
+                StatsFilterMenuField(
+                    title: L10n.string("filter.category"),
+                    value: selectedCategoryName,
+                    isActive: selectedCategoryID != nil,
+                    identifier: "stats.filters.category"
+                ) {
+                    Picker(L10n.string("filter.category"), selection: $selectedCategoryID) {
+                        Text(L10n.all).tag(String?.none)
+                        ForEach(categories) { category in
+                            Text(category.name).tag(Optional(category.storageKey))
+                        }
+                    }
+                    .pickerStyle(.inline)
+                }
+
+                if !vehicles.isEmpty {
+                    StatsFilterMenuField(
+                        title: L10n.string("filter.vehicle"),
+                        value: selectedVehicleName,
+                        isActive: selectedVehicleID != nil,
+                        identifier: "stats.filters.vehicle",
+                        avatarSystemImage: selectedVehicle?.systemImage,
+                        avatarPhotoFileName: selectedVehicle?.photoFileName,
+                        avatarIsElectric: selectedVehicle?.fuelType == .electric
+                    ) {
+                        Picker(L10n.string("filter.vehicle"), selection: $selectedVehicleID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(vehicles) { vehicle in
+                                Text(vehicle.name).tag(Optional(vehicle.id))
+                            }
+                        }
+                        .pickerStyle(.inline)
+                    }
+                }
+
+                if !sortedPlaces.isEmpty {
+                    StatsFilterMenuField(
+                        title: L10n.filterPlace,
+                        value: selectedPlaceDisplayName,
+                        isActive: selectedPlaceID != nil,
+                        identifier: "stats.filters.place"
+                    ) {
+                        Picker(L10n.filterPlace, selection: $selectedPlaceID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(sortedPlaces, id: \.id) { place in
+                                Text(place.name).tag(Optional(place.id))
+                            }
+                        }
+                        .pickerStyle(.inline)
+                    }
+                }
+
+                if !journals.isEmpty {
+                    StatsFilterMenuField(
+                        title: L10n.journalStatsFilter,
+                        value: selectedJournalName,
+                        isActive: selectedJournalID != nil,
+                        identifier: "stats.filters.journal"
+                    ) {
+                        Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(journals, id: \.id) { journal in
+                                Text(journal.title).tag(Optional(journal.id))
+                            }
+                        }
+                        .pickerStyle(.inline)
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("stats.filters.card")
+        .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
+        .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasResettableStatsFilters)
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
+    }
+
+    private var statsFilterHeader: some View {
+        HStack(spacing: 8) {
+            Text("\(activeStatsFilterCount)")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(minWidth: 18, minHeight: 18)
+                .padding(.horizontal, 4)
+                .background(TrailhoundBrandColors.brandBottom, in: Capsule())
+                .accessibilityHidden(true)
+
+            Text(L10n.statsFiltersActiveCount(activeStatsFilterCount))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Button {
+                resetStatsFiltersToDefaults()
+            } label: {
+                Text(L10n.statsFiltersClear)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .frame(minHeight: 28)
+                    .glassField(cornerRadius: 10)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("stats.filters.clear")
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statsPeriodChipRow: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    statsPeriodChips
+                }
+            } else {
+                HStack(spacing: 6) {
+                    statsPeriodChips
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L10n.string("stats.period.title"))
+    }
+
+    private var statsPeriodChips: some View {
+        ForEach(StatsPeriod.allCases) { period in
+            GlassFilterChip(
+                title: period.title,
+                isSelected: selectedPeriod == period,
+                namespace: periodChipNamespace,
+                highlightID: "statsPeriodHighlight",
+                expands: true,
+                size: .compact
+            ) {
+                if reduceMotion {
+                    selectedPeriod = period
+                } else {
+                    withAnimation(TrailhoundMotion.gentle) {
+                        selectedPeriod = period
+                    }
+                }
+                TrailhoundHaptics.selection()
+            }
+            .accessibilityIdentifier("stats.filters.period.\(period.rawValue)")
+        }
+    }
+
+    private var statsCustomDateFields: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    statsCustomDateField(
+                        title: L10n.string("stats.period.start"),
+                        date: $customStart
+                    )
+                    statsCustomDateField(
+                        title: L10n.string("stats.period.end"),
+                        date: $customEnd
+                    )
+                }
+            } else {
                 HStack(alignment: .top, spacing: 8) {
                     statsCustomDateField(
                         title: L10n.string("stats.period.start"),
@@ -526,113 +711,29 @@ struct StatsView: View {
                         date: $customEnd
                     )
                 }
-                .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ],
-                alignment: .leading,
-                spacing: 6
-            ) {
-                statsCompactFilterField(
-                    title: L10n.string("filter.category"),
-                    value: selectedCategoryName
-                ) {
-                    Picker(L10n.string("filter.category"), selection: $selectedCategoryID) {
-                        Text(L10n.all).tag(String?.none)
-                        ForEach(categories) { category in
-                            Text(category.name).tag(Optional(category.storageKey))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                }
-
-                if !vehicles.isEmpty {
-                    statsCompactFilterField(
-                        title: L10n.string("filter.vehicle"),
-                        value: selectedVehicleName
-                    ) {
-                        if let selected = vehicles.first(where: { $0.id == selectedVehicleID }) {
-                            VehicleAvatarView(
-                                systemImage: selected.systemImage,
-                                photoFileName: selected.photoFileName,
-                                size: 16,
-                                cornerRadius: 4,
-                                isElectricAccent: selected.fuelType == .electric
-                            )
-                        }
-                        Picker(L10n.string("filter.vehicle"), selection: $selectedVehicleID) {
-                            Text(L10n.all).tag(UUID?.none)
-                            ForEach(vehicles) { vehicle in
-                                Text(vehicle.name).tag(Optional(vehicle.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                    }
-                }
-
-                if !sortedPlaces.isEmpty {
-                    statsCompactFilterField(
-                        title: L10n.filterPlace,
-                        value: selectedPlaceDisplayName
-                    ) {
-                        Picker(L10n.filterPlace, selection: $selectedPlaceID) {
-                            Text(L10n.all).tag(UUID?.none)
-                            ForEach(sortedPlaces, id: \.id) { place in
-                                Text(place.name).tag(Optional(place.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                    }
-                }
-
-                if !journals.isEmpty {
-                    statsCompactFilterField(
-                        title: L10n.journalStatsFilter,
-                        value: selectedJournalName
-                    ) {
-                        Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
-                            Text(L10n.all).tag(UUID?.none)
-                            ForEach(journals, id: \.id) { journal in
-                                Text(journal.title).tag(Optional(journal.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                    }
-                }
-            }
-        }
-        .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
-        .task(id: vehiclePhotoPrefetchID) {
-            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
     }
 
-    private func statsCompactFilterField<Content: View>(
-        title: String,
-        value: String,
-        @ViewBuilder picker: () -> Content
-    ) -> some View {
-        HStack(spacing: 4) {
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            picker()
-                .tint(TrailhoundBrandColors.brandBottom)
-                .font(.caption)
+    private func resetStatsFiltersToDefaults() {
+        let reset = {
+            selectedPeriod = .week
+            selectedCategoryID = nil
+            selectedVehicleID = nil
+            selectedPlaceID = nil
+            selectedJournalID = nil
+            selectedMonth = StatsFilterDefaults.selectedMonth()
+            customStart = StatsFilterDefaults.customStart()
+            customEnd = Date()
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .accessibilityValue(value)
+        TrailhoundHaptics.selection()
+        if reduceMotion {
+            reset()
+        } else {
+            withAnimation(TrailhoundMotion.gentle) {
+                reset()
+            }
+        }
     }
 
     private var selectableMonths: [Date] {
@@ -754,7 +855,7 @@ struct StatsView: View {
     private func statsCustomDateField(title: String, date: Binding<Date>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption2)
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -762,9 +863,12 @@ struct StatsView: View {
             DatePicker(title, selection: date, displayedComponents: .date)
                 .labelsHidden()
                 .datePickerStyle(.compact)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .glassField(cornerRadius: 12)
     }
 
     private var statsGoalCard: some View {
@@ -941,37 +1045,75 @@ struct StatsView: View {
             GridItem(.flexible(), spacing: 5),
             GridItem(.flexible(), spacing: 5)
         ]
+        let items = summaryMetricItems(currencyCode: currencyCode)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 5) {
+            if showsSummarySkeleton {
+                ForEach(0..<items.count, id: \.self) { index in
+                    StatsSummaryTileSkeleton(reduceMotion: reduceMotion)
+                        .accessibilityIdentifier("stats.summary.skeleton.\(index)")
+                }
+            } else {
+                ForEach(items) { item in
+                    summaryMetricCard(
+                        title: item.title,
+                        value: item.value,
+                        trend: item.trend,
+                        previousText: item.previousText,
+                        helpTitle: item.helpTitle,
+                        helpBody: item.helpBody
+                    )
+                }
+            }
+        }
+        .accessibilityElement(children: showsSummarySkeleton ? .ignore : .contain)
+        .accessibilityIdentifier(showsSummarySkeleton ? "stats.summary.skeleton" : "stats.summary.grid")
+        .modifier(StatsSummaryGridAccessibility(isLoading: showsSummarySkeleton))
+        .animation(nil, value: showsSummarySkeleton)
+    }
+
+    private func summaryMetricItems(currencyCode: String) -> [StatsSummaryMetricItem] {
         let skip = heroMetricIDs
         let compareByID = Dictionary(
             uniqueKeysWithValues: periodCompareRows(currencyCode: currencyCode).map { ($0.id, $0) }
         )
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 5) {
-            if !skip.contains("trips") {
-                summaryMetricCard(
+        var items: [StatsSummaryMetricItem] = []
+        if !skip.contains("trips") {
+            items.append(
+                StatsSummaryMetricItem(
+                    id: "trips",
                     title: L10n.string("stats.trips"),
                     value: "\(snap.stats.tripCount)",
                     trend: snap.tripCountTrend,
                     previousText: compareByID["trips"]?.previousText
                 )
-            }
-            if !skip.contains("distance") {
-                summaryMetricCard(
+            )
+        }
+        if !skip.contains("distance") {
+            items.append(
+                StatsSummaryMetricItem(
+                    id: "distance",
                     title: L10n.string("stats.total_distance"),
                     value: snap.stats.totalDistanceText,
                     trend: snap.distanceTrend,
                     previousText: compareByID["distance"]?.previousText
                 )
-            }
-            if !skip.contains("duration") {
-                summaryMetricCard(
+            )
+        }
+        if !skip.contains("duration") {
+            items.append(
+                StatsSummaryMetricItem(
+                    id: "duration",
                     title: L10n.string("stats.total_duration"),
                     value: snap.stats.totalDurationText,
                     trend: snap.durationTrend,
                     previousText: compareByID["duration"]?.previousText
                 )
-            }
-            if !hidesUnscopedCostComparison, !skip.contains("expenses") {
-                summaryMetricCard(
+            )
+        }
+        if !hidesUnscopedCostComparison, !skip.contains("expenses") {
+            items.append(
+                StatsSummaryMetricItem(
+                    id: "expenses",
                     title: L10n.string("stats.total_expenses"),
                     value: costSnapshot.total > 0
                         ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
@@ -979,47 +1121,57 @@ struct StatsView: View {
                     trend: costSnapshot.expenseTrend,
                     previousText: compareByID["expenses"]?.previousText
                 )
-            }
-            summaryMetricCard(
+            )
+        }
+        items.append(contentsOf: [
+            StatsSummaryMetricItem(
+                id: "averageDuration",
                 title: L10n.string("stats.average_duration"),
                 value: snap.stats.averageDurationText
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "averageSpeed",
                 title: L10n.string("stats.average_speed"),
                 value: snap.stats.averageSpeedText,
                 trend: snap.averageSpeedTrend
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "maxSpeed",
                 title: L10n.string("stats.max_speed"),
                 value: snap.stats.maxSpeedText,
                 trend: snap.maxSpeedTrend
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "cruiseSpeed",
                 title: L10n.string("stats.cruise_speed"),
                 value: snap.stats.cruiseSpeedText,
                 trend: snap.cruiseSpeedTrend,
                 helpTitle: L10n.cruiseSpeedHelpTitle,
                 helpBody: L10n.cruiseSpeedHelpBody
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "mostCommonSpeed",
                 title: L10n.string("stats.most_common_speed"),
                 value: snap.stats.mostCommonSpeedText,
                 trend: snap.mostCommonSpeedTrend,
                 helpTitle: L10n.mostCommonSpeedHelpTitle,
                 helpBody: L10n.mostCommonSpeedHelpBody
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "stopDuration",
                 title: L10n.string("stats.stop_duration"),
                 value: snap.stats.stopDurationText,
                 trend: snap.stopDurationTrend
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "estimatedFuel",
                 title: L10n.string("stats.total_estimated_fuel"),
                 value: FuelCostCalculator.formatCost(snap.stats.estimatedFuelCost, currencyCode: currencyCode),
                 trend: snap.fuelCostTrend,
                 previousText: compareByID["fuel"]?.previousText
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "dynamicFuel",
                 title: L10n.string("stats.total_dynamic_fuel"),
                 value: snap.stats.dynamicFuelCost > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicFuelCost, currencyCode: currencyCode)
@@ -1027,36 +1179,42 @@ struct StatsView: View {
                 trend: snap.dynamicFuelCostTrend,
                 helpTitle: L10n.dynamicFuelHelpTitle,
                 helpBody: L10n.dynamicFuelHelpBody
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "costPerKm",
                 title: L10n.string("stats.cost_per_km"),
                 value: snap.stats.costPerKm > 0
                     ? FuelCostCalculator.formatCost(snap.stats.costPerKm, currencyCode: currencyCode)
                     : "—"
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "dynamicCostPerKm",
                 title: L10n.string("stats.dynamic_cost_per_km"),
                 value: snap.stats.dynamicCostPerKm > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerKm, currencyCode: currencyCode)
                     : "—"
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "averageCostPerTrip",
                 title: L10n.string("stats.average_cost_per_trip"),
                 value: snap.stats.averageCostPerTrip > 0
                     ? FuelCostCalculator.formatCost(snap.stats.averageCostPerTrip, currencyCode: currencyCode)
                     : "—"
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "dynamicCostPerTrip",
                 title: L10n.string("stats.dynamic_cost_per_trip"),
                 value: snap.stats.dynamicCostPerTrip > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerTrip, currencyCode: currencyCode)
                     : "—"
-            )
-            summaryMetricCard(
+            ),
+            StatsSummaryMetricItem(
+                id: "nightDriving",
                 title: L10n.string("stats.night_driving"),
                 value: snap.stats.nightDrivingText
             )
-        }
+        ])
+        return items
     }
 
     private func summaryMetricCard(
@@ -2080,6 +2238,144 @@ private struct StatsSnapshotInputs: Equatable {
     let selectedPlaceID: UUID?
     let selectedPlaceName: String?
     let selectedJournalID: UUID?
+}
+
+private struct StatsSummaryMetricItem: Identifiable {
+    let id: String
+    let title: String
+    let value: String
+    var trend: StatsTrend? = nil
+    var previousText: String? = nil
+    var helpTitle: String? = nil
+    var helpBody: String? = nil
+}
+
+private struct StatsSummaryGridAccessibility: ViewModifier {
+    var isLoading: Bool
+
+    func body(content: Content) -> some View {
+        if isLoading {
+            content.accessibilityLabel(L10n.statsSummaryLoading)
+        } else {
+            content
+        }
+    }
+}
+
+private enum StatsFilterDefaults {
+    static func selectedMonth(now: Date = Date()) -> Date {
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: now)) ?? now
+    }
+
+    static func customStart(now: Date = Date()) -> Date {
+        Calendar.current.date(byAdding: .day, value: -30, to: now) ?? now
+    }
+}
+
+/// Title + truncated value + chevron; Menu picker keeps long names on one line.
+private struct StatsFilterMenuField<MenuContent: View>: View {
+    let title: String
+    let value: String
+    let isActive: Bool
+    let identifier: String
+    var avatarSystemImage: String?
+    var avatarPhotoFileName: String?
+    var avatarIsElectric: Bool
+    let menuContent: MenuContent
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(
+        title: String,
+        value: String,
+        isActive: Bool,
+        identifier: String,
+        avatarSystemImage: String? = nil,
+        avatarPhotoFileName: String? = nil,
+        avatarIsElectric: Bool = false,
+        @ViewBuilder menuContent: () -> MenuContent
+    ) {
+        self.title = title
+        self.value = value
+        self.isActive = isActive
+        self.identifier = identifier
+        self.avatarSystemImage = avatarSystemImage
+        self.avatarPhotoFileName = avatarPhotoFileName
+        self.avatarIsElectric = avatarIsElectric
+        self.menuContent = menuContent()
+    }
+
+    var body: some View {
+        Menu {
+            menuContent
+        } label: {
+            fieldLabel
+        }
+        .menuIndicator(.hidden)
+        .menuOrder(.fixed)
+        .buttonStyle(.plain)
+        .tint(TrailhoundBrandColors.brandBottom)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var fieldLabel: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            HStack(spacing: 6) {
+                if let avatarSystemImage {
+                    VehicleAvatarView(
+                        systemImage: avatarSystemImage,
+                        photoFileName: avatarPhotoFileName,
+                        size: 18,
+                        cornerRadius: 5,
+                        isElectricAccent: avatarIsElectric,
+                        showsSymbolPlate: false,
+                        symbolFitsFrame: true
+                    )
+                    .accessibilityHidden(true)
+                }
+
+                Text(value)
+                    .font(.subheadline.weight(isActive ? .semibold : .medium))
+                    .foregroundStyle(isActive ? TrailhoundBrandColors.brandBottom : Color.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.85)
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .glassField(cornerRadius: 12)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(borderColor, lineWidth: 1)
+        }
+    }
+
+    private var borderColor: Color {
+        if isActive {
+            return TrailhoundBrandColors.brandBottom.opacity(0.55)
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.10)
+            : Color.white.opacity(0.35)
+    }
 }
 
 private extension View {

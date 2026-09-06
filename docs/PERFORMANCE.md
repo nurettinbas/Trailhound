@@ -42,7 +42,7 @@ The card sits above a 40-row `List`, so anything that invalidates its body inval
 
 - `AtmosphericBackground` draws its three glows as `RadialGradient`s rather than `Circle().blur(radius:)`. Every frosted row above them was resampling those blur passes.
 - The glows are wider than the screen, so they must stay in an `.overlay` rather than being `ZStack` siblings. As siblings they stretched the layout of every container that puts this behind its content (`ContentView.mainTabs`, `glassListChrome`), pushing toolbar buttons off-screen.
-- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. `cachedImage(for:)` is a memory-only lookup and is safe to call while scrolling.
+- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. Memory and disk are keyed by trip **and** appearance (`{uuid}-light.jpg` / `{uuid}-dark.jpg`). `cachedImage(for:appearance:)` is a memory-only lookup and is safe to call while scrolling. Theme switches reuse the other variant when it is already cached; MapKit runs only on a miss. Legacy unstyled `{uuid}.jpg` files are deleted on first cache init and not reused.
 
 ## Route rendering
 
@@ -208,6 +208,8 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 - Category, vehicle, favorite-place, and travel-journal filters scope **trip summary and chart series** together.
   The monthly goal ring stays unfiltered. Place or journal filter forces the trip fetch path (daily rollups
   have neither dimension); without those chips the 92-day rollup path is unchanged.
+  The Stats filter card is presentation-only (`StatsFilterMenuField` menus + Clear All); it does not add a fetch.
+  While a snapshot is in flight, the summary grid shows packed nested-tile skeletons instead of leaving empty cells.
 - **Pager charts mount lazily per slide.** `StatsDeferredChart` / `StatsDeferredContent` take an
   `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
   build all five Swift Charts when the section first appears — only the visible page (after the row

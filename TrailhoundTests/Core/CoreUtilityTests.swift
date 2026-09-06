@@ -1,4 +1,5 @@
 import CoreLocation
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -416,5 +417,44 @@ final class AppSettingsFuelCurrencyTests: XCTestCase {
         XCTAssertEqual(reloaded.goalMeters(forMonthContaining: previousMonth), 400_000, accuracy: 0.1)
         XCTAssertEqual(reloaded.goalMeters(forMonthContaining: now), 750_000, accuracy: 0.1)
         XCTAssertFalse(reloaded.isGoalEditable(forMonthContaining: previousMonth))
+    }
+}
+
+final class MapSnapshotAppearanceTests: XCTestCase {
+    func testLightAndDarkFileNamesDiffer() {
+        let tripID = UUID()
+        let light = MapSnapshotAppearance.light.fileName(for: tripID)
+        let dark = MapSnapshotAppearance.dark.fileName(for: tripID)
+        XCTAssertNotEqual(light, dark)
+        XCTAssertTrue(light.hasSuffix("-light.jpg"))
+        XCTAssertTrue(dark.hasSuffix("-dark.jpg"))
+        XCTAssertTrue(light.contains(tripID.uuidString))
+        XCTAssertTrue(dark.contains(tripID.uuidString))
+    }
+
+    func testRemovalFileNamesCoverBothAppearances() {
+        let tripID = UUID()
+        let names = Set(MapSnapshotAppearance.fileNames(for: tripID))
+        XCTAssertEqual(names, [
+            MapSnapshotAppearance.light.fileName(for: tripID),
+            MapSnapshotAppearance.dark.fileName(for: tripID)
+        ])
+    }
+
+    func testAppearanceMapsFromColorScheme() {
+        XCTAssertEqual(MapSnapshotAppearance(.light), .light)
+        XCTAssertEqual(MapSnapshotAppearance(.dark), .dark)
+    }
+
+    func testLegacyUnstyledFileNamesAreBareUUIDs() {
+        let tripID = UUID()
+        XCTAssertTrue(MapSnapshotAppearance.isLegacyUnstyledFileName("\(tripID.uuidString).jpg"))
+        XCTAssertFalse(MapSnapshotAppearance.isLegacyUnstyledFileName(
+            MapSnapshotAppearance.light.fileName(for: tripID)
+        ))
+        XCTAssertFalse(MapSnapshotAppearance.isLegacyUnstyledFileName(
+            MapSnapshotAppearance.dark.fileName(for: tripID)
+        ))
+        XCTAssertFalse(MapSnapshotAppearance.isLegacyUnstyledFileName("not-a-uuid.jpg"))
     }
 }

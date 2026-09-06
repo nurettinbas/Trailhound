@@ -140,6 +140,12 @@ enum L10n {
     static var searchWorking: String { string("search.working") }
     static var tripsFilters: String { string("trips.filters") }
     static var tripsFiltersClear: String { string("trips.filters.clear") }
+    static var statsFiltersClear: String { string("stats.filters.clear") }
+    static var statsSummaryLoading: String { string("stats.summary.loading") }
+
+    static func statsFiltersActiveCount(_ count: Int) -> String {
+        String(format: string("stats.filters.active_count"), count)
+    }
     static var actionMerge: String { string("action.merge") }
     static var actionCategory: String { string("action.category") }
     static var actionAcceptCategory: String { string("action.accept_category") }

@@ -120,7 +120,7 @@ Glass cards (`GlassTokens.cardRadius`, `glassRow`):
 - Title (headline)
 - Date range (`DateFormatters` — same style as trip rows)
 - Meta chip row: trip count · distance · `FuelCostCalculator.formatCost(fuelCost)` (hide ₺ when `fuelCost == 0`)
-- Mosaic: up to **3** `TripMapSnapshotCache` thumbs (`coverTripID` first, then next-longest). Prefetch like `VehiclePhotoStore.prefetch`. Memory hit (`cachedImage(for:)`) is scroll-safe; disk/decode stays off the main actor (existing cache contract).
+- Mosaic: up to **3** `TripMapSnapshotCache` thumbs (`coverTripID` first, then next-longest), same appearance as the trip list (`cachedImage(for:appearance:)`). Prefetch like `VehiclePhotoStore.prefetch`. Memory hit is scroll-safe; disk/decode stays off the main actor (existing cache contract).
 - **No live MapKit** in the list.
 
 Empty: `GlassEmptyState` — title **Create your first travel** / **İlk seyahati oluştur**, `systemImage: "map"`, plus the suggestion chip when one exists.
@@ -160,7 +160,7 @@ In-progress trips: control hidden.
 
 ### Stats
 
-Optional journal chip. When set, `StatsSnapshotLoader` uses the trip-fetch path (not 92-day rollups — they have no journal dimension), same as favorite place. Goal ring stays unfiltered.
+Optional journal field on the Stats filter card. When set, `StatsSnapshotLoader` uses the trip-fetch path (not 92-day rollups — they have no journal dimension), same as favorite place. Goal ring stays unfiltered.
 
 ---
 
@@ -176,7 +176,7 @@ Multi-route is heavier than trip-detail reveal. Hard rules:
 | Unselected trips | 1 `MKPolyline` each | Constant overlay count ≈ trip count |
 | Far zoom (20+ members) | Replace individuals with a **convex hull or bounding polyline** (pure geometry, not point clustering) | Overlay count stays bounded |
 | First paint | Do not fault `sortedPoints` | Async `path(...)` memory → disk → build, same as trip detail |
-| List mosaic | `TripMapSnapshotCache` only | No MapKit in `List` |
+| List mosaic | `TripMapSnapshotCache` only (appearance-aware) | No MapKit in `List` |
 
 **Adaptive decimation:** if `sum(displayPointCount)` exceeds 4000, raise per-trip tolerance until the cap holds; always keep each path’s endpoints. Pure function `TravelJournalMapBudget.allocate(pointCounts:totalCap:)` — unit-test with 12 trips.
 

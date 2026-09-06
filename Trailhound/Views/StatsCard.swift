@@ -104,3 +104,56 @@ struct StatsCardPair<Left: View, Right: View>: View {
         .statsCardListRow()
     }
 }
+
+/// Placeholder nested tile so the summary grid stays packed while a snapshot loads.
+struct StatsSummaryTileSkeleton: View {
+    var reduceMotion: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var shimmerPhase = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Capsule()
+                .fill(barFill)
+                .frame(width: 76, height: 7)
+            Capsule()
+                .fill(barFill)
+                .frame(width: 52, height: 11)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .statsNestedTile()
+        .overlay {
+            if !reduceMotion {
+                RoundedRectangle(cornerRadius: StatsCardTokens.nestedRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.14 : 0.10),
+                                Color.clear
+                            ],
+                            startPoint: shimmerPhase ? .trailing : .leading,
+                            endPoint: shimmerPhase ? UnitPoint(x: 1.4, y: 0.5) : UnitPoint(x: 0.4, y: 0.5)
+                        )
+                    )
+                    .allowsHitTesting(false)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: StatsCardTokens.nestedRadius, style: .continuous))
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                shimmerPhase = true
+            }
+        }
+    }
+
+    private var barFill: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.14)
+            : Color.white.opacity(0.55)
+    }
+}
