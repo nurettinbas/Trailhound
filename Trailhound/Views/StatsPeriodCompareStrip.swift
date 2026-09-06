@@ -8,7 +8,8 @@ struct StatsPeriodCompareRow: Identifiable {
     let trend: StatsTrend?
 }
 
-/// Lightweight this-period vs previous-period strip. No charts.
+/// Period-over-period row model plus the trend badge.
+/// The old spreadsheet strip lives on Stats hero / nested tiles now.
 struct StatsPeriodCompareStrip: View {
     let currentLabel: String
     let previousLabel: String

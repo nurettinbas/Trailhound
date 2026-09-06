@@ -72,19 +72,11 @@ struct StatsYearAwardsCard: View {
         VStack(spacing: 6) {
             ZStack {
                 Circle()
-                    .fill(
-                        medal.isUnlocked
-                            ? TrailhoundBrandColors.activeGradient
-                            : LinearGradient(
-                                colors: [Color.secondary.opacity(0.18), Color.secondary.opacity(0.08)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                    )
+                    .fill(medal.kind.badgeFill(unlocked: medal.isUnlocked))
                     .frame(width: 52, height: 52)
                 Image(systemName: medal.isUnlocked ? medal.systemImage : "lock.fill")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(medal.isUnlocked ? Color.white : Color.secondary)
+                    .foregroundStyle(medal.isUnlocked ? Color.white : medal.kind.badgeAccent)
             }
             Text(medal.title)
                 .font(.system(size: 10, weight: .semibold))
@@ -99,8 +91,50 @@ struct StatsYearAwardsCard: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
-        .opacity(medal.isUnlocked ? 1 : 0.72)
+        .opacity(medal.isUnlocked ? 1 : 0.78)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(medal.title), \(medal.isUnlocked ? medal.detail : L10n.string("stats.awards.locked"))")
+    }
+}
+
+private extension StatsYearAwardKind {
+    var badgeAccent: Color {
+        switch self {
+        case .distance: TrailhoundBrandColors.brandBottom
+        case .nightOwl: Color(red: 0.52, green: 0.42, blue: 0.98)
+        case .goal: Color(red: 0.18, green: 0.72, blue: 0.54)
+        case .busiestDay: Color(red: 0.96, green: 0.58, blue: 0.16)
+        case .expensiveVehicle: Color(red: 0.92, green: 0.36, blue: 0.52)
+        case .expensiveMonth: Color(red: 0.22, green: 0.74, blue: 0.86)
+        }
+    }
+
+    var badgeHighlight: Color {
+        switch self {
+        case .distance: TrailhoundBrandColors.brandTop
+        case .nightOwl: Color(red: 0.72, green: 0.58, blue: 1.0)
+        case .goal: Color(red: 0.42, green: 0.90, blue: 0.68)
+        case .busiestDay: Color(red: 1.0, green: 0.80, blue: 0.36)
+        case .expensiveVehicle: Color(red: 1.0, green: 0.58, blue: 0.68)
+        case .expensiveMonth: Color(red: 0.48, green: 0.90, blue: 0.96)
+        }
+    }
+
+    func badgeFill(unlocked: Bool) -> LinearGradient {
+        if unlocked {
+            return LinearGradient(
+                colors: [badgeHighlight, badgeAccent],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                badgeHighlight.opacity(0.28),
+                badgeAccent.opacity(0.16)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }

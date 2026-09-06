@@ -154,6 +154,7 @@
 		A1STATSTREND0000000001 /* StatsTrend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSTREND0000000001 /* StatsTrend.swift */; };
 		A1STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift */; };
 		A1STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */; };
+		A1STATSCARD0000000001 /* StatsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSCARD0000000001 /* StatsCard.swift */; };
 		A1STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */; };
 		A1STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */; };
 		A1STATSYEARCARD0000001 /* StatsYearAwardsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */; };
@@ -476,6 +477,7 @@
 		A2STATSTREND0000000001 /* StatsTrend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsTrend.swift; sourceTree = "<group>"; };
 		A2STATSYEARSNAP0000001 /* StatsYearAwardsSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsSnapshot.swift; sourceTree = "<group>"; };
 		A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsLoader.swift; sourceTree = "<group>"; };
+		A2STATSCARD0000000001 /* StatsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCard.swift; sourceTree = "<group>"; };
 		A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsPeriodCompareStrip.swift; sourceTree = "<group>"; };
 		A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsVehicleCompareList.swift; sourceTree = "<group>"; };
 		A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsYearAwardsCard.swift; sourceTree = "<group>"; };
@@ -852,6 +854,7 @@
 			isa = PBXGroup;
 			children = (
 				809405DA3B0A4D33AFE11517 /* StatsView.swift */,
+				A2STATSCARD0000000001 /* StatsCard.swift */,
 				A2STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift */,
 				A2STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift */,
 				A2STATSYEARCARD0000001 /* StatsYearAwardsCard.swift */,
@@ -1485,6 +1488,7 @@
 				A2VEHICLEENTITYSRC00001 /* VehicleEntity.swift in Sources */,
 				C34CA953FA9445FC9738421B /* StatsViewModel.swift in Sources */,
 				E5BA2FB0704F498A84A79A26 /* StatsView.swift in Sources */,
+				A1STATSCARD0000000001 /* StatsCard.swift in Sources */,
 				A1STATSPERCOMPARE00001 /* StatsPeriodCompareStrip.swift in Sources */,
 				A1STATSVEHCOMPARE00001 /* StatsVehicleCompareList.swift in Sources */,
 				A1STATSYEARCARD0000001 /* StatsYearAwardsCard.swift in Sources */,

@@ -168,57 +168,20 @@ struct StatsView: View {
         List {
             Section(L10n.string("filter.title")) {
                 statsFilterCard
-                    .glassListRow()
+                    .statsFullCard()
             }
 
-            Section(L10n.string("stats.goal.section")) {
-                HStack(spacing: 20) {
-                    goalRing
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(L10n.string("stats.goal.monthly"))
-                            .font(.subheadline.weight(.semibold))
-                        Text(goalRangeLabel)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text("\(DateFormatters.formatDistance(snap.goalDistanceMeters)) / \(DateFormatters.formatDistance(goalTargetMeters))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if isGoalEditable {
-                            Stepper(
-                                value: Binding(
-                                    get: { Int(goalTargetMeters / 1000) },
-                                    set: { newValue in
-                                        settings.setMonthlyGoalMeters(Double(newValue) * 1000)
-                                        TrailhoundHaptics.selection()
-                                    }
-                                ),
-                                in: 50...2000,
-                                step: 50
-                            ) {
-                                Text(L10n.string("stats.goal.target_km"))
-                                    .font(.caption)
-                            }
-                        } else {
-                            Text("\(L10n.string("stats.goal.target_km")): \(DateFormatters.formatDistance(goalTargetMeters))")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+            Section {
+                StatsCardPair {
+                    statsGoalCard
+                } right: {
+                    statsHeroCard(currencyCode: fuelCurrencyCode)
                 }
-                .padding(.vertical, 4)
-                .glassListRow()
             }
 
             Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
-                VStack(alignment: .leading, spacing: 12) {
-                    summaryMetricsGrid(currencyCode: fuelCurrencyCode)
-                    StatsPeriodCompareStrip(
-                        currentLabel: compareCurrentLabel,
-                        previousLabel: comparePreviousLabel,
-                        rows: periodCompareRows(currencyCode: fuelCurrencyCode)
-                    )
-                }
-                .statsSummaryGlassRow(.only)
+                summaryMetricsGrid(currencyCode: fuelCurrencyCode)
+                    .statsFullCard(contentInset: StatsCardTokens.summaryGridInset)
             }
             .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
             .id(fuelCurrencyCode)
@@ -236,22 +199,24 @@ struct StatsView: View {
                         dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
                     }
                     .frame(maxWidth: .infinity)
-                    .statsPairedChartCard()
-                    .statsPairedChartsListRow()
+                    .statsFullCard()
                 }
                 .id("daily-\(statsFilterFingerprint)")
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
             }
 
+            if showsVehicleCompareList {
+                Section {
+                    StatsVehicleCompareList(
+                        rows: vehicleCompareRows,
+                        currencyCode: fuelCurrencyCode
+                    )
+                    .statsFullCard()
+                }
+            }
+
             if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
                 Section(titledWithScope("stats.chart.vehicles_section", scope: statsTripChartScopeLabel)) {
-                    if showsVehicleCompareList {
-                        StatsVehicleCompareList(
-                            rows: vehicleCompareRows,
-                            currencyCode: fuelCurrencyCode
-                        )
-                        .statsSummaryGlassRow(.first)
-                    }
                     StatsChartPager(
                         pageCount: vehicleChartKinds.count,
                         contentHeight: StatsChartPagerMetrics.donutContentHeight,
@@ -261,8 +226,7 @@ struct StatsView: View {
                         vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
                     }
                     .frame(maxWidth: .infinity)
-                    .statsPairedChartCard()
-                    .statsPairedChartsListRow()
+                    .statsFullCard()
                 }
                 .id("vehicles-\(statsFilterFingerprint)")
             }
@@ -278,8 +242,7 @@ struct StatsView: View {
                         categoryChartPageContent(kind: categoryChartKinds[index], pageIndex: index)
                     }
                     .frame(maxWidth: .infinity)
-                    .statsPairedChartCard()
-                    .statsPairedChartsListRow()
+                    .statsFullCard()
                 }
                 .id("categories-\(statsFilterFingerprint)")
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
@@ -297,7 +260,7 @@ struct StatsView: View {
                         scheduleYearAwardsRefresh(delayMilliseconds: 0)
                     }
                 )
-                .glassListRow()
+                .statsFullCard()
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
@@ -522,15 +485,16 @@ struct StatsView: View {
     }
 
     private var statsFilterCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(StatsPeriod.allCases) { period in
                     GlassFilterChip(
                         title: period.title,
                         isSelected: selectedPeriod == period,
                         namespace: periodChipNamespace,
                         highlightID: "statsPeriodHighlight",
-                        expands: true
+                        expands: true,
+                        size: .compact
                     ) {
                         if reduceMotion {
                             selectedPeriod = period
@@ -552,7 +516,7 @@ struct StatsView: View {
             }
 
             if selectedPeriod == .custom {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
                     statsCustomDateField(
                         title: L10n.string("stats.period.start"),
                         date: $customStart
@@ -565,111 +529,110 @@ struct StatsView: View {
                 .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
 
-            HStack(spacing: 12) {
-                Text(L10n.string("filter.category"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Spacer(minLength: 8)
-
-                Picker(L10n.string("filter.category"), selection: $selectedCategoryID) {
-                    Text(L10n.all).tag(String?.none)
-                    ForEach(categories) { category in
-                        Text(category.name).tag(Optional(category.storageKey))
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(TrailhoundBrandColors.brandBottom)
-                .labelsHidden()
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(L10n.string("filter.category"))
-            .accessibilityValue(selectedCategoryName)
-
-            if !vehicles.isEmpty {
-                HStack(spacing: 12) {
-                    Text(L10n.string("filter.vehicle"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 8)
-
-                    if let selected = vehicles.first(where: { $0.id == selectedVehicleID }) {
-                        VehicleAvatarView(
-                            systemImage: selected.systemImage,
-                            photoFileName: selected.photoFileName,
-                            size: 22,
-                            cornerRadius: 6,
-                            isElectricAccent: selected.fuelType == .electric
-                        )
-                    }
-
-                    Picker(L10n.string("filter.vehicle"), selection: $selectedVehicleID) {
-                        Text(L10n.all).tag(UUID?.none)
-                        ForEach(vehicles) { vehicle in
-                            Text(vehicle.name).tag(Optional(vehicle.id))
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                alignment: .leading,
+                spacing: 6
+            ) {
+                statsCompactFilterField(
+                    title: L10n.string("filter.category"),
+                    value: selectedCategoryName
+                ) {
+                    Picker(L10n.string("filter.category"), selection: $selectedCategoryID) {
+                        Text(L10n.all).tag(String?.none)
+                        ForEach(categories) { category in
+                            Text(category.name).tag(Optional(category.storageKey))
                         }
                     }
                     .pickerStyle(.menu)
-                    .tint(TrailhoundBrandColors.brandBottom)
                     .labelsHidden()
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(L10n.string("filter.vehicle"))
-                .accessibilityValue(selectedVehicleName)
-            }
 
-            if !sortedPlaces.isEmpty {
-                HStack(spacing: 12) {
-                    Text(L10n.filterPlace)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 8)
-
-                    Picker(L10n.filterPlace, selection: $selectedPlaceID) {
-                        Text(L10n.all).tag(UUID?.none)
-                        ForEach(sortedPlaces, id: \.id) { place in
-                            Text(place.name).tag(Optional(place.id))
+                if !vehicles.isEmpty {
+                    statsCompactFilterField(
+                        title: L10n.string("filter.vehicle"),
+                        value: selectedVehicleName
+                    ) {
+                        if let selected = vehicles.first(where: { $0.id == selectedVehicleID }) {
+                            VehicleAvatarView(
+                                systemImage: selected.systemImage,
+                                photoFileName: selected.photoFileName,
+                                size: 16,
+                                cornerRadius: 4,
+                                isElectricAccent: selected.fuelType == .electric
+                            )
                         }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .labelsHidden()
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(L10n.filterPlace)
-                .accessibilityValue(selectedPlaceDisplayName)
-            }
-
-            if !journals.isEmpty {
-                HStack(spacing: 12) {
-                    Text(L10n.journalStatsFilter)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 8)
-
-                    Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
-                        Text(L10n.all).tag(UUID?.none)
-                        ForEach(journals, id: \.id) { journal in
-                            Text(journal.title).tag(Optional(journal.id))
+                        Picker(L10n.string("filter.vehicle"), selection: $selectedVehicleID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(vehicles) { vehicle in
+                                Text(vehicle.name).tag(Optional(vehicle.id))
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
                     }
-                    .pickerStyle(.menu)
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .labelsHidden()
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(L10n.journalStatsFilter)
-                .accessibilityValue(selectedJournalName)
+
+                if !sortedPlaces.isEmpty {
+                    statsCompactFilterField(
+                        title: L10n.filterPlace,
+                        value: selectedPlaceDisplayName
+                    ) {
+                        Picker(L10n.filterPlace, selection: $selectedPlaceID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(sortedPlaces, id: \.id) { place in
+                                Text(place.name).tag(Optional(place.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                    }
+                }
+
+                if !journals.isEmpty {
+                    statsCompactFilterField(
+                        title: L10n.journalStatsFilter,
+                        value: selectedJournalName
+                    ) {
+                        Picker(L10n.journalStatsFilter, selection: $selectedJournalID) {
+                            Text(L10n.all).tag(UUID?.none)
+                            ForEach(journals, id: \.id) { journal in
+                                Text(journal.title).tag(Optional(journal.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                    }
+                }
             }
         }
-        .padding(.vertical, 6)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+    }
+
+    private func statsCompactFilterField<Content: View>(
+        title: String,
+        value: String,
+        @ViewBuilder picker: () -> Content
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            picker()
+                .tint(TrailhoundBrandColors.brandBottom)
+                .font(.caption)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
     }
 
     private var selectableMonths: [Date] {
@@ -738,7 +701,7 @@ struct StatsView: View {
                 }
                 .foregroundStyle(TrailhoundBrandColors.brandBottom)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
                 .contentShape(Rectangle())
             }
             .accessibilityLabel(L10n.string("stats.period.select_month"))
@@ -780,7 +743,7 @@ struct StatsView: View {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(enabled ? Color.primary : Color.primary.opacity(0.28))
-                .frame(width: 36, height: 36)
+                .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -789,9 +752,9 @@ struct StatsView: View {
     }
 
     private func statsCustomDateField(title: String, date: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -804,19 +767,161 @@ struct StatsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var statsGoalCard: some View {
+        VStack(spacing: 8) {
+            goalRing
+            VStack(spacing: 2) {
+                Text(L10n.string("stats.goal.monthly"))
+                    .font(.caption.weight(.semibold))
+                Text(goalRangeLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                Text("\(DateFormatters.formatDistance(snap.goalDistanceMeters)) / \(DateFormatters.formatDistance(goalTargetMeters))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .multilineTextAlignment(.center)
+
+            if isGoalEditable {
+                VStack(spacing: 4) {
+                    Text(L10n.string("stats.goal.target_km"))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                    statsGoalStepper
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statsGoalStepper: some View {
+        let kilometers = Int(goalTargetMeters / 1000)
+        let minimum = 50
+        let maximum = 2000
+        let step = 50
+        return HStack(spacing: 0) {
+            Button {
+                guard kilometers > minimum else { return }
+                settings.setMonthlyGoalMeters(Double(kilometers - step) * 1000)
+                TrailhoundHaptics.selection()
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .frame(width: 28, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .disabled(kilometers <= minimum)
+
+            Rectangle()
+                .fill(Color.primary.opacity(0.2))
+                .frame(width: 0.5, height: 12)
+
+            Button {
+                guard kilometers < maximum else { return }
+                settings.setMonthlyGoalMeters(Double(kilometers + step) * 1000)
+                TrailhoundHaptics.selection()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .frame(width: 28, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .disabled(kilometers >= maximum)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .glassField(cornerRadius: 12)
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n.string("stats.goal.target_km"))
+        .accessibilityValue(DateFormatters.formatDistance(goalTargetMeters))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                guard kilometers < maximum else { return }
+                settings.setMonthlyGoalMeters(Double(kilometers + step) * 1000)
+            case .decrement:
+                guard kilometers > minimum else { return }
+                settings.setMonthlyGoalMeters(Double(kilometers - step) * 1000)
+            @unknown default:
+                break
+            }
+            TrailhoundHaptics.selection()
+        }
+    }
+
+    private func statsHeroCard(currencyCode: String) -> some View {
+        let rows = heroCompareRows(currencyCode: currencyCode)
+        return VStack(alignment: .leading, spacing: 8) {
+            ForEach(rows) { row in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(row.title)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(row.currentText)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Spacer(minLength: 0)
+                        StatsTrendBadge(trend: row.trend, metricName: row.title)
+                    }
+                    Text("\(comparePreviousLabel) \(row.previousText)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(heroAccessibilityLabel(for: row))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func heroAccessibilityLabel(for row: StatsPeriodCompareRow) -> String {
+        var parts = [
+            row.title,
+            "\(compareCurrentLabel) \(row.currentText)",
+            "\(comparePreviousLabel) \(row.previousText)"
+        ]
+        if let trend = row.trend {
+            parts.append(trend.accessibilityLabel(metricName: row.title))
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private func heroCompareRows(currencyCode: String) -> [StatsPeriodCompareRow] {
+        let byID = Dictionary(uniqueKeysWithValues: periodCompareRows(currencyCode: currencyCode).map { ($0.id, $0) })
+        let ids = hidesUnscopedCostComparison
+            ? ["distance", "duration", "trips"]
+            : ["distance", "duration", "expenses"]
+        return ids.compactMap { byID[$0] }
+    }
+
+    private var heroMetricIDs: Set<String> {
+        hidesUnscopedCostComparison
+            ? ["distance", "duration", "trips"]
+            : ["distance", "duration", "expenses"]
+    }
+
     private var goalRing: some View {
         ZStack {
             Circle()
-                .stroke(Color.blue.opacity(0.15), lineWidth: 10)
+                .stroke(Color.blue.opacity(0.15), lineWidth: 7)
             Circle()
                 .trim(from: 0, to: animatedProgress)
-                .stroke(Color.blue, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                .stroke(Color.blue, style: StrokeStyle(lineWidth: 7, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Text(goalPercentText)
-                .font(.caption.bold())
+                .font(.caption2.weight(.bold))
                 .numericTextAnimation(value: goalPercentText)
         }
-        .frame(width: 72, height: 72)
+        .frame(width: 56, height: 56)
         .accessibilityLabel(L10n.string("stats.goal.progress_accessibility"))
         .accessibilityValue("\(goalPercentText), \(goalRangeLabel)")
     }
@@ -833,33 +938,46 @@ struct StatsView: View {
 
     private func summaryMetricsGrid(currencyCode: String) -> some View {
         let columns = [
-            GridItem(.flexible(), spacing: 6),
-            GridItem(.flexible(), spacing: 6),
-            GridItem(.flexible(), spacing: 6)
+            GridItem(.flexible(), spacing: 5),
+            GridItem(.flexible(), spacing: 5)
         ]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
-            summaryMetricCard(
-                title: L10n.string("stats.trips"),
-                value: "\(snap.stats.tripCount)",
-                trend: snap.tripCountTrend
-            )
-            summaryMetricCard(
-                title: L10n.string("stats.total_distance"),
-                value: snap.stats.totalDistanceText,
-                trend: snap.distanceTrend
-            )
-            summaryMetricCard(
-                title: L10n.string("stats.total_duration"),
-                value: snap.stats.totalDurationText,
-                trend: snap.durationTrend
-            )
-            if !hidesUnscopedCostComparison {
+        let skip = heroMetricIDs
+        let compareByID = Dictionary(
+            uniqueKeysWithValues: periodCompareRows(currencyCode: currencyCode).map { ($0.id, $0) }
+        )
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 5) {
+            if !skip.contains("trips") {
+                summaryMetricCard(
+                    title: L10n.string("stats.trips"),
+                    value: "\(snap.stats.tripCount)",
+                    trend: snap.tripCountTrend,
+                    previousText: compareByID["trips"]?.previousText
+                )
+            }
+            if !skip.contains("distance") {
+                summaryMetricCard(
+                    title: L10n.string("stats.total_distance"),
+                    value: snap.stats.totalDistanceText,
+                    trend: snap.distanceTrend,
+                    previousText: compareByID["distance"]?.previousText
+                )
+            }
+            if !skip.contains("duration") {
+                summaryMetricCard(
+                    title: L10n.string("stats.total_duration"),
+                    value: snap.stats.totalDurationText,
+                    trend: snap.durationTrend,
+                    previousText: compareByID["duration"]?.previousText
+                )
+            }
+            if !hidesUnscopedCostComparison, !skip.contains("expenses") {
                 summaryMetricCard(
                     title: L10n.string("stats.total_expenses"),
                     value: costSnapshot.total > 0
                         ? FuelCostCalculator.formatCost(costSnapshot.total, currencyCode: currencyCode)
                         : "—",
-                    trend: costSnapshot.expenseTrend
+                    trend: costSnapshot.expenseTrend,
+                    previousText: compareByID["expenses"]?.previousText
                 )
             }
             summaryMetricCard(
@@ -898,7 +1016,8 @@ struct StatsView: View {
             summaryMetricCard(
                 title: L10n.string("stats.total_estimated_fuel"),
                 value: FuelCostCalculator.formatCost(snap.stats.estimatedFuelCost, currencyCode: currencyCode),
-                trend: snap.fuelCostTrend
+                trend: snap.fuelCostTrend,
+                previousText: compareByID["fuel"]?.previousText
             )
             summaryMetricCard(
                 title: L10n.string("stats.total_dynamic_fuel"),
@@ -944,44 +1063,70 @@ struct StatsView: View {
         title: String,
         value: String,
         trend: StatsTrend? = nil,
+        previousText: String? = nil,
         helpTitle: String? = nil,
         helpBody: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .center, spacing: 6) {
+            HStack(alignment: .center, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 18
+                        side: 16
                     )
                 }
+                Spacer(minLength: 0)
             }
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
+            .frame(height: StatsCardTokens.nestedTileTitleRowHeight)
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+                Spacer(minLength: 0)
+                StatsTrendBadge(trend: trend, metricName: title)
+            }
+
+            Text(previousText.map { "\(comparePreviousLabel) \($0)" } ?? " ")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.65)
-            StatsTrendBadge(trend: trend, metricName: title)
+                .minimumScaleFactor(0.8)
+                .frame(height: StatsCardTokens.nestedTilePreviousLineHeight, alignment: .topLeading)
+                .opacity(previousText == nil ? 0 : 1)
+                .accessibilityHidden(previousText == nil)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.06))
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .statsNestedTile()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(summaryAccessibilityLabel(title: title, value: value, trend: trend))
+        .accessibilityLabel(
+            summaryAccessibilityLabel(
+                title: title,
+                value: value,
+                trend: trend,
+                previousText: previousText
+            )
+        )
     }
 
-    private func summaryAccessibilityLabel(title: String, value: String, trend: StatsTrend?) -> String {
+    private func summaryAccessibilityLabel(
+        title: String,
+        value: String,
+        trend: StatsTrend?,
+        previousText: String? = nil
+    ) -> String {
         var parts = [title, value]
+        if let previousText {
+            parts.append("\(comparePreviousLabel) \(previousText)")
+        }
         if let trend {
             parts.append(trend.accessibilityLabel(metricName: title))
         }
@@ -1032,12 +1177,11 @@ struct StatsView: View {
     @AxisContentBuilder
     private func dailyChartXAxis(days: [Date]) -> some AxisContent {
         AxisMarks(values: dailyAxisLabelDates(from: days)) { value in
-            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
-            AxisTick()
             if let date = value.as(Date.self) {
                 AxisValueLabel(centered: true) {
                     Text(dailyAxisDayLabel(date))
                         .font(.caption2)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
@@ -1432,35 +1576,8 @@ struct StatsView: View {
         }
     }
 
-    @ViewBuilder
-    private func dailyBarValueLabel(text: String?, barCount: Int) -> some View {
-        if let text {
-            StatsBarValueLabel(text: text, barCount: barCount)
-        }
-    }
-
-    private func dailyDistanceBarText(_ meters: Double, barCount: Int) -> String? {
-        guard meters > 0 else { return nil }
-        if barCount <= 8 {
-            return DateFormatters.formatDistance(meters)
-        }
-        let kilometers = meters / 1000
-        return kilometers >= 10
-            ? String(format: "%.0f", kilometers)
-            : String(format: "%.1f", kilometers)
-    }
-
-    private func dailySpeedBarText(_ kmh: Double, barCount: Int) -> String? {
-        guard kmh > 0 else { return nil }
-        if barCount <= 8 {
-            return L10n.formatSpeedKmh(kmh)
-        }
-        return String(format: "%.0f", kmh)
-    }
-
     private func dailyDistanceChartBody(_ dailyChartData: [DailyDistance]) -> some View {
         let days = dailyChartData.map(\.day)
-        let barCount = dailyChartData.count
         return Chart(dailyChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1468,15 +1585,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.distanceBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: dailyDistanceBarText(item.distanceMeters, barCount: barCount),
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyChartData.map(\.distanceKilometers).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.distance_km"))
         .frame(height: 200)
@@ -1484,7 +1595,6 @@ struct StatsView: View {
 
     private func dailyDurationChartBody(_ dailyDurationChartData: [DailyDuration]) -> some View {
         let days = dailyDurationChartData.map(\.day)
-        let barCount = dailyDurationChartData.count
         return Chart(dailyDurationChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1492,15 +1602,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.durationBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: item.duration > 0 ? DateFormatters.formatDuration(item.duration) : nil,
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyDurationChartData.map(\.durationHours).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
         .frame(height: 200)
@@ -1508,7 +1612,6 @@ struct StatsView: View {
 
     private func dailyAverageSpeedChartBody(_ dailyAverageSpeedChartData: [DailyAverageSpeed]) -> some View {
         let days = dailyAverageSpeedChartData.map(\.day)
-        let barCount = dailyAverageSpeedChartData.count
         return Chart(dailyAverageSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1516,15 +1619,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.averageSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyAverageSpeedChartData.map(\.speedKmh).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
@@ -1532,7 +1629,6 @@ struct StatsView: View {
 
     private func dailyMaxSpeedChartBody(_ dailyMaxSpeedChartData: [DailyMaxSpeed]) -> some View {
         let days = dailyMaxSpeedChartData.map(\.day)
-        let barCount = dailyMaxSpeedChartData.count
         return Chart(dailyMaxSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1540,15 +1636,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.maxSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyMaxSpeedChartData.map(\.speedKmh).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
@@ -1556,7 +1646,6 @@ struct StatsView: View {
 
     private func dailyCruiseSpeedChartBody(_ dailyCruiseSpeedChartData: [DailyCruiseSpeed]) -> some View {
         let days = dailyCruiseSpeedChartData.map(\.day)
-        let barCount = dailyCruiseSpeedChartData.count
         return Chart(dailyCruiseSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1564,15 +1653,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.cruiseSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyCruiseSpeedChartData.map(\.speedKmh).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
@@ -1580,7 +1663,6 @@ struct StatsView: View {
 
     private func dailyMostCommonSpeedChartBody(_ dailyMostCommonSpeedChartData: [DailyMostCommonSpeed]) -> some View {
         let days = dailyMostCommonSpeedChartData.map(\.day)
-        let barCount = dailyMostCommonSpeedChartData.count
         return Chart(dailyMostCommonSpeedChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1588,15 +1670,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.mostCommonSpeedBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: dailySpeedBarText(item.speedKmh, barCount: barCount),
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyMostCommonSpeedChartData.map(\.speedKmh).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
@@ -1604,7 +1680,6 @@ struct StatsView: View {
 
     private func dailyStopDurationChartBody(_ dailyStopDurationChartData: [DailyStopDuration]) -> some View {
         let days = dailyStopDurationChartData.map(\.day)
-        let barCount = dailyStopDurationChartData.count
         return Chart(dailyStopDurationChartData) { item in
             BarMark(
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1612,15 +1687,9 @@ struct StatsView: View {
             )
             .foregroundStyle(StatsChartTheme.stopDurationBarFill)
             .cornerRadius(StatsChartTheme.barCornerRadius)
-            .annotation(position: .top, spacing: 2) {
-                dailyBarValueLabel(
-                    text: item.duration > 0 ? DateFormatters.formatDuration(item.duration) : nil,
-                    barCount: barCount
-                )
-            }
         }
         .chartBarValueHeadroom(maxValue: dailyStopDurationChartData.map(\.durationHours).max() ?? 0)
-        .chartStatsYAxisStyle()
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
         .frame(height: 200)
@@ -1628,8 +1697,6 @@ struct StatsView: View {
 
     private func dailyFuelCostChartBody(_ dailyFuelCostChartData: [DailyFuelCost]) -> some View {
         let days = dailyFuelCostChartData.map(\.day)
-        let barCount = dailyFuelCostChartData.count
-        let showValueLabels = barCount <= 10
         let avgLabel = L10n.string("stats.chart.fuel_avg")
         let estLabel = L10n.string("stats.chart.fuel_estimated")
         let avgColor = Color(red: 0.28, green: 0.78, blue: 0.86)
@@ -1638,7 +1705,6 @@ struct StatsView: View {
 
         return Chart {
             ForEach(dailyFuelCostChartData) { item in
-                let hostOnAvg = item.cost >= item.dynamicCost
                 BarMark(
                     x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
                     y: .value(L10n.string("stats.chart.fuel_cost"), item.cost)
@@ -1646,17 +1712,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value("series", avgLabel))
                 .position(by: .value("series", avgLabel))
                 .cornerRadius(StatsChartTheme.barCornerRadius)
-                .annotation(position: .top, spacing: 2) {
-                    if showValueLabels, hostOnAvg {
-                        dailyFuelDualValueLabel(
-                            avg: item.cost,
-                            estimated: item.dynamicCost,
-                            avgColor: avgColor,
-                            estColor: estColor,
-                            barCount: barCount
-                        )
-                    }
-                }
 
                 BarMark(
                     x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
@@ -1665,17 +1720,6 @@ struct StatsView: View {
                 .foregroundStyle(by: .value("series", estLabel))
                 .position(by: .value("series", estLabel))
                 .cornerRadius(StatsChartTheme.barCornerRadius)
-                .annotation(position: .top, spacing: 2) {
-                    if showValueLabels, !hostOnAvg {
-                        dailyFuelDualValueLabel(
-                            avg: item.cost,
-                            estimated: item.dynamicCost,
-                            avgColor: avgColor,
-                            estColor: estColor,
-                            barCount: barCount
-                        )
-                    }
-                }
             }
         }
         .chartForegroundStyleScale([
@@ -1683,43 +1727,11 @@ struct StatsView: View {
             estLabel: estColor
         ])
         .chartLegend(position: .bottom, alignment: .leading)
-        // Extra headroom for the two-line stacked label.
-        .chartYScale(domain: [0, max(maxValue * 1.42, 1)])
-        .chartStatsYAxisStyle()
+        .chartYScale(domain: [0, max(maxValue * 1.12, 1)])
+        .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
         .chartYAxisLabel(L10n.string("stats.chart.fuel_cost"))
         .frame(height: 200)
-    }
-
-    /// Compact dual label (no currency symbol) so Avg + Est. stay readable above grouped bars.
-    @ViewBuilder
-    private func dailyFuelDualValueLabel(
-        avg: Double,
-        estimated: Double,
-        avgColor: Color,
-        estColor: Color,
-        barCount: Int
-    ) -> some View {
-        // Dual stack needs smaller type than single-series bars.
-        let font = StatsChartTheme.barValueLabelFont(barCount: max(barCount + 6, 14))
-        VStack(spacing: 0) {
-            if avg > 0 {
-                Text(compactFuelBarAmount(avg))
-                    .font(font)
-                    .foregroundStyle(avgColor)
-            }
-            if estimated > 0 {
-                Text(compactFuelBarAmount(estimated))
-                    .font(font)
-                    .foregroundStyle(estColor)
-            }
-        }
-        .monospacedDigit()
-        .allowsTightening(true)
-    }
-
-    private func compactFuelBarAmount(_ amount: Double) -> String {
-        String(format: "%.0f", amount.rounded())
     }
 
     private func statsDonutLegendItem(
@@ -2070,50 +2082,10 @@ private struct StatsSnapshotInputs: Equatable {
     let selectedJournalID: UUID?
 }
 
-private enum StatsChartPairTokens {
-    static let cardSpacing: CGFloat = 12
-    static let cardContentInset: CGFloat = 14
-}
-
 private extension View {
     func statsHiddenDonutLegend(height: CGFloat) -> some View {
         chartLegend(.hidden)
             .frame(height: height)
-    }
-
-    func statsPairedChartCard() -> some View {
-        glassCard(cornerRadius: GlassTokens.cardRadius, contentInset: StatsChartPairTokens.cardContentInset)
-    }
-
-    func statsPairedChartsListRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(
-                EdgeInsets(
-                    top: 6,
-                    leading: GlassTokens.panelHorizontalInset,
-                    bottom: 6,
-                    trailing: GlassTokens.panelHorizontalInset
-                )
-            )
-    }
-
-    /// Compact glass rows for the Stats summary / period-total strip.
-    func statsSummaryGlassRow(_ position: GlassRowPosition) -> some View {
-        let horizontal = GlassTokens.listContentHorizontalInset
-        let insets: EdgeInsets
-        switch position {
-        case .only:
-            insets = EdgeInsets(top: 8, leading: horizontal, bottom: 8, trailing: horizontal)
-        case .first:
-            insets = EdgeInsets(top: 8, leading: horizontal, bottom: 3, trailing: horizontal)
-        case .middle:
-            insets = EdgeInsets(top: 3, leading: horizontal, bottom: 3, trailing: horizontal)
-        case .last:
-            insets = EdgeInsets(top: 3, leading: horizontal, bottom: 8, trailing: horizontal)
-        }
-        return glassRow(position: position)
-            .listRowInsets(insets)
     }
 }
 

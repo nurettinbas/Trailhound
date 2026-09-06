@@ -165,6 +165,8 @@ enum L10n {
     static var dynamicFuel: String { string("label.dynamic_fuel") }
     static var dynamicFuelHelpTitle: String { string("label.dynamic_fuel.help.title") }
     static var dynamicFuelHelpBody: String { string("label.dynamic_fuel.help.body") }
+    static var loggedVehicleExpensesHelpTitle: String { string("stats.compare.vehicles_help.title") }
+    static var loggedVehicleExpensesHelpBody: String { string("stats.compare.vehicles_help.body") }
     static var maxSpeed: String { string("label.max_speed") }
     static var averageSpeed: String { string("label.average_speed") }
     static var cruiseSpeed: String { string("label.cruise_speed") }

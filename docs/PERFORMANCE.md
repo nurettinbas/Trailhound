@@ -183,8 +183,11 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 ## Stats tab
 
+- **One chrome, still a `List`.** Filter, 2-up goal/hero, summary, each chart pager, and year awards are separate `List` rows. Do not collapse Stats into a `ScrollView` + `VStack` of cards (loses below-fold deferral).
+- **One `Material` per card.** `statsFullCard` / `statsHalfCard` use `glassCard` on a **clear** list-row background. Nested tiles are frost *fills*, not extra `ultraThinMaterial`. Never stack `glassListRow` behind an inner `glassCard`.
+- **No `GeometryReader` in the 2-up row.** Half cards use a fixed `StatsCardTokens.halfMinHeight`.
 - Chart aggregations build into a `StatsDisplaySnapshot` on filter/store changes, not on every scroll frame.
-- Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable).
+- Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable). The 2-up hero must not contain Swift Charts.
 - **Nothing in the body computes an aggregation.** Goal distance lives on the snapshot as
   `goalDistanceMeters` and is always the **goal calendar month's** total (not the week/custom
   window). Week → current month; month filter → selected month; custom → month of the range end.
@@ -211,9 +214,9 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   scrolls into view). Vehicle cost charts use the same pattern via `VehicleCostSnapshotLoader`.
 - **Comparison surfaces stay off the tab-open critical path.** Month-over-month trends are
   `StatsTrend` values on the existing trip/cost snapshots (MTD is a *slice* of the already-fetched
-  previous month — the fetch window is still `selected ∪ previous ∪ goalMonth`). Vehicle ranking
-  rows are built from `VehicleCompareSeed` + trip distances with Capsule bars, not Swift Charts, and
-  live in the vehicles section (below the fold). The year Awards card has its own
+  previous month — the fetch window is still `selected ∪ previous ∪ goalMonth`). Logged vehicle
+  expenses are built from `VehicleCompareSeed` + trip distances with Capsule bars, not Swift Charts,
+  on their **own** List row (below the fold, same cost snapshot — no extra fetch). The year Awards card has its own
   `StatsYearAwardsLoader` (`StatsYearAwardsBuild` signpost) that must **not** start in Stats
   `onAppear`: it waits until the first `StatsDisplaySnapshot` lands, then idles ~300 ms (or runs
   immediately if the Awards row has appeared). Year data is rollups + expenses only — never
@@ -297,7 +300,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 2. Pairing → edit vehicle name with keyboard — should feel smooth vs list screens.
 3. Start recording, scroll trip list, switch tabs — CPU should drop on non-Trips tabs.
 4. Open a long trip detail — first frame must not hitch on GPS fault; map stays full-screen while the panel rises. Short trips may run map-clear + panel rise + route ticks; medium/long trips settle instantly. The details card stays at a fixed height (scroll inside; no grabber resize). Toolbar fullscreen must expand in place (panel recedes + camera opens together) — no second map sheet, no black flash.
-5. Stats tab with many trips — scroll through charts; rows below the fold should appear after placeholders, without blocking the summary header.
+5. Stats tab with many trips — first viewport (filter + 2-up + summary tiles) must not hitch; chart rows below the fold appear after placeholders. `StatsYearAwardsBuild` must not overlap tab-open `StatsSnapshotBuild`.
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.
 8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails.

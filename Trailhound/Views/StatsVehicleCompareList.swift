@@ -7,16 +7,25 @@ struct StatsVehicleCompareList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.string("stats.compare.vehicles_title"))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: 4) {
+                Text(L10n.string("stats.compare.vehicles_title"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                HelpPopoverButton(
+                    accessibilityLabel: L10n.loggedVehicleExpensesHelpTitle,
+                    message: L10n.loggedVehicleExpensesHelpBody,
+                    side: 18,
+                    sheetHeight: 280
+                )
+                Spacer(minLength: 0)
+            }
 
             ForEach(rows) { row in
                 vehicleRow(row)
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
     }
 
     private func vehicleRow(_ row: VehicleCompareRow) -> some View {
