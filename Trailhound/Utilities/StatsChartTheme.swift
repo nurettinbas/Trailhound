@@ -247,6 +247,19 @@ extension View {
         }
     }
 
+    /// Labels only, faint grid — Stats cards, not Vehicle Care mini charts.
+    func chartStatsQuietYAxisStyle() -> some View {
+        chartYAxis {
+            AxisMarks(values: .automatic) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                    .foregroundStyle(Color.secondary.opacity(0.10))
+                AxisValueLabel()
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     func chartBarValueHeadroom(maxValue: Double) -> some View {
         chartYScale(domain: StatsChartTheme.barValueHeadroom(maxValue: maxValue))
     }

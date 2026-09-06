@@ -38,6 +38,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
 - Swift Charts stats, trends, monthly distance goals — including daily **cruise speed**, **most common** speed, **stop time**, **night driving** share, and dual **avg / estimated** fuel charts
+- **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered
 - Category filters, trip merge (select completed trips on the list; there is no split)
 - **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
@@ -188,7 +189,9 @@ docs/                 # Battery, TestFlight, vehicle care notes
 ## Documentation
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
-- [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll
+- [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards
+- [Stats tab](docs/STATS_TAB.md) — card spans, nested tiles, deferred charts
+- [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
