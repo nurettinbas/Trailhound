@@ -20,6 +20,8 @@ struct StatsChartPager<Content: View>: View {
     @ViewBuilder var content: (Int) -> Content
 
     @Environment(\.accessibilityReduceMotion) private var environmentReduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     private var motionReduced: Bool {
         reduceMotion || environmentReduceMotion
@@ -103,7 +105,7 @@ struct StatsChartPager<Content: View>: View {
                 Capsule()
                     .fill(
                         index == clampedSelection
-                            ? TrailhoundBrandColors.brandBottom
+                            ? shellPalette.tintColor(for: colorScheme)
                             : Color.secondary.opacity(0.25)
                     )
                     .frame(width: index == clampedSelection ? 18 : 8, height: 8)

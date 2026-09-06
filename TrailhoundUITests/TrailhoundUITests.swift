@@ -157,6 +157,29 @@ final class TrailhoundUITests: XCTestCase {
             "Clear All should hide after filters reset to Last 7 days"
         )
     }
+
+    func testLightAppearanceKeepsTabsAndStatsFilters() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+        let appearance = app.segmentedControls["settings.appearance"]
+        XCTAssertTrue(appearance.waitForExistence(timeout: 15))
+        if appearance.buttons.count >= 2 {
+            appearance.buttons.element(boundBy: 1).tap()
+        }
+
+        let orangeSwatch = app.buttons["settings.shellPalette.orange"]
+        XCTAssertTrue(orangeSwatch.waitForExistence(timeout: 5))
+        orangeSwatch.tap()
+        XCTAssertTrue(orangeSwatch.isSelected)
+
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        tripsTab.tap()
+        XCTAssertTrue(tripsTab.exists)
+
+        statsTab.tap()
+        XCTAssertTrue(app.buttons["stats.filters.period.week"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: 10))
+    }
 }
 
 final class TrailhoundSmartCategoryUITests: XCTestCase {

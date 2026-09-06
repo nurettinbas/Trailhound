@@ -5,51 +5,53 @@ import UIKit
 struct PairingShortcutsAutomationCard: View {
     let onOpenGuide: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
-        PairingCardContainer {
-            Button(action: onOpenGuide) {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(TrailhoundBrandColors.brandBottom.opacity(0.12))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "bolt.horizontal.circle.fill")
-                            .font(.body)
-                            .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(L10n.pairingShortcutsGuideCardTitle)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(L10n.pairingShortcutsGuideCardSubtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Text(L10n.pairingShortcutsGuideCardButton)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        .lineLimit(1)
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+        Button(action: onOpenGuide) {
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.body)
+                        .glassAccentForeground()
                 }
-                .padding(12)
-                .contentShape(Rectangle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.pairingShortcutsGuideCardTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(L10n.pairingShortcutsGuideCardSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(L10n.pairingShortcutsGuideCardButton)
+                    .font(.caption2.weight(.semibold))
+                    .glassAccentForeground()
+                    .lineLimit(1)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
 struct PairingShortcutsAutomationGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
@@ -58,7 +60,7 @@ struct PairingShortcutsAutomationGuideView: View {
     @State private var stepCompletePulse = false
     @State private var heroBeat: CGFloat = 0
 
-    private var brandAccent: Color { TrailhoundBrandColors.brandBottom }
+    private var brandAccent: Color { shellPalette.tintColor(for: colorScheme) }
     private var steps: [GuideWizardStep] { Self.makeSteps() }
     private var currentStep: GuideWizardStep { steps[min(stepIndex, steps.count - 1)] }
     private var isLastStep: Bool { stepIndex >= steps.count - 1 }
@@ -274,7 +276,7 @@ struct PairingShortcutsAutomationGuideView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(brandAccent)
         }
         .padding(.horizontal, 16)
@@ -292,8 +294,9 @@ struct PairingShortcutsAutomationGuideView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Toggle(L10n.pairingShortcutsGuideSilentStart, isOn: $settings.confirmExternalRecordingStart.inverted)
+                .glassToggleStyle()
                 .font(.subheadline)
-                .tint(TrailhoundBrandColors.brandBottom)
+                .tint(brandAccent)
         }
         .padding(14)
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -697,8 +700,11 @@ private extension Binding where Value == Bool {
 }
 
 #Preview("Card") {
-    PairingShortcutsAutomationCard(onOpenGuide: {})
-        .padding()
+    List {
+        PairingShortcutsAutomationCard(onOpenGuide: {})
+            .glassListRow()
+    }
+    .glassListChrome()
 }
 
 #Preview("Guide") {

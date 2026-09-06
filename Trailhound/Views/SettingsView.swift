@@ -34,6 +34,7 @@ struct SettingsView: View {
 
             Section(L10n.settingsRecordingSection) {
                 Toggle(L10n.settingsRecordingSounds, isOn: $settings.recordingSoundsEnabled)
+                    .glassToggleStyle()
                     .accessibilityIdentifier("settings.recordingSounds")
                     .glassRow(position: .first)
                 Text(L10n.settingsSiriShortcutsHint)
@@ -97,7 +98,7 @@ struct SettingsView: View {
                 } label: {
                     Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .glassAccentForeground()
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 4)
                 }
@@ -113,6 +114,7 @@ struct SettingsView: View {
 
             Section {
                 Toggle(L10n.settingsSmartCategoryToggle, isOn: $settings.smartCategorySuggestionsEnabled)
+                    .glassToggleStyle()
                     .accessibilityIdentifier("settings.smartCategory")
                     .glassRow(position: settings.smartCategorySuggestionsEnabled ? .first : .only)
                 if settings.smartCategorySuggestionsEnabled {
@@ -154,11 +156,16 @@ struct SettingsView: View {
                 .glassSegmentedStyle()
                 .labelsHidden()
                 .accessibilityIdentifier("settings.appearance")
-                .glassRow(position: .only)
+                .glassRow(position: .first)
+                ShellPalettePicker(selection: $settings.shellPalette)
+                    .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsAppearanceSection)
             } footer: {
-                Text(L10n.settingsAppearanceHint)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L10n.settingsAppearanceHint)
+                    Text(L10n.settingsShellPaletteHint)
+                }
             }
 
             Section {
@@ -206,8 +213,10 @@ struct SettingsView: View {
 
             Section(L10n.settingsPrivacySection) {
                 Toggle(L10n.settingsAppLock, isOn: appLockEnabledBinding)
+                    .glassToggleStyle()
                     .glassRow(position: .first)
                 Toggle(L10n.settingsConfirmExternalStart, isOn: $settings.confirmExternalRecordingStart)
+                    .glassToggleStyle()
                     .glassRow(position: .middle)
                 LabeledContent(L10n.settingsPrivacyRadius) {
                     TextField(L10n.settingsPrivacyRadiusUnit, value: $settings.privacyRadiusMeters, format: .number)
@@ -217,6 +226,7 @@ struct SettingsView: View {
                 }
                 .glassRow(position: .middle)
                 Toggle(L10n.settingsBlurExport, isOn: $settings.blurExportCoordinates)
+                    .glassToggleStyle()
                     .glassRow(position: .middle)
                 Picker(L10n.settingsAutoDelete, selection: $settings.autoDeleteDays) {
                     Text(L10n.settingsAutoDeleteNever).tag(0)
@@ -279,6 +289,7 @@ struct SettingsView: View {
                     .glassRow(position: aboutPositions.version)
                 if settings.developerModeEnabled {
                     Toggle(L10n.settingsDeveloperMode, isOn: $settings.developerModeEnabled)
+                        .glassToggleStyle()
                         .glassRow(position: aboutPositions.developer)
                 }
                 Text(L10n.settingsAboutPrivacy)
@@ -449,6 +460,50 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+}
+
+private struct ShellPalettePicker: View {
+    @Binding var selection: ShellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 5)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(ShellPalette.allCases) { palette in
+                Button {
+                    selection = palette
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: palette.gradientColors(for: colorScheme),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        if selection == palette {
+                            Circle()
+                                .strokeBorder(Color.white, lineWidth: 2.5)
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(palette.usesLightChrome(for: colorScheme) ? Color.primary : Color.white)
+                        }
+                    }
+                    .frame(width: 36, height: 36)
+                    .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.shellPaletteName(palette))
+                .accessibilityAddTraits(selection == palette ? .isSelected : [])
+                .accessibilityIdentifier("settings.shellPalette.\(palette.rawValue)")
+            }
+        }
+        .padding(.vertical, 8)
+        .accessibilityIdentifier("settings.shellPalette")
+        .accessibilityElement(children: .contain)
     }
 }
 

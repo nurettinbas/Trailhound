@@ -7,6 +7,8 @@ struct VehicleDetailView: View {
     let vehicleID: UUID
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Bindable private var settings = AppSettings.shared
     @Query private var vehicles: [VehicleProfile]
     @Query private var allSchedules: [VehicleSchedule]
@@ -81,6 +83,7 @@ struct VehicleDetailView: View {
                 .disabled(vehicleSaveDisabled)
                 .opacity(vehicleSaveDisabled ? 0.45 : 1)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedVehicleEdits)
         .vehiclePhotoFlowSheets(
@@ -152,7 +155,7 @@ struct VehicleDetailView: View {
                 if schedules.isEmpty {
                     Text(L10n.string("vehicles.care.schedules.empty"))
                         .foregroundStyle(.secondary)
-                        .glassRow(position: .first)
+                        .glassRow(position: .only)
                 } else {
                     ForEach(Array(schedules.enumerated()), id: \.element.id) { index, schedule in
                         trackingCardRow(schedule)
@@ -166,21 +169,14 @@ struct VehicleDetailView: View {
                                 } label: {
                                     Label(L10n.string("vehicles.care.complete"), systemImage: "checkmark.circle")
                                 }
-                                .tint(TrailhoundBrandColors.brandBottom)
+                                .tint(shellPalette.tintColor(for: colorScheme))
                             }
                     }
                 }
 
-                Button {
+                addCareRowButton(title: L10n.string("vehicles.care.tracking.add")) {
                     showAddSchedule = true
-                } label: {
-                    Label(L10n.string("vehicles.care.tracking.add"), systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 4)
                 }
-                .tint(TrailhoundBrandColors.brandBottom)
-                .glassRow(position: .last)
             } header: {
                 Text(L10n.string("vehicles.care.tracking.section"))
             } footer: {
@@ -192,7 +188,7 @@ struct VehicleDetailView: View {
                 if expenses.isEmpty {
                     Text(L10n.string("vehicles.care.expenses.empty"))
                         .foregroundStyle(.secondary)
-                        .glassRow(position: .first)
+                        .glassRow(position: .only)
                 } else {
                     ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
@@ -203,16 +199,9 @@ struct VehicleDetailView: View {
                     }
                 }
 
-                Button {
+                addCareRowButton(title: L10n.string("vehicles.care.expense.add")) {
                     showAddExpense = true
-                } label: {
-                    Label(L10n.string("vehicles.care.expense.add"), systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 4)
                 }
-                .tint(TrailhoundBrandColors.brandBottom)
-                .glassRow(position: .last)
             } header: {
                 Text(L10n.string("vehicles.care.expenses.section"))
             } footer: {
@@ -245,6 +234,33 @@ struct VehicleDetailView: View {
         )
     }
 
+    private func addCareRowButton(title: String, action: @escaping () -> Void) -> some View {
+        PairingCardContainer(allowsNative: false) {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                    Text(title)
+                }
+                .font(.body.weight(.semibold))
+                .foregroundStyle(addCareInk)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    private var addCareInk: Color {
+        colorScheme == .dark
+            ? Color.white
+            : shellPalette.chromeColor(for: .light)
+    }
+
     private func cardRowInsets(index: Int) -> EdgeInsets {
         EdgeInsets(
             top: index == 0 ? 4 : 2,
@@ -271,7 +287,7 @@ struct VehicleDetailView: View {
         let note = expense.note?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasNote = !(note?.isEmpty ?? true)
 
-        return PairingCardContainer {
+        return PairingCardContainer(allowsNative: false) {
             Button {
                 editingExpenseID = expense.id
             } label: {
@@ -282,7 +298,7 @@ struct VehicleDetailView: View {
                         .frame(width: 32, height: 32)
                         .background(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(TrailhoundBrandColors.brandBottom)
+                                .fill(shellPalette.tintColor(for: colorScheme))
                         )
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -304,7 +320,7 @@ struct VehicleDetailView: View {
                                     .foregroundStyle(.tertiary)
                                 Text(badge)
                                     .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                    .glassAccentForeground()
                                     .lineLimit(1)
                             }
                         }
@@ -394,7 +410,7 @@ private struct CareTrackingCardRow: View {
     }
 
     var body: some View {
-        PairingCardContainer {
+        PairingCardContainer(allowsNative: false) {
             HStack(alignment: .center, spacing: 8) {
                 Button(action: onEdit) {
                     HStack(alignment: .center, spacing: 10) {
@@ -432,7 +448,7 @@ private struct CareTrackingCardRow: View {
                 Button(action: onComplete) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .glassAccentForeground()
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }

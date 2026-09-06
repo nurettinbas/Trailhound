@@ -245,9 +245,15 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
     /// Symbol horizontal scale so the vehicle faces right (`-1` for left-facing SF side cars).
     var symbolScaleX: CGFloat = -1
     var allowsVerticalBounce: Bool = true
+    /// Atmosphere car / dash / smoke accent. Nil keeps the legacy sky brand blue.
+    var accentColor: Color? = nil
     @ViewBuilder var overlay: (_ layout: TrailhoundRoadSceneLayout) -> Overlay
 
     @Environment(\.colorScheme) private var colorScheme
+
+    private var atmosphereAccent: Color {
+        accentColor ?? TrailhoundBrandColors.brandBottom
+    }
 
     /// Lane band height used for car/dash layout (atmosphere has no filled road).
     private var laneBandHeight: CGFloat {
@@ -366,7 +372,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
             case .atmosphere:
                 return colorScheme == .dark
                     ? Color.white.opacity(isPaused ? 0.28 : 0.42)
-                    : TrailhoundBrandColors.brandBottom.opacity(isPaused ? 0.28 : 0.4)
+                    : atmosphereAccent.opacity(isPaused ? 0.28 : 0.4)
             }
         }()
         let dashHeight: CGFloat = palette == .atmosphere ? 2.5 : 3
@@ -426,11 +432,11 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                 return .white.opacity(isPaused ? 0.75 : opacity)
             case .atmosphere:
                 // Same accent as onboarding feature icons — blends into light/dark shells.
-                return TrailhoundBrandColors.brandBottom.opacity(isPaused ? 0.7 : max(0.65, opacity))
+                return atmosphereAccent.opacity(isPaused ? 0.7 : max(0.65, opacity))
             }
         }()
         let shadowColor: Color = palette == .atmosphere
-            ? TrailhoundBrandColors.brandBottom.opacity(colorScheme == .dark ? 0.35 : 0.2)
+            ? atmosphereAccent.opacity(colorScheme == .dark ? 0.35 : 0.2)
             : Color.black.opacity(0.25)
         let shadowRadius: CGFloat = palette == .atmosphere ? 8 : 3
 
@@ -491,7 +497,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
         let base = palette == .atmosphere ? 0.28 : 0.55
         let opacity = Double(1 - progress) * base * Double(strength)
         let smoke: Color = palette == .atmosphere
-            ? TrailhoundBrandColors.brandBottom.opacity(opacity)
+            ? atmosphereAccent.opacity(opacity)
             : Color.white.opacity(opacity)
 
         return Circle()

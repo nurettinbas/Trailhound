@@ -13,6 +13,8 @@ struct StatsView: View {
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     @State private var selectedPeriod: StatsPeriod = .week
     @State private var selectedCategoryID: String?
@@ -608,7 +610,6 @@ struct StatsView: View {
         }
         .accessibilityIdentifier("stats.filters.card")
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
-        .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasResettableStatsFilters)
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
@@ -618,10 +619,13 @@ struct StatsView: View {
         HStack(spacing: 8) {
             Text("\(activeStatsFilterCount)")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(colorScheme == .dark ? Color.white : LightGlassPalette.badgeText)
                 .frame(minWidth: 18, minHeight: 18)
                 .padding(.horizontal, 4)
-                .background(TrailhoundBrandColors.brandBottom, in: Capsule())
+                .background(
+                    colorScheme == .dark ? shellPalette.tintColor(for: .dark) : LightGlassPalette.badgeFill,
+                    in: Capsule()
+                )
                 .accessibilityHidden(true)
 
             Text(L10n.statsFiltersActiveCount(activeStatsFilterCount))
@@ -636,7 +640,7 @@ struct StatsView: View {
             } label: {
                 Text(L10n.statsFiltersClear)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .frame(minHeight: 28)
@@ -655,8 +659,10 @@ struct StatsView: View {
                     statsPeriodChips
                 }
             } else {
-                HStack(spacing: 6) {
-                    statsPeriodChips
+                GlassChipGroup(spacing: 6) {
+                    HStack(spacing: 6) {
+                        statsPeriodChips
+                    }
                 }
             }
         }
@@ -773,6 +779,12 @@ struct StatsView: View {
         )
     }
 
+    private var monthControlInk: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
+    }
+
     private var statsMonthPicker: some View {
         HStack(spacing: 0) {
             monthStepButton(
@@ -800,11 +812,12 @@ struct StatsView: View {
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption2.weight(.bold))
                 }
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .foregroundStyle(colorScheme == .dark ? shellPalette.tintColor(for: .dark) : shellPalette.chromeColor(for: .light))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
                 .contentShape(Rectangle())
             }
+            .tint(GlassControlTint.link(for: colorScheme, palette: shellPalette))
             .accessibilityLabel(L10n.string("stats.period.select_month"))
             .accessibilityValue(selectedMonthTitle)
 
@@ -843,7 +856,7 @@ struct StatsView: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(enabled ? Color.primary : Color.primary.opacity(0.28))
+                .foregroundStyle(enabled ? monthControlInk : monthControlInk.opacity(0.35))
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
@@ -856,13 +869,15 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(colorScheme == .dark ? Color.secondary : shellPalette.chromeColor(for: .light).opacity(0.62))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
             DatePicker(title, selection: date, displayedComponents: .date)
                 .labelsHidden()
                 .datePickerStyle(.compact)
+                .glassControlScheme()
+                .tint(GlassControlTint.control(for: colorScheme, palette: shellPalette))
                 .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
         }
         .padding(.horizontal, 10)
@@ -1016,10 +1031,13 @@ struct StatsView: View {
     private var goalRing: some View {
         ZStack {
             Circle()
-                .stroke(Color.blue.opacity(0.15), lineWidth: 7)
+                .stroke(shellPalette.tintColor(for: colorScheme).opacity(0.15), lineWidth: 7)
             Circle()
                 .trim(from: 0, to: animatedProgress)
-                .stroke(Color.blue, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                .stroke(
+                    shellPalette.tintColor(for: colorScheme),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                )
                 .rotationEffect(.degrees(-90))
             Text(goalPercentText)
                 .font(.caption2.weight(.bold))
@@ -1741,7 +1759,7 @@ struct StatsView: View {
                 x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
                 y: .value(L10n.string("stats.chart.distance_km"), item.distanceKilometers)
             )
-            .foregroundStyle(StatsChartTheme.distanceBarFill)
+            .foregroundStyle(StatsChartTheme.distanceBarFill(for: colorScheme, palette: shellPalette))
             .cornerRadius(StatsChartTheme.barCornerRadius)
         }
         .chartBarValueHeadroom(maxValue: dailyChartData.map(\.distanceKilometers).max() ?? 0)
@@ -1905,7 +1923,9 @@ struct StatsView: View {
             color: StatsChartTheme.sliceColor(
                 forStableKey: id,
                 durationStyle: durationStyle,
-                domainKeys: domainKeys
+                domainKeys: domainKeys,
+                palette: shellPalette,
+                scheme: colorScheme
             ),
             value: value
         )
@@ -1916,7 +1936,13 @@ struct StatsView: View {
         stableKeys: [String],
         durationStyle: Bool
     ) -> ([String], [Color]) {
-        StatsChartTheme.sliceScale(labels: labels, stableKeys: stableKeys, durationStyle: durationStyle)
+        StatsChartTheme.sliceScale(
+            labels: labels,
+            stableKeys: stableKeys,
+            durationStyle: durationStyle,
+            palette: shellPalette,
+            scheme: colorScheme
+        )
     }
 
     private static let donutChartHeight: CGFloat = 150
@@ -2284,6 +2310,7 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
     let menuContent: MenuContent
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     init(
         title: String,
@@ -2314,7 +2341,7 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
         .menuIndicator(.hidden)
         .menuOrder(.fixed)
         .buttonStyle(.plain)
-        .tint(TrailhoundBrandColors.brandBottom)
+        .tint(GlassControlTint.link(for: colorScheme, palette: shellPalette))
         .accessibilityLabel(title)
         .accessibilityValue(value)
         .accessibilityAddTraits(isActive ? .isSelected : [])
@@ -2325,7 +2352,7 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fieldTitleInk)
                 .lineLimit(1)
 
             HStack(spacing: 6) {
@@ -2333,8 +2360,8 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
                     VehicleAvatarView(
                         systemImage: avatarSystemImage,
                         photoFileName: avatarPhotoFileName,
-                        size: 18,
-                        cornerRadius: 5,
+                        size: 14,
+                        cornerRadius: 4,
                         isElectricAccent: avatarIsElectric,
                         showsSymbolPlate: false,
                         symbolFitsFrame: true
@@ -2343,38 +2370,73 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
                 }
 
                 Text(value)
-                    .font(.subheadline.weight(isActive ? .semibold : .medium))
-                    .foregroundStyle(isActive ? TrailhoundBrandColors.brandBottom : Color.primary)
+                    .font(.caption.weight(isActive ? .semibold : .medium))
+                    .foregroundStyle(fieldInk)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
 
                 Spacer(minLength: 4)
 
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(fieldTitleInk)
                     .accessibilityHidden(true)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         .contentShape(Rectangle())
-        .glassField(cornerRadius: 12)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(fieldFill)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(fieldTint)
+                }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(borderColor, lineWidth: 1)
         }
+        .transaction { $0.animation = nil }
+    }
+
+    private var fieldInk: Color {
+        colorScheme == .dark
+            ? Color.primary
+            : shellPalette.chromeColor(for: .light)
+    }
+
+    private var fieldTitleInk: Color {
+        colorScheme == .dark
+            ? Color.secondary
+            : shellPalette.chromeColor(for: .light).opacity(0.62)
+    }
+
+    private var fieldFill: Color {
+        colorScheme == .dark
+            ? GlassTokens.fieldFill(for: .dark)
+            : Color.white.opacity(0.20)
+    }
+
+    private var fieldTint: Color {
+        colorScheme == .dark
+            ? Color.clear
+            : shellPalette.tintColor(for: .light).opacity(0.16)
     }
 
     private var borderColor: Color {
         if isActive {
-            return TrailhoundBrandColors.brandBottom.opacity(0.55)
+            return colorScheme == .dark
+                ? shellPalette.tintColor(for: .dark).opacity(0.55)
+                : Color.white.opacity(0.55)
         }
         return colorScheme == .dark
             ? Color.white.opacity(0.10)
-            : Color.white.opacity(0.35)
+            : Color.white.opacity(0.28)
     }
 }
 

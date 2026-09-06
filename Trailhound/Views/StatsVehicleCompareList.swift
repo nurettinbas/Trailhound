@@ -48,7 +48,7 @@ struct StatsVehicleCompareList: View {
                         if row.isMostExpensive {
                             Text(L10n.string("stats.compare.most_expensive"))
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                .glassAccentForeground()
                                 .lineLimit(1)
                         }
                     }

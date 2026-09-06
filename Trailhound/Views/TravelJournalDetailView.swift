@@ -113,130 +113,167 @@ struct TravelJournalDetailView: View {
     private var panelVisible: Bool { panelRisen && !isMapExpanded }
 
     var body: some View {
+        mapRoot
+            .ignoresSafeArea(edges: .bottom)
+            .glassNavigationChrome()
+            .navigationTitle(journal.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { mapExpandToolbar }
+            .navigationDestination(isPresented: openTripBinding) {
+                if let trip = openTrip {
+                    TripDetailView(trip: trip)
+                }
+            }
+            .sheet(item: $editorDraft) { draft in
+                TravelJournalEditorSheet(draft: draft)
+            }
+            .task(id: journal.id) {
+                await playPanelEntrance()
+            }
+            .onChange(of: selectedTripID) { _, _ in
+                Task { await loadRoutes() }
+            }
+            .onChange(of: journal.tripCount) { _, _ in
+                Task { await loadRoutes() }
+            }
+            .onChange(of: panelDetent) { _, _ in
+                scheduleMapRefit(delayMilliseconds: 120)
+            }
+    }
+
+    private var mapRoot: some View {
         ZStack {
             AtmosphericBackground()
-
             GeometryReader { geometry in
-                let mapPeek = mapTopChromePoints + 24
-                let panelHeight = livePanelHeight(
-                    containerHeight: geometry.size.height,
-                    mapPeek: mapPeek
-                )
-                ZStack(alignment: .bottom) {
-                    TravelJournalMapLayer(
-                        style: mapStyle,
-                        overlays: overlays,
-                        selectedSegments: selectedSegments,
-                        cameraBox: cameraBox
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                mapAndPanel(in: geometry)
+            }
+        }
+    }
 
-                    TravelJournalEditPanel(
-                        journal: journal,
-                        trips: members,
-                        selectedTripID: selectedTripID,
-                        places: places,
-                        restHeight: panelHeight,
-                        isExpanded: panelDetent == .expanded,
-                        reduceMotion: reduceMotion,
-                        onSelectTrip: { selectedTripID = $0 },
-                        onOpenTrip: { openTrip = $0 },
-                        onRemoveTrip: removeFromJournal,
-                        onEdit: { editorDraft = .edit(journal) },
-                        onToggleExpanded: { togglePanelDetent() },
-                        onGrabberDragChanged: { translation in
-                            dragTranslation = translation
-                        },
-                        onGrabberDragEnded: { predicted in
-                            snapPanel(
-                                predictedTranslation: predicted,
-                                containerHeight: geometry.size.height,
-                                mapPeek: mapPeek
-                            )
-                        }
-                    )
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        ZStack {
-                            Color(.systemBackground)
-                            AtmosphericBackground(style: .lightweight)
-                        }
-                    }
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 18,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: 18,
-                            style: .continuous
-                        )
-                    )
-                    .offset(y: panelVisible ? 0 : panelHeight + 24)
-                    .opacity(panelVisible ? 1 : 0)
-                    .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
-                    .animation(
-                        reduceMotion ? nil : (isMapExpanded
-                            ? TrailhoundMotion.mapExpand
-                            : TrailhoundMotion.mapCollapse),
-                        value: isMapExpanded
-                    )
-                    .allowsHitTesting(panelVisible)
-                }
-                .onAppear {
-                    refreshMapChromeInsets(from: geometry)
-                }
-                .onChange(of: geometry.size) { _, _ in
-                    refreshMapChromeInsets(from: geometry)
-                    scheduleMapRefit(animated: false)
-                }
-            }
-        }
-        .ignoresSafeArea(edges: .bottom)
-        .glassNavigationChrome()
-        .navigationTitle(journal.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    toggleMapExpanded()
-                } label: {
-                    Image(systemName: isMapExpanded
-                          ? "arrow.down.right.and.arrow.up.left"
-                          : "arrow.up.left.and.arrow.down.right")
-                }
-                .accessibilityLabel(isMapExpanded ? L10n.string("journal.map.collapse") : L10n.string("journal.map.expand"))
-            }
-        }
-        .navigationDestination(isPresented: Binding(
+    private var openTripBinding: Binding<Bool> {
+        Binding(
             get: { openTrip != nil },
             set: { if !$0 { openTrip = nil } }
-        )) {
-            if let trip = openTrip {
-                TripDetailView(trip: trip)
+        )
+    }
+
+    private var mapExpandIconName: String {
+        isMapExpanded
+            ? "arrow.down.right.and.arrow.up.left"
+            : "arrow.up.left.and.arrow.down.right"
+    }
+
+    private var mapExpandAccessibilityLabel: String {
+        isMapExpanded
+            ? L10n.string("journal.map.collapse")
+            : L10n.string("journal.map.expand")
+    }
+
+    @ToolbarContentBuilder
+    private var mapExpandToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(action: toggleMapExpanded) {
+                GlassNavCircleIcon(systemName: mapExpandIconName)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(mapExpandAccessibilityLabel)
         }
-        .sheet(item: $editorDraft) { draft in
-            TravelJournalEditorSheet(draft: draft)
+        .hideSharedToolbarBackgroundIfAvailable()
+    }
+
+    private func mapAndPanel(in geometry: GeometryProxy) -> some View {
+        let mapPeek = mapTopChromePoints + 24
+        let panelHeight = livePanelHeight(
+            containerHeight: geometry.size.height,
+            mapPeek: mapPeek
+        )
+        return ZStack(alignment: .bottom) {
+            TravelJournalMapLayer(
+                style: mapStyle,
+                overlays: overlays,
+                selectedSegments: selectedSegments,
+                cameraBox: cameraBox
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            editPanel(
+                height: panelHeight,
+                mapPeek: mapPeek,
+                containerHeight: geometry.size.height
+            )
         }
-        .task(id: journal.id) {
-            panelRisen = false
-            panelDetent = .compact
-            dragTranslation = 0
-            await loadRoutes()
-            withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
-                panelRisen = true
+        .onAppear {
+            refreshMapChromeInsets(from: geometry)
+        }
+        .onChange(of: geometry.size) { _, _ in
+            refreshMapChromeInsets(from: geometry)
+            scheduleMapRefit(animated: false)
+        }
+    }
+
+    private func editPanel(
+        height: CGFloat,
+        mapPeek: CGFloat,
+        containerHeight: CGFloat
+    ) -> some View {
+        TravelJournalEditPanel(
+            journal: journal,
+            trips: members,
+            selectedTripID: selectedTripID,
+            places: places,
+            restHeight: height,
+            isExpanded: panelDetent == .expanded,
+            reduceMotion: reduceMotion,
+            onSelectTrip: { selectedTripID = $0 },
+            onOpenTrip: { openTrip = $0 },
+            onRemoveTrip: removeFromJournal,
+            onEdit: { editorDraft = .edit(journal) },
+            onToggleExpanded: { togglePanelDetent() },
+            onGrabberDragChanged: { translation in
+                dragTranslation = translation
+            },
+            onGrabberDragEnded: { predicted in
+                snapPanel(
+                    predictedTranslation: predicted,
+                    containerHeight: containerHeight,
+                    mapPeek: mapPeek
+                )
             }
-            scheduleMapRefit(delayMilliseconds: 80)
+        )
+        .frame(maxWidth: .infinity)
+        .background {
+            AtmosphericBackground(style: .lightweight)
         }
-        .onChange(of: selectedTripID) { _, _ in
-            Task { await loadRoutes() }
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 18,
+                style: .continuous
+            )
+        )
+        .offset(y: panelVisible ? 0 : height + 24)
+        .opacity(panelVisible ? 1 : 0)
+        .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
+        .animation(reduceMotion ? nil : mapExpandAnimation, value: isMapExpanded)
+        .allowsHitTesting(panelVisible)
+    }
+
+    private var mapExpandAnimation: Animation {
+        isMapExpanded ? TrailhoundMotion.mapExpand : TrailhoundMotion.mapCollapse
+    }
+
+    @MainActor
+    private func playPanelEntrance() async {
+        panelRisen = false
+        panelDetent = .compact
+        dragTranslation = 0
+        await loadRoutes()
+        withAnimation(reduceMotion ? nil : TrailhoundMotion.sheetRise) {
+            panelRisen = true
         }
-        .onChange(of: journal.tripCount) { _, _ in
-            Task { await loadRoutes() }
-        }
-        .onChange(of: panelDetent) { _, _ in
-            scheduleMapRefit(delayMilliseconds: 120)
-        }
+        scheduleMapRefit(delayMilliseconds: 80)
     }
 
     private func livePanelHeight(containerHeight: CGFloat, mapPeek: CGFloat) -> CGFloat {
@@ -341,7 +378,9 @@ struct TravelJournalDetailView: View {
             let color = StatsChartTheme.sliceColor(
                 forStableKey: item.trip.id.uuidString,
                 durationStyle: false,
-                domainKeys: domainKeys
+                domainKeys: domainKeys,
+                palette: AppSettings.shared.shellPalette,
+                scheme: colorScheme
             )
             nextOverlays.append(
                 TravelJournalRouteOverlay(

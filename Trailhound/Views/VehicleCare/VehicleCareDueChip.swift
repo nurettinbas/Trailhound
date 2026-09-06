@@ -175,6 +175,8 @@ struct VehicleCareUrgencyIconTile: View {
     let scheduleID: UUID
     let band: VehicleCareUrgencyBand?
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scale: CGFloat = 1
     @State private var shakeX: CGFloat = 0
@@ -191,7 +193,7 @@ struct VehicleCareUrgencyIconTile: View {
             .frame(width: 32, height: 32)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(band?.accent ?? TrailhoundBrandColors.brandBottom)
+                    .fill(band?.accent ?? shellPalette.tintColor(for: colorScheme))
             )
             .scaleEffect(scale)
             .offset(x: shakeX)

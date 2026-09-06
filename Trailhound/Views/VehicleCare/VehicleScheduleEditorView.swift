@@ -20,6 +20,8 @@ struct VehicleScheduleEditorView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
 
@@ -84,6 +86,7 @@ struct VehicleScheduleEditorView: View {
                 .glassRow(position: .middle)
 
                 Toggle(L10n.string("vehicles.care.schedule.enabled"), isOn: draftBinding(\.isEnabled))
+                    .glassToggleStyle()
                     .glassRow(position: .last)
             }
 
@@ -169,9 +172,15 @@ struct VehicleScheduleEditorView: View {
                 Button(L10n.cancel) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button(L10n.pairingTabSave) { save() }
-                    .disabled(isSaving)
+                Button {
+                    save()
+                } label: {
+                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                }
+                .glassToolbarSaveControl()
+                .disabled(isSaving)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .onAppear {
             if draft == nil {

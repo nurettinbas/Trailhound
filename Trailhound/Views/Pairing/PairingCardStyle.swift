@@ -2,18 +2,18 @@ import SwiftUI
 
 enum PairingCardStyle {
     static let cardRadius: CGFloat = GlassTokens.cardRadius
-    static let cardShadow = Color.black.opacity(0.06)
-
-    static func cardBackground(_ colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color(white: 0.12) : .white
-    }
 }
 
 struct PairingCardContainer<Content: View>: View {
+    var allowsNative: Bool = true
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         content()
-            .glassCard(cornerRadius: PairingCardStyle.cardRadius, contentInset: 0)
+            .glassCard(
+                cornerRadius: PairingCardStyle.cardRadius,
+                contentInset: 0,
+                allowsNative: allowsNative
+            )
     }
 }

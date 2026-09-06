@@ -58,9 +58,7 @@ struct PairingTabView: View {
                 PairingShortcutsAutomationCard {
                     showShortcutsAutomationGuide = true
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .glassListRow()
             }
 
             if locationService.authorizationState != .authorizedAlways {
@@ -76,29 +74,23 @@ struct PairingTabView: View {
                     PairingEmptyState {
                         addFirstVehicle()
                     }
-                    .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
-                    .listRowBackground(Color.clear)
+                    .glassListRow()
                 }
             } else {
                 Section(sortedVehicles.count == 1 ? L10n.pairingTabVehicleSection : L10n.pairingTabSavedVehicles) {
+                    let rowCount = sortedVehicles.count + 1
                     ForEach(Array(sortedVehicles.enumerated()), id: \.element.id) { index, vehicle in
                         vehicleRow(vehicle)
-                            .glassRow(position: GlassRowPosition.index(index, in: sortedVehicles.count + 1))
                             .confirmingDeleteSwipe(
                                 .vehicle(isActivePaired: vehicle.isDefault)
                             ) {
                                 deleteVehicle(vehicle.id)
                             }
+                            .glassRow(position: GlassRowPosition.index(index, in: rowCount))
                     }
 
-                    Button(action: addVehiclePrompt) {
-                        Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 4)
-                    }
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .glassRow(position: .last)
+                    addVehicleButton
+                        .glassRow(position: .last)
                 }
             }
         }
@@ -117,23 +109,27 @@ struct PairingTabView: View {
         }
     }
 
+    private var addVehicleButton: some View {
+        Button(action: addVehiclePrompt) {
+            Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
+                .font(.body.weight(.semibold))
+                .glassAccentForeground()
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
     private func vehicleRow(_ vehicle: VehicleProfile) -> some View {
         let urgent = urgentCareItem(for: vehicle)
-        return PairingCardContainer {
-            PairingVehicleRow(
-                vehicle: vehicle,
-                subtitle: fuelSubtitle(vehicle),
-                careTitle: urgent?.title,
-                careSystemImage: urgent?.kind.systemImage,
-                dueState: urgent?.state,
-                scheduleID: urgent?.scheduleID,
-                onOpen: { openDetail(for: vehicle.id) }
-            )
-            .padding(12)
-        }
-        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        return PairingVehicleRow(
+            vehicle: vehicle,
+            subtitle: fuelSubtitle(vehicle),
+            careTitle: urgent?.title,
+            careSystemImage: urgent?.kind.systemImage,
+            dueState: urgent?.state,
+            scheduleID: urgent?.scheduleID,
+            onOpen: { openDetail(for: vehicle.id) }
+        )
     }
 
     private func urgentCareItem(for vehicle: VehicleProfile) -> VehicleDueItem? {

@@ -9,6 +9,9 @@ struct RecordingVehiclePicker: View {
     let onSelect: (UUID) -> Void
     var compact: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     private var sortedVehicles: [VehicleProfile] {
         vehicles.sorted { lhs, rhs in
             if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
@@ -61,7 +64,7 @@ struct RecordingVehiclePicker: View {
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.bold))
             }
-            .foregroundStyle(compact ? Color.white.opacity(0.9) : TrailhoundBrandColors.brandBottom)
+            .foregroundStyle(compact ? Color.white.opacity(0.9) : shellPalette.tintColor(for: colorScheme))
             .padding(.horizontal, compact ? 4 : 6)
             .padding(.vertical, compact ? 2 : 4)
             .contentShape(Rectangle())
@@ -109,6 +112,8 @@ private struct RecordingLiveMapOpenButton: View {
     var onOpen: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var glow: Double = 0.32
 
     var body: some View {
@@ -139,7 +144,8 @@ private struct RecordingLiveMapOpenButton: View {
                     )
                 }
             }
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            // Solid white pill — never `glassAccentForeground` (that follows shell white).
+            .foregroundStyle(shellPalette.chromeColor(for: .light))
             .padding(.horizontal, hintExpanded ? 11 : 9)
             .frame(width: hintExpanded ? nil : 32, height: 32, alignment: .center)
             .background {
@@ -149,20 +155,20 @@ private struct RecordingLiveMapOpenButton: View {
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        TrailhoundBrandColors.brandTop.opacity(hintExpanded ? 0.45 : 0.28),
+                        shellPalette.tintColor(for: colorScheme).opacity(hintExpanded ? 0.45 : 0.28),
                         lineWidth: 1
                     )
             }
             .contentShape(Capsule())
             .animation(reduceMotion ? nil : TrailhoundMotion.liveMapHintPop, value: hintExpanded)
             .shadow(
-                color: TrailhoundBrandColors.brandBottom.opacity(glow),
+                color: shellPalette.glowColor(for: colorScheme).opacity(glow),
                 radius: hintExpanded ? 10 : 6,
                 y: 1
             )
             .background {
                 SoftPulseRing(
-                    color: UIColor(TrailhoundBrandColors.brandBottom),
+                    color: UIColor(shellPalette.tintColor(for: colorScheme)),
                     isActive: isPulsing && !hintExpanded,
                     reduceMotion: reduceMotion
                 )
@@ -542,6 +548,7 @@ struct ActiveTripView: View {
             .buttonStyle(SoftPressBorderedButtonStyle(reduceMotion: reduceMotion))
             .controlSize(.small)
             .tint(.white)
+            .frame(maxWidth: .infinity, minHeight: 34)
 
             Button(role: .destructive) {
                 if let onStop {
@@ -552,9 +559,9 @@ struct ActiveTripView: View {
             } label: {
                 RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill")
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundDestructiveButton()
             .controlSize(.small)
-            .tint(.red)
+            .frame(maxWidth: .infinity, minHeight: 34)
         }
     }
 
@@ -675,7 +682,7 @@ struct ActiveTripView: View {
     }
 
     private var statusColor: Color {
-        isPaused ? .yellow : .red
+        isPaused ? .yellow : GlassSemantic.notificationBadge
     }
 
     private func togglePlayback() {

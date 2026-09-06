@@ -42,16 +42,17 @@ private struct StatsNestedTileModifier: ViewModifier {
         }
         return colorScheme == .dark
             ? Color.white.opacity(0.10)
-            : Color.white.opacity(0.42)
+            : Color.white.opacity(0.16)
     }
 }
 
 extension View {
     /// Full-width Stats card in a clear List row — one Material, no list-row glass behind it.
-    func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset) -> some View {
+    func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset, frozen: Bool = false) -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
-            contentInset: contentInset
+            contentInset: contentInset,
+            frozen: frozen
         )
         .statsCardListRow()
     }

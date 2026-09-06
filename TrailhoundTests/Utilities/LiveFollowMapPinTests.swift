@@ -1,5 +1,6 @@
 import CoreLocation
 import MapKit
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -136,16 +137,17 @@ final class LiveFollowMapPinTests: XCTestCase {
         let b = CLLocationCoordinate2D(latitude: 41.001, longitude: 29.0)
         let line = MKPolyline(coordinates: [a, b], count: 2)
 
+        let color = LiveFollowRouteStrokeStyle.solidColor(for: .sky, scheme: .light)
         let single = MKPolylineRenderer(polyline: line)
-        LiveFollowRouteStrokeStyle.apply(to: single)
+        LiveFollowRouteStrokeStyle.apply(to: single, color: color)
         XCTAssertEqual(single.lineWidth, LiveFollowRouteStrokeStyle.solidWidth)
-        XCTAssertEqual(single.strokeColor, LiveFollowRouteStrokeStyle.solidColor)
+        XCTAssertEqual(single.strokeColor, color)
         XCTAssertEqual(single.lineCap, .round)
 
         let multi = MKMultiPolylineRenderer(multiPolyline: MKMultiPolyline([line]))
-        LiveFollowRouteStrokeStyle.apply(to: multi)
+        LiveFollowRouteStrokeStyle.apply(to: multi, color: color)
         XCTAssertEqual(multi.lineWidth, LiveFollowRouteStrokeStyle.solidWidth)
-        XCTAssertEqual(multi.strokeColor, LiveFollowRouteStrokeStyle.solidColor)
+        XCTAssertEqual(multi.strokeColor, color)
         XCTAssertEqual(multi.lineJoin, .round)
     }
 
@@ -301,17 +303,13 @@ final class LiveFollowMapPinTests: XCTestCase {
         XCTAssertLessThan(display.count, raw.count)
     }
 
-    func testRouteStrokeStyleIsSingleSolidBlue() {
+    func testRouteStrokeFollowsPaletteTint() {
         XCTAssertEqual(LiveFollowRouteStrokeStyle.solidWidth, 7.2, accuracy: 0.01)
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
+        let sky = LiveFollowRouteStrokeStyle.solidColor(for: .sky, scheme: .light)
+        let rose = LiveFollowRouteStrokeStyle.solidColor(for: .rose, scheme: .light)
+        XCTAssertNotEqual(sky, rose)
         var alpha: CGFloat = 0
-        XCTAssertTrue(
-            LiveFollowRouteStrokeStyle.solidColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        )
-        XCTAssertGreaterThan(blue, red)
-        XCTAssertGreaterThan(blue, green)
+        XCTAssertTrue(rose.getRed(nil, green: nil, blue: nil, alpha: &alpha))
         XCTAssertEqual(alpha, 1, accuracy: 0.01)
     }
 

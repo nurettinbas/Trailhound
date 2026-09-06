@@ -239,7 +239,7 @@ struct TripListView: View {
             Section {
                 HStack(spacing: 10) {
                     Image(systemName: "sparkles")
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .glassAccentForeground()
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L10n.journalSuggestChip)
                             .font(.subheadline.weight(.semibold))
@@ -282,7 +282,7 @@ struct TripListView: View {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
                     .tint(TrailhoundBrandColors.brandBottom)
                     .glassListRow()
                 }
@@ -395,7 +395,7 @@ struct TripListView: View {
                         Button(L10n.string("onboarding.shortcuts.link")) {
                             tabSelection.openPairing()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .trailhoundProminentButton()
 
                         Button(L10n.vehiclePairingSkip) {
                             settings.skipCarSetup()
@@ -427,37 +427,27 @@ struct TripListView: View {
 
             if let orphan = visibleOrphan {
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(L10n.orphanBannerTitle)
-                            .font(.headline)
-                        Text(L10n.orphanBannerMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Button(L10n.orphanResume) {
-                                if TripRecoveryService.resumeOrphan(orphan.trip, recordingService: recordingService) {
+                    OrphanRecoveryBanner(
+                        onResume: {
+                            if TripRecoveryService.resumeOrphan(orphan.trip, recordingService: recordingService) {
+                                refreshOrphans()
+                            }
+                        },
+                        onSave: {
+                            if TripRecoveryService.finalizeOrphan(orphan.trip, in: modelContext, saveTrip: true) {
+                                ToastPresenter.shared.show(.orphanSaved)
+                                refreshOrphans()
+                            }
+                        },
+                        onDelete: {
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
+                                if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
+                                    ToastPresenter.shared.show(.deleted, playHaptic: false)
                                     refreshOrphans()
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
-                            Button(L10n.orphanSave) {
-                                if TripRecoveryService.finalizeOrphan(orphan.trip, in: modelContext, saveTrip: true) {
-                                    ToastPresenter.shared.show(.orphanSaved)
-                                    refreshOrphans()
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            Button(L10n.delete, role: .destructive) {
-                                DeleteConfirmPresenter.shared.confirm(.generic) {
-                                    if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
-                                        ToastPresenter.shared.show(.deleted, playHaptic: false)
-                                        refreshOrphans()
-                                    }
-                                }
-                            }
-                            .destructiveTint()
                         }
-                    }
+                    )
                 }
                 .glassListRow()
                 .listSectionSpacing(6)
@@ -759,48 +749,32 @@ struct TripListView: View {
                     }
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                if isMergeMode {
+            if isMergeMode {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L10n.cancel) {
                         isMergeMode = false
                         mergeSelection.removeAll()
                     }
                     .disabled(isMerging)
-                } else {
-                    HStack(spacing: 16) {
-                        if listMode == .travels {
-                            Button {
+                }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TripListTrailingToolbarCluster(
+                        primarySystemImage: listMode == .travels ? "plus" : "arrow.triangle.merge",
+                        primaryAccessibilityLabel: listMode == .travels ? L10n.journalNew : L10n.actionMerge,
+                        unreadCount: notificationStore.unreadCount,
+                        onPrimary: {
+                            if listMode == .travels {
                                 journalEditor = .create()
-                            } label: {
-                                Image(systemName: "plus")
+                            } else {
+                                isMergeMode = true
                             }
-                            .accessibilityLabel(L10n.journalNew)
-                        } else {
-                            Button { isMergeMode = true } label: {
-                                Image(systemName: "arrow.triangle.merge")
-                            }
-                            .accessibilityLabel(L10n.actionMerge)
-                        }
-
-                        Button {
+                        },
+                        onNotifications: {
                             notificationStore.markAllRead()
                             showNotificationsList = true
-                        } label: {
-                            ZStack(alignment: .topTrailing) {
-                                Image(systemName: "bell")
-                                if notificationStore.unreadCount > 0 {
-                                    Text("\(min(notificationStore.unreadCount, 99))")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .padding(4)
-                                        .background(Circle().fill(.red))
-                                        .offset(x: 8, y: -8)
-                                }
-                            }
                         }
-                        .accessibilityLabel(L10n.notificationsTitle)
-                        .accessibilityIdentifier("trips.notifications")
-                    }
+                    )
                 }
             }
         }
@@ -817,7 +791,7 @@ struct TripListView: View {
                             .foregroundStyle(.primary)
                     }
                     .padding(24)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassCard(cornerRadius: 16)
                 }
                 .allowsHitTesting(true)
                 .accessibilityElement(children: .combine)
@@ -1290,6 +1264,116 @@ struct TripListView: View {
     }
 }
 
+/// Incomplete-recording card. Light glass + `onGlassShell` white type makes Resume vanish.
+private struct OrphanRecoveryBanner: View {
+    let onResume: () -> Void
+    let onSave: () -> Void
+    let onDelete: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.orphanBannerTitle)
+                .font(.headline)
+                .foregroundStyle(ink)
+            Text(L10n.orphanBannerMessage)
+                .font(.caption)
+                .foregroundStyle(messageColor)
+            HStack {
+                Button(L10n.orphanResume, action: onResume)
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(resumeFill, in: Capsule())
+                    .compositingGroup()
+
+                Button(L10n.orphanSave, action: onSave)
+                    .buttonStyle(.bordered)
+                    .tint(ink)
+
+                Button(L10n.delete, role: .destructive, action: onDelete)
+                    .destructiveTint()
+            }
+        }
+    }
+
+    private var ink: Color {
+        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+    }
+
+    private var messageColor: Color {
+        colorScheme == .dark ? Color.secondary : ink.opacity(0.72)
+    }
+
+    private var resumeFill: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
+    }
+}
+
+/// Merge/plus + bell share the system toolbar glass (same platter as Start).
+/// Badge stays inside that platter so iOS 26 does not clip the count.
+private struct TripListTrailingToolbarCluster: View {
+    let primarySystemImage: String
+    let primaryAccessibilityLabel: String
+    let unreadCount: Int
+    let onPrimary: () -> Void
+    let onNotifications: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button(action: onPrimary) {
+                Image(systemName: primarySystemImage)
+            }
+            .accessibilityLabel(primaryAccessibilityLabel)
+
+            Button(action: onNotifications) {
+                Image(systemName: "bell")
+            }
+            .accessibilityLabel(L10n.notificationsTitle)
+            .accessibilityValue(unreadCount > 0 ? "\(min(unreadCount, 99))" : "")
+            .accessibilityIdentifier("trips.notifications")
+        }
+        .symbolRenderingMode(.monochrome)
+        .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+        .tint(shellPalette.tintColor(for: colorScheme))
+        .padding(.top, 7)
+        .padding(.trailing, 6)
+        .overlay(alignment: .topTrailing) {
+            if unreadCount > 0 {
+                TripListNotificationCountBadge(count: unreadCount)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+private struct TripListNotificationCountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(min(count, 99))")
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, count > 9 ? 5 : 0)
+            .frame(minWidth: 18, minHeight: 18)
+            .background(GlassSemantic.notificationBadge, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(Color.white.opacity(0.55), lineWidth: 1)
+            }
+            .compositingGroup()
+            .accessibilityHidden(true)
+    }
+}
+
 private struct TripListActiveRecordingNavIcon: View {
     var isPaused: Bool
     var reduceMotion: Bool
@@ -1297,7 +1381,7 @@ private struct TripListActiveRecordingNavIcon: View {
     @State private var steeringTilt: Double = 0
 
     private var accent: Color {
-        isPaused ? TrailhoundBrandColors.paused : TrailhoundBrandColors.recording
+        isPaused ? TrailhoundBrandColors.paused : GlassSemantic.notificationBadge
     }
 
     private let badgeSize: CGFloat = 30
@@ -1310,7 +1394,9 @@ private struct TripListActiveRecordingNavIcon: View {
     var body: some View {
         Image(systemName: "steeringwheel")
             .font(.system(size: 15, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
             .foregroundStyle(accent)
+            .compositingGroup()
             // Must stay inside the frame and nudge below. Applied outside them, the anchor is
             // the badge center while the glyph has been moved away from it, so the wheel
             // orbits that point instead of spinning in place.

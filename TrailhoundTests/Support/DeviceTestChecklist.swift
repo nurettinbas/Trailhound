@@ -36,7 +36,7 @@ enum DeviceTestChecklist {
         "Live follow map: highway — camera, vehicle mark, and blue path glide together (no 1 Hz stall, no chunky trail at the puck)",
         "Live follow map: single draped blue path (chunked history + growing tail tip) grows with the puck; no duplicate / X crossover; real GPS gaps only",
         "Live follow map: stroke keeps the same thickness in 2D and 3D, and stays uniform end-to-end while panning a pitched camera",
-        "Live follow map: pan (including while paused) to look at start — trail stays; puck + tip keep advancing when moving; overview fits whole route; recenter re-locks camera",
+        "Live follow map: pan while recording — trail stays; puck + tip keep advancing when moving; overview fits whole route; recenter re-locks camera; pause locks pan and 2D/3D tools",
         "Live follow map: Show entire route (north-up) — vehicle photo + chevron sharp tip still face travel; recenter returns screen-up follow",
         "Live follow map: highway speed — camera pulls back; blue path stays behind the puck (does not draw ahead); motion glides between 1 Hz GPS fixes with no chunky trail at the puck",
         "Live follow map: leave untouched 30–60s — screen stays awake; close map — auto-lock works again",

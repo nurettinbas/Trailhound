@@ -4,32 +4,31 @@ struct PairingEmptyState: View {
     let onAddVehicle: () -> Void
 
     var body: some View {
-        PairingCardContainer {
-            VStack(spacing: 14) {
-                Image(systemName: "car.fill")
-                    .font(.title2)
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    .symbolRenderingMode(.hierarchical)
+        VStack(spacing: 14) {
+            Image(systemName: "car.fill")
+                .font(.title2)
+                .glassAccentForeground()
+                .symbolRenderingMode(.hierarchical)
 
-                VStack(spacing: 4) {
-                    Text(L10n.pairingTabEmptyTitle)
-                        .font(.headline)
-                    Text(L10n.pairingTabEmptyMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                Button(action: onAddVehicle) {
-                    Label(L10n.pairingTabDefineVehicle, systemImage: "plus.circle.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(TrailhoundBrandColors.brandBottom)
+            VStack(spacing: 4) {
+                Text(L10n.pairingTabEmptyTitle)
+                    .font(.headline)
+                Text(L10n.pairingTabEmptyMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(16)
+
+            Button(action: onAddVehicle) {
+                Label(L10n.pairingTabDefineVehicle, systemImage: "plus.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .trailhoundProminentButton()
+            .tint(TrailhoundBrandColors.brandBottom)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 }

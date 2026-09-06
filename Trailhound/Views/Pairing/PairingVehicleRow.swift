@@ -37,7 +37,7 @@ struct PairingVehicleRow: View {
                 )
                 .id(vehicle.photoFileName ?? "none")
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(vehicle.name)
                             .font(.body.weight(.semibold))
@@ -46,7 +46,7 @@ struct PairingVehicleRow: View {
                         if vehicle.isDefault {
                             Text(L10n.pairingTabDefaultVehicle)
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                                .glassAccentForeground()
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(TrailhoundBrandColors.brandBottom.opacity(0.12))

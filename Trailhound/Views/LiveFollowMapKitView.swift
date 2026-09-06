@@ -2,7 +2,7 @@ import MapKit
 import SwiftUI
 import UIKit
 
-/// Live-follow route stroke — single solid (no casing, no second blue).
+/// Live-follow route stroke — single solid palette tint (no casing).
 ///
 /// Applied to MapKit's own vector polyline renderers on purpose: `lineWidth` stays
 /// a constant screen width under any zoom *and* under camera pitch, which a custom
@@ -10,10 +10,13 @@ import UIKit
 /// bitmap, so the stroke fattens toward the bottom of a 3D view and seams while panning).
 enum LiveFollowRouteStrokeStyle {
     static let solidWidth: CGFloat = 7.2
-    static let solidColor = UIColor(red: 0.05, green: 0.48, blue: 1.0, alpha: 1)
 
-    static func apply(to renderer: MKOverlayPathRenderer) {
-        renderer.strokeColor = solidColor
+    static func solidColor(for palette: ShellPalette, scheme: ColorScheme) -> UIColor {
+        UIColor(palette.tintColor(for: scheme))
+    }
+
+    static func apply(to renderer: MKOverlayPathRenderer, color: UIColor) {
+        renderer.strokeColor = color
         renderer.lineWidth = solidWidth
         renderer.lineCap = .round
         renderer.lineJoin = .round
@@ -47,9 +50,20 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     var onUserBreakFollow: () -> Void
     /// Once MapKit has laid out, reports the puck circle center in map-view coordinates.
     var onPuckCircleScreenPoint: ((CGPoint) -> Void)?
+    var routeStrokeColor: UIColor
+    var puckPlateColor: UIColor
+    var puckChevronColors: [UIColor]
+    var themeSignature: String
 
     func makeCoordinator() -> Coordinator {
         Coordinator(session: session, onUserBreakFollow: onUserBreakFollow)
+    }
+
+    private func applyInteractionLock(on map: MKMapView, paused: Bool) {
+        map.isScrollEnabled = !paused
+        map.isZoomEnabled = !paused
+        map.isRotateEnabled = !paused
+        map.isPitchEnabled = !paused
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -59,10 +73,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         map.showsCompass = false
         map.showsScale = false
         map.showsTraffic = false
-        map.isRotateEnabled = true
-        map.isPitchEnabled = true
-        map.isZoomEnabled = true
-        map.isScrollEnabled = true
+        applyInteractionLock(on: map, paused: isPaused)
         map.pointOfInterestFilter = .excludingAll
         if #available(iOS 16.0, *) {
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat)
@@ -93,7 +104,15 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         context.coordinator.onUserBreakFollow = onUserBreakFollow
         context.coordinator.onPuckCircleScreenPoint = onPuckCircleScreenPoint
         context.coordinator.desiredPuckAlpha = puckAlpha
+        let themeChanged = context.coordinator.themeSignature != themeSignature
+        context.coordinator.routeStrokeColor = routeStrokeColor
+        context.coordinator.puckPlateColor = puckPlateColor
+        context.coordinator.puckChevronColors = puckChevronColors
+        context.coordinator.themeSignature = themeSignature
         context.coordinator.bindSession()
+        if themeChanged {
+            context.coordinator.refreshRouteStroke(on: mapView)
+        }
 
         if #available(iOS 16.0, *) {
             if !(mapView.preferredConfiguration is MKStandardMapConfiguration) {
@@ -103,6 +122,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
         context.coordinator.syncRouteIfNeeded(on: mapView)
         if pauseChanged {
+            applyInteractionLock(on: mapView, paused: isPaused)
             context.coordinator.refreshTipForPauseChange(on: mapView)
         }
         context.coordinator.syncPins(pins, on: mapView)
@@ -146,6 +166,14 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         var lastPuckFadeToken: Int = 0
         var lastOverviewRequestToken: Int = 0
         var lastRecenterRequestToken: Int = 0
+        var routeStrokeColor: UIColor = LiveFollowRouteStrokeStyle.solidColor(for: .sky, scheme: .light)
+        var puckPlateColor: UIColor = UIColor(ShellPalette.sky.tintColor(for: .light))
+        var puckChevronColors: [UIColor] = [
+            UIColor(ShellPalette.sky.glowColor(for: .light)),
+            UIColor(ShellPalette.sky.tintColor(for: .light)),
+            UIColor(ShellPalette.sky.chromeColor(for: .light))
+        ]
+        var themeSignature = "sky-l"
         weak var mapView: MKMapView?
         private var isApplyingCamera = false
         private var pinAnnotations: [String: LiveFollowPinAnnotation] = [:]
@@ -668,6 +696,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 if let view = map.view(for: puckAnnotation) as? LiveFollowPuckAnnotationView {
                     view.isHidden = false
                     view.apply(puckAnnotation)
+                    view.applyTheme(plate: puckPlateColor, chevronColors: puckChevronColors)
                     applyPuckHeading(puckAnnotation.headingDegrees, on: map, animated: false)
                 }
             } else {
@@ -721,10 +750,18 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             onPuckCircleScreenPoint(circle)
         }
 
+        func refreshRouteStroke(on map: MKMapView) {
+            for overlay in map.overlays {
+                guard let renderer = map.renderer(for: overlay) as? MKOverlayPathRenderer else { continue }
+                LiveFollowRouteStrokeStyle.apply(to: renderer, color: routeStrokeColor)
+                renderer.setNeedsDisplay()
+            }
+        }
+
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let line = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: line)
-                LiveFollowRouteStrokeStyle.apply(to: renderer)
+                LiveFollowRouteStrokeStyle.apply(to: renderer, color: routeStrokeColor)
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
@@ -736,6 +773,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 let view = (mapView.dequeueReusableAnnotationView(withIdentifier: reuse) as? LiveFollowPuckAnnotationView)
                     ?? LiveFollowPuckAnnotationView(annotation: puck, reuseIdentifier: reuse)
                 view.apply(puck)
+                view.applyTheme(plate: puckPlateColor, chevronColors: puckChevronColors)
                 view.alpha = desiredPuckAlpha
                 view.isHidden = false
                 view.applyHeading(puck.headingDegrees, mapHeading: mapView.camera.heading, animated: false)
@@ -820,7 +858,8 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     private let photoBorder: CGFloat = 5
     private let photoGap: CGFloat = 3
     /// Opaque plate so the traveled path cannot show through the photo.
-    private static let plateBlue = UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1)
+    private var plateColor = UIColor(ShellPalette.sky.tintColor(for: .light))
+    private var lastChevronSignature: String = ""
 
     /// Artwork rotates around the photo-circle centre so the trail still meets the puck.
     private let headingContent = UIView()
@@ -859,7 +898,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         addSubview(headingContent)
 
         badge.isOpaque = true
-        badge.backgroundColor = Self.plateBlue
+        badge.backgroundColor = plateColor
         badge.layer.cornerRadius = circleSize / 2
         badge.layer.borderColor = UIColor.white.cgColor
         badge.layer.borderWidth = photoBorder
@@ -875,7 +914,14 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         badge.addSubview(symbolView)
 
         chevron.contentMode = .scaleAspectFit
-        chevron.image = Self.makeChevronImage(size: chevronSize)
+        chevron.image = Self.makeChevronImage(
+            size: chevronSize,
+            colors: [
+                UIColor(ShellPalette.sky.glowColor(for: .light)),
+                UIColor(ShellPalette.sky.tintColor(for: .light)),
+                UIColor(ShellPalette.sky.chromeColor(for: .light))
+            ]
+        )
         chevron.layer.zPosition = 2
         headingContent.addSubview(chevron)
 
@@ -891,6 +937,15 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             width: chevronSize.width,
             height: chevronSize.height
         )
+    }
+
+    func applyTheme(plate: UIColor, chevronColors: [UIColor]) {
+        plateColor = plate
+        badge.backgroundColor = plate
+        let signature = chevronColors.map { $0.description }.joined(separator: "|")
+        guard signature != lastChevronSignature else { return }
+        lastChevronSignature = signature
+        chevron.image = Self.makeChevronImage(size: chevronSize, colors: chevronColors)
     }
 
     func apply(_ annotation: LiveFollowPuckAnnotation) {
@@ -950,7 +1005,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         ]
     }
 
-    private static func makeChevronImage(size: CGSize) -> UIImage {
+    private static func makeChevronImage(size: CGSize, colors: [UIColor]) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let w = size.width
@@ -969,14 +1024,15 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             cg.closeSubpath()
             let rounded = UIBezierPath(cgPath: cg)
 
-            let colors = [
-                UIColor(red: 0.42, green: 0.76, blue: 1.0, alpha: 1).cgColor,
-                UIColor(red: 0.28, green: 0.62, blue: 1.0, alpha: 1).cgColor,
-                UIColor(red: 0.12, green: 0.48, blue: 0.95, alpha: 1).cgColor
+            let fallback = [
+                UIColor(ShellPalette.sky.glowColor(for: .light)),
+                UIColor(ShellPalette.sky.tintColor(for: .light)),
+                UIColor(ShellPalette.sky.chromeColor(for: .light))
             ]
+            let stops = (colors.count >= 3 ? colors : fallback).map(\.cgColor)
             let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                colors: colors as CFArray,
+                colors: stops as CFArray,
                 locations: [0, 0.5, 1]
             )!
             ctx.cgContext.saveGState()

@@ -99,7 +99,7 @@ struct TravelJournalEditorSheet: View {
                                     .font(.system(size: 23, weight: .semibold))
                                     .foregroundStyle(
                                         isSelected
-                                            ? TrailhoundBrandColors.brandBottom
+                                            ? Color.primary
                                             : Color.secondary
                                     )
                                     .symbolEffect(
@@ -152,7 +152,11 @@ struct TravelJournalEditorSheet: View {
                     }
                     .glassToolbarSaveControl()
                 }
+                .hideSharedToolbarBackgroundIfAvailable()
             }
+        }
+        .presentationBackground {
+            AtmosphericBackground(style: .full)
         }
         .toastHost()
         .deleteConfirmHost()

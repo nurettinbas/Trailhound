@@ -20,7 +20,7 @@ struct StatsYearAwardsCard: View {
                     if let snapshot, snapshot.hasData {
                         Text(DateFormatters.formatDistance(snapshot.totalDistanceMeters))
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                            .glassAccentForeground()
                     }
                 }
                 Spacer()

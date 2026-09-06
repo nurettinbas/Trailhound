@@ -7,6 +7,7 @@ struct TravelJournalRowView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var mosaic: [UIImage] = []
 
     var body: some View {
@@ -17,12 +18,12 @@ struct TravelJournalRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(journal.title)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme, palette: shellPalette))
                     .lineLimit(2)
 
                 Text(L10n.journalDateRange(start: journal.startedOn, end: journal.endedOn))
                     .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(GlassText.secondary(for: colorScheme, palette: shellPalette))
                     .lineLimit(1)
 
                 HStack(spacing: 5) {
@@ -73,7 +74,7 @@ struct TravelJournalRowView: View {
                     .overlay {
                         Image(systemName: "map")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                            .glassAccentForeground()
                     }
             } else if mosaic.count == 1 {
                 mosaicTile(mosaic[0], size: mosaicSize)
@@ -122,7 +123,7 @@ struct TravelJournalRowView: View {
                 .font(.system(size: 9, weight: .medium))
                 .lineLimit(1)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(GlassText.secondary(for: colorScheme, palette: shellPalette))
     }
 
     @MainActor

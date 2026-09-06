@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
     case system
@@ -70,6 +71,17 @@ final class AppSettings {
     var appearanceMode: AppearanceMode = .default {
         didSet { defaults.set(appearanceMode.rawValue, forKey: Key.appearanceMode) }
     }
+    /// Developer-only kill switch for the light-theme glass renderer.
+    var glassEngineOverride: GlassEngineOverride = .auto {
+        didSet { defaults.set(glassEngineOverride.rawValue, forKey: Key.glassEngineOverride) }
+    }
+    /// Curated shell background hue. Light and Dark resolve different shade families.
+    var shellPalette: ShellPalette = .default {
+        didSet {
+            defaults.set(shellPalette.rawValue, forKey: Key.shellPalette)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
 
     private enum Key {
         static let recordingSounds = "recordingSoundsEnabled"
@@ -92,6 +104,8 @@ final class AppSettings {
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
         static let appearanceMode = "appearanceMode"
+        static let glassEngineOverride = "glassEngineOverride"
+        static let shellPalette = ShellPalette.storageKey
         static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
         static let workHourStart = "smartCategory.workHourStart"
         static let workHourEnd = "smartCategory.workHourEnd"
@@ -120,6 +134,14 @@ final class AppSettings {
         if let raw = resolvedDefaults.string(forKey: Key.appearanceMode),
            let mode = AppearanceMode(rawValue: raw) {
             appearanceMode = mode
+        }
+        if let raw = resolvedDefaults.string(forKey: Key.glassEngineOverride),
+           let override = GlassEngineOverride(rawValue: raw) {
+            glassEngineOverride = override
+        }
+        if let raw = resolvedDefaults.string(forKey: Key.shellPalette),
+           let palette = ShellPalette(rawValue: raw) {
+            shellPalette = palette
         }
         dismissedJournalSuggestionFingerprints = Set(
             resolvedDefaults.stringArray(forKey: Key.dismissedJournalSuggestions) ?? []

@@ -445,7 +445,7 @@ private struct KeyboardAccessoryBar: View {
             Button(action: onDone) {
                 Text(L10n.ok)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background {

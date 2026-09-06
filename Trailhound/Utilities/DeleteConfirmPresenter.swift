@@ -160,60 +160,93 @@ struct DeleteConfirmHostModifier: ViewModifier {
 
 private struct DeleteConfirmCard: View {
     let request: DeleteConfirmRequest
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    private let buttonHeight: CGFloat = 48
 
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "trash.circle.fill")
                 .font(.system(size: 44))
-                .foregroundStyle(.red)
+                .foregroundStyle(GlassSemantic.notificationBadge)
                 .symbolRenderingMode(.hierarchical)
                 .accessibilityHidden(true)
 
             Text(request.title)
                 .font(.title3.weight(.semibold))
+                .foregroundStyle(titleInk)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
             Text(request.message)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(messageInk)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 10) {
-                actionButton(title: L10n.cancel, tint: Color(.systemGray)) {
+                Button {
                     DeleteConfirmPresenter.shared.cancel()
+                } label: {
+                    buttonLabel(L10n.cancel, color: cancelTitleColor)
                 }
+                .buttonStyle(.plain)
+                .background { cancelGlass }
+                .frame(maxWidth: .infinity, minHeight: buttonHeight)
 
-                actionButton(title: request.confirmTitle, tint: .red, role: .destructive) {
+                Button {
                     DeleteConfirmPresenter.shared.performConfirm()
+                } label: {
+                    buttonLabel(request.confirmTitle, color: Color.white)
                 }
+                .buttonStyle(.plain)
+                .background(GlassSemantic.notificationBadge, in: Capsule(style: .continuous))
+                .frame(maxWidth: .infinity, minHeight: buttonHeight)
             }
         }
         .padding(22)
         .frame(maxWidth: 320)
-        .glassChrome(cornerRadius: GlassTokens.cardRadius)
+        .glassCard(cornerRadius: GlassTokens.cardRadius, contentInset: 0)
         .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
         .contentShape(RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 
-    private func actionButton(
-        title: String,
-        tint: Color,
-        role: ButtonRole? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(role: role, action: action) {
-            Text(title)
-                .font(.body.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(tint)
-        .frame(maxWidth: .infinity)
+    private func buttonLabel(_ title: String, color: Color) -> some View {
+        Text(title)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity, minHeight: buttonHeight)
+    }
+
+    private var titleInk: Color {
+        colorScheme == .dark ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.14)
+    }
+
+    private var messageInk: Color {
+        colorScheme == .dark ? Color.white.opacity(0.72) : Color.black.opacity(0.55)
+    }
+
+    /// Absolute ink — `onGlassShell` makes `.primary` / `.white` hierarchical and washes labels out.
+    private var cancelTitleColor: Color {
+        colorScheme == .dark
+            ? Color.white
+            : Color(red: 0.12, green: 0.12, blue: 0.14)
+    }
+
+    private var cancelGlass: some View {
+        Capsule(style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay {
+                Capsule(style: .continuous)
+                    .fill(shellPalette.tintColor(for: colorScheme).opacity(colorScheme == .dark ? 0.28 : 0.16))
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.22 : 0.35), lineWidth: 1)
+            }
     }
 }
 

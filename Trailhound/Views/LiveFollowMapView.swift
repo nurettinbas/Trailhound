@@ -19,6 +19,8 @@ struct LiveFollowMapView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -161,7 +163,9 @@ struct LiveFollowMapView: View {
                             sourceLocal: heroSourceLocal,
                             destCenter: heroDest,
                             vehiclePhoto: vehiclePhoto,
-                            vehicleSystemImage: vehicleSystemImage
+                            vehicleSystemImage: vehicleSystemImage,
+                            plateColor: liveFollowPlateColor,
+                            chevronColors: liveFollowChevronColors
                         )
                         .opacity(heroOpacity)
                         .allowsHitTesting(false)
@@ -277,7 +281,7 @@ struct LiveFollowMapView: View {
             puckFadeToken: puckFadeToken,
             isMoving: openSettled && !isPaused,
             onUserBreakFollow: {
-                guard isFollowing else { return }
+                guard !isPaused, isFollowing else { return }
                 isFollowing = false
                 session.isFollowing = false
             },
@@ -294,61 +298,76 @@ struct LiveFollowMapView: View {
                         self.projectedHeroDest = point
                     }
                 }
-            }
+            },
+            routeStrokeColor: LiveFollowRouteStrokeStyle.solidColor(
+                for: shellPalette,
+                scheme: colorScheme
+            ),
+            puckPlateColor: UIColor(liveFollowPlateColor),
+            puckChevronColors: liveFollowChevronColors.map { UIColor($0) },
+            themeSignature: "\(shellPalette.rawValue)-\(colorScheme == .dark ? "d" : "l")"
         )
     }
 
-    /// Full-screen amber wash + centered pause callout. Pass-through so Resume/Stop stay tappable.
+    /// Full-screen wash + centered pause callout. Pass-through so Resume/Stop stay tappable.
     private var pausedOverlay: some View {
         ZStack {
-            Color.yellow.opacity(0.38)
+            Color.orange.opacity(0.16)
                 .ignoresSafeArea()
 
-            HStack(spacing: 8) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.yellow, .black.opacity(0.85))
-                Text(L10n.recordingPaused)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule()
-                    .strokeBorder(Color.yellow.opacity(0.75), lineWidth: 1.5)
-            }
-            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(L10n.recordingPaused)
+            pauseStatusChip(font: .title3.weight(.bold), iconSize: 22, horizontal: 18, vertical: 10)
+                .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
         }
         .allowsHitTesting(false)
     }
 
+    /// Opaque amber + white type — glass + `.primary` washes out on a light map.
+    private func pauseStatusChip(
+        font: Font,
+        iconSize: CGFloat,
+        horizontal: CGFloat,
+        vertical: CGFloat
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "pause.circle.fill")
+                .font(.system(size: iconSize, weight: .semibold))
+            Text(L10n.recordingPaused)
+                .font(font)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, horizontal)
+        .padding(.vertical, vertical)
+        .background(TrailhoundBrandColors.paused, in: Capsule())
+        .compositingGroup()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(L10n.recordingPaused)
+    }
+
     private var topChrome: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Image(systemName: isPaused ? "pause.circle.fill" : "record.circle.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isPaused ? Color.yellow : Color.red)
-                    .contentTransition(.opacity)
-                    .symbolEffect(
-                        .pulse,
-                        options: .repeating,
-                        isActive: !isPaused && !reduceMotion && mapMounted
-                    )
-                Text(statusText)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
+            if isPaused {
+                pauseStatusChip(font: .caption.weight(.bold), iconSize: 13, horizontal: 8, vertical: 6)
+            } else {
+                HStack(spacing: 4) {
+                    Image(systemName: "record.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.red)
+                        .symbolEffect(
+                            .pulse,
+                            options: .repeating,
+                            isActive: !reduceMotion && mapMounted
+                        )
+                    Text(statusText)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .glassChrome(cornerRadius: 14)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .glassChrome(cornerRadius: 14)
 
             Spacer(minLength: 4)
 
@@ -366,11 +385,17 @@ struct LiveFollowMapView: View {
         }
     }
 
-    /// 2D/3D, overview/follow switch, and close — white-on-blue chips matching the recording-card pills.
+    /// 2D/3D, overview/follow switch, and close — chips on the palette-tinted recording HUD.
     private var mapToolsRail: some View {
         HStack(spacing: 8) {
             mapDimensionToggle
+                .disabled(isPaused)
+                .opacity(isPaused ? 0.38 : 1)
+                .allowsHitTesting(!isPaused)
             mapFollowToggle
+                .disabled(isPaused)
+                .opacity(isPaused ? 0.38 : 1)
+                .allowsHitTesting(!isPaused)
 
             Spacer(minLength: 8)
 
@@ -382,7 +407,8 @@ struct LiveFollowMapView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 33, height: 33)
-                    .background(Color(red: 0.52, green: 0.08, blue: 0.12), in: Capsule())
+                    .background(GlassSemantic.notificationBadge, in: Capsule())
+                    .compositingGroup()
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.string("recording.live_map.close"))
@@ -442,11 +468,11 @@ struct LiveFollowMapView: View {
         } label: {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
+                .foregroundStyle(selected ? Color.white : shellPalette.chromeColor(for: .light))
                 .frame(width: 33, height: 29)
                 .background {
                     if selected {
-                        Capsule().fill(.white.opacity(0.28))
+                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
                     }
                 }
         }
@@ -473,11 +499,11 @@ struct LiveFollowMapView: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(selected ? 1 : 0.62))
+                .foregroundStyle(selected ? Color.white : shellPalette.chromeColor(for: .light))
                 .frame(width: 33, height: 29)
                 .background {
                     if selected {
-                        Capsule().fill(.white.opacity(0.28))
+                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
                     }
                 }
         }
@@ -537,24 +563,21 @@ struct LiveFollowMapView: View {
                         systemImage: isPaused ? "play.fill" : "pause.fill",
                         compact: true
                     )
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 2)
                 }
                 .buttonStyle(SoftPressBorderedButtonStyle(reduceMotion: reduceMotion))
                 .controlSize(.small)
                 .tint(.white)
+                .frame(maxWidth: .infinity, minHeight: 34)
 
                 Button(role: .destructive) {
                     // No reverse morph — parent dismisses instantly then plays end credits.
                     onStop(hudAnchorBox.value.width > 0 ? hudAnchorBox.value : cardAnchor)
                 } label: {
                     RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill", compact: true)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 2)
                 }
-                .buttonStyle(.borderedProminent)
+                .trailhoundDestructiveButton()
                 .controlSize(.small)
-                .tint(.red)
+                .frame(maxWidth: .infinity, minHeight: 34)
             }
         }
         .padding(10)
@@ -822,10 +845,14 @@ struct LiveFollowMapView: View {
         }
     }
 
-    /// Apple Maps navigation blue — traveled breadcrumb.
-    static let routeBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
-    /// Matches MapKit puck plate (opaque so the route cannot show through).
-    static let puckPlateBlue = Color(red: 0.28, green: 0.62, blue: 1.0)
+    private var liveFollowPlateColor: Color {
+        shellPalette.tintColor(for: colorScheme)
+    }
+
+    private var liveFollowChevronColors: [Color] {
+        let atm = shellPalette.atmosphere(for: colorScheme)
+        return [atm.glow.color, atm.tint.color, atm.chrome.color]
+    }
 
     /// Map recorded GPS runs onto polyline segments. Runs are already split at gaps;
     /// pieces with fewer than two points cannot form a stroke and are dropped.
@@ -854,6 +881,8 @@ struct LiveFollowVehicleHero: View {
     var destCenter: CGPoint
     var vehiclePhoto: UIImage?
     var vehicleSystemImage: String
+    var plateColor: Color
+    var chevronColors: [Color]
 
     private let puckCircle: CGFloat = 56
     private let chevronSize = CGSize(width: 52, height: 38)
@@ -877,7 +906,7 @@ struct LiveFollowVehicleHero: View {
 
             ZStack {
                 Circle()
-                    .fill(LiveFollowMapView.puckPlateBlue)
+                    .fill(plateColor)
 
                 if let vehiclePhoto {
                     Image(uiImage: vehiclePhoto)
@@ -894,7 +923,7 @@ struct LiveFollowVehicleHero: View {
             .padding(LiveFollowPresentation.lerp(0, 8, t))
             .background {
                 Circle()
-                    .fill(LiveFollowMapView.puckPlateBlue)
+                    .fill(plateColor)
             }
             .overlay {
                 Circle()
@@ -905,11 +934,7 @@ struct LiveFollowVehicleHero: View {
             LiveFollowNavChevron()
                 .fill(
                     LinearGradient(
-                        colors: [
-                            Color(red: 0.42, green: 0.76, blue: 1.0),
-                            LiveFollowMapView.routeBlue,
-                            Color(red: 0.12, green: 0.48, blue: 0.95)
-                        ],
+                        colors: chevronColors,
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -975,6 +1000,8 @@ struct LiveFollowPuckMark: View {
     var vehicleSystemImage: String
     var isMoving: Bool
     var reduceMotion: Bool
+    var plateColor: Color
+    var chevronColors: [Color]
 
     private let circleSize: CGFloat = 56
     private let photoBorder: CGFloat = 5
@@ -1006,14 +1033,10 @@ struct LiveFollowPuckMark: View {
     }
 
     private var filledChevron: some View {
-        LiveFollowNavChevron()
+            LiveFollowNavChevron()
             .fill(
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.42, green: 0.76, blue: 1.0),
-                        LiveFollowMapView.routeBlue,
-                        Color(red: 0.12, green: 0.48, blue: 0.95)
-                    ],
+                    colors: chevronColors,
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -1030,7 +1053,7 @@ struct LiveFollowPuckMark: View {
     private var photoBadge: some View {
         ZStack {
             Circle()
-                .fill(LiveFollowMapView.puckPlateBlue)
+                .fill(plateColor)
 
             photoContent
                 .padding(photoBorder + photoGap)

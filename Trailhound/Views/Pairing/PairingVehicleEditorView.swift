@@ -81,6 +81,7 @@ struct PairingVehicleEditorView: View {
                 .disabled(saveDisabled)
                 .opacity(saveDisabled ? 0.45 : 1)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
         .vehiclePhotoFlowSheets(
@@ -118,6 +119,8 @@ struct PairingVehicleEditorForm: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
@@ -294,7 +297,7 @@ struct PairingVehicleEditorForm: View {
                     .font(.title3)
                     .foregroundStyle(
                         activeDraft.wantsDefault
-                            ? TrailhoundBrandColors.brandBottom
+                            ? shellPalette.tintColor(for: colorScheme)
                             : Color.secondary
                     )
             }
@@ -458,7 +461,7 @@ struct PairingVehicleEditorForm: View {
         switch role {
         case .destructive: return deleteAccent
         case .change: return Color.primary.opacity(0.08)
-        case .edit: return TrailhoundBrandColors.brandBottom
+        case .edit: return shellPalette.tintColor(for: colorScheme)
         }
     }
 

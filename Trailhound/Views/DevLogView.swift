@@ -9,6 +9,7 @@ struct DevLogView: View {
     @State private var lines: [String] = []
     @State private var filter: DevLogCategory?
     @State private var refreshTask: Task<Void, Never>?
+    @Bindable private var settings = AppSettings.shared
 
     private var filteredLines: [String] {
         guard let filter else { return lines }
@@ -18,6 +19,21 @@ struct DevLogView: View {
 
     var body: some View {
         List {
+            Section {
+                Picker(L10n.string("dev.glass.engine"), selection: $settings.glassEngineOverride) {
+                    Text(L10n.string("dev.glass.engine.auto")).tag(GlassEngineOverride.auto)
+                    Text(L10n.string("dev.glass.engine.material")).tag(GlassEngineOverride.material)
+                    Text(L10n.string("dev.glass.engine.native")).tag(GlassEngineOverride.native)
+                }
+                .glassSegmentedStyle()
+                .labelsHidden()
+                .glassListRow()
+            } header: {
+                Text(L10n.string("dev.glass.engine"))
+            } footer: {
+                Text(L10n.string("dev.glass.engine.hint"))
+            }
+
             Section {
                 if filteredLines.isEmpty {
                     Text(L10n.string("Henüz kayıt yok. Aracına Bluetooth ile bağlanıp sürmeye başlayınca burada akış görünecek."))
@@ -40,6 +56,7 @@ struct DevLogView: View {
             }
         }
         .listStyle(.plain)
+        .glassListChrome()
         .navigationTitle(L10n.string("Geliştirici Günlüğü"))
         .toolbar {
             // Its own toolbar item, not a Menu row: a ShareLink nested in a Menu presents an

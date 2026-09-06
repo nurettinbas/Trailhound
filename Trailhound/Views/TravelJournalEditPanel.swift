@@ -114,7 +114,7 @@ struct TravelJournalEditPanel: View {
                 Spacer()
                 Button(L10n.string("journal.edit"), action: onEdit)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
             }
 
             if let note = journal.note, !note.isEmpty {
@@ -202,7 +202,7 @@ struct TravelJournalEditPanel: View {
             Text(text)
                 .font(.caption.weight(.semibold))
         }
-        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+        .glassAccentForeground()
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background {

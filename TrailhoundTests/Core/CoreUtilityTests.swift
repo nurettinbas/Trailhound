@@ -222,6 +222,25 @@ final class AppSettingsAppearanceModeTests: XCTestCase {
         reloaded.appearanceMode = .system
         XCTAssertNil(reloaded.appearanceMode.preferredColorScheme)
     }
+
+    func testShellPaletteDefaultsToSkyAndPersists() {
+        let suiteName = "test.trailhound.shellPalette.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create test defaults")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(settings.shellPalette, .sky)
+
+        settings.shellPalette = .orange
+        XCTAssertEqual(settings.shellPalette, .orange)
+        XCTAssertEqual(defaults.string(forKey: ShellPalette.storageKey), "orange")
+
+        let reloaded = AppSettings(userDefaults: defaults)
+        XCTAssertEqual(reloaded.shellPalette, .orange)
+    }
 }
 
 final class FuelCostCalculatorTests: XCTestCase {

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Rebuild Trailhound.icon Symbol.png from the 1024 AppIcon master (Liquid Glass)."""
+"""Rebuild Trailhound.icon Symbol.png from the 1024 AppIcon master (Liquid Glass).
+
+After changing the symbol, also run scripts/export_alternate_app_icons.py so the
+19 palette Home Screen icons stay in sync.
+"""
 
 from __future__ import annotations
 

@@ -59,6 +59,8 @@ struct TripDetailEditPanel: View {
     var onRouteInvalidated: () -> Void
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
@@ -126,6 +128,31 @@ struct TripDetailEditPanel: View {
         selectedVehicleID.flatMap { id in
             sortedDetailVehicles.first(where: { $0.id == id })
         }
+    }
+
+    private var selectedCategoryDisplayName: String {
+        categories.first(where: { $0.id.uuidString == selectedCategoryID })?.name ?? ""
+    }
+
+    private var selectedVehicleDisplayName: String {
+        selectedDetailVehicle?.name ?? L10n.string("trip.edit.vehicle_none")
+    }
+
+    /// Light glass wells + `onGlassShell` turn `.primary` / `.secondary` white.
+    private var fieldInk: Color {
+        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+    }
+
+    private var fieldSecondaryInk: Color {
+        colorScheme == .dark
+            ? Color.secondary
+            : shellPalette.chromeColor(for: .light).opacity(0.62)
+    }
+
+    private var fieldTint: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
     }
 
     private var previewFuelCost: Double {
@@ -293,7 +320,7 @@ struct TripDetailEditPanel: View {
                 detailSelectionSection(title: L10n.tripStopsSection) {
                     VStack(spacing: 10) {
                         ForEach(sortedStops, id: \.persistentModelID) { stop in
-                            TripStopEditRow(stop: stop, glassFrozen: glassFrozen)
+                            TripStopEditRow(stop: stop)
                         }
                     }
                 }
@@ -369,7 +396,11 @@ struct TripDetailEditPanel: View {
 
             if vehicles.isEmpty {
                 detailSection(title: L10n.tripEditCategory) {
-                    detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
+                    detailMenuPicker(
+                        title: L10n.tripEditCategory,
+                        value: selectedCategoryDisplayName,
+                        selection: $selectedCategoryID
+                    ) {
                         ForEach(categories) { category in
                             Label(category.name, systemImage: category.systemImage)
                                 .tag(category.id.uuidString)
@@ -381,7 +412,11 @@ struct TripDetailEditPanel: View {
                 }
             } else {
                 detailSplitSection(title: L10n.tripEditCategory) {
-                    detailMenuPicker(title: L10n.tripEditCategory, selection: $selectedCategoryID) {
+                    detailMenuPicker(
+                        title: L10n.tripEditCategory,
+                        value: selectedCategoryDisplayName,
+                        selection: $selectedCategoryID
+                    ) {
                         ForEach(categories) { category in
                             Label(category.name, systemImage: category.systemImage)
                                 .tag(category.id.uuidString)
@@ -393,21 +428,28 @@ struct TripDetailEditPanel: View {
                 } right: {
                     detailMenuPicker(
                         title: L10n.string("trip.edit.vehicle"),
+                        value: selectedVehicleDisplayName,
                         selection: $selectedVehicleID,
                         leading: {
-                            if let selected = sortedDetailVehicles.first(where: { $0.id == selectedVehicleID }) {
+                            if let selected = selectedDetailVehicle {
                                 VehicleAvatarView(
                                     systemImage: selected.systemImage,
                                     photoFileName: selected.photoFileName,
-                                    size: 22,
-                                    cornerRadius: 6,
-                                    isElectricAccent: selected.fuelType == .electric
+                                    size: 16,
+                                    cornerRadius: 4,
+                                    isElectricAccent: selected.fuelType == .electric,
+                                    symbolColor: selected.fuelType == .electric
+                                        ? Color.yellow
+                                        : shellPalette.tintColor(for: colorScheme),
+                                    showsSymbolPlate: false,
+                                    symbolFitsFrame: true
                                 )
+                                .clipped()
                             } else {
                                 Image(systemName: "car")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 22, height: 22)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(fieldSecondaryInk)
+                                    .frame(width: 16, height: 16)
                             }
                         }
                     ) {
@@ -420,7 +462,11 @@ struct TripDetailEditPanel: View {
                     }
                     .onChange(of: selectedVehicleID) { _, newID in
                         dismissKeyboard()
-                        loadFuelEditDefaults(for: newID, preferTripSnapshot: false)
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            loadFuelEditDefaults(for: newID, preferTripSnapshot: false)
+                        }
                     }
                     .task(id: vehiclePhotoPrefetchID) {
                         await VehiclePhotoStore.shared.prefetch(vehicles: sortedDetailVehicles)
@@ -463,6 +509,7 @@ struct TripDetailEditPanel: View {
 
             detailSection(title: L10n.tripEditNote) {
                 TextField(L10n.tripEditNotePlaceholder, text: $noteText, axis: .vertical)
+                    .foregroundStyle(fieldInk)
                     .lineLimit(2...4)
                     .focused($focusedField, equals: .note)
                     .submitLabel(.done)
@@ -480,9 +527,7 @@ struct TripDetailEditPanel: View {
                 dismissKeyboard()
             }
             .accessibilityIdentifier("tripDetail.save")
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 8))
-            .tint(TrailhoundBrandColors.brandBottom)
+            .trailhoundProminentButton()
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.top, 4)
         }
@@ -514,11 +559,12 @@ struct TripDetailEditPanel: View {
         ) {
             detailMenuPicker(
                 title: L10n.journalAdd,
+                value: selectedJournalTitle,
                 selection: journalPickerValue,
                 leading: {
                     Image(systemName: trip.journalID == nil ? "map" : "map.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(fieldSecondaryInk)
                         .frame(width: 22, height: 22)
                 }
             ) {
@@ -694,7 +740,7 @@ struct TripDetailEditPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fieldSecondaryInk)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
@@ -702,14 +748,14 @@ struct TripDetailEditPanel: View {
                 .labelsHidden()
                 .datePickerStyle(.compact)
                 .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
+                .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
                 .labelsHidden()
                 .datePickerStyle(.compact)
                 .buttonStyle(.plain)
-                .tint(TrailhoundBrandColors.brandBottom)
+                .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -723,7 +769,7 @@ struct TripDetailEditPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fieldSecondaryInk)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .fixedSize(horizontal: false, vertical: true)
@@ -736,6 +782,7 @@ struct TripDetailEditPanel: View {
 
                 Text("\(value.wrappedValue)")
                     .font(.body.weight(.semibold))
+                    .foregroundStyle(fieldInk)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity)
 
@@ -755,6 +802,7 @@ struct TripDetailEditPanel: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.caption2.weight(.bold))
+                .foregroundStyle(fieldInk)
                 .frame(width: 26, height: 26)
                 .glassField(cornerRadius: 6)
         }
@@ -763,46 +811,67 @@ struct TripDetailEditPanel: View {
 
     private func detailMenuPicker<Selection: Hashable, Content: View>(
         title: String,
+        value: String,
         selection: Binding<Selection>,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        detailMenuPicker(title: title, selection: selection, leading: { EmptyView() }, content: content)
+        detailMenuPicker(
+            title: title,
+            value: value,
+            selection: selection,
+            leading: { EmptyView() },
+            content: content
+        )
     }
 
     private func detailMenuPicker<Selection: Hashable, Leading: View, Content: View>(
         title: String,
+        value: String,
         selection: Binding<Selection>,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption2)
+                .foregroundStyle(fieldSecondaryInk)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.75)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 leading()
-                Picker(title, selection: selection, content: content)
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .buttonStyle(.plain)
-                    .font(.callout)
-                    .tint(.primary)
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Menu {
+                    Picker(title, selection: selection, content: content)
+                        .pickerStyle(.inline)
+                        .labelsHidden()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(value)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(fieldInk)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .truncationMode(.tail)
+                            .allowsTightening(true)
+                        Spacer(minLength: 2)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(fieldSecondaryInk)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .menuIndicator(.hidden)
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .transaction { $0.animation = nil }
     }
 
     private func detailMiniCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
+            .modifier(TripDetailEditWell(padding: 8))
     }
 
     private func detailSplitSection<Left: View, Right: View>(
@@ -863,9 +932,7 @@ struct TripDetailEditPanel: View {
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
-            .padding(12)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
+            .modifier(TripDetailEditWell(padding: 12))
         }
     }
 
@@ -877,8 +944,9 @@ struct TripDetailEditPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fieldSecondaryInk)
             TextField(title, text: text)
+                .foregroundStyle(fieldInk)
                 .focused($focusedField, equals: field)
                 .glassInputField()
         }
@@ -893,8 +961,9 @@ struct TripDetailEditPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fieldSecondaryInk)
             TextField(title, value: value, format: .number.precision(.fractionLength(0...2)))
+                .foregroundStyle(fieldInk)
                 .keyboardType(.decimalPad)
                 .focused($focusedField, equals: field)
                 .glassInputField()
@@ -1137,10 +1206,27 @@ struct TripDetailEditPanel: View {
 
 private struct TripStopEditRow: View {
     @Bindable var stop: TripStop
-    var glassFrozen: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var startedAt: Date = Date()
 
     private let durationRange = 1...240
+
+    private var fieldInk: Color {
+        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+    }
+
+    private var fieldSecondaryInk: Color {
+        colorScheme == .dark
+            ? Color.secondary
+            : shellPalette.chromeColor(for: .light).opacity(0.62)
+    }
+
+    private var fieldTint: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
+    }
 
     private var durationMinutes: Binding<Int> {
         Binding(
@@ -1160,7 +1246,7 @@ private struct TripStopEditRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.tripStartedAt)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(fieldSecondaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
 
@@ -1168,14 +1254,14 @@ private struct TripStopEditRow: View {
                         .labelsHidden()
                         .datePickerStyle(.compact)
                         .buttonStyle(.plain)
-                        .tint(TrailhoundBrandColors.brandBottom)
+                        .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
                         .labelsHidden()
                         .datePickerStyle(.compact)
                         .buttonStyle(.plain)
-                        .tint(TrailhoundBrandColors.brandBottom)
+                        .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -1188,7 +1274,7 @@ private struct TripStopEditRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.duration)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(fieldSecondaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
 
@@ -1200,6 +1286,7 @@ private struct TripStopEditRow: View {
 
                         Text(DateFormatters.formatDuration(TimeInterval(durationMinutes.wrappedValue * 60)))
                             .font(.body.weight(.semibold))
+                            .foregroundStyle(fieldInk)
                             .monospacedDigit()
                             .frame(maxWidth: .infinity)
 
@@ -1219,20 +1306,70 @@ private struct TripStopEditRow: View {
 
     private func stopMiniCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .glassChrome(cornerRadius: 12, frozen: glassFrozen)
+            .modifier(TripDetailEditWell(padding: 8, fillsHeight: true))
     }
 
     private func stopStepButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.caption2.weight(.bold))
+                .foregroundStyle(fieldInk)
                 .frame(width: 26, height: 26)
                 .contentShape(Rectangle())
                 .glassField(cornerRadius: 6)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Light `glassChrome` + `onGlassShell` paints type white on a pale well.
+/// These tiles use a tinted fill and absolute chrome ink instead.
+private struct TripDetailEditWell: ViewModifier {
+    var padding: CGFloat = 8
+    var fillsHeight: Bool = false
+    var cornerRadius: CGFloat = 12
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(ink)
+            .tint(ink)
+            .padding(padding)
+            .frame(
+                minWidth: 0,
+                maxWidth: .infinity,
+                maxHeight: fillsHeight ? .infinity : nil,
+                alignment: .leading
+            )
+            .background { well }
+    }
+
+    private var ink: Color {
+        colorScheme == .dark
+            ? Color.primary
+            : shellPalette.chromeColor(for: .light)
+    }
+
+    private var well: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return shape
+            .fill(fill)
+            .overlay {
+                shape.fill(
+                    shellPalette.tintColor(for: colorScheme)
+                        .opacity(colorScheme == .dark ? 0.22 : 0.18)
+                )
+            }
+            .overlay {
+                shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.55), lineWidth: 1)
+            }
+    }
+
+    private var fill: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.10)
+            : LightGlassPalette.unselectedChipFill
     }
 }

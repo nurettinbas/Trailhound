@@ -16,6 +16,7 @@ struct TripRowView: View {
 
     @Bindable private var settings = AppSettings.shared
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: UIImage?
     @State private var thumbnailLoaded = false
@@ -35,7 +36,7 @@ struct TripRowView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(routeSummary)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme, palette: shellPalette))
                     .lineLimit(2)
 
                 HStack(spacing: 5) {
@@ -46,11 +47,10 @@ struct TripRowView: View {
                             .font(.system(size: 9))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
 
                     Text("·")
                         .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(GlassText.tertiary(for: colorScheme, palette: shellPalette))
 
                     HStack(spacing: 3) {
                         Image(systemName: "calendar")
@@ -59,12 +59,11 @@ struct TripRowView: View {
                             .font(.system(size: 9))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(.secondary)
 
                     if trip.categoryID == BuiltInCategory.businessID.uuidString {
                         Image(systemName: "briefcase.fill")
                             .font(.system(size: 8))
-                            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                            .glassAccentForeground()
                     } else if let suggestedName = pendingSuggestedCategoryName {
                         HStack(spacing: 2) {
                             Image(systemName: "sparkles")
@@ -73,12 +72,13 @@ struct TripRowView: View {
                                 .font(.system(size: 8, weight: .medium))
                                 .lineLimit(1)
                         }
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .glassAccentForeground()
                         .accessibilityHidden(true)
                     }
 
                     Spacer(minLength: 0)
                 }
+                .foregroundStyle(rowMetaColor)
 
                 HStack(spacing: 5) {
                     metricChip(icon: "road.lanes", text: TripListViewModel.distanceText(for: trip))
@@ -184,7 +184,7 @@ struct TripRowView: View {
                     .transition(.opacity.combined(with: .scale(scale: emphasizeLanding ? 0.92 : 1)))
             } else {
                 ZStack {
-                    Color(.tertiarySystemFill)
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.14)
                         .shimmer()
                     Image(systemName: "map")
                         .font(.system(size: 11))
@@ -196,7 +196,7 @@ struct TripRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.30), lineWidth: 1)
         }
         .overlay(alignment: .topTrailing) {
             if let vehicle {
@@ -225,7 +225,11 @@ struct TripRowView: View {
         .shadow(color: .black.opacity(0.28), radius: 1.5, y: 0.5)
     }
 
-    private func metricChip(icon: String, text: String, tint: Color = .secondary) -> some View {
+    private var rowMetaColor: Color {
+        GlassText.secondary(for: colorScheme, palette: shellPalette)
+    }
+
+    private func metricChip(icon: String, text: String) -> some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
                 .font(.system(size: 7, weight: .semibold))
@@ -233,7 +237,7 @@ struct TripRowView: View {
                 .font(.system(size: 8, weight: .medium))
                 .lineLimit(1)
         }
-        .foregroundStyle(tint)
+        .foregroundStyle(rowMetaColor)
     }
 }
 

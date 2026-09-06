@@ -246,6 +246,11 @@ enum L10n {
     static var settingsAppearanceLight: String { string("settings.appearance.light") }
     static var settingsAppearanceDark: String { string("settings.appearance.dark") }
     static var settingsAppearanceHint: String { string("settings.appearance.hint") }
+    static var settingsShellPaletteHint: String { string("settings.shell_palette.hint") }
+
+    static func shellPaletteName(_ palette: ShellPalette) -> String {
+        SharedL10n.text("settings.shell_palette.\(palette.rawValue)", bundle: .main)
+    }
     static var settingsSmartCategorySection: String { string("settings.smart_category.section") }
     static var settingsSmartCategoryToggle: String { string("settings.smart_category.toggle") }
     static var settingsSmartCategoryHint: String { string("settings.smart_category.hint") }

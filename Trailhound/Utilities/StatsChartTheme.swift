@@ -5,7 +5,9 @@ import SwiftUI
 enum StatsChartTheme {
     // MARK: - Daily bar gradients
 
-    static let distanceBarFill = TrailhoundBrandColors.brandBottom.gradient
+    static func distanceBarFill(for scheme: ColorScheme, palette: ShellPalette) -> AnyGradient {
+        palette.tintColor(for: scheme).gradient
+    }
 
     static let durationBarFill = LinearGradient(
         colors: [
@@ -106,26 +108,46 @@ enum StatsChartTheme {
     static func sliceColor(
         forStableKey key: String,
         durationStyle: Bool,
-        domainKeys: [String]
+        domainKeys: [String],
+        palette: ShellPalette = .sky,
+        scheme: ColorScheme = .light
     ) -> Color {
-        let palette = durationStyle ? durationSliceColors : distanceSliceColors
+        let colors = sliceColors(durationStyle: durationStyle, palette: palette, scheme: scheme)
         let ordered = Array(Set(domainKeys)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         guard let index = ordered.firstIndex(of: key) else {
-            return palette[stableHash(key) % palette.count]
+            return colors[stableHash(key) % colors.count]
         }
-        return palette[index % palette.count]
+        return colors[index % colors.count]
     }
 
     static func sliceScale(
         labels: [String],
         stableKeys: [String],
-        durationStyle: Bool
+        durationStyle: Bool,
+        palette: ShellPalette = .sky,
+        scheme: ColorScheme = .light
     ) -> ([String], [Color]) {
         let keys = stableKeys.isEmpty ? labels : stableKeys
         let colors = zip(labels, keys).map { _, key in
-            sliceColor(forStableKey: key, durationStyle: durationStyle, domainKeys: keys)
+            sliceColor(
+                forStableKey: key,
+                durationStyle: durationStyle,
+                domainKeys: keys,
+                palette: palette,
+                scheme: scheme
+            )
         }
         return (labels, colors)
+    }
+
+    static func sliceColors(
+        durationStyle: Bool,
+        palette: ShellPalette,
+        scheme: ColorScheme
+    ) -> [Color] {
+        var colors = durationStyle ? durationSliceColors : distanceSliceColors
+        colors[0] = palette.tintColor(for: scheme)
+        return colors
     }
 
     // MARK: - Cost bucket colors
@@ -319,7 +341,7 @@ struct StatsBarValueLabel: View {
     var body: some View {
         Text(text)
             .font(StatsChartTheme.barValueLabelFont(barCount: barCount))
-            .foregroundStyle(Color.primary.opacity(0.78))
+            .foregroundStyle(.primary.opacity(0.78))
             .lineLimit(1)
             .minimumScaleFactor(0.45)
             .monospacedDigit()

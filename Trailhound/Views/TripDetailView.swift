@@ -28,6 +28,7 @@ struct TripDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query private var places: [SavedPlace]
     @Bindable private var settings = AppSettings.shared
 
@@ -168,7 +169,6 @@ struct TripDetailView: View {
                         .background {
                             // Opaque wash — glass cards and the translucent tab bar never sample the map.
                             ZStack {
-                                Color(.systemBackground)
                                 AtmosphericBackground(style: .lightweight)
                             }
                         }
@@ -246,14 +246,16 @@ struct TripDetailView: View {
                 Button {
                     toggleMapExpanded()
                 } label: {
-                    Image(
+                    GlassNavCircleIcon(
                         systemName: isMapExpanded
                             ? "arrow.down.right.and.arrow.up.left"
                             : "arrow.up.left.and.arrow.down.right"
                     )
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .sheet(isPresented: $showSharePreview, onDismiss: {
             if pendingSystemShare {
@@ -706,7 +708,21 @@ struct TripDetailView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .foregroundStyle(legendInk)
         .glassChrome(cornerRadius: 14, frozen: glassFrozen)
+    }
+
+    /// Light glass well + `onGlassShell` white type is unreadable over the map.
+    private var legendInk: Color {
+        if settings.appearanceMode.preferredColorScheme == .dark {
+            return Color.primary
+        }
+        if settings.appearanceMode.preferredColorScheme == .light {
+            return shellPalette.chromeColor(for: .light)
+        }
+        return UITraitCollection.current.userInterfaceStyle == .dark
+            ? Color.primary
+            : shellPalette.chromeColor(for: .light)
     }
 
     private func legendChip(color: Color, text: String) -> some View {
@@ -878,7 +894,7 @@ private struct TripSharePreviewSheet: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
                     .tint(TrailhoundBrandColors.brandBottom)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 12)
@@ -918,11 +934,14 @@ struct SpeedChartRouteCanvas: View {
     /// Typical spacing between plotted samples; the gap threshold scales off it.
     let sampleMedianIntervalSeconds: TimeInterval
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     private var gapBreakSeconds: TimeInterval {
         SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: sampleMedianIntervalSeconds)
     }
 
-    private var brandColor: Color { TrailhoundBrandColors.brandBottom }
+    private var brandColor: Color { shellPalette.tintColor(for: colorScheme) }
 
     var body: some View {
         Canvas { context, size in
