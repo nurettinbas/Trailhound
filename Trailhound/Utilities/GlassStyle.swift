@@ -106,9 +106,9 @@ struct AtmosphericBackground: View {
                             Color(red: 0.04, green: 0.10, blue: 0.20)
                         ]
                         : [
-                            Color(red: 0.70, green: 0.88, blue: 0.99),
-                            Color(red: 0.82, green: 0.93, blue: 1.00),
-                            Color(red: 0.76, green: 0.90, blue: 0.99)
+                            TrailhoundBrandColors.atmosphereTop,
+                            TrailhoundBrandColors.atmosphereMid,
+                            TrailhoundBrandColors.atmosphereBottom
                         ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -121,27 +121,51 @@ struct AtmosphericBackground: View {
             if style == .full || style == .canvas {
                 let glowScale = style == .canvas ? 0.45 : 1.0
                 ZStack {
-                    glow(
-                        TrailhoundBrandColors.brandTop.opacity((colorScheme == .dark ? 0.38 : 0.42) * glowScale),
-                        diameter: 520,
-                        offset: CGSize(width: -120, height: -220)
-                    )
-
-                    glow(
-                        TrailhoundBrandColors.brandBottom.opacity((colorScheme == .dark ? 0.32 : 0.36) * glowScale),
-                        diameter: 580,
-                        offset: CGSize(width: 140, height: 280)
-                    )
-
-                    if style == .full {
+                    if colorScheme == .dark {
                         glow(
-                            Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18),
-                            diameter: 380,
-                            offset: CGSize(width: 60, height: 40)
+                            TrailhoundBrandColors.brandTop.opacity(0.38 * glowScale),
+                            diameter: 520,
+                            offset: CGSize(width: -120, height: -220)
+                        )
+                        glow(
+                            TrailhoundBrandColors.brandBottom.opacity(0.32 * glowScale),
+                            diameter: 580,
+                            offset: CGSize(width: 140, height: 280)
+                        )
+                        if style == .full {
+                            glow(
+                                Color(red: 0.95, green: 0.78, blue: 0.92).opacity(0.10),
+                                diameter: 380,
+                                offset: CGSize(width: 60, height: 40)
+                            )
+                        }
+                    } else {
+                        glow(
+                            Color.white.opacity(0.58 * glowScale),
+                            diameter: 460,
+                            offset: CGSize(width: 88, height: -250)
+                        )
+                        glow(
+                            TrailhoundBrandColors.atmosphereTop.opacity(0.50 * glowScale),
+                            diameter: 520,
+                            offset: CGSize(width: 70, height: -200)
+                        )
+                        glow(
+                            TrailhoundBrandColors.atmosphereBottom.opacity(0.30 * glowScale),
+                            diameter: 560,
+                            offset: CGSize(width: -130, height: 300)
                         )
                     }
                 }
                 .allowsHitTesting(false)
+            }
+        }
+        // Cheap frost: a white veil, not `.blur`. Live blur under glass cards gets
+        // resampled by every Material above it (see docs/PERFORMANCE.md).
+        .overlay {
+            if colorScheme != .dark {
+                Color.white.opacity(style == .full ? 0.16 : 0.10)
+                    .allowsHitTesting(false)
             }
         }
         .clipped()
