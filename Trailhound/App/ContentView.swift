@@ -22,6 +22,10 @@ struct ContentView: View {
         .environment(\.shellPalette, settings.shellPalette)
         .toastHost()
         .deleteConfirmHost()
+        .onAppear { AppearanceWindowStyle.sync(settings.appearanceMode) }
+        .onChange(of: settings.appearanceMode) { _, mode in
+            AppearanceWindowStyle.sync(mode)
+        }
     }
 
     private var isRecordingSession: Bool {

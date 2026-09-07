@@ -1,44 +1,93 @@
 import XCTest
 
-final class TrailhoundUITests: XCTestCase {
-    private var app: XCUIApplication!
+class TrailhoundUITestCase: XCTestCase {
+    private(set) var app: XCUIApplication!
+
+    var extraLaunchArguments: [String] { [] }
+
+    var uiTimeout: TimeInterval {
+        ProcessInfo.processInfo.environment["CI"] == "true" ? 25 : 15
+    }
 
     override func setUpWithError() throws {
+        try super.setUpWithError()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITesting"]
+        app.launchArguments += ["-UITesting"] + extraLaunchArguments
         app.launchEnvironment["AppleLanguages"] = "(en)"
         app.launchEnvironment["AppleLocale"] = "en_US"
+        addUIInterruptionMonitor(withDescription: "System permission alerts") { alert in
+            let titles = [
+                "Allow While Using App",
+                "Allow Once",
+                "Allow",
+                "OK",
+                "Don’t Allow",
+                "Don't Allow"
+            ]
+            for title in titles {
+                let button = alert.buttons[title]
+                if button.exists {
+                    button.tap()
+                    return true
+                }
+            }
+            return false
+        }
         app.launch()
     }
 
-    private func tabButton(identifier: String, fallbackLabel: String) -> XCUIElement {
+    override func tearDownWithError() throws {
+        if app.state == .runningForeground || app.state == .runningBackground {
+            app.terminate()
+        }
+        app = nil
+        try super.tearDownWithError()
+    }
+
+    func tabButton(identifier: String, fallbackLabels: String...) -> XCUIElement {
         let byIdentifier = app.tabBars.buttons[identifier]
         if byIdentifier.waitForExistence(timeout: 1) {
             return byIdentifier
         }
-        return app.tabBars.buttons[fallbackLabel]
+        for label in fallbackLabels {
+            let button = app.tabBars.buttons[label]
+            if button.waitForExistence(timeout: 0.5) {
+                return button
+            }
+        }
+        return app.tabBars.buttons[fallbackLabels.first ?? identifier]
     }
 
-    private var tripsTab: XCUIElement {
-        tabButton(identifier: "tab.trips", fallbackLabel: "Trips")
+    var tripsTab: XCUIElement {
+        tabButton(identifier: "tab.trips", fallbackLabels: "Trips")
     }
 
-    private var statsTab: XCUIElement {
-        tabButton(identifier: "tab.stats", fallbackLabel: "Statistics")
+    var statsTab: XCUIElement {
+        tabButton(identifier: "tab.stats", fallbackLabels: "Statistics")
     }
 
-    private var settingsTab: XCUIElement {
-        tabButton(identifier: "tab.settings", fallbackLabel: "Settings")
+    var settingsTab: XCUIElement {
+        tabButton(identifier: "tab.settings", fallbackLabels: "Settings")
     }
 
-    private var pairingTab: XCUIElement {
-        tabButton(identifier: "tab.pairing", fallbackLabel: "Pairing")
+    var pairingTab: XCUIElement {
+        tabButton(identifier: "tab.pairing", fallbackLabels: "Vehicles", "Pairing")
     }
 
-    private var uiTimeout: TimeInterval {
-        ProcessInfo.processInfo.environment["CI"] == "true" ? 25 : 15
+    func revealSettingsControl(_ query: XCUIElement) {
+        for _ in 0..<12 {
+            if query.waitForExistence(timeout: 1), query.isHittable { return }
+            if query.exists, !query.isHittable {
+                app.swipeDown()
+                if query.isHittable { return }
+            }
+            app.swipeUp()
+        }
     }
+}
+
+final class TrailhoundUITests: TrailhoundUITestCase {
 
     func testAppLaunchesToTripsTab() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
@@ -191,62 +240,10 @@ final class TrailhoundUITests: XCTestCase {
         XCTAssertTrue(week.waitForExistence(timeout: uiTimeout), "Last 7 days filter should remain after Light appearance")
         XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: uiTimeout))
     }
-
-    /// Settings is a long Form; later rows (appearance, palette) are not in the tree until scrolled.
-    private func revealSettingsControl(_ query: XCUIElement) {
-        for _ in 0..<12 {
-            if query.waitForExistence(timeout: 1), query.isHittable { return }
-            if query.exists, !query.isHittable {
-                app.swipeDown()
-                if query.isHittable { return }
-            }
-            app.swipeUp()
-        }
-    }
 }
 
-final class TrailhoundSmartCategoryUITests: XCTestCase {
-    private var app: XCUIApplication!
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments += ["-UITesting", "-UITesting.smartCategorySeed"]
-        app.launchEnvironment["AppleLanguages"] = "(en)"
-        app.launchEnvironment["AppleLocale"] = "en_US"
-        app.launch()
-    }
-
-    private func tabButton(identifier: String, fallbackLabel: String) -> XCUIElement {
-        let byIdentifier = app.tabBars.buttons[identifier]
-        if byIdentifier.waitForExistence(timeout: 1) {
-            return byIdentifier
-        }
-        return app.tabBars.buttons[fallbackLabel]
-    }
-
-    private var tripsTab: XCUIElement {
-        tabButton(identifier: "tab.trips", fallbackLabel: "Trips")
-    }
-
-    private var settingsTab: XCUIElement {
-        tabButton(identifier: "tab.settings", fallbackLabel: "Settings")
-    }
-
-    private var uiTimeout: TimeInterval {
-        ProcessInfo.processInfo.environment["CI"] == "true" ? 25 : 15
-    }
-
-    private func revealSettingsControl(_ query: XCUIElement) {
-        for _ in 0..<10 {
-            if query.waitForExistence(timeout: 1), query.isHittable { return }
-            if query.exists, !query.isHittable {
-                app.swipeDown()
-                if query.isHittable { return }
-            }
-            app.swipeUp()
-        }
-    }
+final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {
+    override var extraLaunchArguments: [String] { ["-UITesting.smartCategorySeed"] }
 
     func testSmartCategorySettingsToggleHidesWorkHours() {
         XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
@@ -327,7 +324,10 @@ final class TrailhoundSmartCategoryUITests: XCTestCase {
             accept.tap()
         }
 
-        XCTAssertFalse(waitForIdentifierGone("trips.row.first.suggested"))
+        XCTAssertTrue(
+            waitForIdentifierGone("trips.row.first.suggested"),
+            "Accepting the suggestion should replace the pending chip with a normal first row"
+        )
         XCTAssertTrue(waitForIdentifier("trips.row.first"))
 
         let toast = app.staticTexts["Category updated"]
@@ -335,6 +335,6 @@ final class TrailhoundSmartCategoryUITests: XCTestCase {
     }
 
     private func waitForIdentifierGone(_ identifier: String) -> Bool {
-        app.descendants(matching: .any)[identifier].waitForExistence(timeout: 3)
+        app.descendants(matching: .any)[identifier].waitForNonExistence(timeout: 5)
     }
 }

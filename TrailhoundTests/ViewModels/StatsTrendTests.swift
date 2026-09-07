@@ -37,6 +37,36 @@ final class StatsTrendTests: XCTestCase {
         XCTAssertNil(StatsTrend.make(current: 0, previous: 0, polarity: .higherIsBetter))
     }
 
+    func testTrendBadgeFillUsesSemanticPlates() {
+        let favorable = StatsTrend.make(current: 150, previous: 100, polarity: .higherIsBetter)!
+        XCTAssertEqual(
+            StatsTrendBadge.fill(for: favorable, colorScheme: .light),
+            GlassSemantic.success(for: .light)
+        )
+        XCTAssertEqual(
+            StatsTrendBadge.fill(for: favorable, colorScheme: .dark),
+            GlassSemantic.success(for: .dark)
+        )
+
+        let unfavorable = StatsTrend.make(current: 50, previous: 100, polarity: .higherIsBetter)!
+        XCTAssertEqual(
+            StatsTrendBadge.fill(for: unfavorable, colorScheme: .light),
+            GlassSemantic.destructive(for: .light)
+        )
+
+        let cheaperFuel = StatsTrend.make(current: 80, previous: 100, polarity: .lowerIsBetter)!
+        XCTAssertEqual(
+            StatsTrendBadge.fill(for: cheaperFuel, colorScheme: .light),
+            GlassSemantic.success(for: .light)
+        )
+
+        let neutral = StatsTrend.make(current: 120, previous: 100, polarity: .neutral)!
+        XCTAssertEqual(
+            StatsTrendBadge.fill(for: neutral, colorScheme: .light),
+            StatsTrendBadge.neutralChipFill
+        )
+    }
+
     func testVehicleCompareBuilderSortsByAmountAndJoinsDistance() {
         let seeds = [
             VehicleCompareSeed(

@@ -74,6 +74,9 @@ final class TripMapSnapshotCache {
         size: CGSize = CGSize(width: 88, height: 88)
     ) async -> UIImage? {
         let key = SnapshotKey(tripID: trip.id, appearance: appearance)
+        if UITestSupport.isEnabled {
+            return nil
+        }
         if let cached = memoryCache[key] {
             return cached
         }
@@ -193,9 +196,10 @@ final class TripMapSnapshotCache {
         let snapshotter = MKMapSnapshotter(options: options)
 
         return await withCheckedContinuation { continuation in
+            let resume = OnceResume()
             snapshotter.start { snapshot, _ in
                 guard let snapshot else {
-                    continuation.resume(returning: nil)
+                    resume.finish(continuation, SendableSnapshot(image: nil))
                     return
                 }
 
@@ -221,9 +225,14 @@ final class TripMapSnapshotCache {
                     path.stroke()
                 }
 
-                continuation.resume(returning: image)
+                resume.finish(continuation, SendableSnapshot(image: image))
             }
-        }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(6))
+                snapshotter.cancel()
+                resume.finish(continuation, SendableSnapshot(image: nil))
+            }
+        }.image
     }
 
     private func mapRegion(for coordinates: [CLLocationCoordinate2D]) -> MKCoordinateRegion? {
@@ -250,5 +259,26 @@ final class TripMapSnapshotCache {
             longitudeDelta: max(0.008, (maxLon - minLon) * 1.5)
         )
         return MKCoordinateRegion(center: center, span: span)
+    }
+}
+
+/// MapKit's snapshot callback can stall; resume the continuation at most once.
+private struct SendableSnapshot: @unchecked Sendable {
+    let image: UIImage?
+}
+
+private final class OnceResume: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didFinish = false
+
+    func finish(
+        _ continuation: CheckedContinuation<SendableSnapshot, Never>,
+        _ value: SendableSnapshot
+    ) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !didFinish else { return }
+        didFinish = true
+        continuation.resume(returning: value)
     }
 }

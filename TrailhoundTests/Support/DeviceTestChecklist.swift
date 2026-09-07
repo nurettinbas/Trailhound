@@ -21,6 +21,7 @@ enum DeviceTestChecklist {
         "Second open of the same long trip is instant (memory cache)",
         "App kill → reopen → long trip detail still fast (disk cache)",
         "Share card: Light/Dark + palette wash (not fixed charcoal); app icon matches Appearance hue",
+        "Settings palette change: exactly one iOS icon confirmation; alert chrome follows selected Light/Dark Appearance",
         "After GPS trim, map updates (cache invalidation)",
         "After merge, combined route draws correctly",
         "Trip with tunnel/signal loss keeps a broken route (no bird-flight fill)",
@@ -63,11 +64,12 @@ enum DeviceTestChecklist {
         "Trip detail: Travel time (moving, excluding stops) sits beside Duration; ? explains the difference",
         "Trip detail: cards pack left-to-right with no empty mid-grid slots; Avg fuel calculate ? explains catalog cost; preview is Avg fuel calculation; Avg fuel and Est. fuel both show cost · volume; Est. ? opens full explanation",
         "Trip detail / Stats: Cruise + Common ? explain moving average vs pace band; Median + P90 when route loaded",
+        "Stats summary: period % chips (green/red/frost plates + white type) match New capsule, not plain tinted text",
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
-        "Appearance Light: open palette glass (Forest/Gold stay a bright wash, not olive plates) + white type; floating tab bar stays system; Dark keeps the deep shade",
+        "Appearance Light: open palette glass (Forest/Gold stay a bright wash, not olive plates) + white type; floating tab bar is one step deeper than system frost; Dark keeps the deep shade",
         "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
     ]
 }

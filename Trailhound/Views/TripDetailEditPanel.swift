@@ -912,6 +912,9 @@ struct TripDetailEditPanel: View {
 
             content()
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12, frozen: glassFrozen)
     }
 
     private func detailSection<Content: View>(
@@ -930,7 +933,6 @@ struct TripDetailEditPanel: View {
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
-            .modifier(TripDetailEditWell(padding: 12))
         }
     }
 

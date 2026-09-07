@@ -82,7 +82,7 @@ struct VehicleEditorDraft: Equatable {
         }
 
         try context.save()
-        if !UITestSupport.isUnitTesting {
+        if !UITestSupport.shouldSkipExternalEffects {
             TrailhoundShortcuts.updateAppShortcutParameters()
         }
     }

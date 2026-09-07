@@ -96,7 +96,9 @@ final class GlassContrastTests: XCTestCase {
     func testTintOpacitiesStayLight() {
         XCTAssertEqual(GlassContrast.panelTintOpacity, 0.22)
         XCTAssertEqual(GlassContrast.nativeGlassTintOpacity, 0.16)
+        XCTAssertEqual(GlassContrast.tabBarGlassTintOpacity, 0.28)
         XCTAssertLessThan(GlassContrast.panelTintOpacity, 0.40)
+        XCTAssertLessThan(GlassContrast.tabBarGlassTintOpacity, 0.40)
         XCTAssertLessThan(GlassContrast.recordingWashOpacity, 0.45)
         for palette in ShellPalette.allCases {
             XCTAssertEqual(

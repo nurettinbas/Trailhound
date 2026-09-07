@@ -28,6 +28,14 @@ final class BundleBrandAssetTests: XCTestCase {
         XCTAssertNotEqual(sky, sand)
     }
 
+    func testThemedLogoOrangeLightDiffersFromDark() {
+        let light = TrailhoundThemedLogo.image(palette: .orange, scheme: .light)
+        let dark = TrailhoundThemedLogo.image(palette: .orange, scheme: .dark)
+        XCTAssertNotNil(light)
+        XCTAssertNotNil(dark)
+        XCTAssertNotEqual(light, dark)
+    }
+
     func testRecordingStartSoundIsCompactAACInCAF() throws {
         try assertRecordingCue(
             resource: "trip_start",

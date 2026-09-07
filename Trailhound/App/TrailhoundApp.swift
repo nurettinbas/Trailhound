@@ -106,6 +106,7 @@ final class AppRuntime {
             let hasActiveSession = tripRecordingService.state.isActiveSession
                 || AppSettings.shared.pendingStartRecordingRequest
             guard !hasActiveSession else { return }
+            guard !UITestSupport.isEnabled else { return }
             await RecordingLiveActivityService.reconcileAfterLaunch(hasActiveSession: false)
             WidgetCenter.shared.reloadAllTimelines()
         }
@@ -122,13 +123,17 @@ final class AppRuntime {
         CategorySeeder.seedIfNeeded(in: container.mainContext)
         VehiclePairingService.seedDefaultVehicleIfNeeded(in: container.mainContext)
         VehicleCareSummaryStore.shared.refresh(in: container.mainContext)
-        VehicleCareNotificationScheduler.rescheduleAll(in: container.mainContext)
-        TripStore.syncWidgetWeekDistance(in: container.mainContext)
+        if !UITestSupport.isEnabled {
+            VehicleCareNotificationScheduler.rescheduleAll(in: container.mainContext)
+            TripStore.syncWidgetWeekDistance(in: container.mainContext)
+        }
         TripRecoveryService.finalizeStaleOrphans(in: container.mainContext)
-        TripRecoveryService.scheduleOrphanStaleNotifications(
-            in: container.mainContext,
-            excludingTripID: tripRecordingService.activeTripID
-        )
+        if !UITestSupport.isEnabled {
+            TripRecoveryService.scheduleOrphanStaleNotifications(
+                in: container.mainContext,
+                excludingTripID: tripRecordingService.activeTripID
+            )
+        }
 
         networkMonitor.onConnected = { [weak self] in
             guard let self else { return }
@@ -144,6 +149,7 @@ final class AppRuntime {
             )
         }
 
+        guard !UITestSupport.isEnabled else { return }
         Task(priority: .utility) { @MainActor in
             // Avg-fuel journal totals don't depend on GPS-derived estimates, so rewrite them first.
             TravelJournalTotals.refreshAvgFuelTotalsIfNeeded(in: container.mainContext)
@@ -263,8 +269,10 @@ struct TrailhoundApp: App {
             AppNotificationStore.shared.reload()
             runtime.resumeMonitoringIfNeeded()
             refreshLockScreenWidgetStats()
-            Task { @MainActor in
-                await runtime.geocodingRetryService.retryPendingTrips(in: modelContainer.mainContext)
+            if !UITestSupport.isEnabled {
+                Task { @MainActor in
+                    await runtime.geocodingRetryService.retryPendingTrips(in: modelContainer.mainContext)
+                }
             }
             if AppSettings.shared.appLockEnabled, didEnterBackground {
                 runtime.appLockService.lock()
@@ -278,6 +286,7 @@ struct TrailhoundApp: App {
     }
 
     private func refreshLockScreenWidgetStats() {
+        guard !UITestSupport.isEnabled else { return }
         TripStore.syncWidgetWeekDistance(in: modelContainer.mainContext)
         WidgetCenter.shared.reloadTimelines(ofKind: "TrailhoundLockScreenWidget")
         WidgetCenter.shared.reloadTimelines(ofKind: "TrailhoundWidget")

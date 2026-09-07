@@ -30,6 +30,14 @@ final class SmartCategorySettingsTests: XCTestCase {
     }
 }
 
+final class UITestSupportHostTests: XCTestCase {
+    func testUnitTestHostSkipsExternalEffects() {
+        XCTAssertTrue(UITestSupport.isUnitTesting)
+        XCTAssertTrue(UITestSupport.shouldSkipExternalEffects)
+        XCTAssertFalse(UITestSupport.isEnabled)
+    }
+}
+
 @MainActor
 final class SmartCategorySeedTests: XCTestCase {
     func testSeededCommuteIsNewestRowWithPendingSuggestion() throws {
@@ -50,6 +58,7 @@ final class SmartCategorySeedTests: XCTestCase {
         XCTAssertEqual(first.id, UITestSupport.smartCategorySeedTripID)
         XCTAssertTrue(first.hasPendingCategorySuggestion)
         XCTAssertGreaterThan(first.startedAt, older.startedAt)
+        XCTAssertGreaterThanOrEqual(first.points.count, 2)
 
         UITestSupport.seedSmartCategoryFixtures(in: context)
         try context.save()

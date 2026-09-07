@@ -983,7 +983,7 @@ struct StatsView: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                         .lineLimit(1)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .center, spacing: 4) {
                         Text(row.currentText)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
@@ -1263,7 +1263,7 @@ struct StatsView: View {
             }
             .frame(height: StatsCardTokens.nestedTileTitleRowHeight)
 
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .center, spacing: 4) {
                 Text(value)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(GlassText.primary(for: colorScheme))

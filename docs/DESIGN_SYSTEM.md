@@ -14,7 +14,7 @@ Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards
 | Solid / Reduce Transparency | Opaque mid mixed slightly toward bottom — never system grouped white, never chrome plate | system grouped + tint |
 | Field wells | mid-family tint 0.18 | white 0.10 |
 | Control tint | white on the colored shell | palette tint |
-| Tab selection | palette tint icon + iOS 26 pill; unselected dark ink on the white floating bar | palette tint; unselected secondary |
+| Tab selection | palette tint icon + iOS 26 pill; Light capsule = system glass + mid-family tint 0.28; unselected dark ink | palette tint; unselected secondary |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
 | Recording / live follow | Selected palette glow + tint on the card, follow path, and vehicle puck | Same hue, dark shade |
 | Pause chip (live follow) | Opaque orange (`TrailhoundBrandColors.paused`) + white type — never glass + hierarchical white | Same |
@@ -24,7 +24,7 @@ Source of truth: `ShellPalette.swift`, `GlassPalette.swift`, `GlassStyle.swift`.
 
 Palette hues: Sky, Ocean, Teal, Mint, Forest, Lime, Gold, Sunset, Orange, Coral, Rose, Pink, Magenta, Purple, Violet, Indigo, Slate, Graphite, Sand, Ember. Stored in the App Group as `shellPalette`.
 
-The Home Screen icon follows the same hue. **Sky** is the primary Liquid Glass `Trailhound.icon` (light fill + dark navy appearance) plus `Trailhound.appiconset` for iOS 17/18. Every other palette is an alternate Icon Composer file `AppIcons/AppIcon<Name>.icon` with the same light/dark fills — not an `.appiconset`. Xcode 26 flags alternate PNG catalogs as an unassigned Dark `[1d]` child. `AppIconSync` calls `setAlternateIconName` when Appearance changes; iOS always shows a system confirmation. Home Screen light/dark still follows the iPhone appearance, not the in-app Light/Dark picker. In-app brand marks and the share-card raster use the same fill (`homeScreenIconFill`: light tint / dark mid) on `TrailhoundLogo`. Rebuild icons with `scripts/export_alternate_app_icons.py`.
+The Home Screen icon follows the same hue. **Sky** is the primary Liquid Glass `Trailhound.icon` (light fill + dark navy appearance) plus `Trailhound.appiconset` for iOS 17/18. Every other palette is an alternate Icon Composer file `AppIcons/AppIcon<Name>.icon` with the same light/dark fills — not an `.appiconset`. Xcode 26 flags alternate PNG catalogs as an unassigned Dark `[1d]` child. `AppIconSync` coalesces repeated palette updates, synchronizes the UIKit window to the selected Appearance, then calls the public `setAlternateIconName` API. iOS presents the single required confirmation. Home Screen light/dark still follows the iPhone appearance, not the in-app Light/Dark picker. In-app brand marks and the share-card raster use the same fill (`homeScreenIconFill`: light tint / dark mid) on `TrailhoundLogo`. Rebuild icons with `scripts/export_alternate_app_icons.py`.
 
 ## Engine
 
@@ -47,7 +47,7 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 - Reduce Transparency uses `GlassEngine.solid` with opaque mid-family fill, not system grouped white and not chrome.
 - Reduce Motion skips chip morph and sheen animation.
 - VoiceOver labels are unchanged. Palette swatches use `settings.shellPalette.<id>`.
-- System exceptions stay system: floating tab bar, `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity.
+- System exceptions stay system: `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity. Light floating tab bar keeps system glass with a one-step mid-family tint.
 - Legitimate blacks stay black: map vignette/dimming, delete/merge scrims, shadows, camera/crop stage. Semantic Stop/unread remains solid red.
 
 ## Code map
@@ -62,5 +62,5 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |
 | `TrailhoundTabBarCompact.swift` | Palette selected-tab tint (system floating-bar width) |
-| `AppIconSync.swift` | Palette → alternate Home Screen icon |
+| `AppIconSync.swift` | Palette → alternate Home Screen icon; coalesced public API call |
 | `TrailhoundBrandMark.swift` | In-app / share-card logo recolored to `homeScreenIconFill` |

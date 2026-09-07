@@ -14,7 +14,7 @@ enum VehiclePairingService {
         }
         if save {
             try? context.save()
-            if !UITestSupport.isUnitTesting {
+            if !UITestSupport.shouldSkipExternalEffects {
                 TrailhoundShortcuts.updateAppShortcutParameters()
             }
         }
@@ -37,7 +37,7 @@ enum VehiclePairingService {
             }
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)
-            } else if !UITestSupport.isUnitTesting {
+            } else if !UITestSupport.shouldSkipExternalEffects {
                 TrailhoundShortcuts.updateAppShortcutParameters()
             }
             VehicleCareNotificationScheduler.rescheduleAll(in: context)
