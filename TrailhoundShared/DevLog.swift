@@ -78,7 +78,7 @@ public final class DevLog: @unchecked Sendable {
     public func log(_ category: DevLogCategory, _ message: String, level: DevLogLevel = .info) {
         queue.async { [weak self] in
             guard let self else { return }
-            let timestamp = Self.timestampFormatter.string(from: self.now())
+            let timestamp = Self.utcTimestampString(from: self.now())
             let line = "[\(timestamp)] [\(level.badge)] [\(category.rawValue)] \(message)\n"
             self.append(line)
         }
@@ -248,8 +248,40 @@ public final class DevLog: @unchecked Sendable {
         return .app
     }
 
+    static func utcTimestampString(from date: Date) -> String {
+        let parts = utcParts(from: date)
+        return String(
+            format: "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+            parts.year, parts.month, parts.day,
+            parts.hour, parts.minute, parts.second, parts.millisecond
+        )
+    }
+
     static func utcDayString(from date: Date) -> String {
-        dayFormatter.string(from: date)
+        let parts = utcParts(from: date)
+        return String(format: "%04d-%02d-%02d", parts.year, parts.month, parts.day)
+    }
+
+    private static func utcParts(from date: Date) -> (
+        year: Int, month: Int, day: Int,
+        hour: Int, minute: Int, second: Int, millisecond: Int
+    ) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let components = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second, .nanosecond],
+            from: date
+        )
+        let millisecond = min(999, (components.nanosecond ?? 0) / 1_000_000)
+        return (
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0,
+            components.hour ?? 0,
+            components.minute ?? 0,
+            components.second ?? 0,
+            millisecond
+        )
     }
 
     static func day(fromSegmentName name: String) -> String? {
@@ -273,63 +305,17 @@ public final class DevLog: @unchecked Sendable {
         let sliced = tail.dropFirst(start)
         return String(decoding: sliced, as: UTF8.self)
     }
-
-    private static let timestampFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
-
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
 }
 
 enum DevLogSanitizer {
-    private static let uuidPattern = try! NSRegularExpression(
-        pattern: #"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"#
-    )
-    private static let pathPattern = try! NSRegularExpression(
-        pattern: #"(?:file://)?(?:/Users|/var|/private|/tmp|/System)[^\s]+"#
-    )
-    private static let coordinatePattern = try! NSRegularExpression(
-        pattern: #"-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}"#
-    )
-    private static let photoNamePattern = try! NSRegularExpression(
-        pattern: #"[\w.-]+\.(?:png|jpe?g|heic)"#,
-        options: [.caseInsensitive]
-    )
-
     static func sanitize(_ text: String) -> String {
         var result = text
-        result = replace(result, regex: uuidPattern) { match in
-            String(match.prefix(8))
+        result.replace(#/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/#) { match in
+            String(match.output.prefix(8))
         }
-        result = replace(result, regex: pathPattern) { _ in "<path>" }
-        result = replace(result, regex: coordinatePattern) { _ in "<coord>" }
-        result = replace(result, regex: photoNamePattern) { _ in "<photo>" }
+        result.replace(#/(?:file://)?(?:/Users|/var|/private|/tmp|/System)[^\s]+/#) { _ in "<path>" }
+        result.replace(#/-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/#) { _ in "<coord>" }
+        result.replace(#/[\w.-]+\.(?:png|jpe?g|heic)/#.ignoresCase()) { _ in "<photo>" }
         return result
-    }
-
-    private static func replace(
-        _ text: String,
-        regex: NSRegularExpression,
-        transform: (String) -> String
-    ) -> String {
-        let range = NSRange(text.startIndex..., in: text)
-        let matches = regex.matches(in: text, range: range)
-        var output = text
-        for match in matches.reversed() {
-            guard let swiftRange = Range(match.range, in: output) else { continue }
-            let value = String(output[swiftRange])
-            output.replaceSubrange(swiftRange, with: transform(value))
-        }
-        return output
     }
 }
