@@ -141,18 +141,31 @@ struct AtmosphericBackground: View {
                         }
                     } else {
                         glow(
-                            Color.white.opacity(0.55 * glowScale),
-                            diameter: 420,
-                            offset: CGSize(width: 90, height: -240)
+                            Color.white.opacity(0.58 * glowScale),
+                            diameter: 460,
+                            offset: CGSize(width: 88, height: -250)
                         )
                         glow(
-                            shellPalette.glowColor(for: .light).opacity(0.34 * glowScale),
+                            shellPalette.atmosphere(for: .light).top.color.opacity(0.50 * glowScale),
                             diameter: 520,
-                            offset: CGSize(width: -140, height: 260)
+                            offset: CGSize(width: 70, height: -200)
+                        )
+                        glow(
+                            shellPalette.atmosphere(for: .light).bottom.color.opacity(0.30 * glowScale),
+                            diameter: 560,
+                            offset: CGSize(width: -130, height: 300)
                         )
                     }
                 }
                 .allowsHitTesting(false)
+            }
+        }
+        // Cheap frost: a white veil, not `.blur`. Live blur under glass cards gets
+        // resampled by every Material above it (see docs/PERFORMANCE.md).
+        .overlay {
+            if colorScheme != .dark {
+                Color.white.opacity(style == .full ? 0.16 : 0.10)
+                    .allowsHitTesting(false)
             }
         }
         .clipped()
