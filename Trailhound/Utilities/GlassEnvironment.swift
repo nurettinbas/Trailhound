@@ -50,6 +50,16 @@ extension View {
     func glassTertiaryInk() -> some View {
         modifier(GlassTertiaryInkModifier())
     }
+
+    /// Palette chrome on Light glass; secondary in Dark. Use for row `>` chevrons.
+    func glassDisclosureInk() -> some View {
+        modifier(GlassDisclosureInkModifier())
+    }
+
+    /// Drops the system NavigationLink `>` so a `GlassDisclosureChevron` can own the color.
+    func glassHidesNavigationLinkIndicator() -> some View {
+        modifier(GlassHidesNavigationLinkIndicator())
+    }
 }
 
 private struct GlassPrimaryInkModifier: ViewModifier {
@@ -73,6 +83,25 @@ private struct GlassTertiaryInkModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content.foregroundStyle(GlassText.tertiary(for: colorScheme))
+    }
+}
+
+private struct GlassDisclosureInkModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(GlassControlTint.disclosure(for: colorScheme, palette: shellPalette))
+    }
+}
+
+private struct GlassHidesNavigationLinkIndicator: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.navigationLinkIndicatorVisibility(.hidden)
+        } else {
+            content
+        }
     }
 }
 

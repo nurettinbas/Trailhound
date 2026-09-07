@@ -139,17 +139,22 @@ struct TravelJournalRowView: View {
         let appearance = MapSnapshotAppearance(colorScheme)
         var images: [UIImage] = []
         for tripID in journal.mosaicTripIDs.prefix(TravelJournal.mosaicSlotCount) {
+            if Task.isCancelled { return }
             if let cached = TripMapSnapshotCache.shared.cachedImage(for: tripID, appearance: appearance) {
                 images.append(cached)
                 continue
             }
             let descriptor = FetchDescriptor<Trip>(predicate: #Predicate { $0.id == tripID })
             guard let trip = try? modelContext.fetch(descriptor).first else { continue }
-            if let image = await TripMapSnapshotCache.shared.snapshot(for: trip, appearance: appearance) {
+            if let image = await TripMapSnapshotCache.shared.snapshot(
+                for: trip,
+                appearance: appearance,
+                container: modelContext.container
+            ) {
                 images.append(image)
-                trip.invalidatePointCaches()
             }
         }
+        guard !Task.isCancelled else { return }
         mosaic = images
     }
 }

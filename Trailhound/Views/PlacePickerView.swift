@@ -247,10 +247,8 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarBackButton()
         }
-        .glassToolbarControl()
         .accessibilityLabel(Text("onboarding.back"))
       }
-      .hideSharedToolbarBackgroundIfAvailable()
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()
@@ -258,11 +256,9 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarSaveButton(title: L10n.placePickerSave)
         }
-        .glassToolbarControl()
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
       }
-      .hideSharedToolbarBackgroundIfAvailable()
     }
     .glassListChrome()
     .dismissKeyboardOnTap(focus: $focusedField)
@@ -546,7 +542,7 @@ struct PlacePickerView: View {
       Spacer(minLength: 0)
       Image(systemName: "chevron.right")
         .font(.caption.weight(.semibold))
-        .glassTertiaryInk()
+        .glassDisclosureInk()
         .accessibilityHidden(true)
     }
     .contentShape(Rectangle())

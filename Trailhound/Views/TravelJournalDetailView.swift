@@ -180,7 +180,7 @@ struct TravelJournalDetailView: View {
     private var backToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button(action: dismiss.callAsFunction) {
-                GlassNavCircleIcon(systemName: "chevron.backward", frozen: isMapExpandTransitioning)
+                GlassNavCircleIcon(systemName: "chevron.backward")
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("onboarding.back"))
@@ -192,7 +192,7 @@ struct TravelJournalDetailView: View {
     private var mapExpandToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: toggleMapExpanded) {
-                GlassNavCircleIcon(systemName: mapExpandIconName, frozen: isMapExpandTransitioning)
+                GlassNavCircleIcon(systemName: mapExpandIconName)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(mapExpandAccessibilityLabel)

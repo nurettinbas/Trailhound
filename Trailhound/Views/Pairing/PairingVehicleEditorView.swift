@@ -83,11 +83,9 @@ struct PairingVehicleEditorView: View {
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .glassToolbarSaveControl()
                 .disabled(saveDisabled)
                 .opacity(saveDisabled ? 0.45 : 1)
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
         .vehiclePhotoFlowSheets(
@@ -908,10 +906,8 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
                     } label: {
                         GlassToolbarBackButton()
                     }
-                    .glassToolbarControl()
                     .accessibilityLabel(Text("onboarding.back"))
                 }
-                .hideSharedToolbarBackgroundIfAvailable()
             }
             .background(NavigationInteractivePopDisabled(disabled: hasUnsavedChanges))
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {

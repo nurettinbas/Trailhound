@@ -82,8 +82,10 @@ struct SettingsView: View {
                             Text(place.kind.displayName)
                                 .font(.caption2)
                                 .glassSecondaryInk()
+                            GlassDisclosureChevron()
                         }
                     }
+                    .glassHidesNavigationLinkIndicator()
                     .glassRow(position: favoritePlacePosition(placeIndex: index))
                     .listRowInsets(
                         EdgeInsets(

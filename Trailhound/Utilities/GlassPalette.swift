@@ -117,6 +117,12 @@ enum GlassControlTint {
     static func link(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         palette.shellTint(for: scheme)
     }
+
+    /// Row disclosure chevron. Light uses palette chrome (dark ink on open glass);
+    /// Dark keeps secondary so it does not compete with `.primary`.
+    static func disclosure(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
+        scheme == .dark ? GlassText.secondary(for: .dark) : palette.chromeColor(for: .light)
+    }
 }
 
 enum GlassHostBudget {

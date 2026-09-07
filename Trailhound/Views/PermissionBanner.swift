@@ -14,8 +14,28 @@ struct LocationPermissionBadge: View {
     .foregroundStyle(Color.white)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
-    .background(color)
-    .clipShape(Capsule())
+    .background {
+      Capsule(style: .continuous)
+        .fill(
+          LinearGradient(
+            colors: fillColors,
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        )
+        .overlay {
+          Capsule(style: .continuous)
+            .strokeBorder(
+              Color.white.opacity(colorScheme == .dark ? 0.28 : 0.42),
+              lineWidth: 0.75
+            )
+        }
+    }
+    .shadow(
+      color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.18),
+      radius: 2,
+      y: 1
+    )
     .compositingGroup()
     .accessibilityLabel(label)
   }
@@ -39,10 +59,20 @@ struct LocationPermissionBadge: View {
 
   private var color: Color {
     switch state {
-    case .authorizedAlways: GlassSemantic.success(for: colorScheme)
+    case .authorizedAlways: Color(red: 0.12, green: 0.62, blue: 0.30)
     case .authorizedWhenInUse: GlassSemantic.paused(for: colorScheme)
     case .denied, .restricted, .notDetermined: GlassSemantic.destructive(for: colorScheme)
     }
+  }
+
+  private var fillColors: [Color] {
+    guard state == .authorizedAlways else {
+      return [color, color]
+    }
+    return [
+      Color(red: 0.18, green: 0.70, blue: 0.36),
+      Color(red: 0.09, green: 0.55, blue: 0.25)
+    ]
   }
 }
 

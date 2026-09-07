@@ -244,31 +244,31 @@ struct TripDetailView: View {
             }
             .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await renderShareCard() }
-                } label: {
-                    GlassNavCircleIcon(
-                        systemName: "square.and.arrow.up",
-                        isLoading: isRenderingShareCard
-                    )
+                GlassToolbarCluster {
+                    Button {
+                        Task { await renderShareCard() }
+                    } label: {
+                        GlassNavCircleIcon(
+                            systemName: "square.and.arrow.up",
+                            isLoading: isRenderingShareCard
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isRenderingShareCard)
+                    .accessibilityLabel(L10n.share)
+
+                    Button {
+                        toggleMapExpanded()
+                    } label: {
+                        GlassNavCircleIcon(
+                            systemName: isMapExpanded
+                                ? "arrow.down.right.and.arrow.up.left"
+                                : "arrow.up.left.and.arrow.down.right"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
                 }
-                .buttonStyle(.plain)
-                .disabled(isRenderingShareCard)
-                .accessibilityLabel(L10n.share)
-            }
-            .hideSharedToolbarBackgroundIfAvailable()
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    toggleMapExpanded()
-                } label: {
-                    GlassNavCircleIcon(
-                        systemName: isMapExpanded
-                            ? "arrow.down.right.and.arrow.up.left"
-                            : "arrow.up.left.and.arrow.down.right"
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
             }
             .hideSharedToolbarBackgroundIfAvailable()
         }
@@ -928,7 +928,9 @@ private struct TripSharePreviewSheet: View {
             .onGlassShell()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.actionClose, action: onClose)
+                    Button(action: onClose) {
+                        GlassToolbarTitle(title: L10n.actionClose)
+                    }
                 }
             }
         }

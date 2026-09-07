@@ -85,11 +85,9 @@ struct VehicleDetailView: View {
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .glassToolbarSaveControl()
                 .disabled(vehicleSaveDisabled)
                 .opacity(vehicleSaveDisabled ? 0.45 : 1)
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedVehicleEdits)
         .vehiclePhotoFlowSheets(
@@ -347,7 +345,7 @@ struct VehicleDetailView: View {
 
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .glassTertiaryInk()
+                        .glassDisclosureInk()
                 }
                 .contentShape(Rectangle())
             }
@@ -448,7 +446,7 @@ private struct CareTrackingCardRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .glassTertiaryInk()
+                    .glassDisclosureInk()
             }
         .onAppear(perform: consumeChipEntranceIfNeeded)
     }

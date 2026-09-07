@@ -117,6 +117,16 @@ public enum GlassContrast {
         return overlay(atmosphere.bottom, alpha: solidBottomMix, on: atmosphere.mid)
     }
 
+    /// Opaque Light toolbar frost (map chrome). Same whisper as the tab bar —
+    /// not the mid-family solid panel, which reads as a dark plate over a map.
+    public static func toolbarLightFill(palette: ShellPalette) -> ShellRGB {
+        overlay(
+            glassTint(palette: palette),
+            alpha: tabBarGlassTintOpacity,
+            on: white
+        )
+    }
+
     public static func fieldFill(palette: ShellPalette) -> ShellRGB {
         overlay(
             glassTint(palette: palette),

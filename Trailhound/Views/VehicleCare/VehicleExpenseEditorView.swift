@@ -193,20 +193,16 @@ struct VehicleExpenseEditorView: View {
                 } label: {
                     GlassToolbarBackButton()
                 }
-                .glassToolbarControl()
                 .accessibilityLabel(Text("onboarding.back"))
             }
-            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     save()
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .glassToolbarSaveControl()
                 .disabled(isSaving || activeDraft.amount == nil)
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
         .onAppear {
             if draft == nil {

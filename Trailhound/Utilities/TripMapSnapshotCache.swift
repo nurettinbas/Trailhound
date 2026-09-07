@@ -1,4 +1,5 @@
 import MapKit
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -45,6 +46,14 @@ final class TripMapSnapshotCache {
 
     private var memoryCache: [SnapshotKey: UIImage] = [:]
     private var inFlight: [SnapshotKey: Task<UIImage?, Never>] = [:]
+    private var startedRenders: Set<SnapshotKey> = []
+    private let renderGate = SnapshotRenderGate()
+
+    /// Test seam: increments only when the MapKit (or injected) renderer actually runs.
+    private(set) var renderInvocationCount = 0
+
+    /// Test seam: replaces MapKit so unit tests never call `MKMapSnapshotter`.
+    var testRenderer: (() async -> UIImage?)?
 
     /// Resolved once. As a computed property this issued a `fileExists` syscall for every row
     /// that scrolled into view.
@@ -71,12 +80,10 @@ final class TripMapSnapshotCache {
     func snapshot(
         for trip: Trip,
         appearance: MapSnapshotAppearance,
+        container: ModelContainer,
         size: CGSize = CGSize(width: 88, height: 88)
     ) async -> UIImage? {
         let key = SnapshotKey(tripID: trip.id, appearance: appearance)
-        if UITestSupport.isEnabled {
-            return nil
-        }
         if let cached = memoryCache[key] {
             return cached
         }
@@ -92,26 +99,50 @@ final class TripMapSnapshotCache {
             return stored
         }
 
-        let pieces = RouteDisplayPath.displaySegmentCoordinates(
-            samples: RouteDisplayPath.samples(from: trip.sortedPoints)
-        )
-        // The decimated coordinates are all the renderer needs, so drop the faulted points rather
-        // than keeping every scrolled row's GPS history alive for the rest of the session.
-        trip.invalidatePointCaches()
         let task = Task<UIImage?, Never> { @MainActor in
             defer { inFlight[key] = nil }
+            if Task.isCancelled { return nil }
+
+            let samples = await TripRoutePathCache.shared.path(for: trip, container: container)
+            if Task.isCancelled { return nil }
+            let pieces = samples.map { $0.map(\.coordinate) }
             guard pieces.contains(where: { $0.count >= 2 }) else { return nil }
-            guard let image = await renderSnapshot(
-                pieces: pieces,
-                size: size,
-                appearance: appearance
-            ) else { return nil }
-            store(image, for: key)
+
+            let acquired = await renderGate.acquire()
+            guard acquired else { return nil }
+            defer { renderGate.release() }
+            if Task.isCancelled { return nil }
+
+            startedRenders.insert(key)
+            defer { startedRenders.remove(key) }
+
+            renderInvocationCount += 1
+            let image: UIImage?
+            if let testRenderer {
+                image = await testRenderer()
+            } else if UITestSupport.shouldSkipExternalEffects {
+                image = nil
+            } else {
+                image = await renderSnapshot(
+                    pieces: pieces,
+                    size: size,
+                    appearance: appearance
+                )
+            }
+            if let image {
+                store(image, for: key)
+            }
             return image
         }
 
         inFlight[key] = task
-        return await task.value
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            Task { @MainActor in
+                self.cancelRenderIfNotStarted(key: key, task: task)
+            }
+        }
     }
 
     func remove(for tripID: UUID) {
@@ -120,6 +151,7 @@ final class TripMapSnapshotCache {
             memoryCache.removeValue(forKey: key)
             inFlight[key]?.cancel()
             inFlight.removeValue(forKey: key)
+            startedRenders.remove(key)
         }
         let urls = MapSnapshotAppearance.allCases.map { fileURL(for: tripID, appearance: $0) }
             + [legacyFileURL(for: tripID)]
@@ -128,6 +160,28 @@ final class TripMapSnapshotCache {
                 try? FileManager.default.removeItem(at: url)
             }
         }
+    }
+
+    /// Test helper — drops only the in-memory layer so the next read exercises disk.
+    func clearMemory() {
+        memoryCache.removeAll(keepingCapacity: true)
+    }
+
+    func resetRenderInvocationCount() {
+        renderInvocationCount = 0
+    }
+
+    func resetTestRenderer() {
+        testRenderer = nil
+    }
+
+    func storeForTesting(_ image: UIImage, tripID: UUID, appearance: MapSnapshotAppearance) {
+        store(image, for: SnapshotKey(tripID: tripID, appearance: appearance))
+    }
+
+    private func cancelRenderIfNotStarted(key: SnapshotKey, task: Task<UIImage?, Never>) {
+        guard !startedRenders.contains(key) else { return }
+        task.cancel()
     }
 
     private func fileURL(for tripID: UUID, appearance: MapSnapshotAppearance) -> URL {
@@ -259,6 +313,66 @@ final class TripMapSnapshotCache {
             longitudeDelta: max(0.008, (maxLon - minLon) * 1.5)
         )
         return MKCoordinateRegion(center: center, span: span)
+    }
+}
+
+/// Serialises MapKit snapshot work. Cancelled waiters leave the line without holding the slot.
+private final class SnapshotRenderGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var busy = false
+    private var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    private var order: [UUID] = []
+    private var cancelledIDs: Set<UUID> = []
+
+    func acquire() async -> Bool {
+        let id = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                lock.lock()
+                if cancelledIDs.remove(id) != nil || Task.isCancelled {
+                    lock.unlock()
+                    continuation.resume(returning: false)
+                    return
+                }
+                if !busy {
+                    busy = true
+                    lock.unlock()
+                    continuation.resume(returning: true)
+                    return
+                }
+                waiters[id] = continuation
+                order.append(id)
+                lock.unlock()
+            }
+        } onCancel: {
+            cancelWaiter(id)
+        }
+    }
+
+    func release() {
+        lock.lock()
+        let next: CheckedContinuation<Bool, Never>?
+        if let nextID = order.first {
+            order.removeFirst()
+            next = waiters.removeValue(forKey: nextID)
+        } else {
+            busy = false
+            next = nil
+        }
+        lock.unlock()
+        next?.resume(returning: true)
+    }
+
+    private func cancelWaiter(_ id: UUID) {
+        lock.lock()
+        order.removeAll { $0 == id }
+        if let continuation = waiters.removeValue(forKey: id) {
+            lock.unlock()
+            continuation.resume(returning: false)
+            return
+        }
+        cancelledIDs.insert(id)
+        lock.unlock()
     }
 }
 

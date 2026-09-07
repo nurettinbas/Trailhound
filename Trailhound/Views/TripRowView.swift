@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct TripRowView: View {
@@ -15,17 +16,42 @@ struct TripRowView: View {
     var rowAccessibilityIdentifier: String? = nil
 
     @Bindable private var settings = AppSettings.shared
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: UIImage?
-    @State private var thumbnailLoaded = false
+    @State private var thumbnailAppearance: MapSnapshotAppearance?
+    @State private var iconSway = false
 
     private static let thumbnailSize: CGFloat = 45
     private static let vehicleBadgeSize: CGFloat = 16
 
     private var routeSummary: String {
         TripListViewModel.routeSummary(for: trip, places: places, privacyRadius: privacyRadius)
+    }
+
+    private var currentAppearance: MapSnapshotAppearance {
+        MapSnapshotAppearance(colorScheme)
+    }
+
+    private var displayedThumbnail: UIImage? {
+        TripMapSnapshotCache.shared.cachedImage(for: trip.id, appearance: currentAppearance)
+            ?? thumbnail
+    }
+
+    private var isCurrentAppearanceReady: Bool {
+        if TripMapSnapshotCache.shared.cachedImage(for: trip.id, appearance: currentAppearance) != nil {
+            return true
+        }
+        return thumbnail != nil && thumbnailAppearance == currentAppearance
+    }
+
+    private var shouldAnimateLoadingIcon: Bool {
+        !isCurrentAppearanceReady
+            && !reduceMotion
+            && !ProcessInfo.processInfo.isLowPowerModeEnabled
+            && !UITestSupport.isEnabled
     }
 
     var body: some View {
@@ -122,30 +148,34 @@ struct TripRowView: View {
         .accessibilityLabel(accessibilitySummary)
         .optionalAccessibilityIdentifier(rowAccessibilityIdentifier)
         .task(id: thumbnailTaskID) {
-            thumbnailLoaded = false
-            thumbnail = nil
+            let appearance = currentAppearance
+            if let cached = TripMapSnapshotCache.shared.cachedImage(for: trip.id, appearance: appearance) {
+                thumbnail = cached
+                thumbnailAppearance = appearance
+                return
+            }
 
             if emphasizeLanding, !reduceMotion {
                 // Brief hold so morph settles before snapshot lands.
                 try? await Task.sleep(for: .milliseconds(140))
+                guard !Task.isCancelled else { return }
             }
 
-            let appearance = MapSnapshotAppearance(colorScheme)
-            let image = await TripMapSnapshotCache.shared.snapshot(for: trip, appearance: appearance)
-            if !reduceMotion {
-                withAnimation(emphasizeLanding ? TrailhoundMotion.recordingMorph : TrailhoundMotion.gentle) {
-                    thumbnail = image
-                    thumbnailLoaded = true
-                }
-            } else {
-                thumbnail = image
-                thumbnailLoaded = true
-            }
+            let image = await TripMapSnapshotCache.shared.snapshot(
+                for: trip,
+                appearance: appearance,
+                container: modelContext.container
+            )
+            guard !Task.isCancelled else { return }
+            guard currentAppearance == appearance else { return }
+
+            thumbnail = image
+            thumbnailAppearance = appearance
         }
     }
 
     private var thumbnailTaskID: String {
-        "\(trip.id.uuidString)-\(MapSnapshotAppearance(colorScheme).rawValue)"
+        "\(trip.id.uuidString)-\(currentAppearance.rawValue)"
     }
 
     private var pendingSuggestedCategoryName: String? {
@@ -176,26 +206,35 @@ struct TripRowView: View {
 
     @ViewBuilder
     private var thumbnailView: some View {
-        Group {
-            if let thumbnail, thumbnailLoaded {
-                Image(uiImage: thumbnail)
+        let plate = shellPalette.glassReadabilityTint(for: colorScheme).opacity(
+            colorScheme == .dark ? 0.18 : GlassContrast.nestedTileTintOpacity
+        )
+        ZStack {
+            if let displayedThumbnail {
+                Image(uiImage: displayedThumbnail)
                     .resizable()
                     .scaledToFill()
-                    .transition(.opacity.combined(with: .scale(scale: emphasizeLanding ? 0.92 : 1)))
             } else {
-                let plate = shellPalette.glassReadabilityTint(for: colorScheme).opacity(
-                    colorScheme == .dark ? 0.18 : GlassContrast.nestedTileTintOpacity
-                )
-                ZStack {
-                    if thumbnailLoaded {
-                        plate
-                    } else {
-                        plate.shimmer()
+                plate
+            }
+
+            if !isCurrentAppearanceReady {
+                Image(systemName: "map")
+                    .font(.system(size: 11))
+                    .glassSecondaryInk()
+                    .offset(x: shouldAnimateLoadingIcon ? (iconSway ? 3 : -3) : 0)
+                    .animation(
+                        shouldAnimateLoadingIcon
+                            ? .easeInOut(duration: 0.65).repeatForever(autoreverses: true)
+                            : nil,
+                        value: iconSway
+                    )
+                    .onAppear {
+                        iconSway = shouldAnimateLoadingIcon
                     }
-                    Image(systemName: "map")
-                        .font(.system(size: 11))
-                        .glassSecondaryInk()
-                }
+                    .onChange(of: shouldAnimateLoadingIcon) { _, animate in
+                        iconSway = animate
+                    }
             }
         }
         .frame(width: Self.thumbnailSize, height: Self.thumbnailSize)
@@ -262,4 +301,5 @@ private extension View {
     List {
         TripRowView(trip: PreviewData.sampleTrip)
     }
+    .modelContainer(PreviewData.shared.container)
 }

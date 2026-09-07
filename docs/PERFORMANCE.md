@@ -42,7 +42,7 @@ The card sits above a 40-row `List`, so anything that invalidates its body inval
 
 - `AtmosphericBackground` draws its three glows as `RadialGradient`s rather than `Circle().blur(radius:)`. Every frosted row above them was resampling those blur passes.
 - The glows are wider than the screen, so they must stay in an `.overlay` rather than being `ZStack` siblings. As siblings they stretched the layout of every container that puts this behind its content (`ContentView.mainTabs`, `glassListChrome`), pushing toolbar buttons off-screen.
-- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. Memory and disk are keyed by trip **and** appearance (`{uuid}-light.jpg` / `{uuid}-dark.jpg`). `cachedImage(for:appearance:)` is a memory-only lookup and is safe to call while scrolling. Theme switches reuse the other variant when it is already cached; MapKit runs only on a miss. Legacy unstyled `{uuid}.jpg` files are deleted on first cache init and not reused.
+- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. Memory and disk are keyed by trip **and** appearance (`{uuid}-light.jpg` / `{uuid}-dark.jpg`). `cachedImage(for:appearance:)` is a memory-only lookup and is safe to call while scrolling. List rows keep the last thumbnail on screen across Light/Dark; MapKit runs only on a miss, through `TripRoutePathCache` (GPS fault stays on the path worker, not the list’s main actor) and **one** `MKMapSnapshotter` at a time. A cancelled row drops out of the render line if work has not started; an already-started render still writes the JPEG. GPS trim, delete, and merge call `remove(for:)` so a clipped route cannot leave a stale thumb. Legacy unstyled `{uuid}.jpg` files are deleted on first cache init and not reused.
 
 ## Route rendering
 
@@ -281,8 +281,7 @@ touches `sortedPoints` keeps those rows alive until it is cleared. It is now rel
 places that used to leak it across a browsing session:
 
 - `TripDetailView.onDisappear` — the detail map is the only screen that needs full resolution.
-- `TripMapSnapshotCache` — once the decimated coordinates are extracted, the renderer needs nothing
-  else, so scrolling the list no longer accumulates every row's GPS history.
+- `TripMapSnapshotCache` — route coordinates come from `TripRoutePathCache` on a miss, so scrolling the list no longer faults GPS on the main actor or keeps every row’s point history alive.
 - `TripDerivedBackfillService` — between batches, so a backfill over a large library stays flat.
 
 ## Signposts
@@ -303,6 +302,9 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Budget: at most eight native glass hosts on a screen (`GlassHostBudget.maxNativeHostsPerScreen`). If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false`.
 - Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
 - Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
+- Form/list nav buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`.
+- Trip detail and travel-journal **toolbar** icons stay on `GlassToolbarSampling.frozen` at all times. Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Live system / native glass over MapKit would resample the map every frame.
+- Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
@@ -315,4 +317,4 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 5. Stats tab with many trips — first viewport (filter + 2-up + summary tiles) must not hitch; chart rows below the fold appear after placeholders. `StatsYearAwardsBuild` must not overlap tab-open `StatsSnapshotBuild`.
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.
-8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails.
+8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails. With 30+ trips, switch Light ↔ Dark and scroll immediately: rows must keep their last map thumb (map icon may sway while the other appearance renders); the list must not empty or hitch from parallel `MKMapSnapshotter`s.
