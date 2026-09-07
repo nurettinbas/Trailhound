@@ -11,7 +11,7 @@ struct AppLockView: View {
             VStack(spacing: 16) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                 Text(L10n.appLockTitle)
                     .font(.title2)
                 if !appLockService.canUseDeviceAuthentication {
@@ -26,8 +26,7 @@ struct AppLockView: View {
                         _ = await appLockService.authenticateIfNeeded(enabled: settings.appLockEnabled)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(TrailhoundBrandColors.brandBottom)
+                .trailhoundProminentButton()
             }
             .padding(28)
             .glassCard(contentInset: 0)

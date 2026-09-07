@@ -22,7 +22,7 @@ struct VehicleCareStatusCard: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)

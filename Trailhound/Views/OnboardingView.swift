@@ -162,7 +162,7 @@ struct OnboardingView: View {
                 }
                 .font(.body.weight(.semibold))
             }
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .glassAccentForeground()
             .padding(.top, 4)
         }
     }
@@ -240,7 +240,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .glassAccentForeground()
                 .frame(width: 28, alignment: .center)
 
             Text(text)
@@ -261,14 +261,14 @@ struct OnboardingView: View {
             Button(L10n.locationBannerSettings) {
                 openAppSettings()
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(TrailhoundBrandColors.brandBottom)
         case .notDetermined, .authorizedWhenInUse:
             Button(L10n.string("onboarding.location.enable_always")) {
                 locationService.requestPermission()
                 TrailhoundHaptics.selection()
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(TrailhoundBrandColors.brandBottom)
         }
     }
@@ -307,13 +307,13 @@ struct OnboardingView: View {
                     }
                     TrailhoundHaptics.selection()
                 }
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .tint(TrailhoundBrandColors.brandBottom)
             } else {
                 Button(L10n.string("onboarding.finish")) {
                     finishOnboarding()
                 }
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .tint(TrailhoundBrandColors.brandBottom)
             }
         }

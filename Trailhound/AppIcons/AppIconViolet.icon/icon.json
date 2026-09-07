@@ -1,0 +1,26 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "solid" : "srgb:0.42000,0.28000,0.78000,1.00000"
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "solid" : "srgb:0.12000,0.07000,0.24000,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "Symbol.png",
+          "is-glass" : true,
+          "opacity" : 1
+        }
+      ]
+    }
+  ]
+}

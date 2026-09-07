@@ -104,7 +104,7 @@ While the in-place expand/collapse runs, panel glass uses a solid fill (`glassCh
 - One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
 - Path prep (`TripShareRoutePrep`: privacy clip → decimate → chart series → `SpeedColoredSegmentBuilder`) runs off the main actor; points are faulted once before the hop. Map strokes and the speed chart share the same clipped samples.
 - Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
-- Brand logo is drawn into the raster at compose time; no ActivityKit / widget images.
+- Brand logo is drawn into the raster at compose time (palette-tinted `TrailhoundLogo`, same fill as the Home Screen icon); map snapshot follows Light/Dark. No ActivityKit / widget images.
 
 ## Recording cold-open
 
@@ -179,7 +179,7 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 ## Inactive tabs
 
-- Stats, Pairing, Settings, and Dev Log views mount only while their tab is selected (Trips stays mounted for the recording card).
+- Stats, Pairing, and Settings views mount only while their tab is selected (Trips stays mounted for the recording card).
 
 ## Stats tab
 
@@ -295,6 +295,15 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
   `StatsSnapshotBuild`.
 - `NightDistanceWalk` — appears only for trips that have not been backfilled yet. Seeing these
   steadily in a warmed-up app means the backfill is not completing.
+
+## Glass (light theme)
+
+- Atmosphere still uses `RadialGradient` overlays, never `Circle().blur`.
+- List rows (`glassRow`) stay on the Material / solid recipe. Native `glassEffect` is only for standalone cards, chips, chrome, and buttons, grouped in `GlassEffectContainer` when several sit together.
+- Budget: at most eight native glass hosts on a screen. If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false` in code.
+- Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame.
+- Trip detail expand still uses `frozen` / solid glass so Material does not sample the live map.
+- Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist
 

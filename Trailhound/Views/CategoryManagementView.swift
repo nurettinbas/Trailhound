@@ -87,7 +87,7 @@ struct CategoryManagementView: View {
                     addCategory()
                 }
                 .font(.subheadline.weight(.semibold))
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .buttonBorderShape(.roundedRectangle(radius: 10))
                 .tint(TrailhoundBrandColors.brandBottom)
                 .fixedSize()

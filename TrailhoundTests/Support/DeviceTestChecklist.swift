@@ -16,10 +16,11 @@ enum DeviceTestChecklist {
         "Trip detail edit fields: place/address/fuel/note stay above keyboard accessory; title chip hugs text (not full-bleed); Tamam glass chip; map does not jump; scroll dismisses keyboard; Reduce Motion settles instantly",
         "Form sheets (expense/schedule/settings/place/pairing): title chip + glass Tamam on first focus; tap/scroll dismiss; Trip Detail still grows panel without map jump",
         "Trip list search: keyboard shows hug-content title chip + glass Tamam; tap/scroll also dismisses",
-        "50 km trip detail: DevLog points/displayPts/colorSegs; colorSegs ≤ 60",
+        "50 km trip detail: colorSegs ≤ 60; route remains readable",
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",
         "Second open of the same long trip is instant (memory cache)",
         "App kill → reopen → long trip detail still fast (disk cache)",
+        "Share card: Light/Dark + palette wash (not fixed charcoal); app icon matches Appearance hue",
         "After GPS trim, map updates (cache invalidation)",
         "After merge, combined route draws correctly",
         "Trip with tunnel/signal loss keeps a broken route (no bird-flight fill)",
@@ -36,7 +37,7 @@ enum DeviceTestChecklist {
         "Live follow map: highway — camera, vehicle mark, and blue path glide together (no 1 Hz stall, no chunky trail at the puck)",
         "Live follow map: single draped blue path (chunked history + growing tail tip) grows with the puck; no duplicate / X crossover; real GPS gaps only",
         "Live follow map: stroke keeps the same thickness in 2D and 3D, and stays uniform end-to-end while panning a pitched camera",
-        "Live follow map: pan (including while paused) to look at start — trail stays; puck + tip keep advancing when moving; overview fits whole route; recenter re-locks camera",
+        "Live follow map: pan while recording — trail stays; puck + tip keep advancing when moving; overview fits whole route; recenter re-locks camera; pause locks pan and 2D/3D tools",
         "Live follow map: Show entire route (north-up) — vehicle photo + chevron sharp tip still face travel; recenter returns screen-up follow",
         "Live follow map: highway speed — camera pulls back; blue path stays behind the puck (does not draw ahead); motion glides between 1 Hz GPS fixes with no chunky trail at the puck",
         "Live follow map: leave untouched 30–60s — screen stays awake; close map — auto-lock works again",
@@ -48,7 +49,7 @@ enum DeviceTestChecklist {
         "Pause/resume: no road remount; Island photo stays",
         "Home-screen widget: Pause → Resume label flips; Resume → Pause returns",
         "Lock banner pause/resume: icon+color immediate; widget switches to Resume",
-        "Recording with vehicle photo: Island shows photo; DevLog ‘photo attached (N B)’",
+        "Recording with vehicle photo: Island shows photo",
         "Light/white vehicle photo: if punch makes it vanish, original photo is shown",
         "Vehicle without photo: Island + notification card fall back to SF symbol",
         "Expanded Island: no top gap; bottom buttons not clipped (even at 1:00:10)",
@@ -65,6 +66,8 @@ enum DeviceTestChecklist {
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
-        "Recording start/stop sounds play; same tone as before, no cut-off"
+        "Recording start/stop sounds play; same tone as before, no cut-off",
+        "Appearance Light: pastel shell (not navy), dark type, light tab bar and DatePickers; Graphite/Gold palettes stay light; Dark is still navy",
+        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
     ]
 }

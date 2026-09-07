@@ -5,6 +5,8 @@ import UIKit
 struct NotificationsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(TripRecordingService.self) private var recordingService
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
@@ -38,7 +40,7 @@ struct NotificationsListView: View {
                             .overlay {
                                 if !item.isRead {
                                     RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous)
-                                        .fill(TrailhoundBrandColors.brandBottom.opacity(0.10))
+                                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.10))
                                         .allowsHitTesting(false)
                                 }
                             }
@@ -178,7 +180,7 @@ struct NotificationsListView: View {
                         Label(L10n.resume, systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
 
                     Button(role: .destructive) {
                         DeleteConfirmPresenter.shared.confirm(.generic) {
@@ -192,7 +194,7 @@ struct NotificationsListView: View {
                         Label(L10n.delete, systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
                     .destructiveTint()
                 }
                 .padding(.leading, 40)
@@ -304,7 +306,8 @@ private struct NotificationActiveRecordingCard: View {
                 Spacer(minLength: 4)
                 Image(systemName: isPaused ? "pause.circle.fill" : "record.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(isPaused ? .yellow : .red)
+                    .foregroundStyle(isPaused ? Color.yellow : GlassSemantic.notificationBadge)
+                    .compositingGroup()
                     .accessibilityHidden(true)
             }
             .animation(nil, value: isPaused)
@@ -352,14 +355,12 @@ private struct NotificationActiveRecordingCard: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(.red)
+                .trailhoundDestructiveButton()
             }
         }
         .padding(14)
         .background {
-            RecordingCardStyle.listSurface(isPaused: isPaused)
+            RecordingCardStyle.glassSurface(isPaused: isPaused)
         }
         .animation(nil, value: isPaused)
         .clipShape(RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous))

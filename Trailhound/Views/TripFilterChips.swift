@@ -20,6 +20,8 @@ struct TripListFiltersBar: View {
     @Namespace private var vehicleChipNamespace
     @Namespace private var placeChipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var isFiltersExpanded = false
 
     private var dateSelectionKey: String {
@@ -99,7 +101,7 @@ struct TripListFiltersBar: View {
                 Text(mode.title).tag(mode)
             }
         }
-        .pickerStyle(.segmented)
+        .glassSegmentedStyle()
         .accessibilityIdentifier("trips.segment")
     }
 
@@ -107,7 +109,7 @@ struct TripListFiltersBar: View {
         HStack(spacing: 8) {
             Image(systemName: "calendar")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(shellPalette.tintColor(for: colorScheme))
                 .frame(width: 16)
 
             Text(L10n.sectionThisWeek)
@@ -135,7 +137,7 @@ struct TripListFiltersBar: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(isSearchBusy ? TrailhoundBrandColors.brandBottom : Color.secondary)
+                .foregroundStyle(isSearchBusy ? shellPalette.tintColor(for: colorScheme) : Color.secondary)
                 .symbolEffect(.pulse, options: .repeating, isActive: isSearchBusy && !reduceMotion)
                 .accessibilityHidden(true)
 
@@ -167,12 +169,12 @@ struct TripListFiltersBar: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(
-                    TrailhoundBrandColors.brandBottom.opacity(isSearchBusy ? 0.38 : 0),
+                    shellPalette.tintColor(for: colorScheme).opacity(isSearchBusy ? 0.38 : 0),
                     lineWidth: 1
                 )
         }
         .shadow(
-            color: TrailhoundBrandColors.brandBottom.opacity(isSearchBusy && !reduceMotion ? 0.22 : 0),
+            color: shellPalette.tintColor(for: colorScheme).opacity(isSearchBusy && !reduceMotion ? 0.22 : 0),
             radius: 10,
             y: 0
         )
@@ -204,7 +206,7 @@ struct TripListFiltersBar: View {
                 .symbolVariant(isFiltersExpanded || hasChipFiltersActive ? .fill : .none)
                 .foregroundStyle(
                     isFiltersExpanded || hasChipFiltersActive
-                        ? TrailhoundBrandColors.brandBottom
+                        ? shellPalette.tintColor(for: colorScheme)
                         : Color.secondary
                 )
                 .frame(width: 36, height: 36)
@@ -217,7 +219,7 @@ struct TripListFiltersBar: View {
                             .foregroundStyle(.white)
                             .frame(minWidth: 16, minHeight: 16)
                             .padding(.horizontal, 3)
-                            .background(TrailhoundBrandColors.brandBottom, in: Capsule())
+                            .background(shellPalette.tintColor(for: colorScheme), in: Capsule())
                             .offset(x: 4, y: -4)
                             .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
                     }
@@ -240,7 +242,7 @@ struct TripListFiltersBar: View {
         } label: {
             Image(systemName: "xmark.circle")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .glassAccentForeground()
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
                 .glassField(cornerRadius: 10)
@@ -610,6 +612,8 @@ struct TripFilterChips: View {
 private struct SearchFieldScanComet: View {
     var reduceMotion: Bool
     @State private var phase: CGFloat = 0
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         GeometryReader { geo in
@@ -620,9 +624,9 @@ private struct SearchFieldScanComet: View {
                     LinearGradient(
                         colors: [
                             Color.clear,
-                            TrailhoundBrandColors.brandTop.opacity(0.55),
-                            TrailhoundBrandColors.brandBottom,
-                            TrailhoundBrandColors.brandTop.opacity(0.55),
+                            shellPalette.tintColor(for: colorScheme).opacity(0.55),
+                            shellPalette.tintColor(for: colorScheme),
+                            shellPalette.tintColor(for: colorScheme).opacity(0.55),
                             Color.clear
                         ],
                         startPoint: .leading,
@@ -630,7 +634,7 @@ private struct SearchFieldScanComet: View {
                     )
                 )
                 .frame(width: barWidth, height: 2)
-                .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.65), radius: 4, y: 0)
+                .shadow(color: shellPalette.tintColor(for: colorScheme).opacity(0.65), radius: 4, y: 0)
                 .offset(x: (width - barWidth) * phase)
         }
         .frame(height: 2)

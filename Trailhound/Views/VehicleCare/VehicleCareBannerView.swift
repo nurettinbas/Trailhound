@@ -7,8 +7,12 @@ struct VehicleCareBannerView: View {
 
     private var isOverdue: Bool { item.state.isOverdue }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var accent: Color {
-        isOverdue ? .red : .orange
+        isOverdue
+            ? GlassSemantic.destructive(for: colorScheme)
+            : GlassSemantic.paused(for: colorScheme)
     }
 
     var body: some View {
@@ -53,11 +57,13 @@ private struct VehicleCareBannerRowBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var tint: Color {
-        state.isOverdue ? .red : .orange
+        state.isOverdue
+            ? GlassSemantic.destructive(for: colorScheme)
+            : GlassSemantic.paused(for: colorScheme)
     }
 
     private var tintOpacity: Double {
-        colorScheme == .dark ? 0.32 : 0.22
+        colorScheme == .dark ? 0.32 : 0.18
     }
 
     private var shape: UnevenRoundedRectangle {

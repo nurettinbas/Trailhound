@@ -46,8 +46,24 @@ struct HelpPopoverButton: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
             .padding(20)
+            .modifier(HelpSheetTextColor())
             .presentationDetents([.height(sheetHeight), .medium])
             .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+private struct HelpSheetTextColor: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if colorScheme == .light {
+            content
+                .foregroundStyle(Color.black)
+                .tint(Color.black)
+        } else {
+            content
         }
     }
 }

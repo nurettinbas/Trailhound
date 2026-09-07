@@ -7,11 +7,14 @@ struct TrailhoundRunningHoundIcon: View {
     var size: CGFloat = 30
     var reduceMotion: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     private var shouldAnimate: Bool {
         !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
-    private var accent: Color { TrailhoundBrandColors.start }
+    private var accent: Color { shellPalette.tintColor(for: colorScheme) }
     /// Hound + speed streaks sit at 80% so the gallop lift clears the glass capsule edge.
     private let markScale: CGFloat = 0.968
 

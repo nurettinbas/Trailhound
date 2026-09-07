@@ -174,6 +174,6 @@ struct StatsChartSkeleton: View {
     private var baseFill: Color {
         colorScheme == .dark
             ? Color.white.opacity(0.08)
-            : Color.secondary.opacity(0.12)
+            : Color.white.opacity(0.20)
     }
 }

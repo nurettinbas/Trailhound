@@ -157,6 +157,52 @@ final class TrailhoundUITests: XCTestCase {
             "Clear All should hide after filters reset to Last 7 days"
         )
     }
+
+    func testLightAppearanceKeepsTabsAndStatsFilters() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+
+        let appearance = app.descendants(matching: .any)["settings.appearance"]
+        revealSettingsControl(appearance)
+        XCTAssertTrue(appearance.waitForExistence(timeout: uiTimeout), "Appearance picker should exist after scrolling Settings")
+
+        let lightSegment = appearance.buttons["Light"]
+        if lightSegment.waitForExistence(timeout: 2) {
+            lightSegment.tap()
+        } else if appearance.buttons.count >= 2 {
+            appearance.buttons.element(boundBy: 1).tap()
+        }
+
+        let orangeSwatch = app.buttons["settings.shellPalette.orange"]
+        revealSettingsControl(orangeSwatch)
+        XCTAssertTrue(
+            orangeSwatch.waitForExistence(timeout: uiTimeout),
+            "Orange palette swatch is in a lazy Settings grid and must be scrolled on screen"
+        )
+        orangeSwatch.tap()
+        XCTAssertTrue(orangeSwatch.isSelected)
+
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        tripsTab.tap()
+        XCTAssertTrue(tripsTab.exists)
+
+        statsTab.tap()
+        let week = app.descendants(matching: .any)["stats.filters.period.week"]
+        XCTAssertTrue(week.waitForExistence(timeout: uiTimeout), "Last 7 days filter should remain after Light appearance")
+        XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: uiTimeout))
+    }
+
+    /// Settings is a long Form; later rows (appearance, palette) are not in the tree until scrolled.
+    private func revealSettingsControl(_ query: XCUIElement) {
+        for _ in 0..<12 {
+            if query.waitForExistence(timeout: 1), query.isHittable { return }
+            if query.exists, !query.isHittable {
+                app.swipeDown()
+                if query.isHittable { return }
+            }
+            app.swipeUp()
+        }
+    }
 }
 
 final class TrailhoundSmartCategoryUITests: XCTestCase {

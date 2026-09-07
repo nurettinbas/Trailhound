@@ -32,19 +32,29 @@ private enum WidgetPalette {
     static let recording = TrailhoundBrandColors.recording
     static let paused = TrailhoundBrandColors.paused
     static let resume = TrailhoundBrandColors.resume
-    static let stop = TrailhoundBrandColors.stop
-    static let start = TrailhoundBrandColors.start
+    /// Opaque system red — never Appearance / glass tint.
+    static let stop = Color(red: 1.0, green: 0.231, blue: 0.188)
+
+    static func tint(for scheme: ColorScheme) -> Color {
+        ShellPalette.stored().tintColor(for: scheme)
+    }
 }
 
 private struct WidgetAdaptiveBackground: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if renderingMode == .fullColor {
+            let atmosphere = ShellPalette.stored().atmosphere(for: colorScheme)
             LinearGradient(
-                colors: [WidgetPalette.brandTop.opacity(0.28), WidgetPalette.brandBottom.opacity(0.14)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [
+                    atmosphere.top.color.opacity(0.55),
+                    atmosphere.mid.color.opacity(0.40),
+                    atmosphere.bottom.color.opacity(0.32)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
         }
     }
@@ -304,6 +314,7 @@ struct TrailhoundWidgetView: View {
     let entry: TrailhoundWidgetEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
 
     private var usesLiquidGlassLayout: Bool {
         renderingMode != .fullColor
@@ -357,7 +368,7 @@ struct TrailhoundWidgetView: View {
                 WidgetStartLink(
                     title: WidgetL10n.start,
                     systemImage: "play.fill",
-                    tint: WidgetPalette.start,
+                    tint: WidgetPalette.tint(for: colorScheme),
                     size: .small
                 )
             }
@@ -427,8 +438,7 @@ struct TrailhoundWidgetView: View {
         HStack(spacing: 8) {
             Image(systemName: "car.fill")
                 .font(compact ? .subheadline : .headline)
-                .foregroundStyle(usesLiquidGlassLayout ? .primary : WidgetPalette.brandBottom)
-                .widgetAccentable(usesLiquidGlassLayout)
+                .foregroundStyle(WidgetPalette.tint(for: colorScheme))
             Text("Trailhound")
                 .font(compact ? .subheadline.weight(.semibold) : .headline.weight(.bold))
             Spacer(minLength: 0)
@@ -488,7 +498,7 @@ struct TrailhoundWidgetView: View {
             WidgetStartLink(
                 title: WidgetL10n.start,
                 systemImage: "play.fill",
-                tint: WidgetPalette.start,
+                tint: WidgetPalette.tint(for: colorScheme),
                 size: .regular
             )
         }
@@ -798,7 +808,7 @@ private struct LiveActivityLockScreenBanner: View {
             LiveActivityCarIcon(
                 side: 54,
                 photoRevision: state.vehiclePhotoRevision,
-                symbolTint: WidgetPalette.brandBottom
+                symbolTint: WidgetPalette.tint(for: .light)
             )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -888,7 +898,7 @@ private struct LiveActivitySmallFamilyBanner: View {
             LiveActivityCarIcon(
                 side: iconSide,
                 photoRevision: state.vehiclePhotoRevision,
-                symbolTint: WidgetPalette.brandBottom
+                symbolTint: WidgetPalette.tint(for: .light)
             )
             .frame(width: iconSide, height: iconSide)
             .accessibilityHidden(true)
@@ -944,7 +954,7 @@ private struct LiveActivityBannerRoot: View {
             }
         }
         .activityBackgroundTint(
-            (state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom).opacity(0.10)
+            (state.isPaused ? WidgetPalette.paused : WidgetPalette.tint(for: .light)).opacity(0.18)
         )
     }
 }
@@ -1033,7 +1043,7 @@ private func liveActivityDynamicIsland(
             symbolTint: .white
         )
     }
-    .keylineTint(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.brandBottom)
+    .keylineTint(context.state.isPaused ? WidgetPalette.paused : WidgetPalette.tint(for: .light))
 }
 
 @main

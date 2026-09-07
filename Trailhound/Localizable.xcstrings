@@ -3763,7 +3763,6 @@
       }
     },
     "onboarding.back" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8255,13 +8254,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All trip data is stored only on this device."
+            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm yolculuk verileri yalnızca bu cihazda saklanır."
+            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir."
           }
         }
       }
@@ -9082,6 +9081,23 @@
         }
       }
     },
+    "settings.privacy_policy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gizlilik Politikası"
+          }
+        }
+      }
+    },
     "settings.privacy.app_lock" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9520,6 +9536,516 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mola algılama hızı (km/s)"
+          }
+        }
+      }
+    },
+    "settings.report_problem" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorun bildir"
+          }
+        }
+      }
+    },
+    "settings.report_problem.clear_log" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete diagnostic history"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanılama geçmişini sil"
+          }
+        }
+      }
+    },
+    "settings.report_problem.disclosure" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The attachment includes recent recording events: times, start/stop, speed, distance, GPS accuracy, and Bluetooth or Live Activity messages. It does not include map coordinates, addresses, place or vehicle names, photos, or notes. You can edit or remove the file before sending. Logs older than 30 days are already deleted on this device."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ek, son kayıt olaylarını içerir: zamanlar, başlat/durdur, hız, mesafe, GPS doğruluğu ve Bluetooth veya Live Activity mesajları. Harita koordinatı, adres, yer veya araç adı, fotoğraf ve not yoktur. Göndermeden dosyayı düzenleyebilir veya kaldırabilirsin. 30 günden eski günlükler bu cihazda zaten silinir."
+          }
+        }
+      }
+    },
+    "settings.report_problem.failed.message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The diagnostic file could not be created. Try again, or email support and describe the issue without a log."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanı dosyası oluşturulamadı. Yeniden dene veya günlüksüz olarak destek adresine yaz."
+          }
+        }
+      }
+    },
+    "settings.report_problem.failed.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t prepare the report"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rapor hazırlanamadı"
+          }
+        }
+      }
+    },
+    "settings.report_problem.mail_body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happened?\n\n(A sanitized diagnostic log is attached. You can remove it before sending.)\n"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne oldu?\n\n(Gizlilikten arındırılmış bir tanı günlüğü ekli. Göndermeden kaldırabilirsin.)\n"
+          }
+        }
+      }
+    },
+    "settings.report_problem.open_mail" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open mail with log"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log ile maili aç"
+          }
+        }
+      }
+    },
+    "settings.report_problem.share_hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please send this file to %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lütfen bu dosyayı şuraya gönder: %@"
+          }
+        }
+      }
+    },
+    "settings.report_problem.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send a diagnostic report?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanı raporu gönderilsin mi?"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.coral" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coral"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mercan"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.ember" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ember"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kor"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.forest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forest"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orman"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.gold" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gold"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altın"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.graphite" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graphite"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grafit"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The background uses a light shade in Light appearance and a dark shade of the same color in Dark. The Home Screen icon follows the selected color; iOS shows a confirmation when it changes."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arka plan Açık görünümde açık ton, Koyu görünümde aynı rengin koyu tonunu kullanır. Ana ekran ikonu seçilen rengi izler; iOS değişince bir onay gösterir."
+          }
+        }
+      }
+    },
+    "settings.shell_palette.indigo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indigo"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çivit"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.lime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lime"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limon yeşili"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.magenta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magenta"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magenta"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.mint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mint"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nane"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.ocean" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocean"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Okyanus"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.orange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orange"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turuncu"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.pink" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pink"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pembe"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.purple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purple"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mor"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.rose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rose"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gül"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sand" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sand"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kum"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sky" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sky"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gökyüzü"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.slate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slate"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arduvaz"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sunset" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunset"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gün batımı"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.teal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teal"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turkuaz"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.violet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Violet"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menekşe"
           }
         }
       }
@@ -11228,36 +11754,36 @@
         }
       }
     },
-    "stats.compare.vehicles_help.body": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This is the sum of expenses you logged for each vehicle in this period (fuel, insurance, service, and the rest under Pairing). Trip estimated fuel from GPS is not included. Cost per km divides that total by distance driven in the same period. Installments count in the month each slice falls on."
+    "stats.compare.vehicles_help.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the sum of expenses you logged for each vehicle in this period (fuel, insurance, service, and the rest under Pairing). Trip estimated fuel from GPS is not included. Cost per km divides that total by distance driven in the same period. Installments count in the month each slice falls on."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu, Pairing’de her araç için kaydettiğin giderlerin bu dönemdeki toplamıdır (yakıt, sigorta, servis ve diğerleri). Yolculuk tahmini yakıtı (GPS) dahil değildir. km başı maliyet, bu toplamı aynı dönemdeki mesafeye böler. Taksitler, her dilimin düştüğü ayda sayılır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu, Pairing’de her araç için kaydettiğin giderlerin bu dönemdeki toplamıdır (yakıt, sigorta, servis ve diğerleri). Yolculuk tahmini yakıtı (GPS) dahil değildir. km başı maliyet, bu toplamı aynı dönemdeki mesafeye böler. Taksitler, her dilimin düştüğü ayda sayılır."
           }
         }
       }
     },
-    "stats.compare.vehicles_help.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Logged vehicle expenses"
+    "stats.compare.vehicles_help.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged vehicle expenses"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kaydedilen araç giderleri"
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedilen araç giderleri"
           }
         }
       }

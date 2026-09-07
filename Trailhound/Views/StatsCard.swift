@@ -16,6 +16,18 @@ enum StatsCardTokens {
     static let nestedTilePreviousLineHeight: CGFloat = 13
 }
 
+/// Small supporting copy needs more contrast than the shell-wide white hierarchy in Light mode.
+/// The translucent Stats cards are light enough that dark ink remains readable across palettes.
+enum StatsTextColor {
+    static func secondary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.secondary : Color.black.opacity(0.72)
+    }
+
+    static func tertiary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.secondary.opacity(0.8) : Color.black.opacity(0.64)
+    }
+}
+
 private struct StatsNestedTileModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -42,16 +54,19 @@ private struct StatsNestedTileModifier: ViewModifier {
         }
         return colorScheme == .dark
             ? Color.white.opacity(0.10)
-            : Color.white.opacity(0.42)
+            : Color.white.opacity(0.28)
     }
 }
 
 extension View {
-    /// Full-width Stats card in a clear List row — one Material, no list-row glass behind it.
-    func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset) -> some View {
+    /// Full-width Stats card in a clear List row — same frost as Vehicles / trip list
+    /// (`allowsNative: false`). Native light glass is a clear plate and the atmosphere leaks.
+    func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset, frozen: Bool = false) -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
-            contentInset: contentInset
+            contentInset: contentInset,
+            frozen: frozen,
+            allowsNative: false
         )
         .statsCardListRow()
     }
@@ -60,7 +75,8 @@ extension View {
     func statsHalfCard() -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
-            contentInset: StatsCardTokens.contentInset
+            contentInset: StatsCardTokens.contentInset,
+            allowsNative: false
         )
         .frame(
             maxWidth: .infinity,

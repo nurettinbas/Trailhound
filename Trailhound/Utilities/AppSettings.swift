@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
     case system
@@ -70,6 +71,13 @@ final class AppSettings {
     var appearanceMode: AppearanceMode = .default {
         didSet { defaults.set(appearanceMode.rawValue, forKey: Key.appearanceMode) }
     }
+    /// Curated shell background hue. Light and Dark resolve different shade families.
+    var shellPalette: ShellPalette = .default {
+        didSet {
+            defaults.set(shellPalette.rawValue, forKey: Key.shellPalette)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
 
     private enum Key {
         static let recordingSounds = "recordingSoundsEnabled"
@@ -88,10 +96,10 @@ final class AppSettings {
         static let monthlyDistanceGoalMeters = "monthlyDistanceGoalMeters"
         static let monthlyGoalsByMonth = "monthlyGoalsByMonth"
         static let preferredLanguageCode = "preferredLanguageCode"
-        static let developerModeEnabled = "developerModeEnabled"
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
         static let appearanceMode = "appearanceMode"
+        static let shellPalette = ShellPalette.storageKey
         static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
         static let workHourStart = "smartCategory.workHourStart"
         static let workHourEnd = "smartCategory.workHourEnd"
@@ -120,6 +128,10 @@ final class AppSettings {
         if let raw = resolvedDefaults.string(forKey: Key.appearanceMode),
            let mode = AppearanceMode(rawValue: raw) {
             appearanceMode = mode
+        }
+        if let raw = resolvedDefaults.string(forKey: Key.shellPalette),
+           let palette = ShellPalette(rawValue: raw) {
+            shellPalette = palette
         }
         dismissedJournalSuggestionFingerprints = Set(
             resolvedDefaults.stringArray(forKey: Key.dismissedJournalSuggestions) ?? []
@@ -336,11 +348,6 @@ final class AppSettings {
     var blurExportCoordinates: Bool {
         get { defaults.bool(forKey: Key.blurExportCoordinates) }
         set { defaults.set(newValue, forKey: Key.blurExportCoordinates) }
-    }
-
-    var developerModeEnabled: Bool {
-        get { defaults.bool(forKey: Key.developerModeEnabled) }
-        set { defaults.set(newValue, forKey: Key.developerModeEnabled) }
     }
 
     /// Smart category suggestions after a trip ends. Default on.

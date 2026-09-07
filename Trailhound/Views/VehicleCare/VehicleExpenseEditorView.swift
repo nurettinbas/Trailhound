@@ -23,6 +23,8 @@ struct VehicleExpenseEditorView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Bindable private var settings = AppSettings.shared
     @Query private var vehicles: [VehicleProfile]
     @Query private var expenses: [VehicleExpense]
@@ -186,12 +188,25 @@ struct VehicleExpenseEditorView: View {
         )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button(L10n.cancel) { dismiss() }
+                Button {
+                    dismiss()
+                } label: {
+                    GlassToolbarBackButton()
+                }
+                .glassToolbarControl()
+                .accessibilityLabel(Text("onboarding.back"))
             }
+            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
-                Button(L10n.pairingTabSave) { save() }
-                    .disabled(isSaving || activeDraft.amount == nil)
+                Button {
+                    save()
+                } label: {
+                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                }
+                .glassToolbarSaveControl()
+                .disabled(isSaving || activeDraft.amount == nil)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .onAppear {
             if draft == nil {

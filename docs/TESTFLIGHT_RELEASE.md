@@ -4,7 +4,8 @@
 
 - Apple Developer Program membership
 - App icon (1024×1024)
-- Privacy policy URL (location data stays on device)
+- Privacy policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md`
+- Support URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/SUPPORT.md`
 
 ## Automated tests (CI / local)
 
@@ -24,6 +25,12 @@
 2. Include privacy manifest: `PrivacyInfo.xcprivacy`
 3. Location usage description: trip recording
 4. Screenshots: list, detail map, stats, settings
+5. Privacy Policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md`
+6. Support URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/SUPPORT.md`
+7. App Privacy (nutrition label), aligned with `docs/PRIVACY.md`:
+   - Precise Location — not linked, not used for tracking, App Functionality (on-device recording)
+   - If declaring the optional report flow: Customer Support + Other Diagnostic Data, linked to the user via their email, App Functionality only, not tracking. Collection is user-initiated each time (Mail / share sheet). Do not also claim “we collect no data.”
+8. App Review Notes: Report a problem opens system Mail or the share sheet only after the user confirms. There is no automatic upload, analytics, or tracking. The attachment has no coordinates, names, or photos. Reviewer devices without Apple Mail should use the share-sheet fallback.
 
 ## TestFlight
 
@@ -46,12 +53,13 @@ These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestCheck
 Optional smoke:
 
 - [ ] **Manual recording** — start / pause / end from the app
-- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** fits start + trail (north-up; vehicle photo + chevron still face travel) → pause/stop from the map (pan still works while paused)
+- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** fits start + trail (north-up; vehicle photo + chevron still face travel) → pause: map and 2D/3D tools lock, vehicle stays put, Resume/Stop/close still work
 - [ ] **Live follow map feel** — vehicle mark at screen center while following; single blue path appears immediately (no blank window); fills in behind you with no duplicate stroke, no 1 Hz “chunk” at the puck, and never draws ahead of the puck; pan keeps puck + trail updating
 - [ ] **Live follow open at speed** — open while moving fast: curved vehicle→puck flight lands on the puck; blue path does not race ahead of a frozen camera during the fade
 - [ ] **Live follow map stroke** — path thickness identical in 2D and 3D, and uniform end-to-end while panning a pitched (3D) camera; motion glides with no per-second stall/surge (camera, vehicle mark, and blue path together); camera pulls back at highway speed
 - [ ] **Widget / Siri** — start / stop recording via widget or Siri shortcut
 - [ ] **Export** — JSON, CSV, GPX, or KML
+- [ ] **Report a problem** — Settings → About → Report a problem; confirm disclosure; Mail or share sheet attaches `trailhound-debug.txt`; no Dev Log tab
 
 ## Vehicle care & expenses (V13)
 
@@ -78,7 +86,7 @@ Optional smoke:
 
 ## Share card
 
-- [ ] **Share from trip detail** — preview then system share; home/work privacy radius clips the route (no raw GPS at saved places)
+- [ ] **Share from trip detail** — preview then system share; card + icon follow Appearance palette (not a fixed dark poster); home/work privacy radius clips the route (no raw GPS at saved places)
 
 ## Smart category (V20)
 

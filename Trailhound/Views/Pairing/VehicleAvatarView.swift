@@ -23,6 +23,8 @@ struct VehicleAvatarView: View {
     /// One-shot shine when a real photo first appears (list rows).
     var showsPhotoShine: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var loadedImage: UIImage?
     @State private var photoVisible = false
@@ -33,7 +35,7 @@ struct VehicleAvatarView: View {
 
     private var resolvedSymbolColor: Color {
         if let symbolColor { return symbolColor }
-        return isElectricAccent ? .yellow : TrailhoundBrandColors.brandBottom
+        return isElectricAccent ? .yellow : shellPalette.tintColor(for: colorScheme)
     }
 
     var body: some View {
@@ -54,7 +56,7 @@ struct VehicleAvatarView: View {
             if showsBrandRing, size > 72 {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
-                        TrailhoundBrandColors.brandBottom.opacity(brandRingOpacity),
+                        shellPalette.tintColor(for: colorScheme).opacity(brandRingOpacity),
                         lineWidth: 1.5
                     )
             }
@@ -111,7 +113,7 @@ struct VehicleAvatarView: View {
         if isElectricAccent {
             return Color.yellow.opacity(0.15)
         }
-        return TrailhoundBrandColors.brandBottom.opacity(displayImage != nil ? 0.10 : 0.12)
+        return shellPalette.tintColor(for: colorScheme).opacity(displayImage != nil ? 0.10 : 0.12)
     }
 
     private func revealPhoto() {

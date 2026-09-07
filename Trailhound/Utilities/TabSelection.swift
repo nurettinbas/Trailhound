@@ -34,5 +34,4 @@ enum AppTab: Hashable {
     case stats
     case pairing
     case settings
-    case devLog
 }

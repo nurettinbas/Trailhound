@@ -15,6 +15,8 @@ struct StatsPeriodCompareStrip: View {
     let previousLabel: String
     let rows: [StatsPeriodCompareRow]
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -26,7 +28,7 @@ struct StatsPeriodCompareStrip: View {
                     .frame(width: 56)
             }
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
             .accessibilityHidden(true)
 
             ForEach(rows) { row in
@@ -42,7 +44,7 @@ struct StatsPeriodCompareStrip: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.title)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     .lineLimit(1)
                 Text(row.currentText)
                     .font(.caption.weight(.semibold))
@@ -53,7 +55,7 @@ struct StatsPeriodCompareStrip: View {
 
             Text(row.previousText)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,6 +84,9 @@ struct StatsTrendBadge: View {
     let trend: StatsTrend?
     var metricName: String = ""
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
         if let trend {
             HStack(spacing: 2) {
@@ -96,16 +101,65 @@ struct StatsTrendBadge: View {
                         .minimumScaleFactor(0.7)
                 }
             }
-            .foregroundStyle(Self.color(for: trend))
+            .foregroundStyle(
+                trend.isNovel
+                    ? novelChipInk
+                    : Self.color(for: trend, colorScheme: colorScheme)
+            )
+            .padding(.horizontal, trend.isNovel ? 6 : 0)
+            .padding(.vertical, trend.isNovel ? 3 : 0)
+            .background {
+                if trend.isNovel {
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    novelChipFill,
+                                    novelChipFill.opacity(0.82)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(
+                                    Color.white.opacity(colorScheme == .dark ? 0.28 : 0.42),
+                                    lineWidth: 0.75
+                                )
+                        }
+                }
+            }
+            .shadow(
+                color: trend.isNovel ? Color.black.opacity(colorScheme == .dark ? 0.28 : 0.18) : .clear,
+                radius: trend.isNovel ? 2 : 0,
+                y: trend.isNovel ? 1 : 0
+            )
             .accessibilityLabel(trend.accessibilityLabel(metricName: metricName))
         }
     }
 
-    static func color(for trend: StatsTrend) -> Color {
+    private var novelChipRGB: ShellRGB {
+        colorScheme == .dark
+            ? shellPalette.atmosphere(for: .dark).tint
+            : shellPalette.atmosphere(for: .light).chrome
+    }
+
+    private var novelChipFill: Color {
+        novelChipRGB.color
+    }
+
+    private var novelChipInk: Color {
+        novelChipRGB.relativeLuminance > 0.56
+            ? Color.black.opacity(0.82)
+            : Color.white
+    }
+
+    static func color(for trend: StatsTrend, colorScheme: ColorScheme) -> Color {
         switch trend.isFavorable {
         case true: .green
         case false: .red
-        case nil: .secondary
+        case nil: StatsTextColor.secondary(for: colorScheme)
         }
     }
 }

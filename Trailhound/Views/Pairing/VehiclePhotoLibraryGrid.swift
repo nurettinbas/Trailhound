@@ -109,7 +109,7 @@ struct VehiclePhotoLibraryGrid: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button(L10n.pairingTabVehiclePhotoOpenSettings, action: onOpenSettings)
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .tint(TrailhoundBrandColors.brandBottom)
         }
         .padding(28)

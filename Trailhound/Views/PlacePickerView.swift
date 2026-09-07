@@ -177,6 +177,7 @@ struct PlacePickerView: View {
         .glassRow(position: .middle)
 
         Toggle(L10n.string("place.privacy_zone"), isOn: $isPrivacyZone)
+            .glassToggleStyle()
           .glassRow(position: .last)
       } header: {
         Text(L10n.string("place.info.section"))
@@ -224,7 +225,7 @@ struct PlacePickerView: View {
         } label: {
           Label(L10n.placePickerUseCurrentLocation, systemImage: "location.fill")
             .font(.body.weight(.semibold))
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .glassAccentForeground()
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
         }
@@ -237,7 +238,19 @@ struct PlacePickerView: View {
     }
     .navigationTitle(isEditing ? L10n.placePickerEditTitle : L10n.placePickerNewTitle)
     .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden(true)
+    .background(NavigationInteractivePopEnabler())
     .toolbar {
+      ToolbarItem(placement: .topBarLeading) {
+        Button {
+          dismiss()
+        } label: {
+          GlassToolbarBackButton()
+        }
+        .glassToolbarControl()
+        .accessibilityLabel(Text("onboarding.back"))
+      }
+      .hideSharedToolbarBackgroundIfAvailable()
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()
@@ -245,10 +258,11 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarSaveButton(title: L10n.placePickerSave)
         }
-        .glassToolbarSaveControl()
+        .glassToolbarControl()
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
       }
+      .hideSharedToolbarBackgroundIfAvailable()
     }
     .glassListChrome()
     .dismissKeyboardOnTap(focus: $focusedField)

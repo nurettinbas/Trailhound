@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LocationPermissionBadge: View {
   let state: LocationService.AuthorizationState
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     HStack(spacing: 4) {
@@ -10,11 +11,12 @@ struct LocationPermissionBadge: View {
       Text(label)
         .font(.caption2.weight(.semibold))
     }
-    .foregroundStyle(color)
+    .foregroundStyle(Color.white)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
-    .background(color.opacity(0.15))
+    .background(color)
     .clipShape(Capsule())
+    .compositingGroup()
     .accessibilityLabel(label)
   }
 
@@ -37,20 +39,9 @@ struct LocationPermissionBadge: View {
 
   private var color: Color {
     switch state {
-    case .authorizedAlways: .green
-    case .authorizedWhenInUse: .orange
-    case .denied, .restricted, .notDetermined: .red
-    }
-  }
-}
-
-extension ToolbarContent {
-  @ToolbarContentBuilder
-  func hideSharedToolbarBackgroundIfAvailable() -> some ToolbarContent {
-    if #available(iOS 26.0, *) {
-      sharedBackgroundVisibility(.hidden)
-    } else {
-      self
+    case .authorizedAlways: GlassSemantic.success(for: colorScheme)
+    case .authorizedWhenInUse: GlassSemantic.paused(for: colorScheme)
+    case .denied, .restricted, .notDetermined: GlassSemantic.destructive(for: colorScheme)
     }
   }
 }
@@ -181,11 +172,12 @@ struct GPSQualityBadge: View {
         .lineLimit(1)
         .minimumScaleFactor(compact ? 0.75 : 1)
     }
-    .foregroundStyle(color)
+    .foregroundStyle(Color.white)
     .padding(.horizontal, compact ? 6 : 8)
     .padding(.vertical, compact ? 3 : 4)
-    .background(color.opacity(0.15))
+    .background(color)
     .clipShape(Capsule())
+    .compositingGroup()
     .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: quality)
     .accessibilityLabel(label)
   }

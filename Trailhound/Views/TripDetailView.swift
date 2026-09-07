@@ -25,9 +25,11 @@ private enum TripDetailPanelLayout {
 
 struct TripDetailView: View {
     @Bindable var trip: Trip
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query private var places: [SavedPlace]
     @Bindable private var settings = AppSettings.shared
 
@@ -168,7 +170,6 @@ struct TripDetailView: View {
                         .background {
                             // Opaque wash — glass cards and the translucent tab bar never sample the map.
                             ZStack {
-                                Color(.systemBackground)
                                 AtmosphericBackground(style: .lightweight)
                             }
                         }
@@ -229,31 +230,47 @@ struct TripDetailView: View {
         .accessibilityIdentifier("tripDetail.screen")
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .background(NavigationInteractivePopEnabler())
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    GlassNavCircleIcon(systemName: "chevron.backward")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("onboarding.back"))
+            }
+            .hideSharedToolbarBackgroundIfAvailable()
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await renderShareCard() }
                 } label: {
-                    if isRenderingShareCard {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                    }
+                    GlassNavCircleIcon(
+                        systemName: "square.and.arrow.up",
+                        isLoading: isRenderingShareCard
+                    )
                 }
+                .buttonStyle(.plain)
                 .disabled(isRenderingShareCard)
                 .accessibilityLabel(L10n.share)
-
+            }
+            .hideSharedToolbarBackgroundIfAvailable()
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     toggleMapExpanded()
                 } label: {
-                    Image(
+                    GlassNavCircleIcon(
                         systemName: isMapExpanded
                             ? "arrow.down.right.and.arrow.up.left"
                             : "arrow.up.left.and.arrow.down.right"
                     )
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .sheet(isPresented: $showSharePreview, onDismiss: {
             if pendingSystemShare {
@@ -706,7 +723,21 @@ struct TripDetailView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .foregroundStyle(legendInk)
         .glassChrome(cornerRadius: 14, frozen: glassFrozen)
+    }
+
+    /// Light glass well over the map uses chrome ink so the legend stays readable.
+    private var legendInk: Color {
+        if settings.appearanceMode.preferredColorScheme == .dark {
+            return Color.primary
+        }
+        if settings.appearanceMode.preferredColorScheme == .light {
+            return shellPalette.chromeColor(for: .light)
+        }
+        return UITraitCollection.current.userInterfaceStyle == .dark
+            ? Color.primary
+            : shellPalette.chromeColor(for: .light)
     }
 
     private func legendChip(color: Color, text: String) -> some View {
@@ -775,7 +806,9 @@ struct TripDetailView: View {
         guard let image = await TripShareCardRenderer.render(
             trip: trip,
             places: places,
-            privacyRadius: privacyRadius
+            privacyRadius: privacyRadius,
+            palette: shellPalette,
+            scheme: colorScheme
         ) else {
             AppErrorPresenter.shared.present(L10n.string("share.card.error"))
             return
@@ -839,6 +872,18 @@ struct TripDetailView: View {
     }
 }
 
+struct NavigationInteractivePopEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        UIViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        }
+    }
+}
+
 private struct TripSharePreviewSheet: View {
     let image: UIImage
     let caption: String?
@@ -878,7 +923,7 @@ private struct TripSharePreviewSheet: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
                     .tint(TrailhoundBrandColors.brandBottom)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 12)
@@ -918,11 +963,14 @@ struct SpeedChartRouteCanvas: View {
     /// Typical spacing between plotted samples; the gap threshold scales off it.
     let sampleMedianIntervalSeconds: TimeInterval
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     private var gapBreakSeconds: TimeInterval {
         SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: sampleMedianIntervalSeconds)
     }
 
-    private var brandColor: Color { TrailhoundBrandColors.brandBottom }
+    private var brandColor: Color { shellPalette.tintColor(for: colorScheme) }
 
     var body: some View {
         Canvas { context, size in
