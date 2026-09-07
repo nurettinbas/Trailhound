@@ -222,7 +222,7 @@ private struct ShimmerModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay {
-                if !reduceMotion {
+                if !reduceMotion, !UITestSupport.isEnabled {
                     GeometryReader { geometry in
                         LinearGradient(
                             colors: [
@@ -492,12 +492,14 @@ extension View {
 struct SoftPressBorderedButtonStyle: PrimitiveButtonStyle {
     var reduceMotion: Bool = false
     var pressedScale: CGFloat = 0.96
+    var prominent: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         SoftPressBorderedPrimitive(
             configuration: configuration,
             reduceMotion: reduceMotion,
-            pressedScale: pressedScale
+            pressedScale: pressedScale,
+            prominent: prominent
         )
     }
 }
@@ -506,12 +508,12 @@ private struct SoftPressBorderedPrimitive: View {
     let configuration: PrimitiveButtonStyleConfiguration
     var reduceMotion: Bool
     var pressedScale: CGFloat
+    var prominent: Bool
 
     @GestureState private var isPressed = false
 
     var body: some View {
-        BorderedButtonStyle()
-            .makeBody(configuration: configuration)
+        borderedBody
             .scaleEffect((isPressed && !reduceMotion) ? pressedScale : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: isPressed)
             .simultaneousGesture(
@@ -520,6 +522,17 @@ private struct SoftPressBorderedPrimitive: View {
                         state = true
                     }
             )
+    }
+
+    @ViewBuilder
+    private var borderedBody: some View {
+        if prominent {
+            BorderedProminentButtonStyle()
+                .makeBody(configuration: configuration)
+        } else {
+            BorderedButtonStyle()
+                .makeBody(configuration: configuration)
+        }
     }
 }
 

@@ -8,7 +8,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
-        TrailhoundShortcuts.updateAppShortcutParameters()
+        if UITestSupport.isEnabled {
+            UIView.setAnimationsEnabled(false)
+        } else {
+            TrailhoundShortcuts.updateAppShortcutParameters()
+        }
         Task { @MainActor in
             AppServices.bootstrapRecordingIfNeeded()
         }

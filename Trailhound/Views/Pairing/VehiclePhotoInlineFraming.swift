@@ -10,6 +10,8 @@ struct VehiclePhotoInlineFraming: View {
     var onApply: () -> Void
     var onCancel: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let minZoom = VehiclePhotoCropMath.minUserScale
@@ -130,7 +132,7 @@ struct VehiclePhotoInlineFraming: View {
                     .padding(.horizontal, zoomThumbSize / 2)
 
                 Capsule(style: .continuous)
-                    .fill(TrailhoundBrandColors.brandBottom)
+                    .fill(shellPalette.tintColor(for: colorScheme))
                     .frame(
                         width: max(thumbCenterX - zoomThumbSize / 2, zoomTrackHeight),
                         height: zoomTrackHeight
@@ -183,7 +185,7 @@ struct VehiclePhotoInlineFraming: View {
                         .font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 7)
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                         .background(
                             Capsule(style: .continuous)
                                 .fill(Color.primary.opacity(0.08))
@@ -199,7 +201,7 @@ struct VehiclePhotoInlineFraming: View {
                         .foregroundStyle(.white)
                         .background(
                             Capsule(style: .continuous)
-                                .fill(TrailhoundBrandColors.brandBottom)
+                                .fill(shellPalette.tintColor(for: colorScheme))
                         )
                 }
                 .buttonStyle(VehiclePhotoPressStyle())
@@ -324,21 +326,24 @@ struct VehiclePhotoPressStyle: ButtonStyle {
 struct VehiclePhotoCornerChip: View {
     let title: String
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
         Text(title)
             .font(.system(size: 9, weight: .bold))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(
                 Capsule(style: .continuous)
-                    .fill(TrailhoundBrandColors.brandBottom)
+                    .fill(shellPalette.glassReadabilityTint(for: colorScheme))
             )
             .overlay {
                 Capsule(style: .continuous)
-                    .strokeBorder(Color.white, lineWidth: 1.5)
+                    .strokeBorder(shellPalette.tintColor(for: colorScheme), lineWidth: 1.5)
             }
             .shadow(color: .black.opacity(0.22), radius: 2, y: 1)
             .allowsHitTesting(false)
@@ -436,15 +441,14 @@ struct EmptyVehiclePhotoAddButton: View {
     private var photoFrame: some View {
         Image(systemName: "camera.fill")
             .font(.system(size: 30, weight: .semibold))
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .glassAccentForeground()
             .frame(width: side, height: side)
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(TrailhoundBrandColors.brandBottom.opacity(0.12))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(TrailhoundBrandColors.brandBottom.opacity(0.45), lineWidth: 1.5)
+            .background {
+                GlassSurface(
+                    cornerRadius: cornerRadius,
+                    density: .panel,
+                    allowsNative: false
+                )
             }
     }
 }
@@ -534,6 +538,9 @@ struct VehiclePhotoFramingCanvas: View {
 private struct VehiclePhotoCropFrameOverlay: View {
     let cornerRadius: CGFloat
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -543,7 +550,7 @@ private struct VehiclePhotoCropFrameOverlay: View {
                 .strokeBorder(Color.white.opacity(0.95), lineWidth: 2)
 
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(TrailhoundBrandColors.brandBottom.opacity(0.55), lineWidth: 1)
+                .strokeBorder(shellPalette.tintColor(for: colorScheme).opacity(0.55), lineWidth: 1)
                 .padding(2)
         }
         .shadow(color: .black.opacity(0.28), radius: 8, y: 3)

@@ -47,7 +47,7 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
         guard let fileName, !fileName.isEmpty else { return nil }
         if let cached = revisionByFileName[fileName] { return cached }
         guard let image = VehiclePhotoStore.shared.imageSync(fileName: fileName) else {
-            DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk (\(fileName))", level: .warning)
+            DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk", level: .warning)
             return nil
         }
         if VehiclePhotoStore.markImageIsVisuallyEmpty(image) {
@@ -862,7 +862,7 @@ final class TripRecordingService {
             return
         }
         activeTrip = trip
-        DevLog.shared.log(.recording, "Trip started: id=\(trip.id)")
+        DevLog.shared.log(.recording, "Trip started: id=\(trip.id.uuidString.prefix(8))")
 
         locationService.requestPermission()
         locationService.startTracking()
@@ -1095,7 +1095,19 @@ final class TripRecordingService {
 
             TripDerivedMetrics.recomputeEndpoints(for: trip)
             let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
-            PlaceMatchingService.matchPlaces(for: trip, places: places)
+            PlaceMatchingService.matchPlaces(
+                for: trip,
+                places: places,
+                privacyRadius: settings.privacyRadiusMeters
+            )
+            let allTrips = (try? modelContext.fetch(FetchDescriptor<Trip>())) ?? []
+            TripCategorySuggestionService.refreshPending(
+                on: trip,
+                among: allTrips,
+                places: places,
+                enabled: settings.smartCategorySuggestionsEnabled,
+                workHours: settings.workHours
+            )
             let privacyRadius = settings.privacyRadiusMeters
             let routeSummary = TripListViewModel.routeSummary(
                 for: trip,
@@ -1173,7 +1185,7 @@ final class TripRecordingService {
         resetActiveSession()
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
-        if !UITestSupport.isUnitTesting {
+        if !UITestSupport.shouldSkipExternalEffects {
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
@@ -1419,7 +1431,11 @@ enum TripPostProcessor {
         }
 
         let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
-        PlaceMatchingService.matchPlaces(for: trip, places: places)
+        PlaceMatchingService.matchPlaces(
+            for: trip,
+            places: places,
+            privacyRadius: AppSettings.shared.privacyRadiusMeters
+        )
         let fuelType = trip.vehicleID
             .flatMap { VehicleResolver.vehicle(withID: $0, in: context)?.fuelType }
             ?? .petrol
@@ -1428,6 +1444,14 @@ enum TripPostProcessor {
             places: places,
             privacyRadius: AppSettings.shared.privacyRadiusMeters,
             fuelType: fuelType
+        )
+        let allTrips = (try? context.fetch(FetchDescriptor<Trip>())) ?? []
+        TripCategorySuggestionService.refreshPending(
+            on: trip,
+            among: allTrips,
+            places: places,
+            enabled: AppSettings.shared.smartCategorySuggestionsEnabled,
+            workHours: AppSettings.shared.workHours
         )
         try? context.save()
         TripRoutePathCache.shared.prewarm(tripID: tripUUID, container: container)

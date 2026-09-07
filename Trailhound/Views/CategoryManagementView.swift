@@ -56,7 +56,7 @@ struct CategoryManagementView: View {
                 HStack(spacing: 10) {
                     Image(systemName: category.systemImage)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .frame(width: 18)
                     Text(category.name)
                         .font(.subheadline)
@@ -65,20 +65,17 @@ struct CategoryManagementView: View {
                         Spacer(minLength: 8)
                         Text(L10n.categoryBuiltinBadge)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                 }
                 .glassRow(position: GlassRowPosition.index(index, in: rowCount))
                 .listRowInsets(compactRowInsets)
-                .swipeActions(edge: .trailing, allowsFullSwipe: !category.isBuiltIn) {
-                    if !category.isBuiltIn {
-                        Button(role: .destructive) {
-                            deleteCategory(category)
-                        } label: {
-                            Label(L10n.delete, systemImage: "trash")
-                        }
-                        .destructiveTint()
-                    }
+                .confirmingDeleteSwipe(
+                    .category,
+                    allowsFullSwipe: !category.isBuiltIn,
+                    enabled: !category.isBuiltIn
+                ) {
+                    deleteCategory(category)
                 }
             }
 
@@ -90,7 +87,7 @@ struct CategoryManagementView: View {
                     addCategory()
                 }
                 .font(.subheadline.weight(.semibold))
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .buttonBorderShape(.roundedRectangle(radius: 10))
                 .tint(TrailhoundBrandColors.brandBottom)
                 .fixedSize()

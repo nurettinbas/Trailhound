@@ -65,8 +65,9 @@ final class YearRecapSnapshotTests: XCTestCase {
 @MainActor
 final class PremiumWidgetBridgeTests: XCTestCase {
     func testPayloadSurvivesMissingAppGroupKeys() {
-        let defaults = UserDefaults(suiteName: "trailhound.tests.widget.\(UUID().uuidString)")!
-        defaults.removePersistentDomain(forName: defaults.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "") ?? "")
+        let suite = "trailhound.tests.widget.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
         let payload = PremiumWidgetPayload.load(from: defaults)
         XCTAssertEqual(payload.projectedTotal, 0, accuracy: 0.1)
         XCTAssertTrue(payload.showRoutePreview)

@@ -18,7 +18,14 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
+        .onGlassShell()
+        .environment(\.shellPalette, settings.shellPalette)
         .toastHost()
+        .deleteConfirmHost()
+        .onAppear { AppearanceWindowStyle.sync(settings.appearanceMode) }
+        .onChange(of: settings.appearanceMode) { _, mode in
+            AppearanceWindowStyle.sync(mode)
+        }
     }
 
     private var isRecordingSession: Bool {
@@ -35,6 +42,7 @@ struct ContentView: View {
                     TripListView()
                 }
                 .background(Color.clear)
+                .modifier(TrailhoundTabContentChrome())
                 .tabItem {
                     TabBarItemLabel(
                         title: L10n.tabTrips,
@@ -50,9 +58,10 @@ struct ContentView: View {
                     if tabSelection.selectedTab == .pairing {
                         PairingTabView()
                     } else {
-                        Color.clear
+                        AtmosphericBackground()
                     }
                 }
+                .modifier(TrailhoundTabContentChrome())
                 .tabItem {
                     TabBarItemLabel(
                         title: L10n.string("vehicles.tab.title"),
@@ -67,10 +76,11 @@ struct ContentView: View {
                     if tabSelection.selectedTab == .stats {
                         StatsView()
                     } else {
-                        Color.clear
+                        AtmosphericBackground()
                     }
                 }
                 .background(Color.clear)
+                .modifier(TrailhoundTabContentChrome())
                 .tabItem {
                     TabBarItemLabel(
                         title: L10n.tabStats,
@@ -85,10 +95,11 @@ struct ContentView: View {
                     if tabSelection.selectedTab == .settings {
                         SettingsView()
                     } else {
-                        Color.clear
+                        AtmosphericBackground()
                     }
                 }
                 .background(Color.clear)
+                .modifier(TrailhoundTabContentChrome())
                 .tabItem {
                     TabBarItemLabel(
                         title: L10n.tabSettings,
@@ -98,40 +109,26 @@ struct ContentView: View {
                     .accessibilityIdentifier("tab.settings")
                 }
                 .tag(AppTab.settings)
-
-                if !UITestSupport.isEnabled {
-                    NavigationStack {
-                        if tabSelection.selectedTab == .devLog {
-                            DevLogView()
-                        } else {
-                            Color.clear
-                        }
-                    }
-                    .background(Color.clear)
-                    .tabItem {
-                        TabBarItemLabel(
-                            title: L10n.string("Dev Log"),
-                            systemImage: "ladybug",
-                            isSelected: tabSelection.selectedTab == .devLog
-                        )
-                    }
-                    .tag(AppTab.devLog)
-                }
             }
             .background(Color.clear)
-            .animation(TrailhoundMotion.tabSwitch, value: tabSelection.selectedTab)
+            .background(TrailhoundTabBarCompactInstaller(selectedTab: tabSelection.selectedTab))
+            .modifier(TrailhoundTabSelectionTint())
+            .transaction { $0.animation = nil }
         }
-        .tint(TrailhoundBrandColors.brandBottom)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .modifier(TrailhoundTabBarChrome())
+        .modifier(TrailhoundRootTint())
         .task {
             await authenticateOnLaunch()
             processPendingRecordingRequests()
+            AppIconSync.apply(settings.shellPalette)
             // If a trip is already active when the main UI appears (e.g. launched
             // from the lock screen widget, or started while locked), land on trips.
             if tripRecordingService.state.isActiveSession {
                 tabSelection.openTrips()
             }
+        }
+        .onChange(of: settings.shellPalette) { _, palette in
+            AppIconSync.apply(palette)
         }
         .onChange(of: appLockService.isUnlocked) { _, isUnlocked in
             if isUnlocked {
@@ -195,6 +192,48 @@ struct ContentView: View {
         )
     }
 
+}
+
+private struct TrailhoundTabBarChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            // Pre-iOS 26 system tab bar. iOS 26 keeps the floating system bar.
+            content
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
+        }
+    }
+}
+
+private struct TrailhoundRootTint: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content.tint(shellPalette.shellTint(for: colorScheme))
+    }
+}
+
+/// iOS 26 selected-tab pill + icon follow the palette tint (not chrome `shellTint`).
+private struct TrailhoundTabSelectionTint: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content.tint(shellPalette.tintColor(for: colorScheme))
+    }
+}
+
+/// Keep in-tab chrome (nav buttons, glass controls) on `shellTint`.
+private struct TrailhoundTabContentChrome: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content.tint(shellPalette.shellTint(for: colorScheme))
+    }
 }
 
 /// Tab bar forces `.fill` via `symbolVariants`. Pin exact outline/fill names and clear the env.

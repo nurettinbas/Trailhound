@@ -72,6 +72,39 @@ enum FrequentRoutesService {
         return "unknown"
     }
 
+    static func pairKey(for trip: Trip) -> String? {
+        let startKey = routeKey(
+            placeName: trip.startPlaceName,
+            address: trip.startAddress,
+            coordinate: trip.startCoordinate
+        )
+        let endKey = routeKey(
+            placeName: trip.endPlaceName,
+            address: trip.endAddress,
+            coordinate: trip.endCoordinate
+        )
+        guard startKey != "unknown", endKey != "unknown", startKey != endKey else { return nil }
+        return "\(startKey)→\(endKey)"
+    }
+
+    /// Category counts per `startKey→endKey` from trips the user (or an accepted suggestion)
+    /// actually categorized. Default Personal rows are ignored so they cannot poison learning.
+    static func categoryHistogram(
+        from trips: [Trip],
+        excluding tripID: UUID? = nil
+    ) -> [String: [String: Int]] {
+        var counts: [String: [String: Int]] = [:]
+
+        for trip in trips where trip.endedAt != nil {
+            if let tripID, trip.id == tripID { continue }
+            guard trip.categoryOrigin.countsTowardLearning else { continue }
+            guard let pairKey = pairKey(for: trip) else { continue }
+            counts[pairKey, default: [:]][trip.categoryID, default: 0] += 1
+        }
+
+        return counts
+    }
+
     static func placeSuggestions(
         from trips: [Trip],
         places: [SavedPlace],

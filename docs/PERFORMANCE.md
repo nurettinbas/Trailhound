@@ -42,7 +42,7 @@ The card sits above a 40-row `List`, so anything that invalidates its body inval
 
 - `AtmosphericBackground` draws its three glows as `RadialGradient`s rather than `Circle().blur(radius:)`. Every frosted row above them was resampling those blur passes.
 - The glows are wider than the screen, so they must stay in an `.overlay` rather than being `ZStack` siblings. As siblings they stretched the layout of every container that puts this behind its content (`ContentView.mainTabs`, `glassListChrome`), pushing toolbar buttons off-screen.
-- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. `cachedImage(for:)` is a memory-only lookup and is safe to call while scrolling.
+- `TripMapSnapshotCache` resolves its cache directory once and does all disk reads, JPEG decodes and writes off the main actor. Memory and disk are keyed by trip **and** appearance (`{uuid}-light.jpg` / `{uuid}-dark.jpg`). `cachedImage(for:appearance:)` is a memory-only lookup and is safe to call while scrolling. List rows keep the last thumbnail on screen across Light/Dark; MapKit runs only on a miss, through `TripRoutePathCache` (GPS fault stays on the path worker, not the list’s main actor) and **one** `MKMapSnapshotter` at a time. A cancelled row drops out of the render line if work has not started; an already-started render still writes the JPEG. GPS trim, delete, and merge call `remove(for:)` so a clipped route cannot leave a stale thumb. Legacy unstyled `{uuid}.jpg` files are deleted on first cache init and not reused.
 
 ## Route rendering
 
@@ -104,7 +104,7 @@ While the in-place expand/collapse runs, panel glass uses a solid fill (`glassCh
 - One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
 - Path prep (`TripShareRoutePrep`: privacy clip → decimate → chart series → `SpeedColoredSegmentBuilder`) runs off the main actor; points are faulted once before the hop. Map strokes and the speed chart share the same clipped samples.
 - Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
-- Brand logo is drawn into the raster at compose time; no ActivityKit / widget images.
+- Brand logo is drawn into the raster at compose time (palette-tinted `TrailhoundLogo`, same fill as the Home Screen icon); map snapshot follows Light/Dark. No ActivityKit / widget images.
 
 ## Recording cold-open
 
@@ -179,12 +179,15 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 ## Inactive tabs
 
-- Stats, Pairing, Settings, and Dev Log views mount only while their tab is selected (Trips stays mounted for the recording card).
+- Stats, Pairing, and Settings views mount only while their tab is selected (Trips stays mounted for the recording card).
 
 ## Stats tab
 
+- **One chrome, still a `List`.** Filter, 2-up goal/hero, summary, each chart pager, and year awards are separate `List` rows. Do not collapse Stats into a `ScrollView` + `VStack` of cards (loses below-fold deferral).
+- **One `Material` per card.** `statsFullCard` / `statsHalfCard` use `glassCard` on a **clear** list-row background. Nested tiles are frost *fills*, not extra `ultraThinMaterial`. Never stack `glassListRow` behind an inner `glassCard`.
+- **No `GeometryReader` in the 2-up row.** Half cards use a fixed `StatsCardTokens.halfMinHeight`.
 - Chart aggregations build into a `StatsDisplaySnapshot` on filter/store changes, not on every scroll frame.
-- Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable).
+- Each chart is its own `List` row; `StatsDeferredChart` / `StatsDeferredContent` mount Swift Charts after the row appears (placeholder keeps layout stable). The 2-up hero must not contain Swift Charts.
 - **Nothing in the body computes an aggregation.** Goal distance lives on the snapshot as
   `goalDistanceMeters` and is always the **goal calendar month's** total (not the week/custom
   window). Week → current month; month filter → selected month; custom → month of the range end.
@@ -202,13 +205,28 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `@MainActor`, so that task would inherit the main actor and still block the UI.
 - Filter changes are debounced (~120 ms) after the first load, and the loader keeps an 8-entry
   request cache cleared whenever `storeVersion` bumps, so week ↔ month ↔ back is instant.
-- Category, vehicle, and favorite-place filters scope **summary and chart series** together.
-  The monthly goal ring stays unfiltered. Place filter forces the trip fetch path (daily rollups
-  have no place dimension); without a place filter the 92-day rollup path is unchanged.
+- Category, vehicle, favorite-place, and travel-journal filters scope **trip summary and chart series** together.
+  The monthly goal ring stays unfiltered. Place or journal filter forces the trip fetch path (daily rollups
+  have neither dimension); without those chips the 92-day rollup path is unchanged.
+  The Stats filter card is presentation-only (`StatsFilterMenuField` menus + Clear All); it does not add a fetch.
+  While a snapshot is in flight, the summary grid shows packed nested-tile skeletons instead of leaving empty cells.
 - **Pager charts mount lazily per slide.** `StatsDeferredChart` / `StatsDeferredContent` take an
   `isPageActive` flag tied to the pager selection, so a `TabView` with five daily slides does not
   build all five Swift Charts when the section first appears — only the visible page (after the row
   scrolls into view). Vehicle cost charts use the same pattern via `VehicleCostSnapshotLoader`.
+- **Comparison surfaces stay off the tab-open critical path.** Month-over-month trends are
+  `StatsTrend` values on the existing trip/cost snapshots (MTD is a *slice* of the already-fetched
+  previous month — the fetch window is still `selected ∪ previous ∪ goalMonth`). Logged vehicle
+  expenses are built from `VehicleCompareSeed` + trip distances with Capsule bars, not Swift Charts,
+  on their **own** List row (below the fold, same cost snapshot — no extra fetch). The year Awards card has its own
+  `StatsYearAwardsLoader` (`StatsYearAwardsBuild` signpost) that must **not** start in Stats
+  `onAppear`: it waits until the first `StatsDisplaySnapshot` lands, then idles ~300 ms (or runs
+  immediately if the Awards row has appeared). Year data is rollups + expenses only — never
+  `FetchDescriptor<Trip>` / GPS / `walkNightDistanceShare`. Filter chips do not rebuild the year
+  snapshot; `storeVersion` does, still on that idle path. Cost MoM uses **one** expense fetch covering
+  current ∪ previous (`previousTotal` on the same snapshot). Place, journal, or category chips
+  **hide** expense MoM and the vehicle $/km list — expenses have no those dimensions, so mixing them
+  with scoped trip stats would be wrong. Vehicle filter still scopes the cost snapshot.
 
 ## Reacting to saves
 
@@ -217,13 +235,13 @@ with it, so both reload on `ModelContext.didSave` through the `onStoreSave` modi
 about that notification make a plain `onReceive` wrong:
 
 - **It is delivered on whichever thread performed the save.** `TripDerivedBackfiller` and
-  `TripRollupRebuilder` save from their own `@ModelActor`, so a plain handler mutates SwiftUI state
-  off the main thread and trips "Publishing changes from background threads is not allowed".
-  `onStoreSave` hops to the main thread when it did not start there.
-- **It cannot simply be `receive(on: .main)` either.** That defers *every* reload by a runloop turn,
-  including the main-thread save that a deletion performs. For that one turn the view still holds
-  the deleted model in its own fetched array, and rendering a row from it is a crash rather than a
-  glitch. So saves already on the main thread run the handler synchronously.
+  `TripRollupRebuilder` save from their own `@ModelActor`. SwiftUI's `onReceive` requires the
+  publisher itself to emit on the main thread — hopping only the handler still trips
+  "Publishing changes from background threads is not allowed".
+- **It cannot simply be `receive(on: DispatchQueue.main)` either.** That defers *every* reload by a
+  runloop turn, including the main-thread save that a deletion performs. For that one turn the view
+  still holds the deleted model in its own fetched array, and rendering a row from it is a crash
+  rather than a glitch. `onStoreSave` uses a scheduler that runs immediately when already on main.
 
 ## Daily rollups (schema V11+)
 
@@ -256,7 +274,7 @@ six-figure library viable.
   or a month holds few enough trips to read directly. The fetch window is
   `selected ∪ previous ∪ goalMonth`; a single calendar month still stays under the threshold.
 
-## Premium derived caches (schema V19+)
+## Premium derived caches (schema V21)
 
 Year recap, frequent-route overlays, badges, and the month cost forecast all sit on the same
 write path as daily rollups. They are **derived**, not a second source of truth: `Trip` (and
@@ -284,8 +302,7 @@ touches `sortedPoints` keeps those rows alive until it is cleared. It is now rel
 places that used to leak it across a browsing session:
 
 - `TripDetailView.onDisappear` — the detail map is the only screen that needs full resolution.
-- `TripMapSnapshotCache` — once the decimated coordinates are extracted, the renderer needs nothing
-  else, so scrolling the list no longer accumulates every row's GPS history.
+- `TripMapSnapshotCache` — route coordinates come from `TripRoutePathCache` on a miss, so scrolling the list no longer faults GPS on the main actor or keeps every row’s point history alive.
 - `TripDerivedBackfillService` — between batches, so a backfill over a large library stays flat.
 
 ## Signposts
@@ -294,8 +311,23 @@ places that used to leak it across a browsing session:
 Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performance`:
 
 - `StatsSnapshotBuild` — one interval per snapshot rebuild.
+- `StatsYearAwardsBuild` — calendar-year rollup + expense aggregation; must not overlap tab-open
+  `StatsSnapshotBuild`.
 - `NightDistanceWalk` — appears only for trips that have not been backfilled yet. Seeing these
   steadily in a warmed-up app means the backfill is not completing.
+
+## Glass (light theme)
+
+- Atmosphere still uses `RadialGradient` overlays, never `Circle().blur`. Light veil is 0.06 — not a milky white wash. Light cards overlay mid-family tint at ~0.22, not chrome.
+- List rows (`glassRow`) and Stats cards stay on the Material / solid recipe (`allowsNative: false`) and keep the same open glass as iOS 26 native hosts — not a darker plate. Native `glassEffect` is only for standalone cards, chips, chrome, and buttons, grouped in `GlassEffectContainer` / `GlassChipGroup` when several sit together.
+- Budget: at most eight native glass hosts on a screen (`GlassHostBudget.maxNativeHostsPerScreen`). If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false`.
+- Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
+- Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
+- Form/list nav buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`.
+- Trip detail and travel-journal **toolbar** icons stay on `GlassToolbarSampling.frozen` at all times. Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Live system / native glass over MapKit would resample the map every frame.
+- Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
+- Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
+- Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist
 
@@ -303,7 +335,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 2. Pairing → edit vehicle name with keyboard — should feel smooth vs list screens.
 3. Start recording, scroll trip list, switch tabs — CPU should drop on non-Trips tabs.
 4. Open a long trip detail — first frame must not hitch on GPS fault; map stays full-screen while the panel rises. Short trips may run map-clear + panel rise + route ticks; medium/long trips settle instantly. The details card stays at a fixed height (scroll inside; no grabber resize). Toolbar fullscreen must expand in place (panel recedes + camera opens together) — no second map sheet, no black flash.
-5. Stats tab with many trips — scroll through charts; rows below the fold should appear after placeholders, without blocking the summary header.
+5. Stats tab with many trips — first viewport (filter + 2-up + summary tiles) must not hitch; chart rows below the fold appear after placeholders. `StatsYearAwardsBuild` must not overlap tab-open `StatsSnapshotBuild`.
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.
-8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails.
+8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails. With 30+ trips, switch Light ↔ Dark and scroll immediately: rows must keep their last map thumb (map icon may sway while the other appearance renders); the list must not empty or hitch from parallel `MKMapSnapshotter`s.

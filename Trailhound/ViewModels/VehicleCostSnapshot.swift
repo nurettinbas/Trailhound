@@ -103,12 +103,113 @@ struct VehicleExpenseShare: Identifiable, Sendable, Equatable {
     }
 }
 
+/// Per-vehicle expense seed for the compare list. Distance is joined later from trip stats.
+struct VehicleCompareSeed: Identifiable, Sendable, Equatable {
+    let id: String
+    let storedName: String
+    let iconName: String
+    let photoFileName: String?
+    let isElectric: Bool
+    let amount: Double
+    let fuel: Double
+    let service: Double
+    let insurance: Double
+    let casco: Double
+    let other: Double
+
+    func amount(for bucket: VehicleCostBucket) -> Double {
+        switch bucket {
+        case .fuel: fuel
+        case .service: service
+        case .insurance: insurance
+        case .casco: casco
+        case .other: other
+        }
+    }
+}
+
+struct VehicleCompareRow: Identifiable, Sendable, Equatable {
+    let id: String
+    let storedName: String
+    let iconName: String
+    let photoFileName: String?
+    let isElectric: Bool
+    let amount: Double
+    let distanceMeters: Double
+    let fuel: Double
+    let service: Double
+    let insurance: Double
+    let casco: Double
+    let other: Double
+    let isMostExpensive: Bool
+
+    var costPerKm: Double? {
+        let kilometers = distanceMeters / 1000
+        guard kilometers > 0, amount > 0 else { return nil }
+        return amount / kilometers
+    }
+
+    func amount(for bucket: VehicleCostBucket) -> Double {
+        switch bucket {
+        case .fuel: fuel
+        case .service: service
+        case .insurance: insurance
+        case .casco: casco
+        case .other: other
+        }
+    }
+
+    @MainActor
+    var displayName: String {
+        if id == VehicleExpenseShare.unassignedID || storedName.isEmpty {
+            return L10n.string("stats.vehicle.unassigned")
+        }
+        return storedName
+    }
+}
+
+enum StatsVehicleCompareBuilder {
+    static func rows(
+        seeds: [VehicleCompareSeed],
+        distances: [VehicleDistance]
+    ) -> [VehicleCompareRow] {
+        let distanceByID = Dictionary(
+            distances.map { ($0.id, $0.distanceMeters) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let sorted = seeds.sorted { lhs, rhs in
+            if lhs.amount != rhs.amount { return lhs.amount > rhs.amount }
+            return lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
+        }
+        let topAmount = sorted.first?.amount ?? 0
+        return sorted.map { seed in
+            VehicleCompareRow(
+                id: seed.id,
+                storedName: seed.storedName,
+                iconName: seed.iconName,
+                photoFileName: seed.photoFileName,
+                isElectric: seed.isElectric,
+                amount: seed.amount,
+                distanceMeters: distanceByID[seed.id] ?? 0,
+                fuel: seed.fuel,
+                service: seed.service,
+                insurance: seed.insurance,
+                casco: seed.casco,
+                other: seed.other,
+                isMostExpensive: seed.amount > 0 && seed.amount == topAmount
+            )
+        }
+    }
+}
+
 struct VehicleCostSnapshot: Sendable, Equatable {
     let months: [VehicleMonthlyCost]
     let days: [VehicleDailyCost]
     let categoryBreakdown: [VehicleCategoryCost]
     let vehicleBreakdown: [VehicleExpenseShare]
+    let compareSeeds: [VehicleCompareSeed]
     let total: Double
+    let previousTotal: Double
     let fuelTotal: Double
     let serviceTotal: Double
     let insuranceTotal: Double
@@ -120,7 +221,9 @@ struct VehicleCostSnapshot: Sendable, Equatable {
         days: [],
         categoryBreakdown: [],
         vehicleBreakdown: [],
+        compareSeeds: [],
         total: 0,
+        previousTotal: 0,
         fuelTotal: 0,
         serviceTotal: 0,
         insuranceTotal: 0,
@@ -132,11 +235,34 @@ struct VehicleCostSnapshot: Sendable, Equatable {
     var hasCategoryBreakdown: Bool { categoryBreakdown.contains { $0.amount > 0 } }
     var hasVehicleBreakdown: Bool { vehicleBreakdown.contains { $0.amount > 0 } }
     var hasTimelineChart: Bool { !days.isEmpty || !months.isEmpty }
+
+    var expenseTrend: StatsTrend? {
+        StatsTrend.make(current: total, previous: previousTotal, polarity: .lowerIsBetter)
+    }
 }
 
 struct VehicleCostSnapshotRequest: Sendable, Hashable {
     let storeVersion: Int
     let periodStart: Date
     let periodEnd: Date
+    /// Previous-period slice for MoM totals. Defaults to an empty window at `periodStart`.
+    let compareStart: Date
+    let compareEnd: Date
     let selectedVehicleID: UUID?
+
+    init(
+        storeVersion: Int,
+        periodStart: Date,
+        periodEnd: Date,
+        selectedVehicleID: UUID?,
+        compareStart: Date? = nil,
+        compareEnd: Date? = nil
+    ) {
+        self.storeVersion = storeVersion
+        self.periodStart = periodStart
+        self.periodEnd = periodEnd
+        self.compareStart = compareStart ?? periodStart
+        self.compareEnd = compareEnd ?? periodStart
+        self.selectedVehicleID = selectedVehicleID
+    }
 }

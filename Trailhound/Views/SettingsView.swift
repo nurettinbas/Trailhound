@@ -1,4 +1,5 @@
 import AppIntents
+import MessageUI
 import SwiftData
 import SwiftUI
 import UIKit
@@ -20,7 +21,11 @@ struct SettingsView: View {
     @State private var showAppLockUnavailableAlert = false
     @State private var showShortcutsAutomationGuide = false
     @State private var showAddPlacePicker = false
-    @State private var versionTapCount = 0
+    @State private var showReportProblem = false
+    @State private var showMailComposer = false
+    @State private var showReportShareSheet = false
+    @State private var showReportShareFailed = false
+    @State private var reportFileURL: URL?
 
     @FocusState private var focusedField: SettingsFocusedField?
 
@@ -34,11 +39,12 @@ struct SettingsView: View {
 
             Section(L10n.settingsRecordingSection) {
                 Toggle(L10n.settingsRecordingSounds, isOn: $settings.recordingSoundsEnabled)
+                    .glassToggleStyle()
                     .accessibilityIdentifier("settings.recordingSounds")
                     .glassRow(position: .first)
                 Text(L10n.settingsSiriShortcutsHint)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .glassRow(position: .middle)
                 ShortcutsLink()
                     .shortcutsLinkStyle(.automaticOutline)
@@ -56,7 +62,7 @@ struct SettingsView: View {
                 if places.isEmpty {
                     Text(L10n.settingsFavoritePlacesEmpty)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .glassRow(position: favoritePlacesRowCount == 1 ? .only : .first)
                 }
 
@@ -67,7 +73,7 @@ struct SettingsView: View {
                         HStack(spacing: 10) {
                             Image(systemName: place.kind.systemImage)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .frame(width: 18)
                             Text(place.name)
                                 .font(.subheadline)
@@ -75,9 +81,11 @@ struct SettingsView: View {
                             Spacer(minLength: 8)
                             Text(place.kind.displayName)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
+                            GlassDisclosureChevron()
                         }
                     }
+                    .glassHidesNavigationLinkIndicator()
                     .glassRow(position: favoritePlacePosition(placeIndex: index))
                     .listRowInsets(
                         EdgeInsets(
@@ -87,13 +95,8 @@ struct SettingsView: View {
                             trailing: GlassTokens.listContentHorizontalInset
                         )
                     )
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            deletePlace(place)
-                        } label: {
-                            Label(L10n.delete, systemImage: "trash")
-                        }
-                        .destructiveTint()
+                    .confirmingDeleteSwipe {
+                        deletePlace(place)
                     }
                 }
 
@@ -102,7 +105,7 @@ struct SettingsView: View {
                 } label: {
                     Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                        .glassAccentForeground()
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 4)
                 }
@@ -117,6 +120,41 @@ struct SettingsView: View {
             CategoryManagementView(focusedField: $focusedField)
 
             Section {
+                Toggle(L10n.settingsSmartCategoryToggle, isOn: $settings.smartCategorySuggestionsEnabled)
+                    .glassToggleStyle()
+                    .accessibilityIdentifier("settings.smartCategory")
+                    .glassRow(position: settings.smartCategorySuggestionsEnabled ? .first : .only)
+                if settings.smartCategorySuggestionsEnabled {
+                    LabeledContent(L10n.settingsSmartCategoryWorkStart) {
+                        Picker(L10n.settingsSmartCategoryWorkStart, selection: $settings.workHourStart) {
+                            ForEach(Array(0..<24), id: \.self) { hour in
+                                Text(Self.hourLabel(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    }
+                    .accessibilityIdentifier("settings.smartCategory.workStart")
+                    .glassRow(position: .middle)
+                    LabeledContent(L10n.settingsSmartCategoryWorkEnd) {
+                        Picker(L10n.settingsSmartCategoryWorkEnd, selection: $settings.workHourEnd) {
+                            ForEach(Array(0..<24), id: \.self) { hour in
+                                Text(Self.hourLabel(hour)).tag(hour)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    }
+                    .accessibilityIdentifier("settings.smartCategory.workEnd")
+                    .glassRow(position: .last)
+                }
+            } header: {
+                Text(L10n.settingsSmartCategorySection)
+            } footer: {
+                Text(L10n.settingsSmartCategoryHint)
+            }
+
+            Section {
                 Picker(L10n.settingsAppearancePicker, selection: $settings.appearanceMode) {
                     Text(L10n.settingsAppearanceSystem).tag(AppearanceMode.system)
                     Text(L10n.settingsAppearanceLight).tag(AppearanceMode.light)
@@ -125,11 +163,16 @@ struct SettingsView: View {
                 .glassSegmentedStyle()
                 .labelsHidden()
                 .accessibilityIdentifier("settings.appearance")
-                .glassRow(position: .only)
+                .glassRow(position: .first)
+                ShellPalettePicker(selection: $settings.shellPalette)
+                    .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsAppearanceSection)
             } footer: {
-                Text(L10n.settingsAppearanceHint)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L10n.settingsAppearanceHint)
+                    Text(L10n.settingsShellPaletteHint)
+                }
             }
 
             Section {
@@ -171,14 +214,16 @@ struct SettingsView: View {
                 .glassRow(position: .first)
                 Text(L10n.settingsFuelHint)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .glassRow(position: .last)
             }
 
             Section(L10n.settingsPrivacySection) {
                 Toggle(L10n.settingsAppLock, isOn: appLockEnabledBinding)
+                    .glassToggleStyle()
                     .glassRow(position: .first)
                 Toggle(L10n.settingsConfirmExternalStart, isOn: $settings.confirmExternalRecordingStart)
+                    .glassToggleStyle()
                     .glassRow(position: .middle)
                 LabeledContent(L10n.settingsPrivacyRadius) {
                     TextField(L10n.settingsPrivacyRadiusUnit, value: $settings.privacyRadiusMeters, format: .number)
@@ -188,8 +233,10 @@ struct SettingsView: View {
                 }
                 .glassRow(position: .middle)
                 Toggle(L10n.settingsBlurExport, isOn: $settings.blurExportCoordinates)
+                    .glassToggleStyle()
                     .glassRow(position: .middle)
                 Toggle(L10n.string("settings.widget.route_preview"), isOn: $settings.widgetShowRoutePreview)
+                    .glassToggleStyle()
                     .glassRow(position: .middle)
                     .onChange(of: settings.widgetShowRoutePreview) { _, _ in
                         TripStore.syncWidgetWeekDistance(in: modelContext)
@@ -212,7 +259,7 @@ struct SettingsView: View {
                 if !locationService.canRecordInBackground {
                     Text(L10n.settingsBackgroundLocationHint)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .glassRow(position: permissionsPositions.hint)
                 }
 
@@ -244,23 +291,19 @@ struct SettingsView: View {
 
             Section(L10n.settingsAboutSection) {
                 LabeledContent(L10n.settingsVersion, value: "1.1.0")
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        versionTapCount += 1
-                        if versionTapCount >= 5 {
-                            settings.developerModeEnabled.toggle()
-                            versionTapCount = 0
-                        }
-                    }
-                    .glassRow(position: aboutPositions.version)
-                if settings.developerModeEnabled {
-                    Toggle(L10n.settingsDeveloperMode, isOn: $settings.developerModeEnabled)
-                        .glassRow(position: aboutPositions.developer)
+                    .glassRow(position: .first)
+                Button(L10n.settingsReportProblem) {
+                    showReportProblem = true
                 }
+                .accessibilityIdentifier("settings.reportProblem")
+                .glassRow(position: .middle)
+                Link(L10n.settingsPrivacyPolicy, destination: SupportMail.privacyPolicyURL)
+                    .accessibilityIdentifier("settings.privacyPolicy")
+                    .glassRow(position: .middle)
                 Text(L10n.settingsAboutPrivacy)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .glassRow(position: aboutPositions.privacy)
+                    .glassSecondaryInk()
+                    .glassRow(position: .last)
             }
         }
         .navigationTitle(L10n.settingsTitle)
@@ -290,10 +333,53 @@ struct SettingsView: View {
         .sheet(isPresented: $showShortcutsAutomationGuide) {
             PairingShortcutsAutomationGuideView()
         }
+        .alert(
+            L10n.settingsReportProblemTitle,
+            isPresented: $showReportProblem
+        ) {
+            Button(L10n.settingsReportProblemOpenMail) {
+                prepareDiagnosticReport()
+            }
+            Button(L10n.settingsReportProblemClearLog, role: .destructive) {
+                DeleteConfirmPresenter.shared.confirm(.generic) {
+                    DevLog.shared.clear()
+                    ToastPresenter.shared.show(.deleted)
+                }
+            }
+            Button(L10n.cancel, role: .cancel) {}
+        } message: {
+            Text(L10n.settingsReportProblemDisclosure)
+        }
+        .sheet(isPresented: $showMailComposer, onDismiss: cleanupReportFile) {
+            MailComposeView(
+                recipients: [SupportMail.to],
+                subject: diagnosticMailSubject,
+                body: L10n.settingsReportProblemMailBody,
+                attachmentURL: reportFileURL,
+                onFinish: { _ in
+                    showMailComposer = false
+                }
+            )
+        }
+        .sheet(isPresented: $showReportShareSheet, onDismiss: cleanupReportFile) {
+            if let reportFileURL {
+                ExportActivityShareSheet(
+                    items: [
+                        L10n.settingsReportProblemShareHint(SupportMail.to),
+                        reportFileURL
+                    ]
+                )
+            }
+        }
         .alert(L10n.appLockUnavailableTitle, isPresented: $showAppLockUnavailableAlert) {
             Button(L10n.ok, role: .cancel) {}
         } message: {
             Text(L10n.appLockUnavailable)
+        }
+        .alert(L10n.settingsReportProblemFailedTitle, isPresented: $showReportShareFailed) {
+            Button(L10n.ok, role: .cancel) {}
+        } message: {
+            Text(L10n.settingsReportProblemFailedMessage)
         }
         .overlay {
             if isExporting {
@@ -328,15 +414,42 @@ struct SettingsView: View {
         return (.first, .middle, .middle, .last)
     }
 
-    private var aboutPositions: (version: GlassRowPosition, developer: GlassRowPosition, privacy: GlassRowPosition) {
-        settings.developerModeEnabled
-            ? (.first, .middle, .last)
-            : (.first, .only, .last)
+    private var diagnosticMailSubject: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
+        let os = UIDevice.current.systemVersion
+        return "Trailhound \(version) · iOS \(os)"
+    }
+
+    private func prepareDiagnosticReport() {
+        do {
+            UIPasteboard.general.string = SupportMail.to
+            let url = try DevLog.shared.makeReportFile()
+            reportFileURL = url
+            if MFMailComposeViewController.canSendMail() {
+                showMailComposer = true
+            } else {
+                showReportShareSheet = true
+            }
+        } catch {
+            cleanupReportFile()
+            showReportShareFailed = true
+        }
+    }
+
+    private func cleanupReportFile() {
+        if let reportFileURL {
+            try? FileManager.default.removeItem(at: reportFileURL)
+        }
+        reportFileURL = nil
     }
 
     private func favoritePlacePosition(placeIndex: Int) -> GlassRowPosition {
         let offset = places.isEmpty ? 1 : 0
         return GlassRowPosition.index(placeIndex + offset, in: favoritePlacesRowCount)
+    }
+
+    private static func hourLabel(_ hour: Int) -> String {
+        String(format: "%02d:00", hour)
     }
 
     private enum ExportFormat {
@@ -421,6 +534,50 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+}
+
+private struct ShellPalettePicker: View {
+    @Binding var selection: ShellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 5)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(ShellPalette.allCases) { palette in
+                Button {
+                    selection = palette
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: palette.gradientColors(for: colorScheme),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        if selection == palette {
+                            Circle()
+                                .strokeBorder(Color.white, lineWidth: 2.5)
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color.white)
+                        }
+                    }
+                    .frame(width: 36, height: 36)
+                    .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.shellPaletteName(palette))
+                .accessibilityAddTraits(selection == palette ? .isSelected : [])
+                .accessibilityIdentifier("settings.shellPalette.\(palette.rawValue)")
+            }
+        }
+        .padding(.vertical, 8)
+        .accessibilityIdentifier("settings.shellPalette")
+        .accessibilityElement(children: .contain)
     }
 }
 

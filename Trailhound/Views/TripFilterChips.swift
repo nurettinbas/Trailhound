@@ -9,6 +9,8 @@ struct TripListFiltersBar: View {
     @Binding var selectedCategoryID: String?
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
     @Binding var selectedPlaceID: UUID?
+    @Binding var listMode: TripsTabListMode
+    var isSearchBusy: Bool = false
     var vehicles: [VehicleProfile] = []
     var places: [SavedPlace] = []
     /// Compact “This week” strip shown above search when non-empty.
@@ -18,6 +20,8 @@ struct TripListFiltersBar: View {
     @Namespace private var vehicleChipNamespace
     @Namespace private var placeChipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var isFiltersExpanded = false
 
     private var dateSelectionKey: String {
@@ -55,20 +59,24 @@ struct TripListFiltersBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if showsWeekSummary {
+            listModePicker
+
+            if showsWeekSummary && listMode == .trips {
                 weekSummaryRow
             }
 
             HStack(alignment: .center, spacing: 8) {
                 searchField
-                filtersToggleButton
-                if hasChipFiltersActive {
-                    clearFiltersButton
+                if listMode == .trips {
+                    filtersToggleButton
+                    if hasChipFiltersActive {
+                        clearFiltersButton
+                    }
                 }
             }
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: hasChipFiltersActive)
 
-            if isFiltersExpanded {
+            if listMode == .trips, isFiltersExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     dateFilterRow
                     TripFilterChips(selectedCategoryID: $selectedCategoryID, usesCardInsets: false)
@@ -81,16 +89,27 @@ struct TripListFiltersBar: View {
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: isFiltersExpanded)
+        .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: isSearchBusy)
         .task(id: vehiclePhotoPrefetchID) {
             await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
         }
+    }
+
+    private var listModePicker: some View {
+        Picker(L10n.tripsSegmentTravels, selection: $listMode) {
+            ForEach(TripsTabListMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .glassSegmentedStyle()
+        .accessibilityIdentifier("trips.segment")
     }
 
     private var weekSummaryRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "calendar")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(shellPalette.tintColor(for: colorScheme))
                 .frame(width: 16)
 
             Text(L10n.sectionThisWeek)
@@ -101,7 +120,7 @@ struct TripListFiltersBar: View {
 
             Text(weekSummaryText)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .lineLimit(1)
                 .multilineTextAlignment(.trailing)
                 .numericTextAnimation(value: weekSummaryText)
@@ -118,8 +137,11 @@ struct TripListFiltersBar: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-            TextField(L10n.searchTrips, text: $searchText)
+                .foregroundStyle(isSearchBusy ? shellPalette.tintColor(for: colorScheme) : Color.secondary)
+                .symbolEffect(.pulse, options: .repeating, isActive: isSearchBusy && !reduceMotion)
+                .accessibilityHidden(true)
+
+            TextField(listMode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips, text: $searchText)
                 .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -134,7 +156,7 @@ struct TripListFiltersBar: View {
                     searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(GlassText.secondary(for: colorScheme))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.placePickerSearchClear)
@@ -144,6 +166,28 @@ struct TripListFiltersBar: View {
         .padding(.vertical, 7)
         .frame(minHeight: 36)
         .glassField(cornerRadius: 10)
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    shellPalette.tintColor(for: colorScheme).opacity(isSearchBusy ? 0.38 : 0),
+                    lineWidth: 1
+                )
+        }
+        .shadow(
+            color: shellPalette.tintColor(for: colorScheme).opacity(isSearchBusy && !reduceMotion ? 0.22 : 0),
+            radius: 10,
+            y: 0
+        )
+        .overlay(alignment: .bottom) {
+            if isSearchBusy {
+                SearchFieldScanComet(reduceMotion: reduceMotion)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 3)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("trips.search.activity")
+            }
+        }
+        .accessibilityValue(isSearchBusy ? L10n.searchWorking : "")
     }
 
     private var filtersToggleButton: some View {
@@ -162,7 +206,7 @@ struct TripListFiltersBar: View {
                 .symbolVariant(isFiltersExpanded || hasChipFiltersActive ? .fill : .none)
                 .foregroundStyle(
                     isFiltersExpanded || hasChipFiltersActive
-                        ? TrailhoundBrandColors.brandBottom
+                        ? shellPalette.tintColor(for: colorScheme)
                         : Color.secondary
                 )
                 .frame(width: 36, height: 36)
@@ -175,7 +219,7 @@ struct TripListFiltersBar: View {
                             .foregroundStyle(.white)
                             .frame(minWidth: 16, minHeight: 16)
                             .padding(.horizontal, 3)
-                            .background(TrailhoundBrandColors.brandBottom, in: Capsule())
+                            .background(shellPalette.tintColor(for: colorScheme), in: Capsule())
                             .offset(x: 4, y: -4)
                             .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
                     }
@@ -198,7 +242,7 @@ struct TripListFiltersBar: View {
         } label: {
             Image(systemName: "xmark.circle")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .glassAccentForeground()
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
                 .glassField(cornerRadius: 10)
@@ -359,11 +403,13 @@ struct TripListFiltersBar: View {
         HStack(alignment: .center, spacing: 6) {
             Text("\(label):")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .fixedSize()
                 .accessibilityHidden(true)
 
-            chips()
+            GlassChipGroup(spacing: 6) {
+                chips()
+            }
         }
         .frame(height: 32)
         .accessibilityElement(children: .contain)
@@ -470,6 +516,7 @@ struct TripFilterChips: View {
 
     @Namespace private var chipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     private var selectionKey: String {
         if let selectedCategoryID { return "category:\(selectedCategoryID)" }
@@ -488,29 +535,31 @@ struct TripFilterChips: View {
         HStack(alignment: .center, spacing: 6) {
             Text("\(L10n.filterCategory):")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .fixedSize()
                 .padding(.leading, leadingInset)
                 .accessibilityHidden(true)
 
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        filterChip(
-                            title: L10n.all,
-                            key: "all",
-                            isSelected: selectedCategoryID == nil
-                        ) {
-                            selectedCategoryID = nil
-                        }
-                        ForEach(categories) { category in
-                            let id = category.id.uuidString
+                    GlassChipGroup(spacing: 8) {
+                        HStack(spacing: 8) {
                             filterChip(
-                                title: category.name,
-                                key: "category:\(id)",
-                                isSelected: selectedCategoryID == id
+                                title: L10n.all,
+                                key: "all",
+                                isSelected: selectedCategoryID == nil
                             ) {
-                                selectedCategoryID = selectedCategoryID == id ? nil : id
+                                selectedCategoryID = nil
+                            }
+                            ForEach(categories) { category in
+                                let id = category.id.uuidString
+                                filterChip(
+                                    title: category.name,
+                                    key: "category:\(id)",
+                                    isSelected: selectedCategoryID == id
+                                ) {
+                                    selectedCategoryID = selectedCategoryID == id ? nil : id
+                                }
                             }
                         }
                     }
@@ -561,5 +610,50 @@ struct TripFilterChips: View {
             }
         )
         .id(key)
+    }
+}
+
+/// Brand comet that travels along the search field — no spinner, no extra copy.
+private struct SearchFieldScanComet: View {
+    var reduceMotion: Bool
+    @State private var phase: CGFloat = 0
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let barWidth = max(40, width * 0.36)
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            shellPalette.tintColor(for: colorScheme).opacity(0.55),
+                            shellPalette.tintColor(for: colorScheme),
+                            shellPalette.tintColor(for: colorScheme).opacity(0.55),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: barWidth, height: 2)
+                .shadow(color: shellPalette.tintColor(for: colorScheme).opacity(0.65), radius: 4, y: 0)
+                .offset(x: (width - barWidth) * phase)
+        }
+        .frame(height: 2)
+        .accessibilityHidden(true)
+        .task(id: reduceMotion) {
+            if reduceMotion {
+                phase = 0.5
+                return
+            }
+            phase = 0
+            try? await Task.sleep(for: .milliseconds(20))
+            withAnimation(.easeInOut(duration: 1.12).repeatForever(autoreverses: true)) {
+                phase = 1
+            }
+        }
     }
 }

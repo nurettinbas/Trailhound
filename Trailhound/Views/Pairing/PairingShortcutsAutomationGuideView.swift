@@ -5,51 +5,53 @@ import UIKit
 struct PairingShortcutsAutomationCard: View {
     let onOpenGuide: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
-        PairingCardContainer {
-            Button(action: onOpenGuide) {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(TrailhoundBrandColors.brandBottom.opacity(0.12))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "bolt.horizontal.circle.fill")
-                            .font(.body)
-                            .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(L10n.pairingShortcutsGuideCardTitle)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(L10n.pairingShortcutsGuideCardSubtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Text(L10n.pairingShortcutsGuideCardButton)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom)
-                        .lineLimit(1)
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+        Button(action: onOpenGuide) {
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.body)
+                        .glassAccentForeground()
                 }
-                .padding(12)
-                .contentShape(Rectangle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.pairingShortcutsGuideCardTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .glassPrimaryInk()
+                    Text(L10n.pairingShortcutsGuideCardSubtitle)
+                        .font(.caption)
+                        .glassSecondaryInk()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(L10n.pairingShortcutsGuideCardButton)
+                    .font(.caption2.weight(.semibold))
+                    .glassAccentForeground()
+                    .lineLimit(1)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .glassDisclosureInk()
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
 struct PairingShortcutsAutomationGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
@@ -58,7 +60,7 @@ struct PairingShortcutsAutomationGuideView: View {
     @State private var stepCompletePulse = false
     @State private var heroBeat: CGFloat = 0
 
-    private var brandAccent: Color { TrailhoundBrandColors.brandBottom }
+    private var brandAccent: Color { shellPalette.tintColor(for: colorScheme) }
     private var steps: [GuideWizardStep] { Self.makeSteps() }
     private var currentStep: GuideWizardStep { steps[min(stepIndex, steps.count - 1)] }
     private var isLastStep: Bool { stepIndex >= steps.count - 1 }
@@ -109,8 +111,10 @@ struct PairingShortcutsAutomationGuideView: View {
             .glassNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(L10n.pairingShortcutsGuideDone) {
+                    Button {
                         dismiss()
+                    } label: {
+                        GlassToolbarTitle(title: L10n.pairingShortcutsGuideDone)
                     }
                 }
             }
@@ -160,7 +164,7 @@ struct PairingShortcutsAutomationGuideView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.pairingShortcutsGuideStepProgress(current: stepIndex + 1, total: steps.count))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
 
             GeometryReader { geo in
                 let progress = CGFloat(stepIndex + 1) / CGFloat(max(steps.count, 1))
@@ -274,12 +278,14 @@ struct PairingShortcutsAutomationGuideView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(brandAccent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        .background {
+            GlassToolbarControlBackground(shape: Rectangle())
+        }
     }
 
     private var prerequisiteSection: some View {
@@ -288,12 +294,13 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuidePrerequisiteBody)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             Toggle(L10n.pairingShortcutsGuideSilentStart, isOn: $settings.confirmExternalRecordingStart.inverted)
+                .glassToggleStyle()
                 .font(.subheadline)
-                .tint(TrailhoundBrandColors.brandBottom)
+                .tint(brandAccent)
         }
         .padding(14)
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -306,7 +313,7 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuideTriggersIntro)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 0) {
@@ -341,12 +348,12 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuideHandoffBody)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(L10n.pairingShortcutsGuideNote)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             ShortcutsLink()
@@ -479,7 +486,7 @@ struct PairingShortcutsAutomationGuideView: View {
                     .font(.subheadline.weight(.semibold))
                 Text(body)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -588,7 +595,7 @@ struct PairingShortcutsAutomationGuideView: View {
                 .foregroundStyle(brandAccent)
             Image(systemName: "chevron.right")
                 .font(.system(size: 7, weight: .bold))
-                .foregroundStyle(.tertiary)
+                .glassTertiaryInk()
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(brandAccent)
@@ -697,8 +704,11 @@ private extension Binding where Value == Bool {
 }
 
 #Preview("Card") {
-    PairingShortcutsAutomationCard(onOpenGuide: {})
-        .padding()
+    List {
+        PairingShortcutsAutomationCard(onOpenGuide: {})
+            .glassListRow()
+    }
+    .glassListChrome()
 }
 
 #Preview("Guide") {

@@ -76,7 +76,8 @@ enum PremiumWidgetBridge {
         defaults.set(start, forKey: RecordingControlBridge.Keys.lastTripStart)
         defaults.set(end, forKey: RecordingControlBridge.Keys.lastTripEnd)
 
-        if let image = TripMapSnapshotCache.shared.cachedImage(for: trip.id),
+        let appearance = widgetMapAppearance()
+        if let image = TripMapSnapshotCache.shared.cachedImage(for: trip.id, appearance: appearance),
            let url = lastTripPreviewURL(),
            let data = image.jpegData(compressionQuality: 0.72),
            data.count < 100_000 {
@@ -88,5 +89,15 @@ enum PremiumWidgetBridge {
             defaults.set(false, forKey: RecordingControlBridge.Keys.lastTripHasPreview)
         }
         trip.invalidatePointCaches()
+    }
+
+    @MainActor
+    private static func widgetMapAppearance() -> MapSnapshotAppearance {
+        switch AppSettings.shared.appearanceMode {
+        case .light: .light
+        case .dark: .dark
+        case .system:
+            UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
+        }
     }
 }

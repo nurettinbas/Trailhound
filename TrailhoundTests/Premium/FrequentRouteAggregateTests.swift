@@ -41,7 +41,7 @@ final class FrequentRouteAggregateTests: XCTestCase {
         let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows.first?.count, 2)
-        XCTAssertEqual(rows.first?.totalDistanceMeters, 23_000, accuracy: 0.1)
+        XCTAssertEqual(rows.first?.totalDistanceMeters ?? 0, 23_000, accuracy: 0.1)
     }
 
     func testPrivacyZoneUsesSavedPlaceDisplay() throws {

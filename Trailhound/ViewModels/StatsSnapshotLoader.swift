@@ -14,9 +14,40 @@ struct StatsSnapshotRequest: Sendable, Hashable {
     let selectedVehicleID: UUID?
     /// Exact `SavedPlace.name` for start-or-end matching. `nil` means All.
     let selectedPlaceName: String?
+    let selectedJournalID: UUID?
     let categoryNames: StatsNameMap
     let vehicleNames: StatsNameMap
     let vehicleCount: Int
+
+    init(
+        storeVersion: Int,
+        selectedPeriod: StatsPeriod,
+        customStart: Date,
+        customEnd: Date,
+        selectedMonth: Date,
+        goalMonth: Date,
+        selectedCategoryID: String?,
+        selectedVehicleID: UUID?,
+        selectedPlaceName: String?,
+        selectedJournalID: UUID? = nil,
+        categoryNames: StatsNameMap,
+        vehicleNames: StatsNameMap,
+        vehicleCount: Int
+    ) {
+        self.storeVersion = storeVersion
+        self.selectedPeriod = selectedPeriod
+        self.customStart = customStart
+        self.customEnd = customEnd
+        self.selectedMonth = selectedMonth
+        self.goalMonth = goalMonth
+        self.selectedCategoryID = selectedCategoryID
+        self.selectedVehicleID = selectedVehicleID
+        self.selectedPlaceName = selectedPlaceName
+        self.selectedJournalID = selectedJournalID
+        self.categoryNames = categoryNames
+        self.vehicleNames = vehicleNames
+        self.vehicleCount = vehicleCount
+    }
 }
 
 extension StatsNameMap: Hashable {
@@ -91,7 +122,11 @@ actor StatsSnapshotLoader {
             end: max(selected.end, previous.end, goalMonthInterval.end)
         )
 
-        let rows = fetchStatsRows(in: interval, placeName: request.selectedPlaceName)
+        let rows = fetchStatsRows(
+            in: interval,
+            placeName: request.selectedPlaceName,
+            journalID: request.selectedJournalID
+        )
         return StatsDisplaySnapshotBuilder.build(
             completedTrips: rows,
             categoryNames: request.categoryNames,
@@ -104,14 +139,20 @@ actor StatsSnapshotLoader {
             selectedCategoryID: request.selectedCategoryID,
             selectedVehicleID: request.selectedVehicleID,
             selectedPlaceName: request.selectedPlaceName,
+            selectedJournalID: request.selectedJournalID,
             goalMonth: request.goalMonth
         )
     }
 
-    /// Place filter forces the trip path: daily rollups have no place dimension.
-    private func fetchStatsRows(in interval: DateInterval, placeName: String?) -> [TripStatsRow] {
+    /// Place or journal filter forces the trip path: daily rollups have neither dimension.
+    private func fetchStatsRows(
+        in interval: DateInterval,
+        placeName: String?,
+        journalID: UUID?
+    ) -> [TripStatsRow] {
         let placeFilterActive = !(placeName ?? "").isEmpty
-        if !placeFilterActive, interval.duration > Self.rollupThreshold {
+        let journalFilterActive = journalID != nil
+        if !placeFilterActive, !journalFilterActive, interval.duration > Self.rollupThreshold {
             let rollupRows = fetchRollupRows(in: interval)
             if !rollupRows.isEmpty { return rollupRows }
         }

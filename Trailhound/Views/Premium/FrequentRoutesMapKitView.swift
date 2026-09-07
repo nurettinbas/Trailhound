@@ -142,7 +142,7 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
     private func applyStyle(_ map: MKMapView) {
         map.preferredConfiguration = MKStandardMapConfiguration(
             elevationStyle: .flat,
-            emphasisStyle: isDark ? .muted : .standard
+            emphasisStyle: isDark ? .muted : .default
         )
         if isDark {
             map.overrideUserInterfaceStyle = .dark

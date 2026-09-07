@@ -40,6 +40,8 @@ boot_simulator_if_needed() {
   if [[ -n "$sim_id" ]]; then
     echo "Booting simulator ${sim_id}"
     xcrun simctl boot "$sim_id" 2>/dev/null || true
+    # Repeating SwiftUI animations keep XCTest from reaching quiescence on iOS 26.
+    xcrun simctl spawn "$sim_id" defaults write com.apple.Accessibility ReduceMotionEnabled -int 1 2>/dev/null || true
   fi
 }
 

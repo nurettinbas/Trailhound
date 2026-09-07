@@ -137,7 +137,7 @@ struct VehicleCareMiniChart: View {
     private var emptyState: some View {
         Text(L10n.string("vehicles.care.chart.empty"))
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 8)
     }
@@ -249,7 +249,7 @@ private struct CostBarChartStyle: ViewModifier {
                                 )
                             Text(item.name)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }

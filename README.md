@@ -22,23 +22,33 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Extra Home Screen widgets: **goal ring**, **last trip** (privacy-clipped thumbnail, optional), **monthly cost forecast**. Deep links open Stats or the trip. Recording Pause/Stop stay on the original control widget (and on the last-trip medium family while a session is active)
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
-- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; opening the map at speed keeps the curved vehicle→puck flight on the moving mark; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; pan (including while paused) to look back at the start; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; road animation pauses while the map is open
+- **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; opening the map at speed keeps the curved vehicle→puck flight on the moving mark; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; while **paused**, the map cannot pan/zoom and 2D/3D / overview tools are locked so the vehicle stays put — Resume, Stop, and close still work; road animation pauses while the map is open
 
 ### Privacy & data
 - All trips stored locally with **SwiftData** (file protection on store)
 - Offline-first recording; geocoding retries when online
 - Home/work saved places with privacy radius (route clipping)
 - Optional Face ID app lock (device passcode required)
-- Configurable auto-delete (30/90/365 days)
-- Export: JSON, CSV, GPX, KML, monthly business PDF
+- Optional blur of coordinates on export
+- Configurable auto-delete (Never, or 30/90/365 days)
+- Export: JSON, CSV, GPX, KML
+- **Report a problem** from Settings → About (optional): you can mail a sanitized diagnostic log to support. No analytics, no automatic upload, no Dev Log tab; on-device logs expire after 30 days. See [Privacy](docs/PRIVACY.md) and [Support](docs/SUPPORT.md)
+- In-app **Privacy Policy** under Settings → About (same text as [docs/PRIVACY.md](docs/PRIVACY.md))
+
+### Appearance
+- Settings → **Appearance**: **System** (default, follows the iPhone), **Light**, or **Dark**, plus a **20-color shell palette** (Sky, Ocean, Teal, Mint, Forest, Lime, Gold, Sunset, Orange, Coral, Rose, Pink, Magenta, Purple, Violet, Indigo, Slate, Graphite, Sand, Ember). Default color is Sky
+- **Liquid Glass** (iOS 26 native `glassEffect`, Material fallback on iOS 17/18): frosted cards over the selected hue. Light keeps an **open** frosted wash of that family with a white type hierarchy — not a dark chrome plate or milky white card. Reduce Transparency uses an opaque mid-family fill. Dark is a deep shade of the same color. The live recording card, follow path, and vehicle puck use the same hue; **Stop** stays solid red. Form/list toolbars use the system platter with palette glyphs; map toolbars stay frozen circles so MapKit is not resampled
+- The **Home Screen icon** follows the selected color (Sky keeps the Liquid Glass icon; other hues use a matching light/dark pair). iOS shows one confirmation when the icon changes. Home Screen light/dark still follows the iPhone, not the in-app Light/Dark picker. See [Design system](docs/DESIGN_SYSTEM.md) and [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance)
 
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
 - Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
-- Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge
-- Swift Charts stats, trends, monthly goals — including daily **cruise speed**, **most common** speed, **stop time**, and dual **avg / estimated** fuel charts
-- Frequent routes, category filters, trip merge/split
+- Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge — list, travel-mosaic maps, and share cards follow Light/Dark and the selected palette. Switching Light/Dark keeps the last thumbnail visible until the matching map image is ready, so the trip list does not flash empty while scrolling
+- Swift Charts stats, trends, monthly distance goals — including daily **cruise speed**, **most common** speed, **stop time**, **night driving** share, and dual **avg / estimated** fuel charts
+- **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered. The Stats filter card uses titled selection fields (category, vehicle, place, travel) that keep long names on one line, plus **Clear All** to return to Last 7 days. Summary tiles show a packed skeleton while the filtered snapshot loads, so the grid does not leave empty holes
+- Category filters, trip merge (select completed trips on the list; there is no split)
+- **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps), drawn in the current Light/Dark palette with the matching app icon
 - **Year recap** on Stats: year-to-date hub plus a full-screen story (distance, cities, frequent corridor, night/streak, categories, cost, badges). Replay any time; December–January autoplay once
 - **Badges** (in-app only): cumulative km, business trips, streaks, cities, night km, regular corridor — locked badges show progress without spoiling the next tier
 - **Frequent-routes map** (MapKit arcs + heatmap, privacy-safe home/work labels, top 40 corridors)
@@ -48,11 +58,13 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Vehicle care & costs
 - **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue); mark done from the row (Done) to log cost and roll the next due date
 - **Expenses** — log fuel, traffic insurance, casco, service, inspection, repair, accessory, and other costs separately from reminders; split a purchase into **monthly installments** (up to 24) so each month’s share appears on Stats in that month
-- One vehicle detail screen under **Vehicles**: profile → reminders → expenses; cost charts live on **Stats**
+- One vehicle detail screen under the **Pairing** tab: profile → reminders → expenses; cost charts live on **Stats**
 - Overdue care also shown as an in-app banner; push fires once when overdue (no daily spam)
 
 ### Organization
 - Personal / business categories (+ custom)
+- **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
+- **Travel journal** — Trips tab segment **Trips | Travels**; group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
 - In-app notifications inbox
 - Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
@@ -173,13 +185,13 @@ Trailhound/
 ├── Services/         # Location, recording, geocoding, export, pairing
 ├── Views/            # SwiftUI screens (incl. Pairing Shortcuts guide)
 ├── Intents/          # App Intents & Siri Shortcuts
-├── Utilities/        # L10n, PDF reports, migrations
+├── Utilities/        # L10n, migrations
 TrailhoundShared/        # App Group bridge (widget, Live Activity, deep links)
 TrailhoundWidget/        # WidgetKit + Live Activity extension
 TrailhoundTests/         # Unit + integration tests
 TrailhoundUITests/       # UI smoke tests (XCUITest)
 scripts/              # CI simulator pick + xcodebuild test runner
-docs/                 # Battery, TestFlight, vehicle care notes
+docs/                 # Battery, design system, Stats, TestFlight, privacy, support
 ```
 
 **Stack:** SwiftUI · SwiftData · MapKit · CoreLocation · App Intents · WidgetKit · ActivityKit
@@ -189,9 +201,17 @@ docs/                 # Battery, TestFlight, vehicle care notes
 ## Documentation
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
-- [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll
+- [Design system](docs/DESIGN_SYSTEM.md) — Liquid Glass, 20-color shell palette, engine rules, tokens
+- [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance) — Settings theme, palette, Home Screen icon, share cards
+- [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards, glass budget
+- [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts, premium recap/badges/routes/forecast
+- [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
+- [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
+- [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19
+- [Privacy policy](docs/PRIVACY.md) — on-device data, optional diagnostic reports
+- [Support](docs/SUPPORT.md) — contact and Report a problem
 
 ---
 

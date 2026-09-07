@@ -3,17 +3,18 @@ import SwiftUI
 struct StatsAchievementsStrip: View {
     let achievements: [AchievementDisplay]
     var onOpen: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.string("premium.achievements.title"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 if achievements.isEmpty {
                     Text(L10n.string("premium.achievements.empty"))
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
@@ -43,6 +44,8 @@ struct StatsAchievementsStrip: View {
 struct AchievementBadgeView: View {
     let item: AchievementDisplay
     var compact: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         VStack(spacing: 6) {
@@ -50,13 +53,13 @@ struct AchievementBadgeView: View {
                 Circle()
                     .fill(
                         item.isUnlocked
-                            ? TrailhoundBrandColors.brandBottom.opacity(0.18)
+                            ? shellPalette.tintColor(for: colorScheme).opacity(0.18)
                             : Color.secondary.opacity(0.10)
                     )
                     .frame(width: compact ? 44 : 64, height: compact ? 44 : 64)
                 Image(systemName: item.id.systemImage)
                     .font(compact ? .body.weight(.semibold) : .title3.weight(.semibold))
-                    .foregroundStyle(item.isUnlocked ? TrailhoundBrandColors.brandBottom : Color.secondary)
+                    .foregroundStyle(item.isUnlocked ? shellPalette.tintColor(for: colorScheme) : Color.secondary)
             }
             if !compact {
                 Text(L10n.string(item.id.titleKey))

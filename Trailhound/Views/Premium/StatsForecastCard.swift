@@ -5,21 +5,23 @@ struct StatsForecastCard: View {
     let forecast: MonthCostForecast
     let currencyCode: String
     var onOpen: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.string("premium.forecast.title"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 Text(FuelCostCalculator.formatCost(forecast.projectedTotal, currencyCode: currencyCode))
                     .font(.title.weight(.bold).monospacedDigit())
-                    .foregroundStyle(.primary)
+                    .glassAccentForeground()
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
                 Text(L10n.string("premium.forecast.subtitle"))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 HStack(spacing: 8) {
                     if let ratio = forecast.trendRatio {
                         Label(
@@ -31,7 +33,7 @@ struct StatsForecastCard: View {
                     }
                     Text(confidenceText)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                 }
                 if !forecast.monthlyTotals.isEmpty {
                     Chart(forecast.monthlyTotals) { month in
@@ -39,7 +41,7 @@ struct StatsForecastCard: View {
                             x: .value("m", month.monthStart, unit: .month),
                             y: .value("c", month.total)
                         )
-                        .foregroundStyle(TrailhoundBrandColors.brandBottom.opacity(0.85))
+                        .foregroundStyle(shellPalette.tintColor(for: colorScheme).opacity(0.85))
                         .cornerRadius(3)
                     }
                     .chartXAxis(.hidden)

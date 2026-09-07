@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LocationPermissionBadge: View {
   let state: LocationService.AuthorizationState
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     HStack(spacing: 4) {
@@ -10,11 +11,32 @@ struct LocationPermissionBadge: View {
       Text(label)
         .font(.caption2.weight(.semibold))
     }
-    .foregroundStyle(color)
+    .foregroundStyle(Color.white)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
-    .background(color.opacity(0.15))
-    .clipShape(Capsule())
+    .background {
+      Capsule(style: .continuous)
+        .fill(
+          LinearGradient(
+            colors: fillColors,
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        )
+        .overlay {
+          Capsule(style: .continuous)
+            .strokeBorder(
+              Color.white.opacity(colorScheme == .dark ? 0.28 : 0.42),
+              lineWidth: 0.75
+            )
+        }
+    }
+    .shadow(
+      color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.18),
+      radius: 2,
+      y: 1
+    )
+    .compositingGroup()
     .accessibilityLabel(label)
   }
 
@@ -37,26 +59,26 @@ struct LocationPermissionBadge: View {
 
   private var color: Color {
     switch state {
-    case .authorizedAlways: .green
-    case .authorizedWhenInUse: .orange
-    case .denied, .restricted, .notDetermined: .red
+    case .authorizedAlways: Color(red: 0.12, green: 0.62, blue: 0.30)
+    case .authorizedWhenInUse: GlassSemantic.paused(for: colorScheme)
+    case .denied, .restricted, .notDetermined: GlassSemantic.destructive(for: colorScheme)
     }
   }
-}
 
-extension ToolbarContent {
-  @ToolbarContentBuilder
-  func hideSharedToolbarBackgroundIfAvailable() -> some ToolbarContent {
-    if #available(iOS 26.0, *) {
-      sharedBackgroundVisibility(.hidden)
-    } else {
-      self
+  private var fillColors: [Color] {
+    guard state == .authorizedAlways else {
+      return [color, color]
     }
+    return [
+      Color(red: 0.18, green: 0.70, blue: 0.36),
+      Color(red: 0.09, green: 0.55, blue: 0.25)
+    ]
   }
 }
 
 struct LocationAlwaysRequiredBanner: View {
   @Environment(LocationService.self) private var locationService
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     if locationService.authorizationState == .authorizedAlways {
@@ -68,7 +90,7 @@ struct LocationAlwaysRequiredBanner: View {
         VStack(alignment: .leading, spacing: 6) {
           Text(L10n.pairingLocationWarning)
             .font(.caption)
-            .foregroundStyle(.primary)
+            .foregroundStyle(GlassText.primary(for: colorScheme))
             .fixedSize(horizontal: false, vertical: true)
           locationAction
         }
@@ -103,6 +125,7 @@ struct LocationAlwaysRequiredBanner: View {
 
 struct LocationPermissionBanner: View {
   @Environment(LocationService.self) private var locationService
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     switch locationService.authorizationState {
@@ -144,7 +167,7 @@ struct LocationPermissionBanner: View {
         .foregroundStyle(.orange)
       Text(message)
         .font(.caption)
-        .foregroundStyle(.primary)
+        .foregroundStyle(GlassText.primary(for: colorScheme))
       Spacer(minLength: 0)
       if let actionTitle, let action {
         Button(actionTitle, action: action)
@@ -181,11 +204,12 @@ struct GPSQualityBadge: View {
         .lineLimit(1)
         .minimumScaleFactor(compact ? 0.75 : 1)
     }
-    .foregroundStyle(color)
+    .foregroundStyle(Color.white)
     .padding(.horizontal, compact ? 6 : 8)
     .padding(.vertical, compact ? 3 : 4)
-    .background(color.opacity(0.15))
+    .background(color)
     .clipShape(Capsule())
+    .compositingGroup()
     .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: quality)
     .accessibilityLabel(label)
   }

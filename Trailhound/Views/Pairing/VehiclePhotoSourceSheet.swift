@@ -22,13 +22,13 @@ struct VehiclePhotoSourceSheet: View {
 
                 Text(L10n.pairingTabVehiclePhoto)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .glassPrimaryInk()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 22)
 
                 Text(L10n.pairingTabVehiclePhotoSourceSubtitle)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 22)
                     .padding(.top, 4)
@@ -57,7 +57,7 @@ struct VehiclePhotoSourceSheet: View {
 
                 Button(L10n.cancel, action: onCancel)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .glassPrimaryInk()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .glassChrome(cornerRadius: GlassTokens.chipRadius)
@@ -91,7 +91,7 @@ struct VehiclePhotoSourceSheet: View {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                     .frame(width: 44, height: 44)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -102,11 +102,11 @@ struct VehiclePhotoSourceSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                     if let subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                 }
 
@@ -114,7 +114,7 @@ struct VehiclePhotoSourceSheet: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .glassDisclosureInk()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

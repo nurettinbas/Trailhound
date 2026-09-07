@@ -6,15 +6,18 @@ import UIKit
 struct YearRecapHubCard: View {
     let snapshot: YearRecapSnapshot
     var onPlay: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(String(format: L10n.string("premium.recap.year_title"), snapshot.year))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
             if snapshot.hasData {
                 Text(DateFormatters.formatDistance(snapshot.distanceMeters))
                     .font(.title.weight(.bold).monospacedDigit())
+                    .glassAccentForeground()
                 HStack(spacing: 12) {
                     labeled(String(snapshot.tripCount), L10n.string("premium.recap.trips"))
                     if snapshot.cityCount > 0 {
@@ -22,15 +25,15 @@ struct YearRecapHubCard: View {
                     }
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 Button(L10n.string("premium.recap.play"), action: onPlay)
                     .buttonStyle(.borderedProminent)
-                    .tint(TrailhoundBrandColors.brandBottom)
+                    .tint(shellPalette.tintColor(for: colorScheme))
                     .accessibilityIdentifier("stats.premium.recap.play")
             } else {
                 Text(L10n.string("premium.recap.empty"))
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -62,6 +65,8 @@ struct YearRecapStoryView: View {
     let snapshot: YearRecapSnapshot
     var onClose: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var page: RecapStoryPage = .intro
     @State private var displayedDistance: Double = 0
     @State private var advanceTask: Task<Void, Never>?
@@ -231,7 +236,7 @@ struct YearRecapStoryView: View {
                     .multilineTextAlignment(.center)
                 Button(L10n.string("premium.recap.done"), action: close)
                     .buttonStyle(.borderedProminent)
-                    .tint(TrailhoundBrandColors.brandBottom)
+                    .tint(shellPalette.tintColor(for: colorScheme))
             }
         }
     }

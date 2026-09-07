@@ -26,7 +26,7 @@ struct VehicleInlineCameraView: View {
                         .multilineTextAlignment(.center)
                     Text(L10n.pairingTabVehiclePhotoCameraDeniedMessage)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.88))
                         .multilineTextAlignment(.center)
                 }
                 .padding(28)
@@ -115,7 +115,9 @@ struct VehicleInlineCameraView: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
+                .background {
+                    GlassToolbarControlBackground(shape: Circle())
+                }
         }
         .buttonStyle(VehiclePhotoPressStyle())
         .accessibilityLabel(accessibility)

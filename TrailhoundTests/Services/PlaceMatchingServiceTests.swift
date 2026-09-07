@@ -130,7 +130,56 @@ final class PlaceMatchingServiceTests: XCTestCase {
 
         XCTAssertEqual(tripA.startPlaceName, "Yeşil Döner")
         XCTAssertEqual(tripB.endPlaceName, "Yeşil Döner")
-        XCTAssertTrue(tripA.searchIndex?.contains("yeşil döner") == true)
-        XCTAssertTrue(tripB.searchIndex?.contains("yeşil döner") == true)
+        XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(tripA.searchIndex)).contains(SearchFolding.fold("yeşil döner")))
+        XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(tripB.searchIndex)).contains(SearchFolding.fold("yeşil döner")))
+    }
+
+    func testMatchPlacesUsesPrivacyRadiusForHome() {
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0,
+            longitude: 29.0,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let start = CLLocation(latitude: 41.0036, longitude: 29.0)
+        let homeCenter = CLLocation(latitude: 41.0, longitude: 29.0)
+        let distance = homeCenter.distance(from: start)
+        XCTAssertGreaterThan(distance, 300)
+        XCTAssertLessThan(distance, 500)
+
+        let trip = Trip(startedAt: Date(), endedAt: Date())
+        trip.startLatitude = start.coordinate.latitude
+        trip.startLongitude = start.coordinate.longitude
+
+        PlaceMatchingService.matchPlaces(for: trip, places: [home], privacyRadius: 500)
+
+        XCTAssertEqual(trip.startPlaceName, "Ev")
+    }
+
+    func testRematchTripsIndexesCanonicalHomeName() throws {
+        let home = SavedPlace(
+            name: "Ev",
+            latitude: 41.0,
+            longitude: 29.0,
+            radiusMeters: 300,
+            kind: .home,
+            isPrivacyZone: true
+        )
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            endedAt: Date(),
+            startAddress: "Old Street"
+        )
+        trip.startLatitude = 41.0
+        trip.startLongitude = 29.0
+
+        PlaceMatchingService.rematchTrips([trip], places: [home], privacyRadius: 500)
+
+        XCTAssertEqual(trip.startPlaceName, "Ev")
+        let index = SearchFolding.fold(try XCTUnwrap(trip.searchIndex))
+        XCTAssertTrue(index.contains(SearchFolding.fold("Ev")))
+        XCTAssertTrue(TripListViewModel.matchesSearch(trip, searchText: "ev", places: [home]))
     }
 }

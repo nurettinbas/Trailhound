@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum GlassTokens {
     static let cardRadius: CGFloat = 22
@@ -11,17 +12,42 @@ enum GlassTokens {
     /// List row content inset from the screen edge (`panel` + inner content padding).
     static var listContentHorizontalInset: CGFloat { panelHorizontalInset + cardContentInset }
 
-    static func fieldFill(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.10) : Color.white.opacity(0.48)
+    static func fieldFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
+        if scheme == .dark {
+            return Color.white.opacity(0.10)
+        }
+        return palette.glassReadabilityTint(for: .light).opacity(LightGlassPalette.fieldFillOpacity)
     }
 
     /// Frosted panel look without `Material` (keyboard-friendly forms).
-    static func formPanelFill(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.55)
+    static func formPanelFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
+        if scheme == .dark {
+            return Color.white.opacity(0.12)
+        }
+        return palette.glassReadabilityTint(for: .light).opacity(LightGlassPalette.formPanelFillOpacity)
     }
 
-    static var solidFallback: Color {
-        Color(.secondarySystemGroupedBackground)
+    static func solidFallback(for scheme: ColorScheme, palette: ShellPalette) -> Color {
+        if scheme == .dark {
+            return Color(.secondarySystemGroupedBackground)
+        }
+        return palette.opaquePanelFill(for: .light)
+    }
+
+    /// Frozen nav chrome over a map: Light is a near-white palette frost, Dark
+    /// keeps the grouped solid. Never `Material` — MapKit must not be sampled.
+    static func toolbarFrozenFill(for scheme: ColorScheme, palette: ShellPalette) -> Color {
+        if scheme == .dark {
+            return solidFallback(for: .dark, palette: palette)
+        }
+        return GlassContrast.toolbarLightFill(palette: palette).color
+    }
+
+    static func toolbarFrozenRim(for scheme: ColorScheme, palette: ShellPalette) -> Color {
+        if scheme == .dark {
+            return Color.white.opacity(0.28)
+        }
+        return Color.white.opacity(0.72)
     }
 }
 
@@ -36,18 +62,30 @@ enum GlassDensity {
     func frostOpacity(for scheme: ColorScheme) -> Double {
         switch self {
         case .panel:
-            scheme == .dark ? 0.06 : 0.18
+            scheme == .dark ? 0.06 : LightGlassPalette.panelFillOpacity
         case .chrome:
-            scheme == .dark ? 0.04 : 0.10
+            scheme == .dark ? 0.04 : LightGlassPalette.chromeFillOpacity
         }
     }
 
-    func brandTintOpacity(for scheme: ColorScheme) -> Double {
+    func brandTintOpacity(for scheme: ColorScheme, palette: ShellPalette = .sky, increasedContrast: Bool = false) -> Double {
         switch self {
         case .panel:
-            scheme == .dark ? 0.20 : 0.14
+            scheme == .dark
+                ? 0.20
+                : GlassContrast.materialTintOpacity(palette: palette, increasedContrast: increasedContrast)
         case .chrome:
-            scheme == .dark ? 0.14 : 0.08
+            scheme == .dark
+                ? 0.14
+                : GlassContrast.chromeTintOpacity(palette: palette, increasedContrast: increasedContrast)
+        }
+    }
+
+    func rimOpacity(for scheme: ColorScheme) -> Double {
+        guard scheme == .light else { return 0 }
+        switch self {
+        case .panel: return LightGlassPalette.panelRimOpacity
+        case .chrome: return LightGlassPalette.chromeRimOpacity
         }
     }
 }
@@ -92,24 +130,15 @@ struct AtmosphericBackground: View {
     var style: Style = .full
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         Group {
-            if style == .canvas {
+            if style == .canvas && colorScheme == .dark {
                 Color(.systemBackground)
             } else {
                 LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [
-                            Color(red: 0.03, green: 0.07, blue: 0.14),
-                            Color(red: 0.07, green: 0.13, blue: 0.24),
-                            Color(red: 0.04, green: 0.10, blue: 0.20)
-                        ]
-                        : [
-                            Color(red: 0.70, green: 0.88, blue: 0.99),
-                            Color(red: 0.82, green: 0.93, blue: 1.00),
-                            Color(red: 0.76, green: 0.90, blue: 0.99)
-                        ],
+                    colors: gradientColors,
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -121,31 +150,63 @@ struct AtmosphericBackground: View {
             if style == .full || style == .canvas {
                 let glowScale = style == .canvas ? 0.45 : 1.0
                 ZStack {
-                    glow(
-                        TrailhoundBrandColors.brandTop.opacity((colorScheme == .dark ? 0.38 : 0.42) * glowScale),
-                        diameter: 520,
-                        offset: CGSize(width: -120, height: -220)
-                    )
-
-                    glow(
-                        TrailhoundBrandColors.brandBottom.opacity((colorScheme == .dark ? 0.32 : 0.36) * glowScale),
-                        diameter: 580,
-                        offset: CGSize(width: 140, height: 280)
-                    )
-
-                    if style == .full {
+                    if colorScheme == .dark {
                         glow(
-                            Color(red: 0.95, green: 0.78, blue: 0.92).opacity(colorScheme == .dark ? 0.10 : 0.18),
-                            diameter: 380,
-                            offset: CGSize(width: 60, height: 40)
+                            shellPalette.glowColor(for: .dark).opacity(0.38 * glowScale),
+                            diameter: 520,
+                            offset: CGSize(width: -120, height: -220)
+                        )
+                        glow(
+                            shellPalette.tintColor(for: .dark).opacity(0.32 * glowScale),
+                            diameter: 580,
+                            offset: CGSize(width: 140, height: 280)
+                        )
+                        if style == .full {
+                            glow(
+                                Color(red: 0.95, green: 0.78, blue: 0.92).opacity(0.10),
+                                diameter: 380,
+                                offset: CGSize(width: 60, height: 40)
+                            )
+                        }
+                    } else {
+                        glow(
+                            Color.white.opacity(GlassContrast.atmosphereWhiteGlowOpacity * glowScale),
+                            diameter: 460,
+                            offset: CGSize(width: 88, height: -250)
+                        )
+                        glow(
+                            shellPalette.atmosphere(for: .light).top.color.opacity(0.50 * glowScale),
+                            diameter: 520,
+                            offset: CGSize(width: 70, height: -200)
+                        )
+                        glow(
+                            shellPalette.atmosphere(for: .light).bottom.color.opacity(0.30 * glowScale),
+                            diameter: 560,
+                            offset: CGSize(width: -130, height: 300)
                         )
                     }
                 }
                 .allowsHitTesting(false)
             }
         }
+        // Cheap frost: a white veil, not `.blur`. Live blur under glass cards gets
+        // resampled by every Material above it (see docs/PERFORMANCE.md).
+        .overlay {
+            if colorScheme != .dark {
+                Color.white.opacity(
+                    style == .full
+                        ? LightGlassPalette.atmosphereVeilOpacity
+                        : LightGlassPalette.atmosphereVeilOpacity * 0.6
+                )
+                    .allowsHitTesting(false)
+            }
+        }
         .clipped()
         .ignoresSafeArea()
+    }
+
+    private var gradientColors: [Color] {
+        shellPalette.gradientColors(for: colorScheme)
     }
 
     /// A soft radial falloff instead of `Circle().blur(...)`. These sit underneath every
@@ -174,9 +235,22 @@ struct GlassSurface: View {
     var density: GlassDensity = .panel
     /// Skip Material blur — used while a sheet/panel is being dragged over a live map.
     var frozen: Bool = false
+    /// List rows must not host native Liquid Glass (separate cell hosts).
+    var allowsNative: Bool = true
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
+    private var engine: GlassEngine {
+        GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: frozen,
+            allowsNative: allowsNative
+        )
+    }
 
     private var shape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
@@ -190,31 +264,79 @@ struct GlassSurface: View {
 
     var body: some View {
         ZStack {
-            if reduceTransparency || frozen {
-                shape.fill(GlassTokens.solidFallback)
-                if frozen, !reduceTransparency {
-                    shape.fill(
-                        TrailhoundBrandColors.brandBottom.opacity(
-                            density.brandTintOpacity(for: colorScheme) * 0.85
-                        )
-                    )
-                    shape.fill(Color.white.opacity(density.frostOpacity(for: colorScheme) * 0.9))
-                }
+            if colorScheme == .dark {
+                darkLegacySurface
             } else {
-                shape.fill(density.material(for: colorScheme))
-                shape.fill(TrailhoundBrandColors.brandBottom.opacity(density.brandTintOpacity(for: colorScheme)))
-                shape.fill(Color.white.opacity(density.frostOpacity(for: colorScheme)))
+                lightSurface
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var darkLegacySurface: some View {
+        if reduceTransparency || frozen {
+            shape.fill(GlassTokens.solidFallback(for: colorScheme, palette: shellPalette))
+            if frozen, !reduceTransparency {
                 shape.fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(density.frostOpacity(for: colorScheme) * (colorScheme == .dark ? 1.1 : 0.65)),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .center
+                    shellPalette.tintColor(for: colorScheme).opacity(
+                        density.brandTintOpacity(for: colorScheme, palette: shellPalette) * 0.85
                     )
                 )
+                shape.fill(Color.white.opacity(density.frostOpacity(for: colorScheme) * 0.9))
             }
+        } else {
+            shape.fill(density.material(for: colorScheme))
+            shape.fill(
+                shellPalette.tintColor(for: colorScheme).opacity(
+                    density.brandTintOpacity(for: colorScheme, palette: shellPalette)
+                )
+            )
+            shape.fill(Color.white.opacity(density.frostOpacity(for: colorScheme)))
+            shape.fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(density.frostOpacity(for: colorScheme) * 1.1),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var lightSurface: some View {
+        let increased = contrast == .increased
+        let frost = density.frostOpacity(for: .light)
+        let tintOpacity = density.brandTintOpacity(
+            for: .light,
+            palette: shellPalette,
+            increasedContrast: increased
+        )
+        let rim = density.rimOpacity(for: .light) + (increased ? 0.10 : 0)
+        switch engine {
+        case .native:
+            shape.fill(Color.clear)
+            shape.strokeBorder(Color.white.opacity(rim), lineWidth: 1)
+        case .solid:
+            shape.fill(GlassTokens.solidFallback(for: .light, palette: shellPalette))
+            shape.strokeBorder(Color.white.opacity(rim), lineWidth: 1)
+        case .material:
+            shape.fill(density.material(for: .light))
+            shape.fill(shellPalette.glassReadabilityTint(for: .light).opacity(tintOpacity))
+            shape.fill(Color.white.opacity(frost))
+            shape.fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(LightGlassPalette.panelSheenOpacity),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+            shape.strokeBorder(Color.white.opacity(rim), lineWidth: 1)
         }
     }
 }
@@ -226,7 +348,8 @@ struct GlassSectionRowBackground: View {
         GlassSurface(
             topRadius: position.topRadius,
             bottomRadius: position.bottomRadius,
-            density: .panel
+            density: .panel,
+            allowsNative: false
         )
         .padding(.horizontal, GlassTokens.panelHorizontalInset)
     }
@@ -238,6 +361,7 @@ struct FormSolidSectionRowBackground: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.shellPalette) private var shellPalette
 
     private var shape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
@@ -251,19 +375,13 @@ struct FormSolidSectionRowBackground: View {
 
     var body: some View {
         ZStack {
-            if reduceTransparency {
-                shape.fill(GlassTokens.solidFallback)
-            } else {
-                shape.fill(GlassTokens.formPanelFill(for: colorScheme))
-                shape.fill(
-                    TrailhoundBrandColors.brandBottom.opacity(
-                        colorScheme == .dark ? 0.14 : 0.10
-                    )
-                )
+            shape.fill(GlassTokens.solidFallback(for: colorScheme, palette: shellPalette))
+            if !reduceTransparency, colorScheme == .dark {
+                shape.fill(shellPalette.tintColor(for: .dark).opacity(0.10))
                 shape.fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22),
+                            Color.white.opacity(0.08),
                             Color.clear
                         ],
                         startPoint: .top,
@@ -281,15 +399,54 @@ struct GlassCardModifier: ViewModifier {
     var density: GlassDensity = .panel
     var contentInset: CGFloat = GlassTokens.cardContentInset
     var frozen: Bool = false
+    var allowsNative: Bool = true
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
-        content
+        let engine = GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: frozen,
+            allowsNative: allowsNative
+        )
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let padded = content
             .padding(.horizontal, contentInset)
             .padding(.vertical, contentInset)
-            .background {
-                GlassSurface(cornerRadius: cornerRadius, density: density, frozen: frozen)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+
+        if #available(iOS 26.0, *), engine == .native {
+            padded
+                .glassEffect(
+                    .regular.tint(
+                        LightGlassPalette.nativeTint(
+                            for: shellPalette,
+                            increasedContrast: contrast == .increased
+                        )
+                    ),
+                    in: shape
+                )
+                .overlay {
+                    shape.strokeBorder(
+                        Color.white.opacity(density.rimOpacity(for: .light) + (contrast == .increased ? 0.10 : 0)),
+                        lineWidth: 1
+                    )
+                }
+        } else {
+            padded
+                .background {
+                    GlassSurface(
+                        cornerRadius: cornerRadius,
+                        density: density,
+                        frozen: frozen,
+                        allowsNative: allowsNative
+                    )
+                }
+                .clipShape(shape)
+        }
     }
 }
 
@@ -297,12 +454,45 @@ struct GlassChromeModifier: ViewModifier {
     var cornerRadius: CGFloat = GlassTokens.chipRadius
     var frozen: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
     func body(content: Content) -> some View {
-        content
-            .background {
-                GlassSurface(cornerRadius: cornerRadius, density: .chrome, frozen: frozen)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        let engine = GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: frozen,
+            allowsNative: true
+        )
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(iOS 26.0, *), engine == .native {
+            content
+                .glassEffect(
+                    .regular.tint(
+                        LightGlassPalette.nativeTint(
+                            for: shellPalette,
+                            increasedContrast: contrast == .increased
+                        )
+                    ),
+                    in: shape
+                )
+                .overlay {
+                    shape.strokeBorder(
+                        Color.white.opacity(
+                            GlassDensity.chrome.rimOpacity(for: .light) + (contrast == .increased ? 0.10 : 0)
+                        ),
+                        lineWidth: 1
+                    )
+                }
+        } else {
+            content
+                .background {
+                    GlassSurface(cornerRadius: cornerRadius, density: .chrome, frozen: frozen)
+                }
+                .clipShape(shape)
+        }
     }
 }
 
@@ -310,12 +500,13 @@ struct GlassFieldModifier: ViewModifier {
     var cornerRadius: CGFloat = 8
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
         content
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(GlassTokens.fieldFill(for: colorScheme))
+                    .fill(GlassTokens.fieldFill(for: colorScheme, palette: shellPalette))
             }
     }
 }
@@ -343,7 +534,7 @@ struct GlassListRowBackground: View {
     }
 }
 
-/// Filter chip — selected = brand blue pill, unselected = frosted white (matches Trips filters).
+/// Filter chip — Light selected = palette chrome + white type; unselected = frost + white.
 struct GlassFilterChip: View {
     enum Size {
         case regular
@@ -369,9 +560,29 @@ struct GlassFilterChip: View {
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.shellPalette) private var shellPalette
+
+    private var usesNativeChip: Bool {
+        GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: false,
+            allowsNative: true
+        ) == .native
+    }
 
     private var labelColor: Color {
-        isSelected ? Color.white : Color.primary
+        if colorScheme == .dark {
+            return isSelected ? Color.white : Color.primary
+        }
+        return Color.white
+    }
+
+    private var selectionFill: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : LightGlassPalette.selectedChipFill(for: shellPalette)
     }
 
     var body: some View {
@@ -399,42 +610,151 @@ struct GlassFilterChip: View {
             .frame(maxWidth: expands ? .infinity : nil)
             .foregroundStyle(labelColor)
             .background {
-                if isSelected {
-                    Capsule()
-                        .fill(TrailhoundBrandColors.brandBottom)
-                        .matchedGeometryEffect(id: highlightID, in: namespace)
+                if usesNativeChip {
+                    Color.clear
                 } else {
-                    Capsule()
-                        .fill(
-                            colorScheme == .dark
-                                ? Color.white.opacity(0.12)
-                                : Color.white.opacity(0.55)
-                        )
+                    chipBackground
                 }
             }
+            .modifier(NativeFilterChipGlass(isSelected: isSelected, highlightID: highlightID, namespace: namespace))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
-}
 
-/// Navigation bar save control — title only; toolbar supplies the glass chip.
-struct GlassToolbarSaveButton: View {
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .padding(.horizontal, 8)
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+    @ViewBuilder
+    private var chipBackground: some View {
+        if isSelected {
+            Capsule()
+                .fill(selectionFill)
+                .matchedGeometryEffect(id: highlightID, in: namespace)
+        } else {
+            Capsule()
+                .fill(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.12)
+                        : Color.white.opacity(0.22)
+                )
+                .overlay {
+                    if colorScheme == .light {
+                        Capsule().fill(shellPalette.tintColor(for: .light).opacity(0.14))
+                    }
+                }
+        }
     }
 }
 
-extension View {
-    /// Rounded-rect chrome instead of the default circular/capsule toolbar glass.
-    func glassToolbarSaveControl() -> some View {
-        self
-            .buttonStyle(.plain)
-            .buttonBorderShape(.roundedRectangle(radius: 10))
+private struct NativeFilterChipGlass: ViewModifier {
+    let isSelected: Bool
+    let highlightID: String
+    let namespace: Namespace.ID
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        let engine = GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: false,
+            allowsNative: true
+        )
+        if #available(iOS 26.0, *), engine == .native {
+            content
+                .glassEffect(
+                    .regular.tint(
+                        isSelected
+                            ? selectedTint
+                            : LightGlassPalette.nativeTint(
+                                for: shellPalette,
+                                increasedContrast: contrast == .increased
+                            )
+                    ).interactive(),
+                    in: Capsule()
+                )
+                .glassEffectID(highlightID, in: namespace)
+        } else {
+            content
+        }
+    }
+
+    private var selectedTint: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : LightGlassPalette.selectedChipFill(for: shellPalette)
+    }
+}
+
+/// Shared material/tint/rim treatment for custom toolbar and overlay controls.
+/// Never uses native `glassEffect` — live maps and camera previews must not
+/// resample Liquid Glass every frame (`allowsNative` stays off).
+struct GlassToolbarControlBackground<ControlShape: InsettableShape>: View {
+    let shape: ControlShape
+    var frozen: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        let useSolid = reduceTransparency || frozen
+        ZStack {
+            if useSolid {
+                shape.fill(GlassTokens.solidFallback(for: colorScheme, palette: shellPalette))
+            } else {
+                shape.fill(.ultraThinMaterial)
+                if colorScheme == .dark {
+                    shape.fill(shellPalette.tintColor(for: .dark).opacity(0.22))
+                } else {
+                    shape.fill(
+                        shellPalette.glassReadabilityTint(for: .light).opacity(
+                            GlassContrast.chromeTintOpacity(palette: shellPalette, increasedContrast: false)
+                        )
+                    )
+                }
+            }
+            shape.strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+        }
+    }
+}
+
+/// Frozen map-toolbar plate. Light stays a pale frost so palette glyphs read;
+/// overlay chrome (`GlassToolbarControlBackground`) is unchanged.
+struct GlassToolbarFrozenPlate<ControlShape: InsettableShape>: View {
+    let shape: ControlShape
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        ZStack {
+            shape.fill(GlassTokens.toolbarFrozenFill(for: colorScheme, palette: shellPalette))
+            shape.strokeBorder(
+                GlassTokens.toolbarFrozenRim(for: colorScheme, palette: shellPalette),
+                lineWidth: 1
+            )
+        }
+    }
+}
+
+/// Localized Save / Cancel label. Defaults to the system toolbar platter.
+struct GlassToolbarSaveButton: View {
+    let title: String
+    var sampling: GlassToolbarSampling = .system
+
+    var body: some View {
+        GlassToolbarTitle(title: title, sampling: sampling)
+    }
+}
+
+/// Back chevron. Defaults to the system toolbar platter.
+struct GlassToolbarBackButton: View {
+    var sampling: GlassToolbarSampling = .system
+
+    var body: some View {
+        GlassToolbarSymbol(systemName: "chevron.backward", sampling: sampling)
     }
 }
 
@@ -446,21 +766,23 @@ struct GlassEmptyState: View {
     var bounceTrigger: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 42, weight: .light))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom.opacity(0.85))
+                .foregroundStyle(GlassText.primary(for: colorScheme).opacity(0.85))
                 .symbolEffect(.bounce, value: reduceMotion ? false : bounceTrigger)
 
             Text(title)
                 .font(.headline)
+                .foregroundStyle(GlassText.primary(for: colorScheme))
                 .multilineTextAlignment(.center)
 
             Text(message)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -474,12 +796,13 @@ struct GlassEmptyState: View {
 struct GlassFieldLabel<Content: View>: View {
     let title: String
     @ViewBuilder var content: () -> Content
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
             content()
                 .glassInputField()
         }
@@ -487,25 +810,158 @@ struct GlassFieldLabel<Content: View>: View {
     }
 }
 
+private struct GlassSegmentedStyleModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .pickerStyle(.segmented)
+            .tint(GlassControlTint.segmented(for: colorScheme, palette: shellPalette))
+            .background {
+                GlassSegmentedUIKitBridge(
+                    tint: TrailhoundTabBarTheme.selectedUIColor(palette: shellPalette, scheme: colorScheme),
+                    selectedFill: selectedFill,
+                    selectedTitle: selectedTitle,
+                    normalTitle: unselectedTitle
+                )
+            }
+    }
+
+    private var selectedFill: UIColor {
+        if colorScheme == .dark {
+            return TrailhoundTabBarTheme.selectedUIColor(palette: shellPalette, scheme: .dark)
+        }
+        return TrailhoundTabBarTheme.uiColor(GlassContrast.selectedChipFill(palette: shellPalette))
+    }
+
+    private var selectedTitle: UIColor {
+        .white
+    }
+
+    /// Glass segmented labels stay white; tab-bar unselected ink is a separate system capsule.
+    private var unselectedTitle: UIColor {
+        if colorScheme == .dark {
+            return UIColor.secondaryLabel
+        }
+        return UIColor.white.withAlphaComponent(CGFloat(GlassContrast.textSecondaryOpacity))
+    }
+}
+
+/// Paints the system segmented control with the shell palette. SwiftUI `.tint` is ignored on iOS 26.
+private struct GlassSegmentedUIKitBridge: UIViewRepresentable {
+    var tint: UIColor
+    var selectedFill: UIColor
+    var selectedTitle: UIColor
+    var normalTitle: UIColor
+
+    func makeUIView(context: Context) -> GlassSegmentedProbeView {
+        let view = GlassSegmentedProbeView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: GlassSegmentedProbeView, context: Context) {
+        uiView.paletteTint = tint
+        uiView.selectedFill = selectedFill
+        uiView.selectedTitle = selectedTitle
+        uiView.normalTitle = normalTitle
+        uiView.applySoon()
+    }
+}
+
+final class GlassSegmentedProbeView: UIView {
+    var paletteTint: UIColor = .systemBlue
+    var selectedFill: UIColor = .white
+    var selectedTitle: UIColor = .label
+    var normalTitle: UIColor = .secondaryLabel
+
+    func applySoon() {
+        apply()
+        DispatchQueue.main.async { [weak self] in
+            self?.apply()
+        }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        applySoon()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        apply()
+    }
+
+    func apply() {
+        guard let control = findSegmentedControl() else { return }
+        control.selectedSegmentTintColor = selectedFill
+        control.tintColor = paletteTint
+        control.setTitleTextAttributes([.foregroundColor: normalTitle], for: .normal)
+        control.setTitleTextAttributes([.foregroundColor: selectedTitle], for: .selected)
+    }
+
+    private func findSegmentedControl() -> UISegmentedControl? {
+        var ancestor: UIView? = superview
+        for _ in 0..<8 {
+            guard let current = ancestor else { return nil }
+            if let found = search(current) { return found }
+            ancestor = current.superview
+        }
+        return nil
+    }
+
+    private func search(_ root: UIView) -> UISegmentedControl? {
+        if let control = root as? UISegmentedControl { return control }
+        for child in root.subviews {
+            if let found = search(child) { return found }
+        }
+        return nil
+    }
+}
+
+/// Batches chip glass into one render pass on iOS 26 without changing HStack spacing.
+struct GlassChipGroup<Content: View>: View {
+    var spacing: CGFloat
+    var content: Content
+
+    init(spacing: CGFloat, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
-    /// Segmented pickers inside glass cards — blue selection instead of system white.
+    /// Segmented pickers inside glass cards — palette selection instead of AccentColor.
     func glassSegmentedStyle() -> some View {
-        pickerStyle(.segmented)
-            .tint(TrailhoundBrandColors.brandBottom)
+        modifier(GlassSegmentedStyleModifier())
     }
 
     func glassCard(
         cornerRadius: CGFloat = GlassTokens.cardRadius,
         density: GlassDensity = .panel,
         contentInset: CGFloat = GlassTokens.cardContentInset,
-        frozen: Bool = false
+        frozen: Bool = false,
+        allowsNative: Bool = true
     ) -> some View {
         modifier(
             GlassCardModifier(
                 cornerRadius: cornerRadius,
                 density: density,
                 contentInset: contentInset,
-                frozen: frozen
+                frozen: frozen,
+                allowsNative: allowsNative
             )
         )
     }
@@ -543,6 +999,7 @@ extension View {
             }
             .listSectionSpacing(GlassTokens.sectionSpacing)
             .glassNavigationChrome()
+            .onGlassShell()
     }
 
     /// Lighter shell for text-heavy forms (gradient only, solid section rows).
@@ -554,6 +1011,7 @@ extension View {
             }
             .listSectionSpacing(GlassTokens.sectionSpacing)
             .glassNavigationChrome()
+            .onGlassShell()
     }
 
     func glassFormRow(position: GlassRowPosition) -> some View {

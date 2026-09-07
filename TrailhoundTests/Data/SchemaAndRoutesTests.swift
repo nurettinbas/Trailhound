@@ -68,6 +68,27 @@ final class FrequentRoutesServiceTests: XCTestCase {
         XCTAssertEqual(routes.first?.startDisplay, "Ev")
         XCTAssertEqual(routes.first?.endDisplay, "Ofis")
     }
+
+    func testCategoryHistogramCountsUserSetTripsOnly() {
+        let learned = Trip(
+            startedAt: Date(),
+            endedAt: Date(),
+            category: .business,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        let ignoredDefault = Trip(
+            startedAt: Date(),
+            endedAt: Date(),
+            category: .personal,
+            startPlaceName: "Ev",
+            endPlaceName: "Ofis"
+        )
+        let histogram = FrequentRoutesService.categoryHistogram(from: [learned, ignoredDefault])
+        let pairKey = FrequentRoutesService.pairKey(for: learned)
+        XCTAssertEqual(histogram[pairKey ?? ""]?[BuiltInCategory.businessID.uuidString], 1)
+        XCTAssertNil(histogram[pairKey ?? ""]?[BuiltInCategory.personalID.uuidString])
+    }
 }
 
 @MainActor

@@ -14,8 +14,6 @@ struct PairingTabView: View {
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
 
-    @State private var vehiclePendingDeleteID: UUID?
-    @State private var showDeleteConfirmation = false
     @State private var navigationPath = NavigationPath()
     @State private var showShortcutsAutomationGuide = false
 
@@ -60,9 +58,7 @@ struct PairingTabView: View {
                 PairingShortcutsAutomationCard {
                     showShortcutsAutomationGuide = true
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .glassListRow()
             }
 
             if locationService.authorizationState != .authorizedAlways {
@@ -78,33 +74,23 @@ struct PairingTabView: View {
                     PairingEmptyState {
                         addFirstVehicle()
                     }
-                    .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
-                    .listRowBackground(Color.clear)
+                    .glassListRow()
                 }
             } else {
                 Section(sortedVehicles.count == 1 ? L10n.pairingTabVehicleSection : L10n.pairingTabSavedVehicles) {
+                    let rowCount = sortedVehicles.count + 1
                     ForEach(Array(sortedVehicles.enumerated()), id: \.element.id) { index, vehicle in
                         vehicleRow(vehicle)
-                            .glassRow(position: GlassRowPosition.index(index, in: sortedVehicles.count + 1))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    vehiclePendingDeleteID = vehicle.id
-                                    showDeleteConfirmation = true
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe(
+                                .vehicle(isActivePaired: vehicle.isDefault)
+                            ) {
+                                deleteVehicle(vehicle.id)
                             }
+                            .glassRow(position: GlassRowPosition.index(index, in: rowCount))
                     }
 
-                    Button(action: addVehiclePrompt) {
-                        Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 4)
-                    }
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .glassRow(position: .last)
+                    addVehicleButton
+                        .glassRow(position: .last)
                 }
             }
         }
@@ -121,35 +107,29 @@ struct PairingTabView: View {
         .sheet(isPresented: $showShortcutsAutomationGuide) {
             PairingShortcutsAutomationGuideView()
         }
-        .alert(L10n.pairingTabDeleteVehicleTitle, isPresented: $showDeleteConfirmation) {
-            Button(L10n.delete, role: .destructive) {
-                deletePendingVehicle()
-            }
-            Button(L10n.cancel, role: .cancel) {
-                vehiclePendingDeleteID = nil
-            }
-        } message: {
-            Text(L10n.pairingTabDeleteVehicleMessage)
+    }
+
+    private var addVehicleButton: some View {
+        Button(action: addVehiclePrompt) {
+            Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
+                .font(.body.weight(.semibold))
+                .glassAccentForeground()
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.plain)
     }
 
     private func vehicleRow(_ vehicle: VehicleProfile) -> some View {
         let urgent = urgentCareItem(for: vehicle)
-        return PairingCardContainer {
-            PairingVehicleRow(
-                vehicle: vehicle,
-                subtitle: fuelSubtitle(vehicle),
-                careTitle: urgent?.title,
-                careSystemImage: urgent?.kind.systemImage,
-                dueState: urgent?.state,
-                scheduleID: urgent?.scheduleID,
-                onOpen: { openDetail(for: vehicle.id) }
-            )
-            .padding(12)
-        }
-        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        return PairingVehicleRow(
+            vehicle: vehicle,
+            subtitle: fuelSubtitle(vehicle),
+            careTitle: urgent?.title,
+            careSystemImage: urgent?.kind.systemImage,
+            dueState: urgent?.state,
+            scheduleID: urgent?.scheduleID,
+            onOpen: { openDetail(for: vehicle.id) }
+        )
     }
 
     private func urgentCareItem(for vehicle: VehicleProfile) -> VehicleDueItem? {
@@ -204,18 +184,14 @@ struct PairingTabView: View {
         )
         modelContext.insert(vehicle)
         guard (try? modelContext.save()) != nil else { return }
-        if !UITestSupport.isUnitTesting {
+        if !UITestSupport.shouldSkipExternalEffects {
             TrailhoundShortcuts.updateAppShortcutParameters()
         }
         openDetail(for: vehicle.id)
     }
 
-    private func deletePendingVehicle() {
-        guard let vehiclePendingDeleteID,
-              let vehicle = vehicles.first(where: { $0.id == vehiclePendingDeleteID }) else {
-            self.vehiclePendingDeleteID = nil
-            return
-        }
+    private func deleteVehicle(_ vehicleID: UUID) {
+        guard let vehicle = vehicles.first(where: { $0.id == vehicleID }) else { return }
 
         if !navigationPath.isEmpty {
             navigationPath = NavigationPath()
@@ -224,7 +200,6 @@ struct PairingTabView: View {
         if VehiclePairingService.deleteVehicle(vehicle, in: modelContext) {
             ToastPresenter.shared.show(.deleted)
         }
-        self.vehiclePendingDeleteID = nil
     }
 }
 

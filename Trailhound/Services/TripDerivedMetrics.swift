@@ -25,6 +25,7 @@ enum TripDerivedMetrics {
         fuelType: VehicleFuelType = .petrol
     ) {
         recompute(for: trip, fuelType: fuelType)
+        PlaceMatchingService.matchPlaces(for: trip, places: places, privacyRadius: privacyRadius)
         refreshSearchIndex(for: trip, places: places, privacyRadius: privacyRadius)
     }
 
@@ -87,22 +88,11 @@ enum TripDerivedMetrics {
         trip.dynamicFuelCost = estimate.dynamicCost
     }
 
-    /// Mirrors the fields `TripListViewModel.matchesSearch` scans, lowercased once up front so
+    /// Mirrors the fields `TripListViewModel.matchesSearch` scans, folded once up front so
     /// filtering never has to resolve place names or coordinates per keystroke.
     static func refreshSearchIndex(for trip: Trip, places: [SavedPlace], privacyRadius: Double) {
-        let components = [
-            TripListViewModel.routeSummary(for: trip, places: places, privacyRadius: privacyRadius),
-            trip.note,
-            trip.startAddress,
-            trip.endAddress,
-            trip.startPlaceName,
-            trip.endPlaceName
-        ]
-
-        trip.searchIndex = components
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n")
-            .lowercased()
+        trip.searchIndex = SearchFolding.fold(
+            TripListViewModel.searchCorpus(for: trip, places: places, privacyRadius: privacyRadius)
+        )
     }
 }

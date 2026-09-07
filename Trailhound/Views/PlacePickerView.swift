@@ -148,7 +148,7 @@ struct PlacePickerView: View {
                   Text(suggestion.name)
                   Text(L10n.placeSuggestionVisits(suggestion.visits))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                 }
                 Spacer()
                 Image(systemName: "plus.circle")
@@ -177,6 +177,7 @@ struct PlacePickerView: View {
         .glassRow(position: .middle)
 
         Toggle(L10n.string("place.privacy_zone"), isOn: $isPrivacyZone)
+            .glassToggleStyle()
           .glassRow(position: .last)
       } header: {
         Text(L10n.string("place.info.section"))
@@ -200,7 +201,7 @@ struct PlacePickerView: View {
 
           Text(L10n.placePickerSearchHint)
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
             .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,7 +225,7 @@ struct PlacePickerView: View {
         } label: {
           Label(L10n.placePickerUseCurrentLocation, systemImage: "location.fill")
             .font(.body.weight(.semibold))
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .glassAccentForeground()
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
         }
@@ -237,7 +238,17 @@ struct PlacePickerView: View {
     }
     .navigationTitle(isEditing ? L10n.placePickerEditTitle : L10n.placePickerNewTitle)
     .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden(true)
+    .background(NavigationInteractivePopEnabler())
     .toolbar {
+      ToolbarItem(placement: .topBarLeading) {
+        Button {
+          dismiss()
+        } label: {
+          GlassToolbarBackButton()
+        }
+        .accessibilityLabel(Text("onboarding.back"))
+      }
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()
@@ -245,7 +256,6 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarSaveButton(title: L10n.placePickerSave)
         }
-        .glassToolbarSaveControl()
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
       }
@@ -295,7 +305,7 @@ struct PlacePickerView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text(L10n.placeCoordinatesField)
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .glassSecondaryInk()
 
       HStack(spacing: 10) {
         TextField(L10n.placeCoordinatesPlaceholder, text: $coordinateText)
@@ -328,7 +338,7 @@ struct PlacePickerView: View {
     HStack(spacing: 10) {
       Image(systemName: "magnifyingglass")
         .font(.body.weight(.medium))
-        .foregroundStyle(.secondary)
+        .glassSecondaryInk()
         .accessibilityHidden(true)
 
       TextField(L10n.placePickerSearchPlaceholder, text: $searchQuery)
@@ -345,7 +355,7 @@ struct PlacePickerView: View {
         } label: {
           Image(systemName: "xmark.circle.fill")
             .font(.body)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.placePickerSearchClear)
@@ -376,14 +386,14 @@ struct PlacePickerView: View {
           ProgressView()
           Text(L10n.placePickerSearchLoading)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
       } else if searchResults.isEmpty {
         Text(L10n.placePickerSearchEmpty)
           .font(.subheadline)
-          .foregroundStyle(.secondary)
+          .glassSecondaryInk()
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.vertical, 8)
       } else {
@@ -415,7 +425,7 @@ struct PlacePickerView: View {
     VStack(alignment: .leading, spacing: 0) {
       Text(L10n.placePickerNearbySection)
         .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
+        .glassSecondaryInk()
         .padding(.top, 4)
         .padding(.bottom, 6)
 
@@ -424,14 +434,14 @@ struct PlacePickerView: View {
           ProgressView()
           Text(L10n.placePickerSearchLoading)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
       } else if nearbyPlaces.isEmpty {
         Text(L10n.placePickerSearchEmpty)
           .font(.subheadline)
-          .foregroundStyle(.secondary)
+          .glassSecondaryInk()
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.vertical, 8)
       } else {
@@ -522,17 +532,17 @@ struct PlacePickerView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(place.name)
           .font(.body.weight(.medium))
-          .foregroundStyle(.primary)
+          .glassPrimaryInk()
         if let subtitle = place.subtitle {
           Text(subtitle)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
         }
       }
       Spacer(minLength: 0)
       Image(systemName: "chevron.right")
         .font(.caption.weight(.semibold))
-        .foregroundStyle(.tertiary)
+        .glassDisclosureInk()
         .accessibilityHidden(true)
     }
     .contentShape(Rectangle())
@@ -559,7 +569,7 @@ struct PlacePickerView: View {
 
       Text(DateFormatters.formatCoordinate(selectedCoordinate))
         .font(.caption.monospacedDigit())
-        .foregroundStyle(.secondary)
+        .glassSecondaryInk()
 
       if isResolvingAddress {
         HStack(spacing: 8) {
@@ -567,12 +577,12 @@ struct PlacePickerView: View {
             .controlSize(.small)
           Text(L10n.placePickerResolvingAddress)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
         }
       } else if let selectedAddress {
         Text(selectedAddress)
           .font(.caption)
-          .foregroundStyle(.secondary)
+          .glassSecondaryInk()
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -812,7 +822,9 @@ struct PlacePickerView: View {
     PlaceMatchingService.rematchTrips(
       trips,
       places: allPlaces,
-      privacyRadius: settings.privacyRadiusMeters
+      privacyRadius: settings.privacyRadiusMeters,
+      suggestionsEnabled: settings.smartCategorySuggestionsEnabled,
+      workHours: settings.workHours
     )
 
     try? modelContext.save()

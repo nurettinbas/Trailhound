@@ -19,6 +19,23 @@ final class BundleBrandAssetTests: XCTestCase {
         XCTAssertNotNil(UIImage(named: "TrailhoundHound"))
     }
 
+    func testThemedLogoSkyLightIsPrimaryAsset() {
+        let sky = TrailhoundThemedLogo.image(palette: .sky, scheme: .light)
+        let sand = TrailhoundThemedLogo.image(palette: .sand, scheme: .light)
+        XCTAssertNotNil(sky)
+        XCTAssertNotNil(sand)
+        XCTAssertEqual(sky?.size, sand?.size)
+        XCTAssertNotEqual(sky, sand)
+    }
+
+    func testThemedLogoOrangeLightDiffersFromDark() {
+        let light = TrailhoundThemedLogo.image(palette: .orange, scheme: .light)
+        let dark = TrailhoundThemedLogo.image(palette: .orange, scheme: .dark)
+        XCTAssertNotNil(light)
+        XCTAssertNotNil(dark)
+        XCTAssertNotEqual(light, dark)
+    }
+
     func testRecordingStartSoundIsCompactAACInCAF() throws {
         try assertRecordingCue(
             resource: "trip_start",

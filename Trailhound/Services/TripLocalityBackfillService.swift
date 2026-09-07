@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Conservative locality fill for pre-V19 trips: privacy zones stay blank; saved-place
+/// Conservative locality fill for pre-V21 trips: privacy zones stay blank; saved-place
 /// names are never treated as cities. Future reverse-geocode writes `CLPlacemark.locality`.
 @ModelActor
 actor TripLocalityBackfiller {
@@ -16,10 +16,10 @@ actor TripLocalityBackfiller {
         let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
         var offset = 0
         while !Task.isCancelled {
+            // Keep the predicate to one stored field so SwiftData can type-check it on the
+            // live Trip model (journal + smart-category + locality columns).
             var descriptor = FetchDescriptor<Trip>(
-                predicate: #Predicate { trip in
-                    trip.endedAt != nil && trip.startLocality == nil && trip.endLocality == nil
-                },
+                predicate: #Predicate { $0.endedAt != nil },
                 sortBy: [SortDescriptor(\.startedAt, order: .forward)]
             )
             descriptor.fetchOffset = offset
@@ -28,6 +28,7 @@ actor TripLocalityBackfiller {
             guard !batch.isEmpty else { break }
 
             for trip in batch {
+                if trip.startLocality != nil || trip.endLocality != nil { continue }
                 TripLocalityResolver.apply(
                     to: trip,
                     startLocality: nil,

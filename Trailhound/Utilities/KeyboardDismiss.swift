@@ -435,6 +435,7 @@ private extension UIResponder {
 private struct KeyboardAccessoryBar: View {
     var title: String
     var onDone: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     /// Pill-like liquid glass chips (title + Done).
     private let chipCorner: CGFloat = 18
@@ -445,7 +446,7 @@ private struct KeyboardAccessoryBar: View {
             Button(action: onDone) {
                 Text(L10n.ok)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                    .glassAccentForeground()
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background {
@@ -460,7 +461,7 @@ private struct KeyboardAccessoryBar: View {
             if !title.isEmpty {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .padding(.horizontal, 16)

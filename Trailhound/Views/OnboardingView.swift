@@ -162,7 +162,7 @@ struct OnboardingView: View {
                 }
                 .font(.body.weight(.semibold))
             }
-            .foregroundStyle(TrailhoundBrandColors.brandBottom)
+            .glassAccentForeground()
             .padding(.top, 4)
         }
     }
@@ -208,7 +208,7 @@ struct OnboardingView: View {
                 if let message {
                     Text(message)
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -240,12 +240,12 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(TrailhoundBrandColors.brandBottom)
+                .glassAccentForeground()
                 .frame(width: 28, alignment: .center)
 
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -256,19 +256,19 @@ struct OnboardingView: View {
         case .authorizedAlways:
             Text(L10n.string("onboarding.permission.granted"))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
         case .denied, .restricted:
             Button(L10n.locationBannerSettings) {
                 openAppSettings()
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(TrailhoundBrandColors.brandBottom)
         case .notDetermined, .authorizedWhenInUse:
             Button(L10n.string("onboarding.location.enable_always")) {
                 locationService.requestPermission()
                 TrailhoundHaptics.selection()
             }
-            .buttonStyle(.borderedProminent)
+            .trailhoundProminentButton()
             .tint(TrailhoundBrandColors.brandBottom)
         }
     }
@@ -277,7 +277,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
-                    .fill(index == page ? Color.primary : Color.secondary.opacity(0.25))
+                    .fill(index == page ? Color.white : Color.white.opacity(0.32))
                     .frame(width: index == page ? 18 : 8, height: 8)
                     .animation(TrailhoundMotion.gentle, value: page)
             }
@@ -295,7 +295,7 @@ struct OnboardingView: View {
                         page -= 1
                     }
                 }
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
             }
 
             Spacer()
@@ -307,13 +307,13 @@ struct OnboardingView: View {
                     }
                     TrailhoundHaptics.selection()
                 }
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .tint(TrailhoundBrandColors.brandBottom)
             } else {
                 Button(L10n.string("onboarding.finish")) {
                     finishOnboarding()
                 }
-                .buttonStyle(.borderedProminent)
+                .trailhoundProminentButton()
                 .tint(TrailhoundBrandColors.brandBottom)
             }
         }

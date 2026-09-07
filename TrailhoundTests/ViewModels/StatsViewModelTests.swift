@@ -436,13 +436,142 @@ final class StatsViewModelTests: XCTestCase {
     }
 
     func testTrendTextWhenPreviousIsZero() {
-        XCTAssertEqual(StatsViewModel.trendText(current: 10, previous: 0), StatsViewModel.trendText(current: 10, previous: 0))
+        XCTAssertEqual(StatsViewModel.trendText(current: 10, previous: 0), L10n.string("stats.trend.new"))
         XCTAssertNil(StatsViewModel.trendText(current: 0, previous: 0))
     }
 
     func testTrendPercentCalculation() {
         XCTAssertEqual(StatsViewModel.trendPercent(current: 150, previous: 100)!, 50, accuracy: 0.1)
         XCTAssertEqual(StatsViewModel.trendPercent(current: 0, previous: 100)!, -100, accuracy: 0.1)
+        XCTAssertNil(StatsViewModel.trendPercent(current: 10, previous: 0))
+    }
+
+    func testAlignedPreviousIntervalSlicesInProgressMonth() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4, hour: 15))!
+        let selected = calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let selectedInterval = StatsViewModel.calendarMonthInterval(containing: selected, calendar: calendar)
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .month,
+            selectedInterval: selectedInterval,
+            selectedMonth: selected,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(calendar.component(.month, from: previous.start), 8)
+        XCTAssertEqual(calendar.component(.day, from: previous.start), 1)
+        XCTAssertEqual(calendar.component(.month, from: previous.end), 8)
+        XCTAssertEqual(calendar.component(.day, from: previous.end), 5)
+        let fullPrevious = StatsViewModel.previousMonthInterval(containing: selected, calendar: calendar)
+        XCTAssertEqual(fullPrevious.start, previous.start)
+        XCTAssertLessThan(previous.end, fullPrevious.end)
+        XCTAssertTrue(
+            StatsViewModel.usesMonthToDatePrevious(
+                for: .month,
+                selectedMonth: selected,
+                now: now,
+                calendar: calendar
+            )
+        )
+    }
+
+    func testAlignedPreviousIntervalKeepsFullPastMonth() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4))!
+        let june = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))!
+        let selectedInterval = StatsViewModel.calendarMonthInterval(containing: june, calendar: calendar)
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .month,
+            selectedInterval: selectedInterval,
+            selectedMonth: june,
+            now: now,
+            calendar: calendar
+        )
+        let expected = StatsViewModel.previousMonthInterval(containing: june, calendar: calendar)
+        XCTAssertEqual(previous.start, expected.start)
+        XCTAssertEqual(previous.end, expected.end)
+        XCTAssertFalse(
+            StatsViewModel.usesMonthToDatePrevious(
+                for: .month,
+                selectedMonth: june,
+                now: now,
+                calendar: calendar
+            )
+        )
+    }
+
+    func testHidesUnscopedCostComparisonForTripOnlyFilters() {
+        XCTAssertFalse(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: nil,
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: BuiltInCategory.personalID.uuidString,
+                placeName: nil,
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: "Home",
+                journalID: nil
+            )
+        )
+        XCTAssertTrue(
+            StatsViewModel.hidesUnscopedCostComparison(
+                categoryID: nil,
+                placeName: nil,
+                journalID: UUID()
+            )
+        )
+        XCTAssertEqual(
+            StatsViewModel.periodCompareMetricIDs(includeExpenses: true),
+            ["trips", "distance", "duration", "expenses", "fuel"]
+        )
+        XCTAssertEqual(
+            StatsViewModel.periodCompareMetricIDs(includeExpenses: false),
+            ["trips", "distance", "duration", "fuel"]
+        )
+        XCTAssertTrue(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: false,
+                selectedVehicleID: nil,
+                rowCount: 2
+            )
+        )
+        XCTAssertFalse(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: true,
+                selectedVehicleID: nil,
+                rowCount: 3
+            )
+        )
+        XCTAssertFalse(
+            StatsViewModel.showsVehicleCompareList(
+                hidesUnscopedCosts: false,
+                selectedVehicleID: UUID(),
+                rowCount: 3
+            )
+        )
+    }
+
+    func testSelectableYearsSpansFirstTripToNow() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 4))!
+        let earliest = calendar.date(from: DateComponents(year: 2024, month: 11, day: 2))!
+        XCTAssertEqual(
+            StatsViewModel.selectableYears(earliestTripStart: earliest, now: now, calendar: calendar),
+            [2026, 2025, 2024]
+        )
     }
 
     func testCustomIntervalUsesOrderedBounds() {

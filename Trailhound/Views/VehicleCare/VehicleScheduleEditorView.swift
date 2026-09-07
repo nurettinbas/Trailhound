@@ -20,6 +20,8 @@ struct VehicleScheduleEditorView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
 
@@ -84,6 +86,7 @@ struct VehicleScheduleEditorView: View {
                 .glassRow(position: .middle)
 
                 Toggle(L10n.string("vehicles.care.schedule.enabled"), isOn: draftBinding(\.isEnabled))
+                    .glassToggleStyle()
                     .glassRow(position: .last)
             }
 
@@ -137,7 +140,9 @@ struct VehicleScheduleEditorView: View {
             if schedule != nil {
                 Section {
                     Button(L10n.delete, role: .destructive) {
-                        deleteSchedule()
+                        DeleteConfirmPresenter.shared.confirm(.generic) {
+                            deleteSchedule()
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .destructiveTint()
@@ -164,11 +169,20 @@ struct VehicleScheduleEditorView: View {
         )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button(L10n.cancel) { dismiss() }
+                Button {
+                    dismiss()
+                } label: {
+                    GlassToolbarBackButton()
+                }
+                .accessibilityLabel(Text("onboarding.back"))
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button(L10n.pairingTabSave) { save() }
-                    .disabled(isSaving)
+                Button {
+                    save()
+                } label: {
+                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                }
+                .disabled(isSaving)
             }
         }
         .onAppear {
@@ -177,6 +191,7 @@ struct VehicleScheduleEditorView: View {
                     ?? VehicleScheduleEditorDraft()
             }
         }
+        .deleteConfirmHost()
     }
 
     private func draftBinding<Value>(_ keyPath: WritableKeyPath<VehicleScheduleEditorDraft, Value>) -> Binding<Value> {

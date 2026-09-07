@@ -16,7 +16,11 @@ struct OnboardingHeroScene: View {
     var beatProgress: CGFloat = 1
     var isAnimating: Bool = true
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var accent: Color { shellPalette.tintColor(for: colorScheme) }
 
     private var metrics: TrailhoundRoadSceneMetrics { .hero }
     private var shouldAnimateRoad: Bool { isAnimating && !reduceMotion }
@@ -52,7 +56,8 @@ struct OnboardingHeroScene: View {
             driveInProgress: driveInProgress,
             kind: kind,
             beatProgress: beatProgress,
-            reduceMotion: reduceMotion
+            reduceMotion: reduceMotion,
+            accent: accent
         )
     }
 }
@@ -65,6 +70,7 @@ private struct OnboardingRoadSceneDriver: View {
     let kind: OnboardingHeroKind
     let beatProgress: CGFloat
     let reduceMotion: Bool
+    let accent: Color
 
     @State private var frozenRoadTime: TimeInterval = Date.timeIntervalSinceReferenceDate
 
@@ -82,13 +88,15 @@ private struct OnboardingRoadSceneDriver: View {
             palette: .atmosphere,
             isPaused: false,
             driveInProgress: driveInProgress,
-            showsPauseBadge: false
+            showsPauseBadge: false,
+            accentColor: accent
         ) { layout in
             OnboardingHeroOverlay(
                 kind: kind,
                 layout: layout,
                 beatProgress: beatProgress,
-                reduceMotion: reduceMotion
+                reduceMotion: reduceMotion,
+                accent: accent
             )
         }
         .frame(height: metrics.sceneHeight)
@@ -115,6 +123,7 @@ private struct OnboardingHeroOverlay: View {
     let layout: TrailhoundRoadSceneLayout
     let beatProgress: CGFloat
     let reduceMotion: Bool
+    let accent: Color
 
     var body: some View {
         switch kind {
@@ -139,7 +148,7 @@ private struct OnboardingHeroOverlay: View {
 
         return ZStack {
             SoftPulseRing(
-                color: UIColor(TrailhoundBrandColors.brandBottom),
+                color: UIColor(accent),
                 isActive: eased > 0.85,
                 reduceMotion: reduceMotion
             )
@@ -148,7 +157,7 @@ private struct OnboardingHeroOverlay: View {
 
             Image(systemName: "mappin.circle.fill")
                 .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .foregroundStyle(.white, accent)
                 .shadow(color: .black.opacity(0.28), radius: 3, y: 2)
                 .scaleEffect(0.86 + 0.14 * eased)
                 .opacity(pinOpacity)
@@ -182,22 +191,22 @@ private struct OnboardingHeroOverlay: View {
             }
             .trim(from: 0, to: pathEased)
             .stroke(
-                TrailhoundBrandColors.brandTop.opacity(0.95),
+                accent.opacity(0.95),
                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
             )
-            .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.45), radius: 4, y: 0)
+            .shadow(color: accent.opacity(0.45), radius: 4, y: 0)
 
             Image(systemName: "calendar.badge.clock")
                 .font(.system(size: 26, weight: .semibold))
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .foregroundStyle(.white, accent)
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
                 .scaleEffect(0.86 + 0.14 * calendarEased)
                 .opacity(Double(0.2 + 0.8 * calendarEased))
                 .position(x: calendarPoint.x, y: calendarY)
 
             SoftPulseRing(
-                color: UIColor(TrailhoundBrandColors.brandBottom),
+                color: UIColor(accent),
                 isActive: expenseEased > 0.85,
                 reduceMotion: reduceMotion
             )
@@ -207,7 +216,7 @@ private struct OnboardingHeroOverlay: View {
             Image(systemName: "creditcard.circle.fill")
                 .font(.system(size: 28, weight: .semibold))
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .foregroundStyle(.white, accent)
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
                 .scaleEffect(0.86 + 0.14 * expenseEased)
                 .opacity(Double(0.2 + 0.8 * expenseEased))
@@ -235,15 +244,15 @@ private struct OnboardingHeroOverlay: View {
             }
             .trim(from: 0, to: eased)
             .stroke(
-                TrailhoundBrandColors.brandTop.opacity(0.95),
+                accent.opacity(0.95),
                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
             )
-            .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.45), radius: 4, y: 0)
+            .shadow(color: accent.opacity(0.45), radius: 4, y: 0)
 
             Image(systemName: "bolt.horizontal.circle.fill")
                 .font(.system(size: 28, weight: .semibold))
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, TrailhoundBrandColors.brandBottom)
+                .foregroundStyle(.white, accent)
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
                 .scaleEffect(0.9 + 0.1 * eased)
                 .opacity(Double(0.35 + 0.65 * eased))
@@ -252,7 +261,7 @@ private struct OnboardingHeroOverlay: View {
             Circle()
                 .fill(Color.white.opacity(0.9))
                 .frame(width: 7, height: 7)
-                .shadow(color: TrailhoundBrandColors.brandBottom.opacity(0.6), radius: 3)
+                .shadow(color: accent.opacity(0.6), radius: 3)
                 .opacity(Double(eased))
                 .position(carPoint)
         }

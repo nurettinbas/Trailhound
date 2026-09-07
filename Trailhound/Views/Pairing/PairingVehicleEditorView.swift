@@ -68,6 +68,12 @@ struct PairingVehicleEditorView: View {
                 )
             } else {
                 ContentUnavailableView(L10n.pairingTabVehicleNotFound, systemImage: "car")
+                    .onGlassShell()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background {
+                        AtmosphericBackground(style: .full)
+                            .ignoresSafeArea()
+                    }
             }
         }
         .toolbar {
@@ -77,7 +83,6 @@ struct PairingVehicleEditorView: View {
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .glassToolbarSaveControl()
                 .disabled(saveDisabled)
                 .opacity(saveDisabled ? 0.45 : 1)
             }
@@ -92,6 +97,7 @@ struct PairingVehicleEditorView: View {
                 dismiss()
             }
         }
+        .deleteConfirmHost()
     }
 }
 
@@ -117,6 +123,8 @@ struct PairingVehicleEditorForm: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
 
@@ -126,7 +134,6 @@ struct PairingVehicleEditorForm: View {
     @State private var isFraming = false
     @State private var frameScale = VehiclePhotoCropMath.defaultUserScale
     @State private var frameOffset: CGSize = .zero
-    @State private var showDeleteConfirm = false
     @State private var isSaving = false
     @State private var isProcessingPhoto = false
     @State private var showPhotoActions = false
@@ -224,18 +231,6 @@ struct PairingVehicleEditorForm: View {
                 beginInlineFraming(with: image)
             }
         }
-        .confirmationDialog(
-            L10n.pairingTabVehiclePhotoDeleteTitle,
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(L10n.pairingTabVehiclePhotoRemove, role: .destructive) {
-                removePhoto()
-            }
-            Button(L10n.cancel, role: .cancel) {}
-        } message: {
-            Text(L10n.pairingTabVehiclePhotoDeleteMessage)
-        }
     }
 
     @ViewBuilder
@@ -300,13 +295,13 @@ struct PairingVehicleEditorForm: View {
         } label: {
             HStack {
                 Text(L10n.pairingTabDefaultVehicle)
-                    .foregroundStyle(.primary)
+                    .glassPrimaryInk()
                 Spacer()
                 Image(systemName: activeDraft.wantsDefault ? "checkmark.square.fill" : "square")
                     .font(.title3)
                     .foregroundStyle(
                         activeDraft.wantsDefault
-                            ? TrailhoundBrandColors.brandBottom
+                            ? shellPalette.tintColor(for: colorScheme)
                             : Color.secondary
                     )
             }
@@ -415,7 +410,9 @@ struct PairingVehicleEditorForm: View {
                     systemImage: "trash",
                     role: .destructive
                 ) {
-                    showDeleteConfirm = true
+                    DeleteConfirmPresenter.shared.confirm(.vehiclePhoto) {
+                        removePhoto()
+                    }
                 }
                 .transition(reduceMotion ? .opacity : TrailhoundMotion.photoActionsTransition)
             }
@@ -459,16 +456,15 @@ struct PairingVehicleEditorForm: View {
 
     private func sideButtonForeground(_ role: PhotoSideRole) -> Color {
         switch role {
-        case .destructive, .edit: return .white
-        case .change: return .primary
+        case .destructive, .edit, .change: return .white
         }
     }
 
     private func sideButtonFill(_ role: PhotoSideRole) -> Color {
         switch role {
         case .destructive: return deleteAccent
-        case .change: return Color.primary.opacity(0.08)
-        case .edit: return TrailhoundBrandColors.brandBottom
+        case .change: return shellPalette.glassReadabilityTint(for: colorScheme).opacity(0.45)
+        case .edit: return shellPalette.tintColor(for: colorScheme)
         }
     }
 
@@ -549,7 +545,10 @@ struct PairingVehicleEditorForm: View {
 
                 if isProcessingPhoto {
                     RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .fill(.ultraThinMaterial)
+                        .fill(
+                            shellPalette.glassReadabilityTint(for: colorScheme)
+                                .opacity(GlassContrast.nestedTileTintOpacity)
+                        )
                         .frame(width: photoHeroSide, height: photoHeroSide)
                     ProgressView()
                 }
@@ -577,7 +576,9 @@ struct PairingVehicleEditorForm: View {
             photoSheet.wrappedValue = .flow
         }
         .accessibilityAction(named: L10n.pairingTabVehiclePhotoActionDelete) {
-            showDeleteConfirm = true
+            DeleteConfirmPresenter.shared.confirm(.vehiclePhoto) {
+                removePhoto()
+            }
         }
         .onAppear(perform: playTapHintIntroIfNeeded)
         .onChange(of: photoGlintID) { _, _ in
@@ -893,17 +894,19 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .navigationBarBackButtonHidden(hasUnsavedChanges)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if hasUnsavedChanges {
-                        Button {
+                    Button {
+                        if hasUnsavedChanges {
                             showDiscardConfirm = true
-                        } label: {
-                            Image(systemName: "chevron.backward")
-                                .font(.body.weight(.semibold))
+                        } else {
+                            dismiss()
                         }
+                    } label: {
+                        GlassToolbarBackButton()
                     }
+                    .accessibilityLabel(Text("onboarding.back"))
                 }
             }
             .background(NavigationInteractivePopDisabled(disabled: hasUnsavedChanges))

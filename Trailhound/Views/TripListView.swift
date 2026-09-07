@@ -20,6 +20,13 @@ struct TripListView: View {
     @State private var selectedDateSection: TripDateSection?
     @State private var selectedVehicleFilter: TripListPage.VehicleFilter?
     @State private var selectedPlaceID: UUID?
+    @State private var listMode: TripsTabListMode = .trips
+    @State private var loadedJournals: [TravelJournal] = []
+    @State private var journalPageLimit = TravelJournalPage.pageSize
+    @State private var hasMoreJournals = false
+    @State private var hasAnyJournals = false
+    @State private var journalEditor: TravelJournalEditorDraft?
+    @State private var travelSuggestion: TravelJournalSuggestion?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
     @State private var isMerging = false
@@ -30,6 +37,8 @@ struct TripListView: View {
     @State private var showMergeConfirm = false
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
+    @State private var isSearchApplying = false
+    @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var isSearchFocused: Bool
     @Namespace private var tripMorphNamespace
     @State private var morphingTripID: UUID?
@@ -61,6 +70,14 @@ struct TripListView: View {
     @State private var weekSummaryText = ""
     @State private var showDeepLinkedTrip = false
     @State private var deepLinkedTrip: Trip?
+
+    private var isSearchBusy: Bool {
+        TripListViewModel.isSearchActivityVisible(
+            searchText: searchText,
+            debouncedSearchText: debouncedSearchText,
+            isApplying: isSearchApplying
+        )
+    }
 
     private var hasActiveFilters: Bool {
         pageFilters.isActive
@@ -96,8 +113,12 @@ struct TripListView: View {
             TripListPage.descriptor(filters: filters, limit: pageLimit)
         )) ?? []
 
-        hasMorePages = fetched.count > pageLimit
-        let visible = Array(fetched.prefix(pageLimit)).filter { matchesInMemoryFilters($0, filters) }
+        let matching = fetched.filter { matchesInMemoryFilters($0, filters) }
+        let searching = !filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        hasMorePages = searching
+            ? matching.count > pageLimit
+            : fetched.count > pageLimit
+        let visible = Array(matching.prefix(pageLimit))
         loadedTrips = visible
         tripGroups = TripDateGrouping.groupedSections(from: visible)
     }
@@ -120,10 +141,10 @@ struct TripListView: View {
     }
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
-    /// the wall clock, and trips still awaiting a search index need the
-    /// legacy field scan. Place names are also re-checked so a renamed favorite stays consistent
-    /// with the chip's current `SavedPlace.name`. When a place chip is active the SQLite
-    /// predicate omits `searchIndex` (type-checker limit), so search is always verified here.
+    /// the wall clock, and a stale `searchIndex` can miss a live saved-place name. Place names
+    /// are also re-checked so a renamed favorite stays consistent with the chip's current
+    /// `SavedPlace.name`. Text search is always applied here: SwiftData rejects optional
+    /// `searchIndex` unwraps in `#Predicate`, so the fetch is over-inclusive.
     private func matchesInMemoryFilters(_ trip: Trip, _ filters: TripListPage.Filters) -> Bool {
         if let section = filters.dateSection,
            !TripDateGrouping.matches(section, date: trip.startedAt) {
@@ -136,16 +157,15 @@ struct TripListView: View {
         ) {
             return false
         }
-        let needsSearchScan = trip.searchIndex == nil || filters.placeName != nil
-        if needsSearchScan {
-            return TripListViewModel.matchesSearch(
-                trip,
-                searchText: filters.searchText,
-                places: places,
-                privacyRadius: settings.privacyRadiusMeters
-            )
+        if filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
         }
-        return true
+        return TripListViewModel.matchesSearch(
+            trip,
+            searchText: filters.searchText,
+            places: places,
+            privacyRadius: settings.privacyRadiusMeters
+        )
     }
 
     private func loadNextPage() {
@@ -157,6 +177,167 @@ struct TripListView: View {
     private func resetPagingAndReload() {
         pageLimit = TripListPage.pageSize
         reloadTrips()
+    }
+
+    private func scheduleSearchApply(_ pending: String) {
+        searchDebounceTask?.cancel()
+        if pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            isSearchApplying = false
+        }
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, searchText == pending else { return }
+            let showActivity = !pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if showActivity {
+                isSearchApplying = true
+            }
+            debouncedSearchText = pending
+            if showActivity {
+                try? await Task.sleep(for: .milliseconds(280))
+                guard !Task.isCancelled else { return }
+                if searchText == pending {
+                    isSearchApplying = false
+                }
+            } else {
+                isSearchApplying = false
+            }
+        }
+    }
+
+    private func reloadJournals() {
+        let filters = TravelJournalPage.Filters(searchText: debouncedSearchText)
+        let page = (try? TravelJournalPage.fetch(
+            filters: filters,
+            limit: journalPageLimit,
+            in: modelContext
+        )) ?? (journals: [], hasMore: false)
+        hasMoreJournals = page.hasMore
+        loadedJournals = page.journals
+        hasAnyJournals = (try? modelContext.fetchCount(TravelJournalPage.countDescriptor())).map { $0 > 0 } ?? false
+        refreshTravelSuggestion()
+    }
+
+    private func loadNextJournalPage() {
+        guard hasMoreJournals else { return }
+        journalPageLimit += TravelJournalPage.pageSize
+        reloadJournals()
+    }
+
+    private func refreshTravelSuggestion() {
+        let homes = TravelJournalSuggester.homeSnapshots(from: places)
+        let descriptor = TripListPage.completedCountDescriptor()
+        let completed = (try? modelContext.fetch(descriptor)) ?? []
+        let tripSnapshots = completed.map(TravelJournalSuggester.snapshot(from:))
+        let ranges = loadedJournals.map { (start: $0.startedOn, end: $0.endedOn) }
+        travelSuggestion = TravelJournalSuggester.suggest(
+            trips: tripSnapshots,
+            homes: homes,
+            existingJournalRanges: ranges,
+            dismissedFingerprints: settings.dismissedJournalSuggestionFingerprints
+        )
+    }
+
+    private func acceptTravelSuggestion(_ suggestion: TravelJournalSuggestion) {
+        let journal = TravelJournal(title: suggestion.title)
+        modelContext.insert(journal)
+        let ids = suggestion.tripIDs
+        let members = (try? modelContext.fetch(TripListPage.descriptor(forIDs: Set(ids)))) ?? []
+        for trip in members {
+            TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+        }
+        TravelJournalTotals.refresh(journal)
+        try? modelContext.save()
+        travelSuggestion = nil
+    }
+
+    @ViewBuilder
+    private var journalListContent: some View {
+        let isSearching = TravelJournalPage.Filters(searchText: debouncedSearchText).isActive
+
+        if let suggestion = travelSuggestion, !isSearching {
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .glassAccentForeground()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.journalSuggestChip)
+                            .font(.subheadline.weight(.semibold))
+                        Text(suggestion.title)
+                            .font(.caption)
+                            .glassSecondaryInk()
+                    }
+                    Spacer()
+                    Button(L10n.journalSuggestAccept) {
+                        acceptTravelSuggestion(suggestion)
+                    }
+                    .font(.caption.weight(.semibold))
+                    Button {
+                        settings.dismissJournalSuggestion(suggestion.fingerprint)
+                        travelSuggestion = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(L10n.journalSuggestDismiss)
+                }
+                .padding(.vertical, 4)
+            }
+            .glassListRow()
+        }
+
+        if loadedJournals.isEmpty {
+            if !isSearchBusy {
+                GlassEmptyState(
+                    title: isSearching ? L10n.journalEmptySearchTitle : L10n.journalEmptyTitle,
+                    systemImage: isSearching ? "magnifyingglass" : "map",
+                    message: isSearching ? L10n.journalEmptySearchMessage : L10n.journalEmptyMessage,
+                    bounceTrigger: isSearching
+                )
+                .glassListRow()
+                if !isSearching {
+                    Button {
+                        journalEditor = .create()
+                    } label: {
+                        Text(L10n.journalCreate)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .trailhoundProminentButton()
+                    .tint(TrailhoundBrandColors.brandBottom)
+                    .glassListRow()
+                }
+            }
+        } else {
+            Section {
+                ForEach(Array(loadedJournals.enumerated()), id: \.element.id) { index, journal in
+                    NavigationLink(value: journal) {
+                        HStack(spacing: 8) {
+                            TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
+                            GlassDisclosureChevron()
+                        }
+                    }
+                    .glassHidesNavigationLinkIndicator()
+                    .buttonStyle(.plain)
+                    .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
+                    .confirmingDeleteSwipe(title: L10n.journalDelete) {
+                        TravelJournalTotals.prepareForDelete(journal)
+                        modelContext.delete(journal)
+                        try? modelContext.save()
+                    }
+                }
+            }
+            .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: loadedJournals.count)
+        }
+
+        if hasMoreJournals {
+            Section {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .onAppear(perform: loadNextJournalPage)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
     }
 
     private func refreshListAggregates() {
@@ -232,17 +413,17 @@ struct TripListView: View {
                             .font(.headline)
                         Text(L10n.tripListSetupVehicleMessage)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                         Button(L10n.string("onboarding.shortcuts.link")) {
                             tabSelection.openPairing()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .trailhoundProminentButton()
 
                         Button(L10n.vehiclePairingSkip) {
                             settings.skipCarSetup()
                         }
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                     }
                     .padding(.vertical, 4)
                 }
@@ -268,35 +449,27 @@ struct TripListView: View {
 
             if let orphan = visibleOrphan {
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(L10n.orphanBannerTitle)
-                            .font(.headline)
-                        Text(L10n.orphanBannerMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Button(L10n.orphanResume) {
-                                if TripRecoveryService.resumeOrphan(orphan.trip, recordingService: recordingService) {
-                                    refreshOrphans()
-                                }
+                    OrphanRecoveryBanner(
+                        onResume: {
+                            if TripRecoveryService.resumeOrphan(orphan.trip, recordingService: recordingService) {
+                                refreshOrphans()
                             }
-                            .buttonStyle(.borderedProminent)
-                            Button(L10n.orphanSave) {
-                                if TripRecoveryService.finalizeOrphan(orphan.trip, in: modelContext, saveTrip: true) {
-                                    ToastPresenter.shared.show(.orphanSaved)
-                                    refreshOrphans()
-                                }
+                        },
+                        onSave: {
+                            if TripRecoveryService.finalizeOrphan(orphan.trip, in: modelContext, saveTrip: true) {
+                                ToastPresenter.shared.show(.orphanSaved)
+                                refreshOrphans()
                             }
-                            .buttonStyle(.bordered)
-                            Button(L10n.delete, role: .destructive) {
+                        },
+                        onDelete: {
+                            DeleteConfirmPresenter.shared.confirm(.generic) {
                                 if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
                                     ToastPresenter.shared.show(.deleted, playHaptic: false)
                                     refreshOrphans()
                                 }
                             }
-                            .destructiveTint()
                         }
-                    }
+                    )
                 }
                 .glassListRow()
                 .listSectionSpacing(6)
@@ -337,7 +510,7 @@ struct TripListView: View {
                 .listSectionSpacing(6)
             }
 
-            if hasAnyTrips {
+            if hasAnyTrips || hasAnyJournals {
                 Section {
                     TripListFiltersBar(
                         searchText: $searchText,
@@ -346,6 +519,8 @@ struct TripListView: View {
                         selectedCategoryID: $selectedCategoryID,
                         selectedVehicleFilter: $selectedVehicleFilter,
                         selectedPlaceID: $selectedPlaceID,
+                        listMode: $listMode,
+                        isSearchBusy: isSearchBusy,
                         vehicles: vehicles,
                         places: places,
                         weekSummaryText: weekSummary
@@ -375,12 +550,15 @@ struct TripListView: View {
                 .listSectionSpacing(6)
             }
 
-            if visibleTrips.isEmpty {
-                let showFilteredEmpty = hasActiveFilters && hasAnyTrips
+            if listMode == .travels {
+                journalListContent
+            } else if visibleTrips.isEmpty {
+                let showFilteredEmpty = hasActiveFilters && hasAnyTrips && !isSearchBusy
                 let showDefaultEmpty = !hasAnyTrips
                     && !recordingService.state.isActiveSession
                     && endCredits == nil
                     && coldOpenTripID == nil
+                    && !isSearchBusy
                 if showFilteredEmpty || showDefaultEmpty {
                     GlassEmptyState(
                         title: hasActiveFilters ? L10n.tripsEmptyFilteredTitle : L10n.tripsEmptyTitle,
@@ -408,7 +586,7 @@ struct TripListView: View {
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: visibleTrips.count)
             }
 
-            if hasMorePages {
+            if hasMorePages && listMode != .travels {
                 // Sits below the last section rather than on the last row, so a page whose rows
                 // were all filtered out in memory still pulls the next one instead of dead-ending.
                 Section {
@@ -425,7 +603,7 @@ struct TripListView: View {
         .scrollDismissesKeyboard(.interactively)
         .dismissKeyboardOnTap(focus: $isSearchFocused)
         .fieldKeyboardAccessory(
-            title: L10n.searchTrips,
+            title: listMode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips,
             focusID: isSearchFocused ? AnyHashable(true) : nil,
             onDone: {
                 isSearchFocused = false
@@ -436,12 +614,7 @@ struct TripListView: View {
         // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
         .listSectionSpacing(6)
         .onChange(of: searchText) { _, newValue in
-            let pending = newValue
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(250))
-                guard !Task.isCancelled, searchText == pending else { return }
-                debouncedSearchText = pending
-            }
+            scheduleSearchApply(newValue)
         }
         .onPreferenceChange(CreditsListLandingYKey.self) { newY in
             guard endCredits != nil else { return }
@@ -454,6 +627,12 @@ struct TripListView: View {
             if let trip = deepLinkedTrip {
                 TripDetailView(trip: trip)
             }
+        }
+        .navigationDestination(for: TravelJournal.self) { journal in
+            TravelJournalDetailView(journal: journal)
+        }
+        .sheet(item: $journalEditor) { draft in
+            TravelJournalEditorSheet(draft: draft)
         }
         .navigationDestination(isPresented: $showNotificationsList) {
             NotificationsListView()
@@ -469,6 +648,7 @@ struct TripListView: View {
             refreshOrphans()
             refreshListAggregates()
             reloadTrips()
+            reloadJournals()
             careSummary.refresh(in: modelContext)
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
             consumeTripDeepLink()
@@ -476,6 +656,7 @@ struct TripListView: View {
         .onStoreSave {
             // Row identity must refresh before the next body pass or a deleted model crashes.
             reloadTrips()
+            reloadJournals()
             careSummary.refresh(in: modelContext)
             // Week summary is display-only — coalesce rapid saves (merge + post-process).
             aggregatesRefreshTask?.cancel()
@@ -487,6 +668,19 @@ struct TripListView: View {
         }
         .onChange(of: pageFilters) { _, _ in
             resetPagingAndReload()
+        }
+        .onChange(of: listMode) { _, _ in
+            searchDebounceTask?.cancel()
+            isSearchApplying = false
+            searchText = ""
+            debouncedSearchText = ""
+            reloadJournals()
+        }
+        .onChange(of: debouncedSearchText) { _, _ in
+            if listMode == .travels {
+                journalPageLimit = TravelJournalPage.pageSize
+                reloadJournals()
+            }
         }
         .onChange(of: recordingService.state) { _, newState in
             if !newState.isActiveSession {
@@ -553,7 +747,7 @@ struct TripListView: View {
                             )
                             Text("Trailhound")
                                 .font(.headline)
-                                .foregroundStyle(.primary)
+                                .glassPrimaryInk()
                         }
                     }
                     .buttonStyle(.plain)
@@ -586,39 +780,32 @@ struct TripListView: View {
                     }
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                if isMergeMode {
+            if isMergeMode {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L10n.cancel) {
                         isMergeMode = false
                         mergeSelection.removeAll()
                     }
                     .disabled(isMerging)
-                } else {
-                    HStack(spacing: 16) {
-                        Button { isMergeMode = true } label: {
-                            Image(systemName: "arrow.triangle.merge")
-                        }
-                        .accessibilityLabel(L10n.actionMerge)
-
-                        Button {
+                }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TripListTrailingToolbarCluster(
+                        primarySystemImage: listMode == .travels ? "plus" : "arrow.triangle.merge",
+                        primaryAccessibilityLabel: listMode == .travels ? L10n.journalNew : L10n.actionMerge,
+                        unreadCount: notificationStore.unreadCount,
+                        onPrimary: {
+                            if listMode == .travels {
+                                journalEditor = .create()
+                            } else {
+                                isMergeMode = true
+                            }
+                        },
+                        onNotifications: {
                             notificationStore.markAllRead()
                             showNotificationsList = true
-                        } label: {
-                            ZStack(alignment: .topTrailing) {
-                                Image(systemName: "bell")
-                                if notificationStore.unreadCount > 0 {
-                                    Text("\(min(notificationStore.unreadCount, 99))")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .padding(4)
-                                        .background(Circle().fill(.red))
-                                        .offset(x: 8, y: -8)
-                                }
-                            }
                         }
-                        .accessibilityLabel(L10n.notificationsTitle)
-                        .accessibilityIdentifier("trips.notifications")
-                    }
+                    )
                 }
             }
         }
@@ -632,10 +819,10 @@ struct TripListView: View {
                         ProgressView()
                         Text(L10n.tripsMergeProgress)
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
+                            .glassPrimaryInk()
                     }
                     .padding(24)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassCard(cornerRadius: 16)
                 }
                 .allowsHitTesting(true)
                 .accessibilityElement(children: .combine)
@@ -734,10 +921,16 @@ struct TripListView: View {
         }
     }
 
+    private func tripRowIdentifier(for trip: Trip, isFirst: Bool) -> String {
+        let base = isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)"
+        return trip.hasPendingCategorySuggestion ? "\(base).suggested" : base
+    }
+
     @ViewBuilder
     private func tripRow(for trip: Trip, isFirst: Bool) -> some View {
         let isMorphing = morphingTripID == trip.id
         let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
+        let rowID = tripRowIdentifier(for: trip, isFirst: isFirst)
         Group {
             if isMergeMode {
                 Button {
@@ -749,30 +942,39 @@ struct TripListView: View {
                         TripRowView(
                             trip: trip,
                             places: places,
+                            categories: categories,
                             privacyRadius: settings.privacyRadiusMeters,
                             vehicle: vehicle,
                             morphNamespace: tripMorphNamespace,
                             morphID: morphingTripID,
-                            emphasizeLanding: isMorphing
+                            emphasizeLanding: isMorphing,
+                            rowAccessibilityIdentifier: rowID
                         )
                     }
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(rowID)
             } else {
                 NavigationLink(value: trip) {
-                    TripRowView(
-                        trip: trip,
-                        places: places,
-                        privacyRadius: settings.privacyRadiusMeters,
-                        vehicle: vehicle,
-                        morphNamespace: tripMorphNamespace,
-                        morphID: morphingTripID,
-                        emphasizeLanding: isMorphing
-                    )
-                    .contentShape(Rectangle())
+                    HStack(spacing: 8) {
+                        TripRowView(
+                            trip: trip,
+                            places: places,
+                            categories: categories,
+                            privacyRadius: settings.privacyRadiusMeters,
+                            vehicle: vehicle,
+                            morphNamespace: tripMorphNamespace,
+                            morphID: morphingTripID,
+                            emphasizeLanding: isMorphing,
+                            rowAccessibilityIdentifier: rowID
+                        )
+                        .contentShape(Rectangle())
+                        GlassDisclosureChevron()
+                    }
                 }
-                .accessibilityIdentifier(isFirst ? "trips.row.first" : "trips.row.\(trip.id.uuidString)")
+                .glassHidesNavigationLinkIndicator()
+                .accessibilityIdentifier(rowID)
                 .buttonStyle(.plain)
             }
         }
@@ -782,15 +984,23 @@ struct TripListView: View {
             isSource: false
         )
         .transition(.opacity)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                deleteTrip(trip)
-            } label: {
-                Label(L10n.delete, systemImage: "trash")
-            }
-            .destructiveTint()
+        .confirmingDeleteSwipe {
+            deleteTrip(trip)
         }
-        .swipeActions(edge: .leading) {
+        .swipeActions(edge: .leading, allowsFullSwipe: trip.hasPendingCategorySuggestion) {
+            if trip.hasPendingCategorySuggestion {
+                Button {
+                    acceptSuggestedCategory(trip)
+                } label: {
+                    Label(
+                        suggestedCategoryAcceptLabel(for: trip),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                }
+                .tint(TrailhoundBrandColors.brandBottom)
+                .accessibilityIdentifier("trips.row.acceptSuggestedCategory")
+            }
+
             Button {
                 addToMergeSelection(trip.id)
             } label: {
@@ -1013,14 +1223,34 @@ struct TripListView: View {
     }
 
     private func updateCategory(_ trip: Trip, categoryID: String) {
-        trip.categoryID = categoryID
+        TripCategorySuggestionService.applyUserCategory(categoryID, to: trip, in: modelContext)
         try? modelContext.save()
+        ToastPresenter.shared.show(.categoryAccepted)
+    }
+
+    private func acceptSuggestedCategory(_ trip: Trip) {
+        TripCategorySuggestionService.acceptPending(trip, in: modelContext)
+        try? modelContext.save()
+        ToastPresenter.shared.show(.categoryAccepted)
+    }
+
+    private func suggestedCategoryName(for trip: Trip) -> String? {
+        guard let pendingID = trip.pendingSuggestedCategoryID else { return nil }
+        return categories.first(where: { $0.id.uuidString == pendingID })?.name
+    }
+
+    private func suggestedCategoryAcceptLabel(for trip: Trip) -> String {
+        if let name = suggestedCategoryName(for: trip) {
+            return L10n.actionAcceptSuggestedCategory(name)
+        }
+        return L10n.actionAcceptCategory
     }
 
     private func deleteTrip(_ trip: Trip) {
         TrailhoundHaptics.destructive()
         TripMapSnapshotCache.shared.remove(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
+        TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
         TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
         mergeSelection.remove(trip.id)
@@ -1069,11 +1299,119 @@ struct TripListView: View {
     }
 }
 
+/// Incomplete-recording card. Light glass wells need chrome ink so Resume stays readable.
+private struct OrphanRecoveryBanner: View {
+    let onResume: () -> Void
+    let onSave: () -> Void
+    let onDelete: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.orphanBannerTitle)
+                .font(.headline)
+                .foregroundStyle(ink)
+            Text(L10n.orphanBannerMessage)
+                .font(.caption)
+                .foregroundStyle(messageColor)
+            HStack {
+                Button(L10n.orphanResume, action: onResume)
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(resumeFill, in: Capsule())
+                    .compositingGroup()
+
+                Button(L10n.orphanSave, action: onSave)
+                    .buttonStyle(.bordered)
+                    .tint(ink)
+
+                Button(L10n.delete, role: .destructive, action: onDelete)
+                    .destructiveTint()
+            }
+        }
+    }
+
+    private var ink: Color {
+        GlassText.primary(for: colorScheme)
+    }
+
+    private var messageColor: Color {
+        GlassText.secondary(for: colorScheme)
+    }
+
+    private var resumeFill: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : LightGlassPalette.selectedChipFill(for: shellPalette)
+    }
+}
+
+/// Merge/plus + bell share the system toolbar glass (same platter as Start).
+/// Badge stays inside that platter so iOS 26 does not clip the count.
+/// Start-alignment padding is unique to this cluster — do not copy it elsewhere.
+private struct TripListTrailingToolbarCluster: View {
+    let primarySystemImage: String
+    let primaryAccessibilityLabel: String
+    let unreadCount: Int
+    let onPrimary: () -> Void
+    let onNotifications: () -> Void
+
+    var body: some View {
+        GlassToolbarCluster {
+            Button(action: onPrimary) {
+                GlassToolbarSymbol(systemName: primarySystemImage)
+            }
+            .accessibilityLabel(primaryAccessibilityLabel)
+
+            Button(action: onNotifications) {
+                GlassToolbarSymbol(systemName: "bell")
+            }
+            .accessibilityLabel(L10n.notificationsTitle)
+            .accessibilityValue(unreadCount > 0 ? "\(min(unreadCount, 99))" : "")
+            .accessibilityIdentifier("trips.notifications")
+        }
+        .padding(.top, 7)
+        .padding(.trailing, 6)
+        .overlay(alignment: .topTrailing) {
+            if unreadCount > 0 {
+                TripListNotificationCountBadge(count: unreadCount)
+                    .scaleEffect(0.7)
+                    // Keep the badge inside the toolbar host's clipping boundary while
+                    // preserving its overlap with the system glass platter.
+                    .padding(.top, 2)
+                    .padding(.trailing, 1)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+private struct TripListNotificationCountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(min(count, 99))")
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, count > 9 ? 5 : 0)
+            .frame(minWidth: 18, minHeight: 18)
+            .background(GlassSemantic.notificationBadge, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(Color.white.opacity(0.55), lineWidth: 1)
+            }
+            .compositingGroup()
+            .accessibilityHidden(true)
+    }
+}
+
 private struct TripListActiveRecordingNavIcon: View {
     var isPaused: Bool
     var reduceMotion: Bool
-
-    @State private var steeringTilt: Double = 0
 
     private var accent: Color {
         isPaused ? TrailhoundBrandColors.paused : TrailhoundBrandColors.recording
@@ -1084,49 +1422,42 @@ private struct TripListActiveRecordingNavIcon: View {
     /// in its layout box.
     private let glyphNudge = CGSize(width: 3, height: 0.35)
     private let maxTilt: Double = 55
+    /// One ease-in-out half-swing (right → left). Full cycle is 2× this.
     private let swingDuration: Double = 2.4
+    private var tickInterval: TimeInterval {
+        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
+    }
+
+    private var shouldAnimate: Bool {
+        !isPaused && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     var body: some View {
-        Image(systemName: "steeringwheel")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(accent)
-            // Must stay inside the frame and nudge below. Applied outside them, the anchor is
-            // the badge center while the glyph has been moved away from it, so the wheel
-            // orbits that point instead of spinning in place.
-            .rotationEffect(.degrees(steeringTilt))
-            .frame(width: badgeSize, height: badgeSize)
-            .offset(glyphNudge)
-            .accessibilityHidden(true)
-            .task(id: wobbleTaskID) {
-                await runSteeringWobble()
-            }
+        TimelineView(
+            .animation(
+                minimumInterval: tickInterval,
+                paused: !shouldAnimate
+            )
+        ) { context in
+            Image(systemName: "steeringwheel")
+                .font(.system(size: 15, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(accent)
+                // Must stay inside the frame and nudge below. Applied outside them, the
+                // anchor is the badge center while the glyph has been moved away from it,
+                // so the wheel orbits that point instead of spinning in place.
+                .rotationEffect(.degrees(tilt(at: context.date)))
+                .frame(width: badgeSize, height: badgeSize)
+                .offset(glyphNudge)
+        }
+        .accessibilityHidden(true)
     }
 
-    private var wobbleTaskID: String {
-        "\(isPaused)-\(reduceMotion)"
-    }
-
-    @MainActor
-    private func runSteeringWobble() async {
-        var reset = Transaction()
-        reset.disablesAnimations = true
-        withTransaction(reset) { steeringTilt = 0 }
-
-        guard !isPaused, !reduceMotion else { return }
-
-        // Half-length intro: leaving neutral covers half the travel of a full swing, so at the
-        // same duration the very first swing read slower than every one after it.
-        withAnimation(.easeOut(duration: swingDuration / 2)) {
-            steeringTilt = maxTilt
-        }
-        try? await Task.sleep(for: .seconds(swingDuration / 2))
-        guard !Task.isCancelled else { return }
-
-        // One repeating animation instead of a sleep loop: no periodic main-actor wake-ups and
-        // no drift between the sleep and the animation clock.
-        withAnimation(.easeInOut(duration: swingDuration).repeatForever(autoreverses: true)) {
-            steeringTilt = -maxTilt
-        }
+    private func tilt(at date: Date) -> Double {
+        guard shouldAnimate else { return 0 }
+        let period = swingDuration * 2
+        let unit = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+        return maxTilt * sin(unit * 2 * .pi)
     }
 }
 

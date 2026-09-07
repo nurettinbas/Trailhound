@@ -9,8 +9,11 @@ struct HelpPopoverButton: View {
     let message: String
     /// Layout side of the `?` control. Default 44 pt for accessibility; metric cards pass 16.
     var side: CGFloat = 44
+    /// Sheet height. Longer copy (travel help) passes a taller detent so the text is not clipped.
+    var sheetHeight: CGFloat = 240
 
     @State private var isPresented = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button {
@@ -18,7 +21,7 @@ struct HelpPopoverButton: View {
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(side <= 18 ? .system(size: 12, weight: .medium) : .body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .frame(width: side, height: side)
                 .contentShape(Rectangle())
         }
@@ -33,16 +36,22 @@ struct HelpPopoverButton: View {
                     Button(L10n.ok) { isPresented = false }
                         .fontWeight(.semibold)
                 }
-                Text(message)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 0)
+                ScrollView {
+                    Text(message)
+                        .font(.body)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .padding(20)
-            .presentationDetents([.height(240)])
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .presentationBackground {
+                AtmosphericBackground(style: .full)
+            }
+            .onGlassShell()
+            .presentationDetents([.height(sheetHeight), .medium])
             .presentationDragIndicator(.visible)
         }
     }

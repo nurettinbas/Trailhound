@@ -63,13 +63,14 @@ struct FrequentRoutesPreviewCard: View {
     let aggregates: [FrequentRouteAggregate]
     var onOpen: () -> Void
     @State private var preview: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.string("premium.routes.title"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 if let preview {
                     Image(uiImage: preview)
                         .resizable()
@@ -84,11 +85,11 @@ struct FrequentRoutesPreviewCard: View {
                         .foregroundStyle(.primary)
                     Text(String(format: L10n.string("premium.routes.count"), top.count))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 } else {
                     Text(L10n.string("premium.routes.empty"))
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

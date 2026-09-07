@@ -5,6 +5,8 @@ import UIKit
 struct NotificationsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(TripRecordingService.self) private var recordingService
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
@@ -15,11 +17,13 @@ struct NotificationsListView: View {
     var body: some View {
         Group {
             if store.items.isEmpty && !recordingService.state.isActiveSession {
-                ContentUnavailableView(
-                    L10n.notificationsEmptyTitle,
+                GlassEmptyState(
+                    title: L10n.notificationsEmptyTitle,
                     systemImage: "bell.slash",
-                    description: Text(L10n.notificationsEmptyMessage)
+                    message: L10n.notificationsEmptyMessage
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassListChrome()
             } else {
                 List {
                     if recordingService.state.isActiveSession {
@@ -38,20 +42,15 @@ struct NotificationsListView: View {
                             .overlay {
                                 if !item.isRead {
                                     RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous)
-                                        .fill(TrailhoundBrandColors.brandBottom.opacity(0.10))
+                                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.10))
                                         .allowsHitTesting(false)
                                 }
                             }
                             .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    store.delete(item.id)
-                                } label: {
-                                    Label(L10n.delete, systemImage: "trash")
-                                }
-                                .destructiveTint()
+                            .confirmingDeleteSwipe {
+                                store.delete(item.id)
                             }
                     }
                 }
@@ -65,11 +64,13 @@ struct NotificationsListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button(L10n.notificationsClearAll, role: .destructive) {
-                        store.clearAll()
+                        DeleteConfirmPresenter.shared.confirm(.notificationsAll) {
+                            store.clearAll()
+                        }
                     }
                     .disabled(store.items.isEmpty)
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    GlassToolbarSymbol(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -181,19 +182,21 @@ struct NotificationsListView: View {
                         Label(L10n.resume, systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
 
                     Button(role: .destructive) {
-                        if TripRecoveryService.deleteOrphan(trip, in: modelContext) {
-                            store.delete(item.id)
-                            store.reload()
-                            ToastPresenter.shared.show(.deleted)
+                        DeleteConfirmPresenter.shared.confirm(.generic) {
+                            if TripRecoveryService.deleteOrphan(trip, in: modelContext) {
+                                store.delete(item.id)
+                                store.reload()
+                                ToastPresenter.shared.show(.deleted)
+                            }
                         }
                     } label: {
                         Label(L10n.delete, systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .trailhoundProminentButton()
                     .destructiveTint()
                 }
                 .padding(.leading, 40)
@@ -218,7 +221,7 @@ struct NotificationsListView: View {
 
                 Text(item.body)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .lineLimit(2)
                     .monospacedDigit()
             }
@@ -226,14 +229,14 @@ struct NotificationsListView: View {
 
             Text(relativeDate(item.createdAt))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 // Vertically centered against the full row (title + body), not the title line.
                 .accessibilityLabel(relativeDate(item.createdAt))
 
             if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .glassDisclosureInk()
             }
         }
     }
@@ -305,7 +308,8 @@ private struct NotificationActiveRecordingCard: View {
                 Spacer(minLength: 4)
                 Image(systemName: isPaused ? "pause.circle.fill" : "record.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(isPaused ? .yellow : .red)
+                    .foregroundStyle(isPaused ? Color.yellow : GlassSemantic.notificationBadge)
+                    .compositingGroup()
                     .accessibilityHidden(true)
             }
             .animation(nil, value: isPaused)
@@ -353,14 +357,12 @@ private struct NotificationActiveRecordingCard: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(.red)
+                .trailhoundDestructiveButton()
             }
         }
         .padding(14)
         .background {
-            RecordingCardStyle.listSurface(isPaused: isPaused)
+            RecordingCardStyle.glassSurface(isPaused: isPaused)
         }
         .animation(nil, value: isPaused)
         .clipShape(RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous))
@@ -409,6 +411,8 @@ private struct NotificationPlaybackSwitch: View {
     let isPaused: Bool
     let reduceMotion: Bool
     let onToggle: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         GeometryReader { geo in
@@ -420,7 +424,7 @@ private struct NotificationPlaybackSwitch: View {
                     .fill(Color.white.opacity(0.16))
 
                 Capsule(style: .continuous)
-                    .fill(Color.white)
+                    .fill(shellPalette.glassReadabilityTint(for: colorScheme))
                     .frame(width: thumbWidth, height: geo.size.height - inset * 2)
                     .offset(x: inset + (isPaused ? thumbWidth : 0))
                     .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
@@ -457,7 +461,7 @@ private struct NotificationPlaybackSwitch: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .foregroundStyle(selected ? Color.black.opacity(0.88) : Color.white.opacity(0.88))
+        .foregroundStyle(Color.white)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
