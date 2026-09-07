@@ -60,6 +60,7 @@
 		77DD3561234847BDBE6AF068 /* TripDetailMapStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67427E992A854611A0ED1219 /* TripDetailMapStyleTests.swift */; };
 		219B312287A64700A6AF2532 /* TripFuelEstimateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A260416B5514D62B8A7F709 /* TripFuelEstimateTests.swift */; };
 		5294FC6EDAE34AFE9530272B /* TripRoutePathCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE16C6B9C50F424EB350EE0E /* TripRoutePathCacheTests.swift */; };
+		3C9E1A2B4D5F67890ABCDE12 /* TripMapSnapshotCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D8F2B3C5E6A78901BCDEF34 /* TripMapSnapshotCacheTests.swift */; };
 		E097BAF5AE2C494EA61B66E4 /* TripShareCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE15476B1814E9AAC0FD7AD /* TripShareCaptionTests.swift */; };
 		E1D7A8CA4E994879B6B6AFDE /* TripShareRoutePrepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F8C089A9B840F092A72078 /* TripShareRoutePrepTests.swift */; };
 		0CB6FAD7EA6B4642BF1BE284 /* TripSpeedProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F342C81EA82413692229FF2 /* TripSpeedProfileTests.swift */; };
@@ -426,6 +427,7 @@
 		67427E992A854611A0ED1219 /* TripDetailMapStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripDetailMapStyleTests.swift; sourceTree = SOURCE_ROOT; };
 		5A260416B5514D62B8A7F709 /* TripFuelEstimateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripFuelEstimateTests.swift; sourceTree = SOURCE_ROOT; };
 		AE16C6B9C50F424EB350EE0E /* TripRoutePathCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripRoutePathCacheTests.swift; sourceTree = SOURCE_ROOT; };
+		4D8F2B3C5E6A78901BCDEF34 /* TripMapSnapshotCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripMapSnapshotCacheTests.swift; sourceTree = SOURCE_ROOT; };
 		1CE15476B1814E9AAC0FD7AD /* TripShareCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripShareCaptionTests.swift; sourceTree = SOURCE_ROOT; };
 		15F8C089A9B840F092A72078 /* TripShareRoutePrepTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripShareRoutePrepTests.swift; sourceTree = SOURCE_ROOT; };
 		1F342C81EA82413692229FF2 /* TripSpeedProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/TripSpeedProfileTests.swift; sourceTree = SOURCE_ROOT; };
@@ -1171,6 +1173,7 @@
 				67427E992A854611A0ED1219 /* TripDetailMapStyleTests.swift */,
 				5A260416B5514D62B8A7F709 /* TripFuelEstimateTests.swift */,
 				AE16C6B9C50F424EB350EE0E /* TripRoutePathCacheTests.swift */,
+				4D8F2B3C5E6A78901BCDEF34 /* TripMapSnapshotCacheTests.swift */,
 				1CE15476B1814E9AAC0FD7AD /* TripShareCaptionTests.swift */,
 				15F8C089A9B840F092A72078 /* TripShareRoutePrepTests.swift */,
 				1F342C81EA82413692229FF2 /* TripSpeedProfileTests.swift */,
@@ -1418,6 +1421,7 @@
 				77DD3561234847BDBE6AF068 /* TripDetailMapStyleTests.swift in Sources */,
 				219B312287A64700A6AF2532 /* TripFuelEstimateTests.swift in Sources */,
 				5294FC6EDAE34AFE9530272B /* TripRoutePathCacheTests.swift in Sources */,
+				3C9E1A2B4D5F67890ABCDE12 /* TripMapSnapshotCacheTests.swift in Sources */,
 				E097BAF5AE2C494EA61B66E4 /* TripShareCaptionTests.swift in Sources */,
 				E1D7A8CA4E994879B6B6AFDE /* TripShareRoutePrepTests.swift in Sources */,
 				0CB6FAD7EA6B4642BF1BE284 /* TripSpeedProfileTests.swift in Sources */,

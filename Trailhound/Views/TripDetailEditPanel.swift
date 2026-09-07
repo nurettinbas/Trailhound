@@ -1193,6 +1193,7 @@ struct TripDetailEditPanel: View {
         trip.invalidatePointCaches()
         TripDetailViewModel.invalidateSpeedSegmentCache(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
+        TripMapSnapshotCache.shared.remove(for: trip.id)
         DevLog.shared.log(
             .tripDetail,
             "gps trim trip=\(trip.id.uuidString.prefix(8)) head=\(trimHeadCount) tail=\(trimTailCount)"
