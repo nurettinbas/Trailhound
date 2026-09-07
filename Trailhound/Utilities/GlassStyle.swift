@@ -33,6 +33,22 @@ enum GlassTokens {
         }
         return palette.opaquePanelFill(for: .light)
     }
+
+    /// Frozen nav chrome over a map: Light is a near-white palette frost, Dark
+    /// keeps the grouped solid. Never `Material` — MapKit must not be sampled.
+    static func toolbarFrozenFill(for scheme: ColorScheme, palette: ShellPalette) -> Color {
+        if scheme == .dark {
+            return solidFallback(for: .dark, palette: palette)
+        }
+        return GlassContrast.toolbarLightFill(palette: palette).color
+    }
+
+    static func toolbarFrozenRim(for scheme: ColorScheme, palette: ShellPalette) -> Color {
+        if scheme == .dark {
+            return Color.white.opacity(0.28)
+        }
+        return Color.white.opacity(0.72)
+    }
 }
 
 enum GlassDensity {
@@ -671,7 +687,9 @@ private struct NativeFilterChipGlass: ViewModifier {
     }
 }
 
-/// Shared material/tint/rim treatment for custom toolbar controls.
+/// Shared material/tint/rim treatment for custom toolbar and overlay controls.
+/// Never uses native `glassEffect` — live maps and camera previews must not
+/// resample Liquid Glass every frame (`allowsNative` stays off).
 struct GlassToolbarControlBackground<ControlShape: InsettableShape>: View {
     let shape: ControlShape
     var frozen: Bool = false
@@ -702,39 +720,41 @@ struct GlassToolbarControlBackground<ControlShape: InsettableShape>: View {
     }
 }
 
-/// Compact navigation-bar Save pill.
+/// Frozen map-toolbar plate. Light stays a pale frost so palette glyphs read;
+/// overlay chrome (`GlassToolbarControlBackground`) is unchanged.
+struct GlassToolbarFrozenPlate<ControlShape: InsettableShape>: View {
+    let shape: ControlShape
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        ZStack {
+            shape.fill(GlassTokens.toolbarFrozenFill(for: colorScheme, palette: shellPalette))
+            shape.strokeBorder(
+                GlassTokens.toolbarFrozenRim(for: colorScheme, palette: shellPalette),
+                lineWidth: 1
+            )
+        }
+    }
+}
+
+/// Localized Save / Cancel label. Defaults to the system toolbar platter.
 struct GlassToolbarSaveButton: View {
     let title: String
+    var sampling: GlassToolbarSampling = .system
 
     var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background {
-                GlassToolbarControlBackground(
-                    shape: Capsule(style: .continuous)
-                )
-            }
+        GlassToolbarTitle(title: title, sampling: sampling)
     }
 }
 
-/// Circular Back control using the exact same fill, tint and rim as Save.
+/// Back chevron. Defaults to the system toolbar platter.
 struct GlassToolbarBackButton: View {
+    var sampling: GlassToolbarSampling = .system
+
     var body: some View {
-        GlassNavCircleIcon(systemName: "chevron.backward")
-    }
-}
-
-extension View {
-    /// Drops the system toolbar glass so the shared custom control owns its shape.
-    func glassToolbarControl() -> some View {
-        self.buttonStyle(.plain)
-    }
-
-    func glassToolbarSaveControl() -> some View {
-        glassToolbarControl()
+        GlassToolbarSymbol(systemName: "chevron.backward", sampling: sampling)
     }
 }
 

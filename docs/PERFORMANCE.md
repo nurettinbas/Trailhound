@@ -303,6 +303,9 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Budget: at most eight native glass hosts on a screen (`GlassHostBudget.maxNativeHostsPerScreen`). If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false`.
 - Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
 - Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
+- Form/list nav buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`.
+- Trip detail and travel-journal **toolbar** icons stay on `GlassToolbarSampling.frozen` at all times. Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Live system / native glass over MapKit would resample the map every frame.
+- Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 

@@ -132,6 +132,19 @@ final class GlassContrastTests: XCTestCase {
         XCTAssertEqual(GlassText.primary(for: .light), Color.white)
     }
 
+    func testToolbarLightFillIsLighterThanSolidPanel() {
+        for palette in ShellPalette.allCases {
+            let frost = GlassContrast.toolbarLightFill(palette: palette)
+            let panel = palette.opaquePanelFillRGB(for: .light)
+            XCTAssertGreaterThan(
+                GlassContrast.wcagRelativeLuminance(frost),
+                GlassContrast.wcagRelativeLuminance(panel),
+                palette.rawValue
+            )
+            XCTAssertNotEqual(frost, GlassContrast.white, palette.rawValue)
+        }
+    }
+
     func testHostBudgetConstant() {
         XCTAssertEqual(GlassHostBudget.maxNativeHostsPerScreen, 8)
     }

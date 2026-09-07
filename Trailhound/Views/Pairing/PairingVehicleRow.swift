@@ -75,7 +75,7 @@ struct PairingVehicleRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .glassTertiaryInk()
+                    .glassDisclosureInk()
             }
             .contentShape(Rectangle())
         }

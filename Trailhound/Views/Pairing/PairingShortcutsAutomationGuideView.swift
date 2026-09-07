@@ -39,7 +39,7 @@ struct PairingShortcutsAutomationCard: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption2.weight(.semibold))
-                    .glassTertiaryInk()
+                    .glassDisclosureInk()
             }
             .contentShape(Rectangle())
         }
@@ -111,8 +111,10 @@ struct PairingShortcutsAutomationGuideView: View {
             .glassNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(L10n.pairingShortcutsGuideDone) {
+                    Button {
                         dismiss()
+                    } label: {
+                        GlassToolbarTitle(title: L10n.pairingShortcutsGuideDone)
                     }
                 }
             }

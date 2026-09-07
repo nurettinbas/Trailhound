@@ -290,11 +290,14 @@ struct TripListView: View {
         } else {
             Section {
                 ForEach(Array(loadedJournals.enumerated()), id: \.element.id) { index, journal in
-                    NavigationLink {
-                        TravelJournalDetailView(journal: journal)
-                    } label: {
-                        TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
+                    NavigationLink(value: journal) {
+                        HStack(spacing: 8) {
+                            TravelJournalRowView(journal: journal, reduceMotion: reduceMotion)
+                            GlassDisclosureChevron()
+                        }
                     }
+                    .glassHidesNavigationLinkIndicator()
+                    .buttonStyle(.plain)
                     .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
                     .confirmingDeleteSwipe(title: L10n.journalDelete) {
                         TravelJournalTotals.prepareForDelete(journal)
@@ -600,6 +603,9 @@ struct TripListView: View {
         }
         .navigationDestination(for: Trip.self) { trip in
             TripDetailView(trip: trip)
+        }
+        .navigationDestination(for: TravelJournal.self) { journal in
+            TravelJournalDetailView(journal: journal)
         }
         .sheet(item: $journalEditor) { draft in
             TravelJournalEditorSheet(draft: draft)
@@ -926,19 +932,23 @@ struct TripListView: View {
                 .accessibilityIdentifier(rowID)
             } else {
                 NavigationLink(value: trip) {
-                    TripRowView(
-                        trip: trip,
-                        places: places,
-                        categories: categories,
-                        privacyRadius: settings.privacyRadiusMeters,
-                        vehicle: vehicle,
-                        morphNamespace: tripMorphNamespace,
-                        morphID: morphingTripID,
-                        emphasizeLanding: isMorphing,
-                        rowAccessibilityIdentifier: rowID
-                    )
-                    .contentShape(Rectangle())
+                    HStack(spacing: 8) {
+                        TripRowView(
+                            trip: trip,
+                            places: places,
+                            categories: categories,
+                            privacyRadius: settings.privacyRadiusMeters,
+                            vehicle: vehicle,
+                            morphNamespace: tripMorphNamespace,
+                            morphID: morphingTripID,
+                            emphasizeLanding: isMorphing,
+                            rowAccessibilityIdentifier: rowID
+                        )
+                        .contentShape(Rectangle())
+                        GlassDisclosureChevron()
+                    }
                 }
+                .glassHidesNavigationLinkIndicator()
                 .accessibilityIdentifier(rowID)
                 .buttonStyle(.plain)
             }
@@ -1318,6 +1328,7 @@ private struct OrphanRecoveryBanner: View {
 
 /// Merge/plus + bell share the system toolbar glass (same platter as Start).
 /// Badge stays inside that platter so iOS 26 does not clip the count.
+/// Start-alignment padding is unique to this cluster — do not copy it elsewhere.
 private struct TripListTrailingToolbarCluster: View {
     let primarySystemImage: String
     let primaryAccessibilityLabel: String
@@ -1325,26 +1336,20 @@ private struct TripListTrailingToolbarCluster: View {
     let onPrimary: () -> Void
     let onNotifications: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
-
     var body: some View {
-        HStack(spacing: 16) {
+        GlassToolbarCluster {
             Button(action: onPrimary) {
-                Image(systemName: primarySystemImage)
+                GlassToolbarSymbol(systemName: primarySystemImage)
             }
             .accessibilityLabel(primaryAccessibilityLabel)
 
             Button(action: onNotifications) {
-                Image(systemName: "bell")
+                GlassToolbarSymbol(systemName: "bell")
             }
             .accessibilityLabel(L10n.notificationsTitle)
             .accessibilityValue(unreadCount > 0 ? "\(min(unreadCount, 99))" : "")
             .accessibilityIdentifier("trips.notifications")
         }
-        .symbolRenderingMode(.monochrome)
-        .foregroundStyle(shellPalette.tintColor(for: colorScheme))
-        .tint(shellPalette.tintColor(for: colorScheme))
         .padding(.top, 7)
         .padding(.trailing, 6)
         .overlay(alignment: .topTrailing) {

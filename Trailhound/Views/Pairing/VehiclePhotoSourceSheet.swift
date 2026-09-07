@@ -114,7 +114,7 @@ struct VehiclePhotoSourceSheet: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .glassTertiaryInk()
+                    .glassDisclosureInk()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

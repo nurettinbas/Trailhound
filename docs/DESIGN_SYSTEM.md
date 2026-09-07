@@ -14,7 +14,11 @@ Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards
 | Solid / Reduce Transparency | Opaque mid mixed slightly toward bottom — never system grouped white, never chrome plate | system grouped + tint |
 | Field wells | mid-family tint 0.18 | white 0.10 |
 | Control tint | white on the colored shell | palette tint |
+| Row disclosure `>` | Palette chrome (`GlassControlTint.disclosure` / `GlassDisclosureChevron`) — not tertiary gray | `.secondary` |
 | Tab selection | palette tint icon + iOS 26 pill; Light capsule = system glass + mid-family tint 0.28; unselected dark ink | palette tint; unselected secondary |
+| Nav toolbar | System iOS 26 platter + `tintColor` glyphs (`GlassToolbarSymbol` / `Title` / `Cluster`). `onGlassShell` white tint is overridden so icons stay visible on the platter. Form/list screens only. | Same platter recipe; glyphs use the dark `tintColor` |
+| Map toolbar | Frozen 36pt circle: opaque white + mid-family tint 0.28 (`GlassContrast.toolbarLightFill`) + `tintColor` glyphs — never the dark solid panel, never live Material / `glassEffect` over MapKit | Grouped solid + palette tint glyphs |
+| Overlay chrome | `GlassToolbarControlBackground` Material / solid — never native `glassEffect` (camera, photo grid, delete confirm) | Same |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
 | Recording / live follow | Selected palette glow + tint on the card, follow path, and vehicle puck | Same hue, dark shade |
 | Pause chip (live follow) | Opaque orange (`TrailhoundBrandColors.paused`) + white type — never glass + hierarchical white | Same |
@@ -39,7 +43,7 @@ List rows always pass `allowsNative: false`. Native glass is reserved for standa
 
 ## Shape is not restyled
 
-This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeights, grids, animations, and accessibility identifiers stay put. The Stats filter card (`stats.filters.*`) is the shape reference.
+This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeights, grids, animations, and accessibility identifiers stay put. The Stats filter card (`stats.filters.*`) is the shape reference. Form/list nav items are the exception: they use system toolbar metrics (the Trips cluster) instead of custom 36pt circles. Map-backed nav stays 36pt frozen.
 
 ## Accessibility
 
@@ -57,8 +61,8 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `ShellPalette.swift` / `GlassContrast.swift` | 20 hues, Light/Dark triplets, mid-family glass tint (not chrome plates) |
 | `GlassEngine.swift` | Resolve native / material / solid |
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
-| `GlassEnvironment.swift` | `.onGlassShell()`, `.glassPrimaryInk()` / `.glassSecondaryInk()` / `.glassTertiaryInk()`, `.glassAccentForeground()`, `shellPalette` env |
-| `GlassControls.swift` | Toggle tint, section header/footer, nav circle icon |
+| `GlassEnvironment.swift` | `.onGlassShell()`, ink hierarchy, `.glassDisclosureInk()`, `shellPalette` env |
+| `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, toolbar symbol/title/cluster |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |
 | `TrailhoundTabBarCompact.swift` | Palette selected-tab tint (system floating-bar width) |

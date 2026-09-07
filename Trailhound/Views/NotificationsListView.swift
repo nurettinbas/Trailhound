@@ -70,7 +70,7 @@ struct NotificationsListView: View {
                     }
                     .disabled(store.items.isEmpty)
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    GlassToolbarSymbol(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -236,7 +236,7 @@ struct NotificationsListView: View {
             if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .glassTertiaryInk()
+                    .glassDisclosureInk()
             }
         }
     }

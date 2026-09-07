@@ -174,20 +174,16 @@ struct VehicleScheduleEditorView: View {
                 } label: {
                     GlassToolbarBackButton()
                 }
-                .glassToolbarControl()
                 .accessibilityLabel(Text("onboarding.back"))
             }
-            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     save()
                 } label: {
                     GlassToolbarSaveButton(title: L10n.pairingTabSave)
                 }
-                .glassToolbarSaveControl()
                 .disabled(isSaving)
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
         .onAppear {
             if draft == nil {

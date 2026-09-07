@@ -145,19 +145,16 @@ struct TravelJournalEditorSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        GlassToolbarSaveButton(title: L10n.cancel)
+                        GlassToolbarTitle(title: L10n.cancel)
                     }
-                    .glassToolbarSaveControl()
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button {
                         save()
                     } label: {
-                        GlassToolbarSaveButton(title: L10n.journalSave)
+                        GlassToolbarTitle(title: L10n.journalSave)
                     }
-                    .glassToolbarSaveControl()
                 }
-                .hideSharedToolbarBackgroundIfAvailable()
             }
         }
         .presentationBackground {
