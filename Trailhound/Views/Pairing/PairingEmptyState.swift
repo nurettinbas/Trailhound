@@ -15,7 +15,7 @@ struct PairingEmptyState: View {
                     .font(.headline)
                 Text(L10n.pairingTabEmptyMessage)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .multilineTextAlignment(.center)
             }
 

@@ -92,6 +92,7 @@ struct TravelJournalDetailView: View {
     @State private var selectedSegments: [TripDetailRevealedRouteSegment] = []
     @State private var fitCoordinates: [CLLocationCoordinate2D] = []
     @State private var isMapExpanded = false
+    @State private var isMapExpandTransitioning = false
     @State private var panelDetent: TravelJournalPanelDetent = .compact
     @State private var dragTranslation: CGFloat = 0
     @State private var panelRisen = false
@@ -179,7 +180,7 @@ struct TravelJournalDetailView: View {
     private var backToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button(action: dismiss.callAsFunction) {
-                GlassNavCircleIcon(systemName: "chevron.backward")
+                GlassNavCircleIcon(systemName: "chevron.backward", frozen: isMapExpandTransitioning)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("onboarding.back"))
@@ -191,7 +192,7 @@ struct TravelJournalDetailView: View {
     private var mapExpandToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: toggleMapExpanded) {
-                GlassNavCircleIcon(systemName: mapExpandIconName)
+                GlassNavCircleIcon(systemName: mapExpandIconName, frozen: isMapExpandTransitioning)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(mapExpandAccessibilityLabel)
@@ -334,10 +335,22 @@ struct TravelJournalDetailView: View {
     private func toggleMapExpanded() {
         let expanding = !isMapExpanded
         TrailhoundHaptics.selection()
-        withAnimation(reduceMotion ? nil : (expanding ? TrailhoundMotion.mapExpand : TrailhoundMotion.mapCollapse)) {
+        let motion = expanding ? TrailhoundMotion.mapExpand : TrailhoundMotion.mapCollapse
+        if reduceMotion {
+            isMapExpandTransitioning = false
+            isMapExpanded = expanding
+            scheduleMapRefit(delayMilliseconds: 40)
+            return
+        }
+        isMapExpandTransitioning = true
+        withAnimation(motion) {
             isMapExpanded = expanding
         }
         scheduleMapRefit(delayMilliseconds: 40)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(expanding ? 1400 : 1100))
+            isMapExpandTransitioning = false
+        }
     }
 
     private func removeFromJournal(_ trip: Trip) {

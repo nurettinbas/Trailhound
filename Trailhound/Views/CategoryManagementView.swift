@@ -56,7 +56,7 @@ struct CategoryManagementView: View {
                 HStack(spacing: 10) {
                     Image(systemName: category.systemImage)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .frame(width: 18)
                     Text(category.name)
                         .font(.subheadline)
@@ -65,7 +65,7 @@ struct CategoryManagementView: View {
                         Spacer(minLength: 8)
                         Text(L10n.categoryBuiltinBadge)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                 }
                 .glassRow(position: GlassRowPosition.index(index, in: rowCount))

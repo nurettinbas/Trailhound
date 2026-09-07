@@ -245,7 +245,7 @@ struct TripListView: View {
                             .font(.subheadline.weight(.semibold))
                         Text(suggestion.title)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                     Spacer()
                     Button(L10n.journalSuggestAccept) {
@@ -391,7 +391,7 @@ struct TripListView: View {
                             .font(.headline)
                         Text(L10n.tripListSetupVehicleMessage)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                         Button(L10n.string("onboarding.shortcuts.link")) {
                             tabSelection.openPairing()
                         }
@@ -401,7 +401,7 @@ struct TripListView: View {
                             settings.skipCarSetup()
                         }
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                     }
                     .padding(.vertical, 4)
                 }
@@ -716,7 +716,7 @@ struct TripListView: View {
                             )
                             Text("Trailhound")
                                 .font(.headline)
-                                .foregroundStyle(.primary)
+                                .glassPrimaryInk()
                         }
                     }
                     .buttonStyle(.plain)
@@ -788,7 +788,7 @@ struct TripListView: View {
                         ProgressView()
                         Text(L10n.tripsMergeProgress)
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
+                            .glassPrimaryInk()
                     }
                     .padding(24)
                     .glassCard(cornerRadius: 16)
@@ -1302,17 +1302,17 @@ private struct OrphanRecoveryBanner: View {
     }
 
     private var ink: Color {
-        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var messageColor: Color {
-        colorScheme == .dark ? Color.secondary : ink.opacity(0.72)
+        GlassText.secondary(for: colorScheme)
     }
 
     private var resumeFill: Color {
         colorScheme == .dark
             ? shellPalette.tintColor(for: .dark)
-            : shellPalette.chromeColor(for: .light)
+            : LightGlassPalette.selectedChipFill(for: shellPalette)
     }
 }
 

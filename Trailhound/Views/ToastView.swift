@@ -4,6 +4,7 @@ struct ToastView: View {
     let kind: ToastKind
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var iconBounceToken = 0
     @State private var settled = false
 
@@ -17,7 +18,7 @@ struct ToastView: View {
                 .accessibilityHidden(true)
             Text(kind.message)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(GlassText.primary(for: colorScheme))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: 280, alignment: .leading)

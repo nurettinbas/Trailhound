@@ -40,7 +40,7 @@ struct VehicleCostDonutChart: View {
         if slices.isEmpty {
             Text(L10n.string("vehicles.care.chart.empty"))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 8)
         } else {
@@ -64,7 +64,7 @@ struct VehicleCostDonutChart: View {
                             .multilineTextAlignment(.center)
                         Text(L10n.string("stats.cost.chart.center_total"))
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                     .padding(.horizontal, 8)
                 }

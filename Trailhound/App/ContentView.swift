@@ -195,6 +195,7 @@ private struct TrailhoundTabBarChrome: ViewModifier {
         if #available(iOS 26.0, *) {
             content
         } else {
+            // Pre-iOS 26 system tab bar. iOS 26 keeps the floating system bar.
             content
                 .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                 .toolbarBackground(.visible, for: .tabBar)

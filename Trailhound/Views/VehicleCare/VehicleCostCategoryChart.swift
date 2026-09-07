@@ -23,7 +23,7 @@ struct VehicleCostCategoryChart: View {
         if chartData.isEmpty {
             Text(L10n.string("vehicles.care.chart.empty"))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 8)
         } else {

@@ -11,7 +11,7 @@ private struct TrailhoundProminentButtonModifier: ViewModifier {
         } else {
             content.buttonStyle(
                 LightChromeProminentButtonStyle(
-                    chrome: shellPalette.chromeColor(for: .light),
+                    chrome: shellPalette.glassReadabilityTint(for: .light),
                     tint: shellPalette.tintColor(for: .light),
                     reduceMotion: reduceMotion
                 )

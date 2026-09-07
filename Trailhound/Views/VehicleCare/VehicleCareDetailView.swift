@@ -68,6 +68,12 @@ struct VehicleDetailView: View {
                 detailList(vehicle: vehicle)
             } else {
                 ContentUnavailableView(L10n.pairingTabVehicleNotFound, systemImage: "car")
+                    .onGlassShell()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background {
+                        AtmosphericBackground(style: .full)
+                            .ignoresSafeArea()
+                    }
             }
         }
         .navigationTitle(vehicle?.name ?? L10n.string("vehicles.care.detail.title"))
@@ -296,19 +302,19 @@ struct VehicleDetailView: View {
                         HStack(spacing: 4) {
                             Text(expense.category.displayName)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
+                                .glassPrimaryInk()
                                 .lineLimit(1)
                             Text("·")
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                                .glassTertiaryInk()
                             Text(date)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .lineLimit(1)
                             if let badge = installmentBadge(for: expense) {
                                 Text("·")
                                     .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                    .glassTertiaryInk()
                                 Text(badge)
                                     .font(.caption2.weight(.semibold))
                                     .glassAccentForeground()
@@ -319,7 +325,7 @@ struct VehicleDetailView: View {
                         if hasNote, let note {
                             Text(note)
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                                .glassTertiaryInk()
                                 .lineLimit(1)
                         }
                     }
@@ -335,13 +341,13 @@ struct VehicleDetailView: View {
                     )
                         .font(.caption.weight(.semibold))
                         .monospacedDigit()
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
 
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                        .glassTertiaryInk()
                 }
                 .contentShape(Rectangle())
             }
@@ -407,7 +413,7 @@ private struct CareTrackingCardRow: View {
 
                         Text(schedule.title)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
+                            .glassPrimaryInk()
                             .lineLimit(1)
 
                         Spacer(minLength: 8)
@@ -421,7 +427,7 @@ private struct CareTrackingCardRow: View {
                         } else {
                             Text(plainSubtitle)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .lineLimit(1)
                                 .multilineTextAlignment(.trailing)
                         }
@@ -442,7 +448,7 @@ private struct CareTrackingCardRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .glassTertiaryInk()
             }
         .onAppear(perform: consumeChipEntranceIfNeeded)
     }

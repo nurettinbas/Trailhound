@@ -10,7 +10,7 @@ One chrome (`StatsCard.swift`):
 |---|---|
 | **Half** | Goal ring + stepper, beside hero numbers (distance, duration, expenses — or trips when expense MoM is hidden) |
 | **Full** | Filter, nested summary tiles, each chart pager, year awards |
-| **Nested tile** | Remaining summary metrics inside the summary card; frost fill, radius 16 — not a second glass card |
+| **Nested tile** | Remaining summary metrics inside the summary card; palette-tinted frost fill, radius 16 — not a second glass card |
 
 List rows use a **clear** background. The card is `glassCard` only (one `Material`). Mixing `glassListRow` / `GlassRowPosition.first` with a floating chart card is forbidden.
 
@@ -18,7 +18,7 @@ List rows use a **clear** background. The card is `glassCard` only (one `Materia
 
 The filter row is still one full-width `glassCard` — no extra fetch, no `GeometryReader`. Layout:
 
-- **Period chips** keep the same compact expanding capsules (Last 7 days / Month / Custom). Light theme paints unselected chips as frosted white and the selected chip as a white pill with deep-blue text; dark stays brand-blue. Month stepper and custom start/end dates stay on the same card.
+- **Period chips** keep the same compact expanding capsules (Last 7 days / Month / Custom). Light selected chips are a mid-family wash with white type; unselected chips are frost plus white. Dark stays brand-blue. Month stepper and custom start/end dates stay on the same card.
 - **Category, vehicle, place, travel** are equal selection fields: title, one-line truncated value, chevron. Long names do not wrap onto neighbouring fields. Vehicle keeps its avatar. Active fields use a brand stroke in dark and a white stroke in light.
 - **Two columns** at standard Dynamic Type; **one column** at accessibility sizes. Each field’s tap target is at least 44 pt.
 - **Clear All** appears only when something is not the default. It clears category / vehicle / place / travel, sets the period back to Last 7 days, and restores the default month and custom dates. Reduce Motion skips the reveal animation.

@@ -13,6 +13,7 @@ struct HelpPopoverButton: View {
     var sheetHeight: CGFloat = 240
 
     @State private var isPresented = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button {
@@ -20,7 +21,7 @@ struct HelpPopoverButton: View {
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(side <= 18 ? .system(size: 12, weight: .medium) : .body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .frame(width: side, height: side)
                 .contentShape(Rectangle())
         }
@@ -38,7 +39,6 @@ struct HelpPopoverButton: View {
                 ScrollView {
                     Text(message)
                         .font(.body)
-                        .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -46,24 +46,13 @@ struct HelpPopoverButton: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
             .padding(20)
-            .modifier(HelpSheetTextColor())
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .presentationBackground {
+                AtmosphericBackground(style: .full)
+            }
+            .onGlassShell()
             .presentationDetents([.height(sheetHeight), .medium])
             .presentationDragIndicator(.visible)
-        }
-    }
-}
-
-private struct HelpSheetTextColor: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if colorScheme == .light {
-            content
-                .foregroundStyle(Color.black)
-                .tint(Color.black)
-        } else {
-            content
         }
     }
 }

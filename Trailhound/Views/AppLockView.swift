@@ -17,7 +17,7 @@ struct AppLockView: View {
                 if !appLockService.canUseDeviceAuthentication {
                     Text(L10n.appLockUnavailable)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }

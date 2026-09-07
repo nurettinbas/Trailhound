@@ -142,7 +142,7 @@ struct StatsTrendBadge: View {
     private var novelChipRGB: ShellRGB {
         colorScheme == .dark
             ? shellPalette.atmosphere(for: .dark).tint
-            : shellPalette.atmosphere(for: .light).chrome
+            : GlassContrast.selectedChipFill(palette: shellPalette)
     }
 
     private var novelChipFill: Color {
@@ -150,9 +150,7 @@ struct StatsTrendBadge: View {
     }
 
     private var novelChipInk: Color {
-        novelChipRGB.relativeLuminance > 0.56
-            ? Color.black.opacity(0.82)
-            : Color.white
+        Color.white
     }
 
     static func color(for trend: StatsTrend, colorScheme: ColorScheme) -> Color {

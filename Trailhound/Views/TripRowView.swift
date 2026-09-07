@@ -184,11 +184,13 @@ struct TripRowView: View {
                     .transition(.opacity.combined(with: .scale(scale: emphasizeLanding ? 0.92 : 1)))
             } else {
                 ZStack {
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.14)
-                        .shimmer()
+                    shellPalette.glassReadabilityTint(for: colorScheme).opacity(
+                        colorScheme == .dark ? 0.18 : GlassContrast.nestedTileTintOpacity
+                    )
+                    .shimmer()
                     Image(systemName: "map")
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                 }
             }
         }

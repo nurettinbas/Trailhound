@@ -82,7 +82,8 @@ public enum ShellPalette: String, CaseIterable, Identifiable, Sendable {
 
     public static let `default` = ShellPalette.sky
     public static let storageKey = "shellPalette"
-    /// Mid-luminance above this uses dark text on the light shell.
+    /// Legacy threshold kept for call sites. Light type is always white; Light
+    /// cards use mid-family glass tint, not chrome.
     public static let lightChromeLuminanceThreshold = 0.68
 
     public var id: String { rawValue }

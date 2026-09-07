@@ -28,22 +28,24 @@ private struct GlassToggleTintModifier: ViewModifier {
 
 struct GlassSectionHeader: View {
     let title: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(title)
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(GlassText.secondary(for: colorScheme))
             .textCase(.uppercase)
     }
 }
 
 struct GlassSectionFooter: View {
     let title: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(title)
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(GlassText.secondary(for: colorScheme))
     }
 }
 
@@ -52,6 +54,7 @@ struct GlassSectionFooter: View {
 struct GlassNavCircleIcon: View {
     let systemName: String
     var isLoading: Bool = false
+    var frozen: Bool = false
 
     var body: some View {
         Group {
@@ -68,7 +71,7 @@ struct GlassNavCircleIcon: View {
         .tint(Color.white)
         .frame(width: 36, height: 36)
         .background {
-            GlassToolbarControlBackground(shape: Circle())
+            GlassToolbarControlBackground(shape: Circle(), frozen: frozen)
         }
     }
 }

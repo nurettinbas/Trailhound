@@ -27,7 +27,7 @@ struct VehicleCareStatusCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(detailColor)

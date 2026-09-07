@@ -69,4 +69,8 @@ final class GlassEngineTests: XCTestCase {
             XCTAssertEqual(engine, .material)
         }
     }
+
+    func testHostBudgetConstant() {
+        XCTAssertEqual(GlassHostBudget.maxNativeHostsPerScreen, 8)
+    }
 }

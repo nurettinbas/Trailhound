@@ -185,7 +185,7 @@ struct VehiclePhotoInlineFraming: View {
                         .font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 7)
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                         .background(
                             Capsule(style: .continuous)
                                 .fill(Color.primary.opacity(0.08))
@@ -334,12 +334,12 @@ struct VehiclePhotoCornerChip: View {
             .font(.system(size: 9, weight: .bold))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(
                 Capsule(style: .continuous)
-                    .fill(colorScheme == .dark ? Color.black.opacity(0.45) : Color.white.opacity(0.92))
+                    .fill(shellPalette.glassReadabilityTint(for: colorScheme))
             )
             .overlay {
                 Capsule(style: .continuous)

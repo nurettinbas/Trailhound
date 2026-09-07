@@ -16,21 +16,21 @@ enum StatsCardTokens {
     static let nestedTilePreviousLineHeight: CGFloat = 13
 }
 
-/// Small supporting copy needs more contrast than the shell-wide white hierarchy in Light mode.
-/// The translucent Stats cards are light enough that dark ink remains readable across palettes.
+/// Small supporting copy on Stats cards uses the shell-wide Light white hierarchy.
 enum StatsTextColor {
     static func secondary(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.secondary : Color.black.opacity(0.72)
+        GlassText.secondary(for: scheme)
     }
 
     static func tertiary(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.secondary.opacity(0.8) : Color.black.opacity(0.64)
+        GlassText.tertiary(for: scheme)
     }
 }
 
 private struct StatsNestedTileModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
         content
@@ -50,11 +50,11 @@ private struct StatsNestedTileModifier: ViewModifier {
 
     private var tileFill: Color {
         if reduceTransparency {
-            return Color(.tertiarySystemFill)
+            return shellPalette.opaquePanelFill(for: colorScheme)
         }
         return colorScheme == .dark
             ? Color.white.opacity(0.10)
-            : Color.white.opacity(0.28)
+            : shellPalette.glassReadabilityTint(for: .light).opacity(GlassContrast.nestedTileTintOpacity)
     }
 }
 
@@ -126,6 +126,7 @@ struct StatsSummaryTileSkeleton: View {
     var reduceMotion: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var shimmerPhase = false
 
     var body: some View {
@@ -170,6 +171,6 @@ struct StatsSummaryTileSkeleton: View {
     private var barFill: Color {
         colorScheme == .dark
             ? Color.white.opacity(0.14)
-            : Color.white.opacity(0.55)
+            : shellPalette.glassReadabilityTint(for: .light).opacity(0.32)
     }
 }

@@ -44,7 +44,7 @@ struct SettingsView: View {
                     .glassRow(position: .first)
                 Text(L10n.settingsSiriShortcutsHint)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .glassRow(position: .middle)
                 ShortcutsLink()
                     .shortcutsLinkStyle(.automaticOutline)
@@ -62,7 +62,7 @@ struct SettingsView: View {
                 if places.isEmpty {
                     Text(L10n.settingsFavoritePlacesEmpty)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .glassRow(position: favoritePlacesRowCount == 1 ? .only : .first)
                 }
 
@@ -73,7 +73,7 @@ struct SettingsView: View {
                         HStack(spacing: 10) {
                             Image(systemName: place.kind.systemImage)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .frame(width: 18)
                             Text(place.name)
                                 .font(.subheadline)
@@ -81,7 +81,7 @@ struct SettingsView: View {
                             Spacer(minLength: 8)
                             Text(place.kind.displayName)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                         }
                     }
                     .glassRow(position: favoritePlacePosition(placeIndex: index))
@@ -212,7 +212,7 @@ struct SettingsView: View {
                 .glassRow(position: .first)
                 Text(L10n.settingsFuelHint)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .glassRow(position: .last)
             }
 
@@ -251,7 +251,7 @@ struct SettingsView: View {
                 if !locationService.canRecordInBackground {
                     Text(L10n.settingsBackgroundLocationHint)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .glassRow(position: permissionsPositions.hint)
                 }
 
@@ -294,7 +294,7 @@ struct SettingsView: View {
                     .glassRow(position: .middle)
                 Text(L10n.settingsAboutPrivacy)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .glassRow(position: .last)
             }
         }

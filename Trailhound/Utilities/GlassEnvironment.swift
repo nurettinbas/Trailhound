@@ -38,6 +38,42 @@ extension View {
     func glassAccentForeground() -> some View {
         modifier(GlassAccentForegroundModifier())
     }
+
+    func glassPrimaryInk() -> some View {
+        modifier(GlassPrimaryInkModifier())
+    }
+
+    func glassSecondaryInk() -> some View {
+        modifier(GlassSecondaryInkModifier())
+    }
+
+    func glassTertiaryInk() -> some View {
+        modifier(GlassTertiaryInkModifier())
+    }
+}
+
+private struct GlassPrimaryInkModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(GlassText.primary(for: colorScheme))
+    }
+}
+
+private struct GlassSecondaryInkModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(GlassText.secondary(for: colorScheme))
+    }
+}
+
+private struct GlassTertiaryInkModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(GlassText.tertiary(for: colorScheme))
+    }
 }
 
 private struct GlassAccentForegroundModifier: ViewModifier {

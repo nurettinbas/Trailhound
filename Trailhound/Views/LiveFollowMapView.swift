@@ -361,7 +361,7 @@ struct LiveFollowMapView: View {
                         )
                     Text(statusText)
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(GlassText.primary(for: colorScheme))
                         .lineLimit(1)
                 }
                 .padding(.horizontal, 8)
@@ -468,7 +468,7 @@ struct LiveFollowMapView: View {
         } label: {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(selected ? Color.white : shellPalette.chromeColor(for: .light))
+                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
                 .background {
                     if selected {
@@ -499,7 +499,7 @@ struct LiveFollowMapView: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(selected ? Color.white : shellPalette.chromeColor(for: .light))
+                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
                 .background {
                     if selected {

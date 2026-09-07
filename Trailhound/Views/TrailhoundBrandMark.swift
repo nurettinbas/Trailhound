@@ -95,7 +95,7 @@ struct TrailhoundBrandMark: View {
             .clipShape(RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
             }
             .shadow(color: shellPalette.tintColor(for: colorScheme).opacity(0.28), radius: 16, y: 8)
             .accessibilityHidden(true)
@@ -103,7 +103,7 @@ struct TrailhoundBrandMark: View {
             if showsWordmark {
                 Text("Trailhound")
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme))
             }
         }
         .accessibilityElement(children: .ignore)

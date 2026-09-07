@@ -41,7 +41,7 @@ struct PairingVehicleRow: View {
                     HStack(spacing: 6) {
                         Text(vehicle.name)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
+                            .glassPrimaryInk()
                             .lineLimit(1)
                         if vehicle.isDefault {
                             Text(L10n.pairingTabDefaultVehicle)
@@ -65,7 +65,7 @@ struct PairingVehicleRow: View {
                     } else {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                     }
@@ -75,7 +75,7 @@ struct PairingVehicleRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .glassTertiaryInk()
             }
             .contentShape(Rectangle())
         }
