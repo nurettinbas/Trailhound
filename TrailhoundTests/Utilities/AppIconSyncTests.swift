@@ -26,4 +26,15 @@ final class AppIconSyncTests: XCTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: json.path), name)
         }
     }
+
+    func testNeedsUpdateWhenPaletteIconDiffers() {
+        XCTAssertTrue(AppIconSync.needsUpdate(currentAlternateIconName: nil, palette: .orange))
+        XCTAssertFalse(AppIconSync.needsUpdate(currentAlternateIconName: nil, palette: .sky))
+        XCTAssertFalse(
+            AppIconSync.needsUpdate(currentAlternateIconName: "AppIconOrange", palette: .orange)
+        )
+        XCTAssertTrue(
+            AppIconSync.needsUpdate(currentAlternateIconName: "AppIconOrange", palette: .sky)
+        )
+    }
 }

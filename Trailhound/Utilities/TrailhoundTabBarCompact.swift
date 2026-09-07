@@ -22,6 +22,14 @@ enum TrailhoundTabBarTheme {
     static func pagePlateUIColor(palette: ShellPalette, scheme: ColorScheme) -> UIColor {
         uiColor(palette.atmosphere(for: scheme).mid)
     }
+
+    /// Mid-family wash on the Light capsule. Dark keeps the system glass.
+    static func lightGlassTintUIColor(palette: ShellPalette) -> UIColor {
+        uiColor(
+            GlassContrast.glassTint(palette: palette),
+            alpha: CGFloat(GlassContrast.tabBarGlassTintOpacity)
+        )
+    }
 }
 
 /// Applies palette tint. Width stays with the system floating bar — shrinking
@@ -33,6 +41,7 @@ enum TrailhoundTabBarCompact {
         tabBar.backgroundColor = .clear
         tabBar.isTranslucent = true
         restoreSystemWidthIfNeeded(tabBar)
+        applyLightGlassTint(to: tabBar, palette: palette, scheme: scheme)
     }
 
     /// Undo a leftover narrow frame from the old compact hack. Skip once the bar is full width.
@@ -89,6 +98,49 @@ enum TrailhoundTabBarCompact {
         }
         appearance.selectionIndicatorTintColor = selected
     }
+
+    /// Tints the floating capsule's `UIGlassEffect` without replacing `UITabBarAppearance`
+    /// (copying appearance flattens iOS 26 liquid glass).
+    static func applyLightGlassTint(to tabBar: UITabBar, palette: ShellPalette, scheme: ColorScheme) {
+        guard !UITestSupport.isEnabled else { return }
+        guard scheme == .light else { return }
+        guard #available(iOS 26.0, *) else { return }
+        let tint = TrailhoundTabBarTheme.lightGlassTintUIColor(palette: palette)
+        applyLightGlassTint(in: tabBar, matching: tabBar, tint: tint)
+        guard let superview = tabBar.superview else { return }
+        let barFrame = tabBar.frame
+        for sibling in superview.subviews where sibling !== tabBar {
+            // Platter sits in the bottom chrome band. Skip the full-screen content sibling.
+            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
+                && sibling.frame.height <= barFrame.height + 120
+            guard isChromeBand else { continue }
+            applyLightGlassTint(in: sibling, matching: tabBar, tint: tint)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func applyLightGlassTint(in view: UIView, matching tabBar: UITabBar, tint: UIColor) {
+        if let effectView = view as? UIVisualEffectView,
+           let glass = effectView.effect as? UIGlassEffect,
+           isFloatingCapsule(effectView, matching: tabBar) {
+            if glass.tintColor != tint {
+                glass.tintColor = tint
+                effectView.effect = glass
+            }
+        }
+        for subview in view.subviews {
+            applyLightGlassTint(in: subview, matching: tabBar, tint: tint)
+        }
+    }
+
+    /// The selected-tab pill is a small inner glass. Only the wide, short capsule gets the wash.
+    private static func isFloatingCapsule(_ effectView: UIView, matching tabBar: UITabBar) -> Bool {
+        let width = effectView.bounds.width
+        let height = effectView.bounds.height
+        let barWidth = tabBar.bounds.width
+        guard width > 8, barWidth > 8 else { return false }
+        return width > barWidth * 0.45 && height >= 44 && height <= 96
+    }
 }
 
 /// Hosts a zero-size controller that walks the window and compacts `UITabBar`.
@@ -128,6 +180,8 @@ final class TrailhoundTabBarCompactController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // Width only. Re-applying glass tint here mutates `UIVisualEffectView` and
+        // can retrigger layout until XCTest's launch assertion times out.
         restoreBarWidthOnly()
     }
 

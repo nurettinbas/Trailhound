@@ -1185,7 +1185,7 @@ final class TripRecordingService {
         resetActiveSession()
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
-        if !UITestSupport.isUnitTesting {
+        if !UITestSupport.shouldSkipExternalEffects {
             WidgetCenter.shared.reloadAllTimelines()
         }
     }

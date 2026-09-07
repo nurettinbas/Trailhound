@@ -9784,13 +9784,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The background uses a light shade in Light appearance and a dark shade of the same color in Dark. The Home Screen icon follows the selected color; iOS shows a confirmation when it changes."
+            "value" : "The background uses a light shade in Light appearance and a dark shade of the same color in Dark. The Home Screen icon follows the selected color; iOS shows one confirmation when it changes."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arka plan Açık görünümde açık ton, Koyu görünümde aynı rengin koyu tonunu kullanır. Ana ekran ikonu seçilen rengi izler; iOS değişince bir onay gösterir."
+            "value" : "Arka plan Açık görünümde açık ton, Koyu görünümde aynı rengin koyu tonunu kullanır. Ana ekran ikonu seçilen rengi izler; değişince iOS tek bir onay gösterir."
           }
         }
       }

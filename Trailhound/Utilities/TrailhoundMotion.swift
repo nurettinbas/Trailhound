@@ -206,7 +206,7 @@ private struct ShimmerModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay {
-                if !reduceMotion {
+                if !reduceMotion, !UITestSupport.isEnabled {
                     GeometryReader { geometry in
                         LinearGradient(
                             colors: [

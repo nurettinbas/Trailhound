@@ -151,6 +151,10 @@ final class ShellPaletteTests: XCTestCase {
             ShellPalette.sky.homeScreenIconFill(for: .light),
             TrailhoundBrandColors.brandBottom
         )
+        XCTAssertGreaterThan(
+            ShellPalette.orange.homeScreenIconFillRGB(for: .light).relativeLuminance,
+            ShellPalette.orange.homeScreenIconFillRGB(for: .dark).relativeLuminance
+        )
     }
 
     func testTabBarUnselectedUsesDarkInkInLight() {
@@ -160,6 +164,23 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertEqual(
             TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .dark),
             UIColor.secondaryLabel
+        )
+    }
+
+    func testTabBarLightGlassTintIsMidFamilyWash() {
+        let pink = TrailhoundTabBarTheme.lightGlassTintUIColor(palette: .pink)
+        let expected = TrailhoundTabBarTheme.uiColor(
+            GlassContrast.glassTint(palette: .pink),
+            alpha: CGFloat(GlassContrast.tabBarGlassTintOpacity)
+        )
+        XCTAssertEqual(pink, expected)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        pink.getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertEqual(Double(a), GlassContrast.tabBarGlassTintOpacity, accuracy: 0.001)
+        XCTAssertGreaterThan(r, b)
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.lightGlassTintUIColor(palette: .pink),
+            TrailhoundTabBarTheme.lightGlassTintUIColor(palette: .sky)
         )
     }
 }

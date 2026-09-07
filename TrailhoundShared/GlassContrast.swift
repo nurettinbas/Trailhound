@@ -22,6 +22,8 @@ public enum GlassContrast {
     public static let chromeIncreasedContrastTintOpacity = 0.26
     public static let nativeGlassTintOpacity = 0.16
     public static let nativeIncreasedContrastTintOpacity = 0.26
+    /// Light floating tab bar — one step past the system white frost, still glass.
+    public static let tabBarGlassTintOpacity = 0.28
     public static let fieldTintOpacity = 0.18
     public static let nestedTileTintOpacity = 0.16
     public static let recordingWashOpacity = 0.34

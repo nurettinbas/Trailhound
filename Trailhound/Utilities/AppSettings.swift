@@ -75,6 +75,7 @@ final class AppSettings {
     var shellPalette: ShellPalette = .default {
         didSet {
             defaults.set(shellPalette.rawValue, forKey: Key.shellPalette)
+            guard !UITestSupport.shouldSkipExternalEffects else { return }
             WidgetCenter.shared.reloadAllTimelines()
         }
     }

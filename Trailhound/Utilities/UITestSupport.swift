@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 enum UITestSupport {
     static var isEnabled: Bool {
@@ -17,14 +18,22 @@ enum UITestSupport {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
+    /// WidgetKit, App Intents, Live Activities, and MapKit snapshots block XCTest quiescence.
+    static var shouldSkipExternalEffects: Bool {
+        isEnabled || isUnitTesting
+    }
+
     @MainActor
     static func configureAppIfNeeded() {
         guard isEnabled else { return }
+        UIView.setAnimationsEnabled(false)
         let settings = AppSettings.shared
         settings.completeOnboarding()
         settings.skipCarSetup()
         settings.appLockEnabled = false
         settings.smartCategorySuggestionsEnabled = true
+        settings.appearanceMode = .system
+        settings.shellPalette = .default
         AppNotificationArchive.save([])
         AppNotificationStore.shared.reload()
         AppNotificationStore.shared.clearAll()
@@ -96,7 +105,26 @@ enum UITestSupport {
         trip.endLatitude = work.latitude
         trip.endLongitude = work.longitude
         applySmartCategoryPendingState(to: trip)
+        let startPoint = TripPoint(
+            timestamp: trip.startedAt,
+            latitude: home.latitude,
+            longitude: home.longitude,
+            sequence: 0,
+            speedMps: 12,
+            trip: trip
+        )
+        let endPoint = TripPoint(
+            timestamp: trip.endedAt ?? Date(),
+            latitude: work.latitude,
+            longitude: work.longitude,
+            sequence: 1,
+            speedMps: 10,
+            trip: trip
+        )
+        trip.points = [startPoint, endPoint]
         context.insert(trip)
+        context.insert(startPoint)
+        context.insert(endPoint)
     }
 
     /// Newest completed personal commute with a pending Business suggestion.

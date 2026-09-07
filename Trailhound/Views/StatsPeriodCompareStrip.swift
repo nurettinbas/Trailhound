@@ -25,7 +25,7 @@ struct StatsPeriodCompareStrip: View {
                 Text(previousLabel)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Color.clear
-                    .frame(width: 56)
+                    .frame(width: 64)
             }
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
@@ -40,7 +40,7 @@ struct StatsPeriodCompareStrip: View {
     }
 
     private func compareRow(_ row: StatsPeriodCompareRow) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.title)
                     .font(.system(size: 10, weight: .medium))
@@ -61,7 +61,7 @@ struct StatsPeriodCompareStrip: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             StatsTrendBadge(trend: row.trend, metricName: row.title)
-                .frame(width: 56, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: row))
@@ -101,42 +101,46 @@ struct StatsTrendBadge: View {
                         .minimumScaleFactor(0.7)
                 }
             }
-            .foregroundStyle(
-                trend.isNovel
-                    ? novelChipInk
-                    : Self.color(for: trend, colorScheme: colorScheme)
-            )
-            .padding(.horizontal, trend.isNovel ? 6 : 0)
-            .padding(.vertical, trend.isNovel ? 3 : 0)
+            .foregroundStyle(chipInk)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
             .background {
-                if trend.isNovel {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    novelChipFill,
-                                    novelChipFill.opacity(0.82)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                chipFill,
+                                chipFill.opacity(0.82)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .strokeBorder(
-                                    Color.white.opacity(colorScheme == .dark ? 0.28 : 0.42),
-                                    lineWidth: 0.75
-                                )
-                        }
-                }
+                    )
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                Color.white.opacity(colorScheme == .dark ? 0.28 : 0.42),
+                                lineWidth: 0.75
+                            )
+                    }
             }
             .shadow(
-                color: trend.isNovel ? Color.black.opacity(colorScheme == .dark ? 0.28 : 0.18) : .clear,
-                radius: trend.isNovel ? 2 : 0,
-                y: trend.isNovel ? 1 : 0
+                color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                radius: 2,
+                y: 1
             )
             .accessibilityLabel(trend.accessibilityLabel(metricName: metricName))
         }
+    }
+
+    private var chipFill: Color {
+        guard let trend else { return .clear }
+        if trend.isNovel { return novelChipFill }
+        return Self.fill(for: trend, colorScheme: colorScheme)
+    }
+
+    private var chipInk: Color {
+        Color.white
     }
 
     private var novelChipRGB: ShellRGB {
@@ -149,15 +153,13 @@ struct StatsTrendBadge: View {
         novelChipRGB.color
     }
 
-    private var novelChipInk: Color {
-        Color.white
-    }
+    static let neutralChipFill = Color.white.opacity(0.22)
 
-    static func color(for trend: StatsTrend, colorScheme: ColorScheme) -> Color {
+    static func fill(for trend: StatsTrend, colorScheme: ColorScheme) -> Color {
         switch trend.isFavorable {
-        case true: .green
-        case false: .red
-        case nil: StatsTextColor.secondary(for: colorScheme)
+        case true: GlassSemantic.success(for: colorScheme)
+        case false: GlassSemantic.destructive(for: colorScheme)
+        case nil: neutralChipFill
         }
     }
 }

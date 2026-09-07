@@ -184,7 +184,7 @@ struct PairingTabView: View {
         )
         modelContext.insert(vehicle)
         guard (try? modelContext.save()) != nil else { return }
-        if !UITestSupport.isUnitTesting {
+        if !UITestSupport.shouldSkipExternalEffects {
             TrailhoundShortcuts.updateAppShortcutParameters()
         }
         openDetail(for: vehicle.id)
