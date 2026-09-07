@@ -1181,91 +1181,6 @@
         }
       }
     },
-    "dev.glass.engine" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Glass engine"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cam motoru"
-          }
-        }
-      }
-    },
-    "dev.glass.engine.auto" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otomatik"
-          }
-        }
-      }
-    },
-    "dev.glass.engine.hint" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Developer override for the light-theme glass renderer. Auto uses Liquid Glass on iOS 26+ and Material on earlier versions. Dark mode is unchanged."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Light tema cam çizicisi için geliştirici geçersiz kılması. Otomatik, iOS 26+ üzerinde Liquid Glass, daha eski sürümlerde Material kullanır. Dark tema değişmez."
-          }
-        }
-      }
-    },
-    "dev.glass.engine.material" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Material"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Material"
-          }
-        }
-      }
-    },
-    "dev.glass.engine.native" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Native"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Native"
-          }
-        }
-      }
-    },
     "Dil" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8339,13 +8254,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All trip data is stored only on this device."
+            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm yolculuk verileri yalnızca bu cihazda saklanır."
+            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir."
           }
         }
       }
@@ -9166,6 +9081,23 @@
         }
       }
     },
+    "settings.privacy_policy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gizlilik Politikası"
+          }
+        }
+      }
+    },
     "settings.privacy.app_lock" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9604,6 +9536,159 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mola algılama hızı (km/s)"
+          }
+        }
+      }
+    },
+    "settings.report_problem" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorun bildir"
+          }
+        }
+      }
+    },
+    "settings.report_problem.clear_log" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete diagnostic history"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanılama geçmişini sil"
+          }
+        }
+      }
+    },
+    "settings.report_problem.disclosure" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The attachment includes recent recording events: times, start/stop, speed, distance, GPS accuracy, and Bluetooth or Live Activity messages. It does not include map coordinates, addresses, place or vehicle names, photos, or notes. You can edit or remove the file before sending. Logs older than 30 days are already deleted on this device."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ek, son kayıt olaylarını içerir: zamanlar, başlat/durdur, hız, mesafe, GPS doğruluğu ve Bluetooth veya Live Activity mesajları. Harita koordinatı, adres, yer veya araç adı, fotoğraf ve not yoktur. Göndermeden dosyayı düzenleyebilir veya kaldırabilirsin. 30 günden eski günlükler bu cihazda zaten silinir."
+          }
+        }
+      }
+    },
+    "settings.report_problem.failed.message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The diagnostic file could not be created. Try again, or email support and describe the issue without a log."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanı dosyası oluşturulamadı. Yeniden dene veya günlüksüz olarak destek adresine yaz."
+          }
+        }
+      }
+    },
+    "settings.report_problem.failed.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t prepare the report"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rapor hazırlanamadı"
+          }
+        }
+      }
+    },
+    "settings.report_problem.mail_body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happened?\n\n(A sanitized diagnostic log is attached. You can remove it before sending.)\n"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne oldu?\n\n(Gizlilikten arındırılmış bir tanı günlüğü ekli. Göndermeden kaldırabilirsin.)\n"
+          }
+        }
+      }
+    },
+    "settings.report_problem.open_mail" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open mail with log"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log ile maili aç"
+          }
+        }
+      }
+    },
+    "settings.report_problem.share_hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please send this file to %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lütfen bu dosyayı şuraya gönder: %@"
+          }
+        }
+      }
+    },
+    "settings.report_problem.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send a diagnostic report?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanı raporu gönderilsin mi?"
           }
         }
       }

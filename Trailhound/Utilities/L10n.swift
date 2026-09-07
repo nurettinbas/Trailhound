@@ -285,8 +285,20 @@ enum L10n {
     static var settingsShareFile: String { string("settings.backup.share") }
     static var settingsAboutSection: String { string("settings.about.section") }
     static var settingsVersion: String { string("settings.about.version") }
-    static var settingsDeveloperMode: String { string("settings.developer_mode") }
     static var settingsAboutPrivacy: String { string("settings.about.privacy") }
+    static var settingsReportProblem: String { string("settings.report_problem") }
+    static var settingsReportProblemTitle: String { string("settings.report_problem.title") }
+    static var settingsReportProblemDisclosure: String { string("settings.report_problem.disclosure") }
+    static var settingsReportProblemOpenMail: String { string("settings.report_problem.open_mail") }
+    static var settingsReportProblemClearLog: String { string("settings.report_problem.clear_log") }
+    static var settingsReportProblemMailBody: String { string("settings.report_problem.mail_body") }
+    static var settingsReportProblemFailedTitle: String { string("settings.report_problem.failed.title") }
+    static var settingsReportProblemFailedMessage: String { string("settings.report_problem.failed.message") }
+    static var settingsPrivacyPolicy: String { string("settings.privacy_policy") }
+
+    static func settingsReportProblemShareHint(_ address: String) -> String {
+        String(format: string("settings.report_problem.share_hint"), address)
+    }
     static var settingsLocationNotDetermined: String { string("settings.location.not_determined") }
     static var settingsLocationWhenInUse: String { string("settings.location.when_in_use") }
     static var settingsLocationAlways: String { string("settings.location.always") }

@@ -9,7 +9,6 @@ final class GlassEngineTests: XCTestCase {
                 scheme: .light,
                 reduceTransparency: true,
                 frozen: false,
-                override: .native,
                 allowsNative: true
             ),
             .solid
@@ -18,8 +17,7 @@ final class GlassEngineTests: XCTestCase {
             GlassEngineResolver.resolve(
                 scheme: .dark,
                 reduceTransparency: true,
-                frozen: false,
-                override: .auto
+                frozen: false
             ),
             .solid
         )
@@ -30,8 +28,7 @@ final class GlassEngineTests: XCTestCase {
             GlassEngineResolver.resolve(
                 scheme: .light,
                 reduceTransparency: false,
-                frozen: true,
-                override: .auto
+                frozen: true
             ),
             .solid
         )
@@ -43,20 +40,6 @@ final class GlassEngineTests: XCTestCase {
                 scheme: .dark,
                 reduceTransparency: false,
                 frozen: false,
-                override: .native,
-                allowsNative: true
-            ),
-            .material
-        )
-    }
-
-    func testLightMaterialOverrideWins() {
-        XCTAssertEqual(
-            GlassEngineResolver.resolve(
-                scheme: .light,
-                reduceTransparency: false,
-                frozen: false,
-                override: .material,
                 allowsNative: true
             ),
             .material
@@ -68,7 +51,6 @@ final class GlassEngineTests: XCTestCase {
             scheme: .light,
             reduceTransparency: false,
             frozen: false,
-            override: .auto,
             allowsNative: false
         )
         XCTAssertEqual(engine, .material)
@@ -79,7 +61,6 @@ final class GlassEngineTests: XCTestCase {
             scheme: .light,
             reduceTransparency: false,
             frozen: false,
-            override: .auto,
             allowsNative: true
         )
         if GlassEngineResolver.isNativeAvailable {

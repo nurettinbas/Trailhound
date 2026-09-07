@@ -47,7 +47,7 @@ struct RecordingVehicleMarkSnapshot: Equatable, Hashable, Sendable {
         guard let fileName, !fileName.isEmpty else { return nil }
         if let cached = revisionByFileName[fileName] { return cached }
         guard let image = VehiclePhotoStore.shared.imageSync(fileName: fileName) else {
-            DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk (\(fileName))", level: .warning)
+            DevLog.shared.log(.widget, "Live Activity mark: thumb not on disk", level: .warning)
             return nil
         }
         if VehiclePhotoStore.markImageIsVisuallyEmpty(image) {
@@ -862,7 +862,7 @@ final class TripRecordingService {
             return
         }
         activeTrip = trip
-        DevLog.shared.log(.recording, "Trip started: id=\(trip.id)")
+        DevLog.shared.log(.recording, "Trip started: id=\(trip.id.uuidString.prefix(8))")
 
         locationService.requestPermission()
         locationService.startTracking()

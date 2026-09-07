@@ -231,7 +231,9 @@
 		B10000000000000000000008 /* RecordingControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* RecordingControlBridge.swift */; };
 		B10000000000000000000009 /* RecordingControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* RecordingControlBridge.swift */; };
 		A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */; };
-		A1DEVLOGVIEW000000001 /* DevLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DEVLOGVIEW000000001 /* DevLogView.swift */; };
+		A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MAILCOMPOSE00000001 /* MailComposeView.swift */; };
+		A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SUPPORTMAIL00000001 /* SupportMail.swift */; };
+		A1DEVLOGTESTS00000001 /* DevLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DEVLOGTESTS00000001 /* DevLogTests.swift */; };
 		A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */; };
 		B10000000000000000000011 /* AppNotificationArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000011 /* AppNotificationArchive.swift */; };
 		B1DEVLOG0000000000001 /* DevLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DEVLOG0000000000001 /* DevLog.swift */; };
@@ -594,7 +596,9 @@
 		B20000000000000000000004 /* TripRecordingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecordingAttributes.swift; sourceTree = "<group>"; };
 		B2LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityVehicleMarkStore.swift; sourceTree = "<group>"; };
 		A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationStore.swift; sourceTree = "<group>"; };
-		A2DEVLOGVIEW000000001 /* DevLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevLogView.swift; sourceTree = "<group>"; };
+		A2MAILCOMPOSE00000001 /* MailComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposeView.swift; sourceTree = "<group>"; };
+		A2SUPPORTMAIL00000001 /* SupportMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportMail.swift; sourceTree = "<group>"; };
+		A2DEVLOGTESTS00000001 /* DevLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/DevLogTests.swift; sourceTree = SOURCE_ROOT; };
 		A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsListView.swift; sourceTree = "<group>"; };
 		B20000000000000000000011 /* AppNotificationArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationArchive.swift; sourceTree = "<group>"; };
 		B2DEVLOG0000000000001 /* DevLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevLog.swift; sourceTree = "<group>"; };
@@ -975,7 +979,7 @@
 				A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */,
 				A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */,
 				A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */,
-				A2DEVLOGVIEW000000001 /* DevLogView.swift */,
+				A2MAILCOMPOSE00000001 /* MailComposeView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
 				A2TOASTVIEW00000000001 /* ToastView.swift */,
 				A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */,
@@ -1049,6 +1053,7 @@
 				A2SPEEDCOLORSEGBUILD001 /* SpeedColoredSegmentBuilder.swift */,
 				A2CATEGORYSEEDER00000001 /* CategorySeeder.swift */,
 				A2L10N00000000000000001 /* L10n.swift */,
+				A2SUPPORTMAIL00000001 /* SupportMail.swift */,
 				A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */,
 				A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */,
 				A2TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift */,
@@ -1143,6 +1148,7 @@
 				3E063EF59C0B48168A7CEF8C /* CoordinateParsingTests.swift */,
 				EB0340396FB04FFF8B475142 /* DeleteConfirmPresenterTests.swift */,
 				46AC3A885F734E2DB5BD5618 /* GlassEngineTests.swift */,
+				A2DEVLOGTESTS00000001 /* DevLogTests.swift */,
 				ACD7BF761566496FAA8BB7C5 /* GlassPaletteTests.swift */,
 				7B3A91C2E4D14F6A9C1E8B20 /* ShellPaletteTests.swift */,
 				B4APPICONSYNC00000001 /* AppIconSyncTests.swift */,
@@ -1388,6 +1394,7 @@
 				7ADA36DFB3B4468CA93174C3 /* CoordinateParsingTests.swift in Sources */,
 				F40E632757F34C2283668348 /* DeleteConfirmPresenterTests.swift in Sources */,
 				5108C545C5724C3C85CC7216 /* GlassEngineTests.swift in Sources */,
+				A1DEVLOGTESTS00000001 /* DevLogTests.swift in Sources */,
 				0A1339400C144DC3BF8BE0F1 /* GlassPaletteTests.swift in Sources */,
 				8C4B02D3F5E2507B0D2F9C31 /* ShellPaletteTests.swift in Sources */,
 				C4APPICONSYNC00000001 /* AppIconSyncTests.swift in Sources */,
@@ -1608,7 +1615,8 @@
 				A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */,
 				A1ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift in Sources */,
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,
-				A1DEVLOGVIEW000000001 /* DevLogView.swift in Sources */,
+				A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */,
+				A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */,
 				A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */,
 				A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */,
 				A1TRIPSHAREROUTEPREP001 /* TripShareRoutePrep.swift in Sources */,

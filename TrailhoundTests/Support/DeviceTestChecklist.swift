@@ -16,7 +16,7 @@ enum DeviceTestChecklist {
         "Trip detail edit fields: place/address/fuel/note stay above keyboard accessory; title chip hugs text (not full-bleed); Tamam glass chip; map does not jump; scroll dismisses keyboard; Reduce Motion settles instantly",
         "Form sheets (expense/schedule/settings/place/pairing): title chip + glass Tamam on first focus; tap/scroll dismiss; Trip Detail still grows panel without map jump",
         "Trip list search: keyboard shows hug-content title chip + glass Tamam; tap/scroll also dismisses",
-        "50 km trip detail: DevLog points/displayPts/colorSegs; colorSegs ≤ 60",
+        "50 km trip detail: colorSegs ≤ 60; route remains readable",
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",
         "Second open of the same long trip is instant (memory cache)",
         "App kill → reopen → long trip detail still fast (disk cache)",
@@ -49,7 +49,7 @@ enum DeviceTestChecklist {
         "Pause/resume: no road remount; Island photo stays",
         "Home-screen widget: Pause → Resume label flips; Resume → Pause returns",
         "Lock banner pause/resume: icon+color immediate; widget switches to Resume",
-        "Recording with vehicle photo: Island shows photo; DevLog ‘photo attached (N B)’",
+        "Recording with vehicle photo: Island shows photo",
         "Light/white vehicle photo: if punch makes it vanish, original photo is shown",
         "Vehicle without photo: Island + notification card fall back to SF symbol",
         "Expanded Island: no top gap; bottom buttons not clipped (even at 1:00:10)",
@@ -67,6 +67,7 @@ enum DeviceTestChecklist {
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
-        "Appearance Light: pastel shell (not navy), dark type, light tab bar and DatePickers; Graphite/Gold palettes stay light; Dark is still navy"
+        "Appearance Light: pastel shell (not navy), dark type, light tab bar and DatePickers; Graphite/Gold palettes stay light; Dark is still navy",
+        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
     ]
 }

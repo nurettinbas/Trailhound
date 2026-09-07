@@ -30,12 +30,10 @@ The Home Screen icon follows the same hue. **Sky** is the primary Liquid Glass `
 
 1. Reduce Transparency or `frozen` → **solid** fill (no Material resampling of a live map).
 2. Dark → **material** (legacy).
-3. Light + iOS 26+ + override ≠ material + `allowsNative` → **native** (`glassEffect` + `GlassEffectContainer`).
+3. Light + iOS 26+ + `allowsNative` → **native** (`glassEffect` + `GlassEffectContainer`).
 4. Otherwise → **material**.
 
 List rows always pass `allowsNative: false`. Native glass is reserved for standalone cards, chips, chrome, and buttons. Budget: at most eight native glass hosts on screen.
-
-Developer override: Settings → tap version 5 times → Dev Log → **Glass engine** (`auto` / `material` / `native`). Stored in the App Group as `glassEngineOverride`.
 
 ## Shape is not restyled
 

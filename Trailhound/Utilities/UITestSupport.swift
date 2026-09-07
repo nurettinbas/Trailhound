@@ -24,7 +24,6 @@ enum UITestSupport {
         settings.completeOnboarding()
         settings.skipCarSetup()
         settings.appLockEnabled = false
-        settings.developerModeEnabled = false
         settings.smartCategorySuggestionsEnabled = true
         AppNotificationArchive.save([])
         AppNotificationStore.shared.reload()

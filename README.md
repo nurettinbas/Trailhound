@@ -31,6 +31,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Optional blur of coordinates on export
 - Configurable auto-delete (Never, or 30/90/365 days)
 - Export: JSON, CSV, GPX, KML
+- **Report a problem** from Settings (optional): you can mail a sanitized diagnostic log to support. No analytics, no automatic upload; on-device logs expire after 30 days. See [Privacy](docs/PRIVACY.md) and [Support](docs/SUPPORT.md)
 
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
@@ -198,6 +199,8 @@ docs/                 # Battery, TestFlight, vehicle care notes
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 - [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19
+- [Privacy policy](docs/PRIVACY.md) — on-device data, optional diagnostic reports
+- [Support](docs/SUPPORT.md) — contact and Report a problem
 
 ---
 

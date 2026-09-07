@@ -19,7 +19,6 @@ struct ContentView: View {
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .onGlassShell()
-        .environment(\.glassEngineOverride, settings.glassEngineOverride)
         .environment(\.shellPalette, settings.shellPalette)
         .toastHost()
         .deleteConfirmHost()
@@ -106,26 +105,6 @@ struct ContentView: View {
                     .accessibilityIdentifier("tab.settings")
                 }
                 .tag(AppTab.settings)
-
-                if !UITestSupport.isEnabled {
-                    NavigationStack {
-                        if tabSelection.selectedTab == .devLog {
-                            DevLogView()
-                        } else {
-                            AtmosphericBackground()
-                        }
-                    }
-                    .background(Color.clear)
-                    .modifier(TrailhoundTabContentChrome())
-                    .tabItem {
-                        TabBarItemLabel(
-                            title: L10n.string("Dev Log"),
-                            systemImage: "ladybug",
-                            isSelected: tabSelection.selectedTab == .devLog
-                        )
-                    }
-                    .tag(AppTab.devLog)
-                }
             }
             .background(Color.clear)
             .background(TrailhoundTabBarCompactInstaller(selectedTab: tabSelection.selectedTab))

@@ -1,19 +1,10 @@
 import SwiftUI
 
-private struct GlassEngineOverrideKey: EnvironmentKey {
-    static let defaultValue: GlassEngineOverride = .auto
-}
-
 private struct ShellPaletteKey: EnvironmentKey {
     static let defaultValue: ShellPalette = .sky
 }
 
 extension EnvironmentValues {
-    var glassEngineOverride: GlassEngineOverride {
-        get { self[GlassEngineOverrideKey.self] }
-        set { self[GlassEngineOverrideKey.self] = newValue }
-    }
-
     var shellPalette: ShellPalette {
         get { self[ShellPaletteKey.self] }
         set { self[ShellPaletteKey.self] = newValue }

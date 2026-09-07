@@ -195,7 +195,6 @@ struct GlassSurface: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.glassEngineOverride) private var engineOverride
     @Environment(\.shellPalette) private var shellPalette
 
     private var engine: GlassEngine {
@@ -203,7 +202,6 @@ struct GlassSurface: View {
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
             frozen: frozen,
-            override: engineOverride,
             allowsNative: allowsNative
         )
     }
@@ -358,7 +356,6 @@ struct GlassCardModifier: ViewModifier {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.glassEngineOverride) private var engineOverride
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
@@ -366,7 +363,6 @@ struct GlassCardModifier: ViewModifier {
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
             frozen: frozen,
-            override: engineOverride,
             allowsNative: allowsNative
         )
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -401,7 +397,6 @@ struct GlassChromeModifier: ViewModifier {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.glassEngineOverride) private var engineOverride
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
@@ -409,7 +404,6 @@ struct GlassChromeModifier: ViewModifier {
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
             frozen: frozen,
-            override: engineOverride,
             allowsNative: true
         )
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -493,7 +487,6 @@ struct GlassFilterChip: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.glassEngineOverride) private var engineOverride
     @Environment(\.shellPalette) private var shellPalette
 
     private var usesNativeChip: Bool {
@@ -501,7 +494,6 @@ struct GlassFilterChip: View {
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
             frozen: false,
-            override: engineOverride,
             allowsNative: true
         ) == .native
     }
@@ -585,7 +577,6 @@ private struct NativeFilterChipGlass: ViewModifier {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.glassEngineOverride) private var engineOverride
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
@@ -593,7 +584,6 @@ private struct NativeFilterChipGlass: ViewModifier {
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
             frozen: false,
-            override: engineOverride,
             allowsNative: true
         )
         if #available(iOS 26.0, *), engine == .native {
