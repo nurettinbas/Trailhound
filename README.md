@@ -31,14 +31,19 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Optional blur of coordinates on export
 - Configurable auto-delete (Never, or 30/90/365 days)
 - Export: JSON, CSV, GPX, KML
-- **Report a problem** from Settings (optional): you can mail a sanitized diagnostic log to support. No analytics, no automatic upload; on-device logs expire after 30 days. See [Privacy](docs/PRIVACY.md) and [Support](docs/SUPPORT.md)
+- **Report a problem** from Settings → About (optional): you can mail a sanitized diagnostic log to support. No analytics, no automatic upload, no Dev Log tab; on-device logs expire after 30 days. See [Privacy](docs/PRIVACY.md) and [Support](docs/SUPPORT.md)
+- In-app **Privacy Policy** under Settings → About (same text as [docs/PRIVACY.md](docs/PRIVACY.md))
+
+### Appearance
+- Settings → **Appearance**: **System** (default, follows the iPhone), **Light**, or **Dark**, plus a **20-color shell palette** (Sky, Ocean, Teal, Mint, Forest, Lime, Gold, Sunset, Orange, Coral, Rose, Pink, Magenta, Purple, Violet, Indigo, Slate, Graphite, Sand, Ember). Default color is Sky
+- **Liquid Glass** (iOS 26 native `glassEffect`, Material fallback on iOS 17/18): frosted cards over the selected hue. Light keeps an **open** frosted wash of that family with a white type hierarchy — not a dark chrome plate or milky white card. Reduce Transparency uses an opaque mid-family fill. Dark is a deep shade of the same color. The live recording card, follow path, and vehicle puck use the same hue; **Stop** stays solid red. Form/list toolbars use the system platter with palette glyphs; map toolbars stay frozen circles so MapKit is not resampled
+- The **Home Screen icon** follows the selected color (Sky keeps the Liquid Glass icon; other hues use a matching light/dark pair). iOS shows one confirmation when the icon changes. Home Screen light/dark still follows the iPhone, not the in-app Light/Dark picker. See [Design system](docs/DESIGN_SYSTEM.md) and [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance)
 
 ### Maps & analytics
 - MapKit route polylines with speed-colored segments
 - Trip detail: full-screen map with a fixed details card (scroll to edit; toolbar expands the map in place)
 - Trip summary cards pack left-to-right in a 3-column grid (no leftover empty slots mid-grid) and include **travel time** (moving minutes, excluding pauses) next to **duration**, **cruise speed** (average while moving — excludes stops), **most common** (mode of driving pace, not queue crawl) / **median** speeds, and **stop time** alongside average/max
 - Trip stops (dwell detection), route thumbnails with vehicle photo/icon badge — list, travel-mosaic maps, and share cards follow Light/Dark and the selected palette. Switching Light/Dark keeps the last thumbnail visible until the matching map image is ready, so the trip list does not flash empty while scrolling
-- **Liquid Glass theme** (iOS 26 native `glassEffect`, Material fallback on iOS 17/18): frosted cards over a 20-color shell palette (Settings → Appearance). Light keeps the chosen hue as an **open** frosted wash — the same family as the atmosphere, not a dark chrome plate or milky white card — with a white type hierarchy. Reduce Transparency uses an opaque mid-family fill. Dark is a deep shade of the same color. Default is Sky. The live recording card, follow path, and vehicle puck use the same hue; **Stop** stays solid red. The **Home Screen icon** follows the selected color (Sky keeps the Liquid Glass icon; other hues use a matching light/dark pair). iOS shows one confirmation when the icon changes. See [Design system](docs/DESIGN_SYSTEM.md)
 - Swift Charts stats, trends, monthly distance goals — including daily **cruise speed**, **most common** speed, **stop time**, **night driving** share, and dual **avg / estimated** fuel charts
 - **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered. The Stats filter card uses titled selection fields (category, vehicle, place, travel) that keep long names on one line, plus **Clear All** to return to Last 7 days. Summary tiles show a packed skeleton while the filtered snapshot loads, so the grid does not leave empty holes
 - Category filters, trip merge (select completed trips on the list; there is no split)
@@ -181,7 +186,7 @@ TrailhoundWidget/        # WidgetKit + Live Activity extension
 TrailhoundTests/         # Unit + integration tests
 TrailhoundUITests/       # UI smoke tests (XCUITest)
 scripts/              # CI simulator pick + xcodebuild test runner
-docs/                 # Battery, TestFlight, vehicle care notes
+docs/                 # Battery, design system, Stats, TestFlight, privacy, support
 ```
 
 **Stack:** SwiftUI · SwiftData · MapKit · CoreLocation · App Intents · WidgetKit · ActivityKit
@@ -192,6 +197,7 @@ docs/                 # Battery, TestFlight, vehicle care notes
 
 - [Battery optimization](docs/BATTERY_OPTIMIZATION.md)
 - [Design system](docs/DESIGN_SYSTEM.md) — Liquid Glass, 20-color shell palette, engine rules, tokens
+- [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance) — Settings theme, palette, Home Screen icon, share cards
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards, glass budget
 - [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
