@@ -172,10 +172,12 @@ struct VehicleScheduleEditorView: View {
                 Button {
                     dismiss()
                 } label: {
-                    GlassToolbarSaveButton(title: L10n.cancel)
+                    GlassToolbarBackButton()
                 }
-                .glassToolbarSaveControl()
+                .glassToolbarControl()
+                .accessibilityLabel(Text("onboarding.back"))
             }
+            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     save()

@@ -619,18 +619,20 @@ struct StatsView: View {
         HStack(spacing: 8) {
             Text("\(activeStatsFilterCount)")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(colorScheme == .dark ? Color.white : LightGlassPalette.badgeText)
+                .foregroundStyle(Color.white)
                 .frame(minWidth: 18, minHeight: 18)
                 .padding(.horizontal, 4)
                 .background(
-                    colorScheme == .dark ? shellPalette.tintColor(for: .dark) : LightGlassPalette.badgeFill,
+                    colorScheme == .dark
+                        ? shellPalette.tintColor(for: .dark)
+                        : shellPalette.chromeColor(for: .light),
                     in: Capsule()
                 )
                 .accessibilityHidden(true)
 
             Text(L10n.statsFiltersActiveCount(activeStatsFilterCount))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 .lineLimit(1)
 
             Spacer(minLength: 8)
@@ -894,10 +896,10 @@ struct StatsView: View {
                     .font(.caption.weight(.semibold))
                 Text(goalRangeLabel)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                 Text("\(DateFormatters.formatDistance(snap.goalDistanceMeters)) / \(DateFormatters.formatDistance(goalTargetMeters))")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
@@ -907,7 +909,7 @@ struct StatsView: View {
                 VStack(spacing: 4) {
                     Text(L10n.string("stats.goal.target_km"))
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                     statsGoalStepper
                 }
             }
@@ -979,7 +981,7 @@ struct StatsView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(row.title)
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                         .lineLimit(1)
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(row.currentText)
@@ -990,8 +992,8 @@ struct StatsView: View {
                         StatsTrendBadge(trend: row.trend, metricName: row.title)
                     }
                     Text("\(comparePreviousLabel) \(row.previousText)")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -1247,7 +1249,7 @@ struct StatsView: View {
             HStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 if let helpTitle, let helpBody {
@@ -1272,8 +1274,8 @@ struct StatsView: View {
             }
 
             Text(previousText.map { "\(comparePreviousLabel) \($0)" } ?? " ")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .frame(height: StatsCardTokens.nestedTilePreviousLineHeight, alignment: .topLeading)
@@ -1357,7 +1359,7 @@ struct StatsView: View {
                 AxisValueLabel(centered: true) {
                     Text(dailyAxisDayLabel(date))
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
@@ -1978,7 +1980,7 @@ struct StatsView: View {
                             .lineLimit(2)
                         Text(L10n.string("stats.cost.chart.center_total"))
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     }
                     .padding(.horizontal, 10)
                     .allowsHitTesting(false)

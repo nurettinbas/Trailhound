@@ -33,6 +33,28 @@ public struct ShellAtmosphere: Sendable, Equatable {
     public var gradientColors: [Color] {
         [top.color, mid.color, bottom.color]
     }
+
+    fileprivate func lighteningBackground(by amount: Double) -> ShellAtmosphere {
+        ShellAtmosphere(
+            top: top.blendedTowardWhite(by: amount),
+            mid: mid.blendedTowardWhite(by: amount),
+            bottom: bottom.blendedTowardWhite(by: amount),
+            tint: tint,
+            chrome: chrome,
+            glow: glow.blendedTowardWhite(by: amount)
+        )
+    }
+}
+
+private extension ShellRGB {
+    func blendedTowardWhite(by amount: Double) -> ShellRGB {
+        let amount = min(max(amount, 0), 1)
+        return ShellRGB(
+            r + (1 - r) * amount,
+            g + (1 - g) * amount,
+            b + (1 - b) * amount
+        )
+    }
 }
 
 /// Curated shell hues. One selection; Light and Dark resolve different shade families.
@@ -74,7 +96,10 @@ public enum ShellPalette: String, CaseIterable, Identifiable, Sendable {
     }
 
     public func atmosphere(for scheme: ColorScheme) -> ShellAtmosphere {
-        scheme == .dark ? Self.darkRecipes[self]! : Self.lightRecipes[self]!
+        if scheme == .dark {
+            return Self.darkRecipes[self]!
+        }
+        return Self.lightRecipes[self]!.lighteningBackground(by: Self.lightBackgroundLift)
     }
 
     public func tintColor(for scheme: ColorScheme) -> Color {
@@ -125,6 +150,9 @@ public enum ShellPalette: String, CaseIterable, Identifiable, Sendable {
 }
 
 private extension ShellPalette {
+    /// Keeps Light visibly colorful while softening the atmospheric canvas one step.
+    static let lightBackgroundLift = 0.07
+
     static func atm(
         _ top: ShellRGB,
         _ mid: ShellRGB,

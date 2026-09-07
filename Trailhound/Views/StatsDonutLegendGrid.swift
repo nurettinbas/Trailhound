@@ -11,6 +11,8 @@ struct StatsDonutLegendItem: Identifiable {
 struct StatsDonutLegendGrid: View {
     let items: [StatsDonutLegendItem]
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var rows: [[StatsDonutLegendItem]] {
         stride(from: 0, to: items.count, by: StatsChartTheme.legendColumns).map { start in
             let end = min(start + StatsChartTheme.legendColumns, items.count)
@@ -72,7 +74,7 @@ struct StatsDonutLegendGrid: View {
             }
             Text(item.value)
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .truncationMode(.tail)

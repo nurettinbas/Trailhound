@@ -231,7 +231,7 @@ struct TripDetailView: View {
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .background(TripDetailInteractivePopEnabler())
+        .background(NavigationInteractivePopEnabler())
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -872,7 +872,7 @@ struct TripDetailView: View {
     }
 }
 
-private struct TripDetailInteractivePopEnabler: UIViewControllerRepresentable {
+struct NavigationInteractivePopEnabler: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         UIViewController()
     }

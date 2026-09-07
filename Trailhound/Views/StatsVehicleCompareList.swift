@@ -5,6 +5,8 @@ struct StatsVehicleCompareList: View {
     let rows: [VehicleCompareRow]
     let currencyCode: String
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 4) {
@@ -57,7 +59,7 @@ struct StatsVehicleCompareList: View {
                             .font(.caption.weight(.semibold))
                         Text(costPerKmText(row))
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     }
                 }
                 Spacer(minLength: 0)

@@ -575,8 +575,14 @@ struct LiveFollowMapView: View {
                 } label: {
                     RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill", compact: true)
                 }
-                .trailhoundDestructiveButton()
+                .buttonStyle(
+                    SoftPressBorderedButtonStyle(
+                        reduceMotion: reduceMotion,
+                        prominent: true
+                    )
+                )
                 .controlSize(.small)
+                .tint(GlassSemantic.notificationBadge)
                 .frame(maxWidth: .infinity, minHeight: 34)
             }
             .fixedSize(horizontal: false, vertical: true)

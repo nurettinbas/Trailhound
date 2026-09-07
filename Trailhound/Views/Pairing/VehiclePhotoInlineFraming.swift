@@ -357,8 +357,6 @@ struct EmptyVehiclePhotoAddButton: View {
     var isDisabled: Bool = false
     let action: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bounceOffset: CGFloat = 0
     @State private var showBadge = true
@@ -445,13 +443,12 @@ struct EmptyVehiclePhotoAddButton: View {
             .font(.system(size: 30, weight: .semibold))
             .glassAccentForeground()
             .frame(width: side, height: side)
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(shellPalette.tintColor(for: colorScheme).opacity(0.45), lineWidth: 1.5)
+            .background {
+                GlassSurface(
+                    cornerRadius: cornerRadius,
+                    density: .panel,
+                    allowsNative: false
+                )
             }
     }
 }

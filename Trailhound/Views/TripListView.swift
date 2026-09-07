@@ -1350,6 +1350,11 @@ private struct TripListTrailingToolbarCluster: View {
         .overlay(alignment: .topTrailing) {
             if unreadCount > 0 {
                 TripListNotificationCountBadge(count: unreadCount)
+                    .scaleEffect(0.7)
+                    // Keep the badge inside the toolbar host's clipping boundary while
+                    // preserving its overlap with the system glass platter.
+                    .padding(.top, 2)
+                    .padding(.trailing, 1)
                     .allowsHitTesting(false)
             }
         }

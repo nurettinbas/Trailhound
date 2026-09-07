@@ -619,13 +619,31 @@ private struct NativeFilterChipGlass: ViewModifier {
     }
 }
 
-/// Compact navigation-bar pill — Cancel and Save share this so iOS 26 does not
-/// wrap Cancel in the large system glass capsule.
-struct GlassToolbarSaveButton: View {
-    let title: String
+/// Shared material/tint/rim treatment for custom toolbar controls.
+struct GlassToolbarControlBackground<ControlShape: InsettableShape>: View {
+    let shape: ControlShape
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        shape
+            .fill(.ultraThinMaterial)
+            .overlay {
+                shape.fill(
+                    shellPalette.tintColor(for: colorScheme)
+                        .opacity(colorScheme == .dark ? 0.22 : 0.16)
+                )
+            }
+            .overlay {
+                shape.strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+            }
+    }
+}
+
+/// Compact navigation-bar Save pill.
+struct GlassToolbarSaveButton: View {
+    let title: String
 
     var body: some View {
         Text(title)
@@ -634,24 +652,28 @@ struct GlassToolbarSaveButton: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background {
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .fill(shellPalette.tintColor(for: colorScheme).opacity(colorScheme == .dark ? 0.22 : 0.16))
-                    }
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
-                    }
+                GlassToolbarControlBackground(
+                    shape: Capsule(style: .continuous)
+                )
             }
     }
 }
 
+/// Circular Back control using the exact same fill, tint and rim as Save.
+struct GlassToolbarBackButton: View {
+    var body: some View {
+        GlassNavCircleIcon(systemName: "chevron.backward")
+    }
+}
+
 extension View {
-    /// Drops the system circular toolbar glass so `GlassToolbarSaveButton` owns the pill.
-    func glassToolbarSaveControl() -> some View {
+    /// Drops the system toolbar glass so the shared custom control owns its shape.
+    func glassToolbarControl() -> some View {
         self.buttonStyle(.plain)
+    }
+
+    func glassToolbarSaveControl() -> some View {
+        glassToolbarControl()
     }
 }
 

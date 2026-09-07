@@ -18,6 +18,15 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertEqual(sky.chrome.color, LightGlassPalette.controlTint)
     }
 
+    func testLightAtmosphereIsSoftenedWithoutWeakeningControls() {
+        let sky = ShellPalette.sky.atmosphere(for: .light)
+        XCTAssertEqual(sky.top.r, 0.5257, accuracy: 0.000_001)
+        XCTAssertEqual(sky.mid.g, 0.6373, accuracy: 0.000_001)
+        XCTAssertEqual(sky.bottom.b, 0.8047, accuracy: 0.000_001)
+        XCTAssertEqual(sky.tint, ShellRGB(0.23, 0.56, 0.85))
+        XCTAssertEqual(sky.chrome, ShellRGB(0.090, 0.294, 0.561))
+    }
+
     func testSkyDarkKeepsLegacyNavy() {
         let sky = ShellPalette.sky.atmosphere(for: .dark)
         XCTAssertEqual(sky.top, ShellRGB(0.03, 0.07, 0.14))

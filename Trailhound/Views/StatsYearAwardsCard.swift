@@ -8,6 +8,8 @@ struct StatsYearAwardsCard: View {
     var reduceMotion: Bool
     var onAppear: () -> Void = {}
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -16,7 +18,7 @@ struct StatsYearAwardsCard: View {
                         .font(.subheadline.weight(.semibold))
                     Text(L10n.string("stats.awards.unfiltered_hint"))
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
                     if let snapshot, snapshot.hasData {
                         Text(DateFormatters.formatDistance(snapshot.totalDistanceMeters))
                             .font(.title3.weight(.bold))
@@ -38,7 +40,7 @@ struct StatsYearAwardsCard: View {
                 } else {
                     Text(String(selectedYear))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 }
             }
 
@@ -47,7 +49,7 @@ struct StatsYearAwardsCard: View {
             } else if let snapshot, !snapshot.hasData {
                 Text(L10n.string("stats.awards.empty"))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 8)
             } else {
@@ -80,12 +82,13 @@ struct StatsYearAwardsCard: View {
             }
             Text(medal.title)
                 .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
             Text(medal.detail)
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.75)

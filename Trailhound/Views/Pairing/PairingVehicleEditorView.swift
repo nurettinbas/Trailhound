@@ -888,18 +888,22 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .navigationBarBackButtonHidden(hasUnsavedChanges)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if hasUnsavedChanges {
-                        Button {
+                    Button {
+                        if hasUnsavedChanges {
                             showDiscardConfirm = true
-                        } label: {
-                            Image(systemName: "chevron.backward")
-                                .font(.body.weight(.semibold))
+                        } else {
+                            dismiss()
                         }
+                    } label: {
+                        GlassToolbarBackButton()
                     }
+                    .glassToolbarControl()
+                    .accessibilityLabel(Text("onboarding.back"))
                 }
+                .hideSharedToolbarBackgroundIfAvailable()
             }
             .background(NavigationInteractivePopDisabled(disabled: hasUnsavedChanges))
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {

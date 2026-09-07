@@ -238,7 +238,19 @@ struct PlacePickerView: View {
     }
     .navigationTitle(isEditing ? L10n.placePickerEditTitle : L10n.placePickerNewTitle)
     .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden(true)
+    .background(NavigationInteractivePopEnabler())
     .toolbar {
+      ToolbarItem(placement: .topBarLeading) {
+        Button {
+          dismiss()
+        } label: {
+          GlassToolbarBackButton()
+        }
+        .glassToolbarControl()
+        .accessibilityLabel(Text("onboarding.back"))
+      }
+      .hideSharedToolbarBackgroundIfAvailable()
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()
@@ -246,7 +258,7 @@ struct PlacePickerView: View {
         } label: {
           GlassToolbarSaveButton(title: L10n.placePickerSave)
         }
-        .glassToolbarSaveControl()
+        .glassToolbarControl()
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
       }

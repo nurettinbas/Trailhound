@@ -559,8 +559,14 @@ struct ActiveTripView: View {
             } label: {
                 RecordingActionLabel(title: L10n.stop, systemImage: "stop.fill")
             }
-            .trailhoundDestructiveButton()
+            .buttonStyle(
+                SoftPressBorderedButtonStyle(
+                    reduceMotion: reduceMotion,
+                    prominent: true
+                )
+            )
             .controlSize(.small)
+            .tint(GlassSemantic.notificationBadge)
             .frame(maxWidth: .infinity, minHeight: 34)
         }
     }

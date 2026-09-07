@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 private struct GlassControlSchemeModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
@@ -54,8 +53,6 @@ struct GlassNavCircleIcon: View {
     let systemName: String
     var isLoading: Bool = false
 
-    @Environment(\.shellPalette) private var shellPalette
-
     var body: some View {
         Group {
             if isLoading {
@@ -71,32 +68,8 @@ struct GlassNavCircleIcon: View {
         .tint(Color.white)
         .frame(width: 36, height: 36)
         .background {
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                Circle()
-                    .fill(controlFill.opacity(chipScheme == .dark ? 0.72 : 0.88))
-            }
+            GlassToolbarControlBackground(shape: Circle())
         }
-        .overlay {
-            Circle()
-                .strokeBorder(Color.white.opacity(0.34), lineWidth: 1)
-        }
-        .environment(\.colorScheme, chipScheme)
-    }
-
-    private var controlFill: Color {
-        chipScheme == .dark
-            ? shellPalette.tintColor(for: .dark)
-            : shellPalette.chromeColor(for: .light)
-    }
-
-    /// Window / Settings appearance — not the flipped leaf `colorScheme`.
-    private var chipScheme: ColorScheme {
-        if let preferred = AppSettings.shared.appearanceMode.preferredColorScheme {
-            return preferred
-        }
-        return UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
     }
 }
 

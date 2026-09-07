@@ -82,6 +82,7 @@ struct TravelJournalDetailView: View {
     @Bindable var journal: TravelJournal
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
     @Query private var places: [SavedPlace]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -118,7 +119,12 @@ struct TravelJournalDetailView: View {
             .glassNavigationChrome()
             .navigationTitle(journal.title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { mapExpandToolbar }
+            .navigationBarBackButtonHidden(true)
+            .background(NavigationInteractivePopEnabler())
+            .toolbar {
+                backToolbar
+                mapExpandToolbar
+            }
             .navigationDestination(isPresented: openTripBinding) {
                 if let trip = openTrip {
                     TripDetailView(trip: trip)
@@ -167,6 +173,18 @@ struct TravelJournalDetailView: View {
         isMapExpanded
             ? L10n.string("journal.map.collapse")
             : L10n.string("journal.map.expand")
+    }
+
+    @ToolbarContentBuilder
+    private var backToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button(action: dismiss.callAsFunction) {
+                GlassNavCircleIcon(systemName: "chevron.backward")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("onboarding.back"))
+        }
+        .hideSharedToolbarBackgroundIfAvailable()
     }
 
     @ToolbarContentBuilder
