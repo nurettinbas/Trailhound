@@ -298,11 +298,12 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 
 ## Glass (light theme)
 
-- Atmosphere still uses `RadialGradient` overlays, never `Circle().blur`.
-- List rows (`glassRow`) stay on the Material / solid recipe. Native `glassEffect` is only for standalone cards, chips, chrome, and buttons, grouped in `GlassEffectContainer` when several sit together.
-- Budget: at most eight native glass hosts on a screen. If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false` in code.
-- Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame.
-- Trip detail expand still uses `frozen` / solid glass so Material does not sample the live map.
+- Atmosphere still uses `RadialGradient` overlays, never `Circle().blur`. Light veil is 0.06 — not a milky white wash. Light cards overlay mid-family tint at ~0.22, not chrome.
+- List rows (`glassRow`) and Stats cards stay on the Material / solid recipe (`allowsNative: false`) and keep the same open glass as iOS 26 native hosts — not a darker plate. Native `glassEffect` is only for standalone cards, chips, chrome, and buttons, grouped in `GlassEffectContainer` / `GlassChipGroup` when several sit together.
+- Budget: at most eight native glass hosts on a screen (`GlassHostBudget.maxNativeHostsPerScreen`). If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false`.
+- Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
+- Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
+- Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist

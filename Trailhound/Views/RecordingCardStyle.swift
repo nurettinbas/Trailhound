@@ -58,8 +58,8 @@ private struct RecordingGlassSurface: View {
                 wash
             } else {
                 shape.fill(.ultraThinMaterial)
-                wash.opacity(colorScheme == .dark ? 0.72 : 0.55)
-                shape.fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.18))
+                wash.opacity(colorScheme == .dark ? 0.72 : GlassContrast.recordingWashOpacity)
+                shape.fill(Color.white.opacity(colorScheme == .dark ? 0.08 : GlassContrast.recordingFrostOpacity))
                 shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0 : 0.30), lineWidth: 1)
             }
         }

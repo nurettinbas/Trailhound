@@ -12,7 +12,7 @@ struct StatsVehicleCompareList: View {
             HStack(alignment: .center, spacing: 4) {
                 Text(L10n.string("stats.compare.vehicles_title"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme))
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
                 HelpPopoverButton(

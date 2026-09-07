@@ -265,6 +265,7 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.2))
                 AxisValueLabel()
                     .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
             }
         }
     }
@@ -277,7 +278,7 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.10))
                 AxisValueLabel()
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
             }
         }
     }
@@ -299,6 +300,7 @@ extension View {
                     AxisValueLabel(centered: true) {
                         Text(label(date))
                             .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                     }
@@ -314,6 +316,7 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.2))
                 AxisValueLabel()
                     .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
             }
         }
         .chartStatsYAxisStyle()
@@ -341,7 +344,7 @@ struct StatsBarValueLabel: View {
     var body: some View {
         Text(text)
             .font(StatsChartTheme.barValueLabelFont(barCount: barCount))
-            .foregroundStyle(.primary.opacity(0.78))
+            .foregroundStyle(Color.white.opacity(0.90))
             .lineLimit(1)
             .minimumScaleFactor(0.45)
             .monospacedDigit()

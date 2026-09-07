@@ -67,7 +67,7 @@ enum DeviceTestChecklist {
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
-        "Appearance Light: pastel shell (not navy), dark type, light tab bar and DatePickers; Graphite/Gold palettes stay light; Dark is still navy",
+        "Appearance Light: open palette glass (Forest/Gold stay a bright wash, not olive plates) + white type; floating tab bar stays system; Dark keeps the deep shade",
         "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
     ]
 }

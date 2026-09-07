@@ -208,7 +208,7 @@ struct OnboardingView: View {
                 if let message {
                     Text(message)
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -245,7 +245,7 @@ struct OnboardingView: View {
 
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -256,7 +256,7 @@ struct OnboardingView: View {
         case .authorizedAlways:
             Text(L10n.string("onboarding.permission.granted"))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
         case .denied, .restricted:
             Button(L10n.locationBannerSettings) {
                 openAppSettings()
@@ -277,7 +277,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
-                    .fill(index == page ? Color.primary : Color.secondary.opacity(0.25))
+                    .fill(index == page ? Color.white : Color.white.opacity(0.32))
                     .frame(width: index == page ? 18 : 8, height: 8)
                     .animation(TrailhoundMotion.gentle, value: page)
             }
@@ -295,7 +295,7 @@ struct OnboardingView: View {
                         page -= 1
                     }
                 }
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
             }
 
             Spacer()

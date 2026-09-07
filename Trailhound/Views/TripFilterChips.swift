@@ -120,7 +120,7 @@ struct TripListFiltersBar: View {
 
             Text(weekSummaryText)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .lineLimit(1)
                 .multilineTextAlignment(.trailing)
                 .numericTextAnimation(value: weekSummaryText)
@@ -156,7 +156,7 @@ struct TripListFiltersBar: View {
                     searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(GlassText.secondary(for: colorScheme))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.placePickerSearchClear)
@@ -403,11 +403,13 @@ struct TripListFiltersBar: View {
         HStack(alignment: .center, spacing: 6) {
             Text("\(label):")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .fixedSize()
                 .accessibilityHidden(true)
 
-            chips()
+            GlassChipGroup(spacing: 6) {
+                chips()
+            }
         }
         .frame(height: 32)
         .accessibilityElement(children: .contain)
@@ -514,6 +516,7 @@ struct TripFilterChips: View {
 
     @Namespace private var chipNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     private var selectionKey: String {
         if let selectedCategoryID { return "category:\(selectedCategoryID)" }
@@ -532,29 +535,31 @@ struct TripFilterChips: View {
         HStack(alignment: .center, spacing: 6) {
             Text("\(L10n.filterCategory):")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .fixedSize()
                 .padding(.leading, leadingInset)
                 .accessibilityHidden(true)
 
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        filterChip(
-                            title: L10n.all,
-                            key: "all",
-                            isSelected: selectedCategoryID == nil
-                        ) {
-                            selectedCategoryID = nil
-                        }
-                        ForEach(categories) { category in
-                            let id = category.id.uuidString
+                    GlassChipGroup(spacing: 8) {
+                        HStack(spacing: 8) {
                             filterChip(
-                                title: category.name,
-                                key: "category:\(id)",
-                                isSelected: selectedCategoryID == id
+                                title: L10n.all,
+                                key: "all",
+                                isSelected: selectedCategoryID == nil
                             ) {
-                                selectedCategoryID = selectedCategoryID == id ? nil : id
+                                selectedCategoryID = nil
+                            }
+                            ForEach(categories) { category in
+                                let id = category.id.uuidString
+                                filterChip(
+                                    title: category.name,
+                                    key: "category:\(id)",
+                                    isSelected: selectedCategoryID == id
+                                ) {
+                                    selectedCategoryID = selectedCategoryID == id ? nil : id
+                                }
                             }
                         }
                     }

@@ -91,9 +91,9 @@ struct RecordingEndCreditsView: View {
         .padding(.vertical, 8)
         .background {
             ZStack {
-                RecordingCardStyle.glassSurface(isPaused: false)
+                RecordingCardStyle.listSurface(isPaused: false)
                     .opacity(1 - Double(brakeProgress) * 0.35)
-                RecordingCardStyle.glassSurface(isPaused: true)
+                RecordingCardStyle.listSurface(isPaused: true)
                     .opacity(Double(brakeProgress) * 0.85)
                 RadialGradient(
                     colors: [

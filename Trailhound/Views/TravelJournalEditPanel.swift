@@ -47,7 +47,7 @@ struct TravelJournalEditPanel: View {
                         } header: {
                             Text(DateFormatters.tripDateOnly.string(from: group.day))
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .glassSecondaryInk()
                                 .textCase(nil)
                         }
                     }
@@ -72,7 +72,7 @@ struct TravelJournalEditPanel: View {
                 .frame(width: 36, height: 5)
             Image(systemName: "chevron.compact.up")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .glassTertiaryInk()
                 .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 .padding(.top, 4)
         }
@@ -109,7 +109,7 @@ struct TravelJournalEditPanel: View {
                         .font(.headline)
                     Text(L10n.journalDateRange(start: journal.startedOn, end: journal.endedOn))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                 }
                 Spacer()
                 Button(L10n.string("journal.edit"), action: onEdit)
@@ -120,7 +120,7 @@ struct TravelJournalEditPanel: View {
             if let note = journal.note, !note.isEmpty {
                 Text(note)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .lineLimit(isExpanded ? 4 : 2)
             }
 

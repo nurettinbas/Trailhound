@@ -32,14 +32,14 @@ struct VehicleCareBannerView: View {
                 VehicleCareDueCalculator.subtitle(for: item.state, title: item.title)
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
             .lineLimit(1)
             .multilineTextAlignment(.trailing)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
             }
             .buttonStyle(.plain)
         }

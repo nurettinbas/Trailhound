@@ -7,10 +7,12 @@ Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards
 | Token | Light | Dark |
 |---|---|---|
 | Atmosphere | Selected `ShellPalette` light triplet (Sky default `#7DBCF5` → `#4F9BE6` → `#2E73C9`) | Selected `ShellPalette` dark triplet (Sky default navy) |
-| Panel fill | white 0.10 + palette tint 0.22 + 1 pt white rim 0.22 | `ultraThinMaterial` + palette tint |
-| Chrome / chips | white 0.08; selected tint fill + white type | palette tint selected pill |
-| Native glass tint | palette tint 0.18 (not milky white) | n/a (legacy material) |
-| Text | white / white 0.74 | `.primary` / `.secondary` |
+| Panel fill | Atmosphere mid + light same-hue mix (~0.22, 0.34 Increased Contrast) + white frost 0.03 + white rim 0.28 — not chrome | `ultraThinMaterial` + palette tint |
+| Chrome / chips | Selected = mid-family fill + white type; unselected = frost + white | palette tint selected pill |
+| Native glass tint | same mid-family hue 0.16 (0.26 Increased Contrast) | n/a (legacy material) |
+| Text | white / white 0.88 / white 0.70 | `.primary` / `.secondary` |
+| Solid / Reduce Transparency | Opaque mid mixed slightly toward bottom — never system grouped white, never chrome plate | system grouped + tint |
+| Field wells | mid-family tint 0.18 | white 0.10 |
 | Control tint | white on the colored shell | palette tint |
 | Tab selection | palette tint icon + iOS 26 pill; unselected dark ink on the white floating bar | palette tint; unselected secondary |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
@@ -41,19 +43,21 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 
 ## Accessibility
 
-- Increased Contrast raises Light panel fill to 0.32. It does not darken the pastel atmosphere.
-- Reduce Transparency uses `GlassEngine.solid`.
+- Body copy on Light glass is white. Do **not** darken cards to force a WCAG 4.5:1 composite — that turns Forest/Gold into olive plates. Increased Contrast raises mid-family tint and rim, not white frost.
+- Reduce Transparency uses `GlassEngine.solid` with opaque mid-family fill, not system grouped white and not chrome.
 - Reduce Motion skips chip morph and sheen animation.
 - VoiceOver labels are unchanged. Palette swatches use `settings.shellPalette.<id>`.
+- System exceptions stay system: floating tab bar, `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity.
+- Legitimate blacks stay black: map vignette/dimming, delete/merge scrims, shadows, camera/crop stage. Semantic Stop/unread remains solid red.
 
 ## Code map
 
 | File | Role |
 |---|---|
-| `ShellPalette.swift` | 20 hues, Light/Dark triplets, tint, chrome, luminance |
+| `ShellPalette.swift` / `GlassContrast.swift` | 20 hues, Light/Dark triplets, mid-family glass tint (not chrome plates) |
 | `GlassEngine.swift` | Resolve native / material / solid |
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
-| `GlassEnvironment.swift` | `.onGlassShell()`, `.glassAccentForeground()`, `shellPalette` env |
+| `GlassEnvironment.swift` | `.onGlassShell()`, `.glassPrimaryInk()` / `.glassSecondaryInk()` / `.glassTertiaryInk()`, `.glassAccentForeground()`, `shellPalette` env |
 | `GlassControls.swift` | Toggle tint, section header/footer, nav circle icon |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |

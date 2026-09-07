@@ -140,6 +140,7 @@ struct StatsChartSkeleton: View {
     var reduceMotion: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @State private var shimmerPhase = false
 
     var body: some View {
@@ -174,6 +175,6 @@ struct StatsChartSkeleton: View {
     private var baseFill: Color {
         colorScheme == .dark
             ? Color.white.opacity(0.08)
-            : Color.white.opacity(0.20)
+            : shellPalette.glassReadabilityTint(for: .light).opacity(GlassContrast.nestedTileTintOpacity)
     }
 }

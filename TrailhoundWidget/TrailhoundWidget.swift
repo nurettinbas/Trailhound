@@ -320,6 +320,14 @@ struct TrailhoundWidgetView: View {
         renderingMode != .fullColor
     }
 
+    private var widgetPrimary: Color {
+        usesLiquidGlassLayout ? Color.primary : Color.white
+    }
+
+    private var widgetSecondary: Color {
+        usesLiquidGlassLayout ? Color.secondary : Color.white.opacity(0.88)
+    }
+
     var body: some View {
         switch family {
         case .systemSmall:
@@ -352,13 +360,13 @@ struct TrailhoundWidgetView: View {
                     .lineLimit(1)
                 Text(DateFormatters.formatDistance(entry.distanceMeters))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
                 Spacer(minLength: 0)
                 recordingControlsSmall
             } else {
                 Text(WidgetL10n.thisWeek)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
                 Text(DateFormatters.formatDistance(entry.weekDistanceMeters))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .monospacedDigit()
@@ -391,7 +399,7 @@ struct TrailhoundWidgetView: View {
             } else {
                 Text(WidgetL10n.thisWeek)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
                 Text(DateFormatters.formatDistance(entry.weekDistanceMeters))
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .monospacedDigit()
@@ -415,17 +423,17 @@ struct TrailhoundWidgetView: View {
                     .contentTransition(.numericText())
                 Text(DateFormatters.formatDistance(entry.distanceMeters))
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
             } else {
                 Text(WidgetL10n.thisWeek)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
                 Text(DateFormatters.formatDistance(entry.weekDistanceMeters))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text(WidgetL10n.noRecording)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(widgetSecondary)
             }
 
             Spacer(minLength: 0)

@@ -62,7 +62,7 @@ struct TravelJournalEditorSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(L10n.journalTitle)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                         TextField(L10n.journalTitlePlaceholder, text: $draft.title)
                             .glassInputField()
                             .focused($focusedField, equals: .title)
@@ -77,7 +77,7 @@ struct TravelJournalEditorSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(L10n.journalNote)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                         TextField(L10n.journalNotePlaceholder, text: $draft.note, axis: .vertical)
                             .lineLimit(2...4)
                             .glassInputField()
@@ -112,11 +112,11 @@ struct TravelJournalEditorSheet: View {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(TripListViewModel.routeSummary(for: trip))
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.primary)
+                                        .glassPrimaryInk()
                                         .lineLimit(2)
                                     Text(TripListViewModel.dateText(for: trip))
                                         .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                        .glassSecondaryInk()
                                         .lineLimit(1)
                                 }
                                 Spacer(minLength: 0)

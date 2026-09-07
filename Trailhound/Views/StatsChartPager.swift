@@ -106,7 +106,7 @@ struct StatsChartPager<Content: View>: View {
                     .fill(
                         index == clampedSelection
                             ? shellPalette.tintColor(for: colorScheme)
-                            : Color.secondary.opacity(0.25)
+                            : Color.white.opacity(0.28)
                     )
                     .frame(width: index == clampedSelection ? 18 : 8, height: 8)
                     .animation(motionReduced ? nil : TrailhoundMotion.snappy, value: clampedSelection)

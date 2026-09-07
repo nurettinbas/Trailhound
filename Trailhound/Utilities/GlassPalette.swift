@@ -6,35 +6,42 @@ enum LightGlassPalette {
     static let atmosphereMid = ShellPalette.sky.atmosphere(for: .light).mid.color
     static let atmosphereBottom = ShellPalette.sky.atmosphere(for: .light).bottom.color
 
-    static let panelFillOpacity = 0.10
-    static let panelRimOpacity = 0.22
-    static let panelSheenOpacity = 0.10
-    static let chromeFillOpacity = 0.08
-    static let chromeRimOpacity = 0.20
-    static let fieldFillOpacity = 0.12
-    static let formPanelFillOpacity = 0.12
-    static let nativeGlassTintOpacity = 0.18
+    static let panelFillOpacity = GlassContrast.panelFrostOpacity
+    static let panelRimOpacity = 0.28
+    static let panelSheenOpacity = GlassContrast.panelSheenOpacity
+    static let chromeFillOpacity = GlassContrast.chromeFrostOpacity
+    static let chromeRimOpacity = 0.26
+    static let fieldFillOpacity = GlassContrast.fieldTintOpacity
+    static let formPanelFillOpacity = GlassContrast.fieldTintOpacity
+    static let nativeGlassTintOpacity = GlassContrast.nativeGlassTintOpacity
+    static let atmosphereVeilOpacity = GlassContrast.atmosphereVeilOpacity
 
-    static let selectedChipFill = Color.white.opacity(0.92)
-    static let unselectedChipFill = Color.white.opacity(0.58)
-    static let selectedChipText = Color(red: 0.122, green: 0.373, blue: 0.686)
-    static let badgeFill = Color.white.opacity(0.92)
-    static let badgeText = Color(red: 0.122, green: 0.373, blue: 0.686)
+    static let selectedChipFill = Color.white
+    static let unselectedChipFill = Color.white.opacity(0.18)
+    static let selectedChipText = Color.white
+    static let badgeFill = Color.white.opacity(0.18)
+    static let badgeText = Color.white
 
     static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.74)
-    static let textTertiary = Color.white.opacity(0.52)
-    static let textPlaceholder = Color.white.opacity(0.50)
-    static let textDisabled = Color.white.opacity(0.38)
+    static let textSecondary = Color.white.opacity(GlassContrast.textSecondaryOpacity)
+    static let textTertiary = Color.white.opacity(GlassContrast.textTertiaryOpacity)
+    static let textPlaceholder = Color.white.opacity(GlassContrast.textPlaceholderOpacity)
+    static let textDisabled = Color.white.opacity(GlassContrast.textDisabledOpacity)
 
+    /// Sky chrome — kept so existing Sky control tests stay pinned.
     static let controlTint = Color(red: 0.090, green: 0.294, blue: 0.561)
     static let nativeGlassTint = Color.white.opacity(0.08)
 
-    static func nativeTint(for palette: ShellPalette) -> Color {
-        palette.tintColor(for: .light).opacity(nativeGlassTintOpacity)
+    static func nativeTint(for palette: ShellPalette, increasedContrast: Bool = false) -> Color {
+        palette.glassReadabilityTint(for: .light).opacity(
+            GlassContrast.adaptiveNativeTintOpacity(
+                palette: palette,
+                increasedContrast: increasedContrast
+            )
+        )
     }
 
-    static let increasedContrastPanelFill = 0.32
+    static let increasedContrastTintBoost = GlassContrast.increasedContrastTintBoost
     static let contrastDarken = 0.15
 
     static let recording = Color(red: 1.00, green: 0.420, blue: 0.420)
@@ -44,6 +51,10 @@ enum LightGlassPalette {
 
     static func darkened(_ color: Color) -> Color {
         color.opacity(1 - contrastDarken)
+    }
+
+    static func selectedChipFill(for palette: ShellPalette) -> Color {
+        GlassContrast.selectedChipFill(palette: palette).color
     }
 }
 
@@ -92,7 +103,6 @@ enum GlassSemantic {
 
 enum GlassControlTint {
     static func toggle(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        // ON fill must stay saturated — white-on-beige Light rows make the switch vanish.
         palette.tintColor(for: scheme)
     }
 
@@ -107,4 +117,10 @@ enum GlassControlTint {
     static func link(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         palette.shellTint(for: scheme)
     }
+}
+
+enum GlassHostBudget {
+    /// Screen-local cap. Do not assert this globally — tab lifecycle, sheets, and
+    /// off-screen lists would false-positive. Chips share one host via `GlassChipGroup`.
+    static let maxNativeHostsPerScreen = 8
 }

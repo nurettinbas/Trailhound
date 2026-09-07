@@ -625,7 +625,7 @@ struct StatsView: View {
                 .background(
                     colorScheme == .dark
                         ? shellPalette.tintColor(for: .dark)
-                        : shellPalette.chromeColor(for: .light),
+                        : LightGlassPalette.selectedChipFill(for: shellPalette),
                     in: Capsule()
                 )
                 .accessibilityHidden(true)
@@ -657,8 +657,10 @@ struct StatsView: View {
     private var statsPeriodChipRow: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 8) {
-                    statsPeriodChips
+                GlassChipGroup(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        statsPeriodChips
+                    }
                 }
             } else {
                 GlassChipGroup(spacing: 6) {
@@ -782,9 +784,7 @@ struct StatsView: View {
     }
 
     private var monthControlInk: Color {
-        colorScheme == .dark
-            ? shellPalette.tintColor(for: .dark)
-            : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var statsMonthPicker: some View {
@@ -814,7 +814,7 @@ struct StatsView: View {
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption2.weight(.bold))
                 }
-                .foregroundStyle(colorScheme == .dark ? shellPalette.tintColor(for: .dark) : shellPalette.chromeColor(for: .light))
+                .foregroundStyle(GlassText.primary(for: colorScheme))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
                 .contentShape(Rectangle())
@@ -871,7 +871,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(colorScheme == .dark ? Color.secondary : shellPalette.chromeColor(for: .light).opacity(0.62))
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
@@ -937,7 +937,7 @@ struct StatsView: View {
             .disabled(kilometers <= minimum)
 
             Rectangle()
-                .fill(Color.primary.opacity(0.2))
+                .fill(Color.white.opacity(0.2))
                 .frame(width: 0.5, height: 12)
 
             Button {
@@ -953,7 +953,7 @@ struct StatsView: View {
             .disabled(kilometers >= maximum)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.primary)
+        .foregroundStyle(GlassText.primary(for: colorScheme))
         .glassField(cornerRadius: 12)
         .fixedSize()
         .accessibilityElement(children: .ignore)
@@ -1266,7 +1266,7 @@ struct StatsView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(GlassText.primary(for: colorScheme))
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
                 Spacer(minLength: 0)
@@ -2407,27 +2407,19 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
     }
 
     private var fieldInk: Color {
-        colorScheme == .dark
-            ? Color.primary
-            : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var fieldTitleInk: Color {
-        colorScheme == .dark
-            ? Color.secondary
-            : shellPalette.chromeColor(for: .light).opacity(0.62)
+        GlassText.secondary(for: colorScheme)
     }
 
     private var fieldFill: Color {
-        colorScheme == .dark
-            ? GlassTokens.fieldFill(for: .dark)
-            : Color.white.opacity(0.20)
+        GlassTokens.fieldFill(for: colorScheme, palette: shellPalette)
     }
 
     private var fieldTint: Color {
-        colorScheme == .dark
-            ? Color.clear
-            : shellPalette.tintColor(for: .light).opacity(0.16)
+        Color.clear
     }
 
     private var borderColor: Color {

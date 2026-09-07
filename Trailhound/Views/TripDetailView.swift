@@ -727,17 +727,9 @@ struct TripDetailView: View {
         .glassChrome(cornerRadius: 14, frozen: glassFrozen)
     }
 
-    /// Light glass well over the map uses chrome ink so the legend stays readable.
+    /// Light glass well over the map uses the white type hierarchy.
     private var legendInk: Color {
-        if settings.appearanceMode.preferredColorScheme == .dark {
-            return Color.primary
-        }
-        if settings.appearanceMode.preferredColorScheme == .light {
-            return shellPalette.chromeColor(for: .light)
-        }
-        return UITraitCollection.current.userInterfaceStyle == .dark
-            ? Color.primary
-            : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private func legendChip(color: Color, text: String) -> some View {
@@ -912,7 +904,7 @@ private struct TripSharePreviewSheet: View {
                     if let caption, !caption.isEmpty {
                         Text(caption)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                             .lineLimit(4)
@@ -933,6 +925,7 @@ private struct TripSharePreviewSheet: View {
             .navigationTitle(L10n.shareCardPreviewTitle)
             .navigationBarTitleDisplayMode(.inline)
             .glassNavigationChrome()
+            .onGlassShell()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L10n.actionClose, action: onClose)

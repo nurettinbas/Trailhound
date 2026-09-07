@@ -74,11 +74,15 @@ final class GlassPaletteTests: XCTestCase {
         )
     }
 
-    func testSelectedChipIsWhiteOnBlue() {
-        XCTAssertEqual(LightGlassPalette.selectedChipFill, Color.white.opacity(0.92))
+    func testSelectedChipIsWhiteOnPaletteFill() {
+        XCTAssertEqual(LightGlassPalette.selectedChipText, Color.white)
         XCTAssertEqual(
-            LightGlassPalette.selectedChipText,
-            Color(red: 0.122, green: 0.373, blue: 0.686)
+            LightGlassPalette.selectedChipFill(for: .sky),
+            GlassContrast.selectedChipFill(palette: .sky).color
+        )
+        XCTAssertNotEqual(
+            LightGlassPalette.selectedChipFill(for: .sky),
+            ShellPalette.sky.chromeColor(for: .light)
         )
     }
 
@@ -100,7 +104,13 @@ final class GlassPaletteTests: XCTestCase {
         XCTAssertNotEqual(sky, magenta)
         XCTAssertEqual(
             sky,
-            ShellPalette.sky.tintColor(for: .light).opacity(LightGlassPalette.nativeGlassTintOpacity)
+            ShellPalette.sky.glassReadabilityTint(for: .light).opacity(
+                GlassContrast.adaptiveNativeTintOpacity(palette: .sky, increasedContrast: false)
+            )
+        )
+        XCTAssertGreaterThanOrEqual(
+            GlassContrast.adaptiveNativeTintOpacity(palette: .sky, increasedContrast: false),
+            GlassContrast.nativeGlassTintOpacity
         )
     }
 }

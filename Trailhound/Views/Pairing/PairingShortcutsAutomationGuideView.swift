@@ -23,10 +23,10 @@ struct PairingShortcutsAutomationCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.pairingShortcutsGuideCardTitle)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .glassPrimaryInk()
                     Text(L10n.pairingShortcutsGuideCardSubtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -39,7 +39,7 @@ struct PairingShortcutsAutomationCard: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .glassTertiaryInk()
             }
             .contentShape(Rectangle())
         }
@@ -162,7 +162,7 @@ struct PairingShortcutsAutomationGuideView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.pairingShortcutsGuideStepProgress(current: stepIndex + 1, total: steps.count))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
 
             GeometryReader { geo in
                 let progress = CGFloat(stepIndex + 1) / CGFloat(max(steps.count, 1))
@@ -281,7 +281,9 @@ struct PairingShortcutsAutomationGuideView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        .background {
+            GlassToolbarControlBackground(shape: Rectangle())
+        }
     }
 
     private var prerequisiteSection: some View {
@@ -290,7 +292,7 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuidePrerequisiteBody)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             Toggle(L10n.pairingShortcutsGuideSilentStart, isOn: $settings.confirmExternalRecordingStart.inverted)
@@ -309,7 +311,7 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuideTriggersIntro)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 0) {
@@ -344,12 +346,12 @@ struct PairingShortcutsAutomationGuideView: View {
 
             Text(L10n.pairingShortcutsGuideHandoffBody)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(L10n.pairingShortcutsGuideNote)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
             ShortcutsLink()
@@ -482,7 +484,7 @@ struct PairingShortcutsAutomationGuideView: View {
                     .font(.subheadline.weight(.semibold))
                 Text(body)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -591,7 +593,7 @@ struct PairingShortcutsAutomationGuideView: View {
                 .foregroundStyle(brandAccent)
             Image(systemName: "chevron.right")
                 .font(.system(size: 7, weight: .bold))
-                .foregroundStyle(.tertiary)
+                .glassTertiaryInk()
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(brandAccent)

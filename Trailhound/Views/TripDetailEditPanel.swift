@@ -138,21 +138,19 @@ struct TripDetailEditPanel: View {
         selectedDetailVehicle?.name ?? L10n.string("trip.edit.vehicle_none")
     }
 
-    /// Light glass wells use palette chrome so field labels stay readable on frost.
+    /// Light glass wells use the white type hierarchy.
     private var fieldInk: Color {
-        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var fieldSecondaryInk: Color {
-        colorScheme == .dark
-            ? Color.secondary
-            : shellPalette.chromeColor(for: .light).opacity(0.62)
+        GlassText.secondary(for: colorScheme)
     }
 
     private var fieldTint: Color {
         colorScheme == .dark
             ? shellPalette.tintColor(for: .dark)
-            : shellPalette.chromeColor(for: .light)
+            : Color.white
     }
 
     private var previewFuelCost: Double {
@@ -500,11 +498,11 @@ struct TripDetailEditPanel: View {
                 if let previewDynamic = previewDynamicFuelCost {
                     Text("\(L10n.dynamicFuel): \(FuelCostCalculator.formatCost(previewDynamic, currencyCode: settings.fuelCurrency.rawValue))")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                 }
             }
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .glassSecondaryInk()
             .padding(.top, -6)
 
             detailSection(title: L10n.tripEditNote) {
@@ -544,7 +542,7 @@ struct TripDetailEditPanel: View {
 
             Text(viewModel.dateText)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -665,7 +663,7 @@ struct TripDetailEditPanel: View {
             HStack(alignment: .center, spacing: 4) {
                 Label(metric.title, systemImage: metric.icon)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
                     .labelStyle(.titleAndIcon)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -715,7 +713,7 @@ struct TripDetailEditPanel: View {
                     Text(L10n.formatSpeedKmh(0))
                         .font(.caption2)
                 }
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .frame(width: 34, height: 120)
 
                 SpeedChartRouteCanvas(
@@ -1051,7 +1049,7 @@ struct TripDetailEditPanel: View {
                 }
             } else {
                 Text(L10n.placeAlreadySaved)
-                    .foregroundStyle(.secondary)
+                    .glassSecondaryInk()
             }
         }
     }
@@ -1213,19 +1211,17 @@ private struct TripStopEditRow: View {
     private let durationRange = 1...240
 
     private var fieldInk: Color {
-        colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var fieldSecondaryInk: Color {
-        colorScheme == .dark
-            ? Color.secondary
-            : shellPalette.chromeColor(for: .light).opacity(0.62)
+        GlassText.secondary(for: colorScheme)
     }
 
     private var fieldTint: Color {
         colorScheme == .dark
             ? shellPalette.tintColor(for: .dark)
-            : shellPalette.chromeColor(for: .light)
+            : Color.white
     }
 
     private var durationMinutes: Binding<Int> {
@@ -1322,7 +1318,7 @@ private struct TripStopEditRow: View {
     }
 }
 
-/// Light `glassChrome` wells use a tinted fill and absolute chrome ink.
+/// Light `glassChrome` wells use a tinted fill and white type.
 private struct TripDetailEditWell: ViewModifier {
     var padding: CGFloat = 8
     var fillsHeight: Bool = false
@@ -1346,9 +1342,7 @@ private struct TripDetailEditWell: ViewModifier {
     }
 
     private var ink: Color {
-        colorScheme == .dark
-            ? Color.primary
-            : shellPalette.chromeColor(for: .light)
+        GlassText.primary(for: colorScheme)
     }
 
     private var well: some View {
@@ -1356,19 +1350,11 @@ private struct TripDetailEditWell: ViewModifier {
         return shape
             .fill(fill)
             .overlay {
-                shape.fill(
-                    shellPalette.tintColor(for: colorScheme)
-                        .opacity(colorScheme == .dark ? 0.22 : 0.18)
-                )
-            }
-            .overlay {
-                shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.55), lineWidth: 1)
+                shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.28), lineWidth: 1)
             }
     }
 
     private var fill: Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.10)
-            : LightGlassPalette.unselectedChipFill
+        GlassTokens.fieldFill(for: colorScheme, palette: shellPalette)
     }
 }

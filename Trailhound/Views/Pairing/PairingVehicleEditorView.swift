@@ -68,6 +68,12 @@ struct PairingVehicleEditorView: View {
                 )
             } else {
                 ContentUnavailableView(L10n.pairingTabVehicleNotFound, systemImage: "car")
+                    .onGlassShell()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background {
+                        AtmosphericBackground(style: .full)
+                            .ignoresSafeArea()
+                    }
             }
         }
         .toolbar {
@@ -291,7 +297,7 @@ struct PairingVehicleEditorForm: View {
         } label: {
             HStack {
                 Text(L10n.pairingTabDefaultVehicle)
-                    .foregroundStyle(.primary)
+                    .glassPrimaryInk()
                 Spacer()
                 Image(systemName: activeDraft.wantsDefault ? "checkmark.square.fill" : "square")
                     .font(.title3)
@@ -452,15 +458,14 @@ struct PairingVehicleEditorForm: View {
 
     private func sideButtonForeground(_ role: PhotoSideRole) -> Color {
         switch role {
-        case .destructive, .edit: return .white
-        case .change: return .primary
+        case .destructive, .edit, .change: return .white
         }
     }
 
     private func sideButtonFill(_ role: PhotoSideRole) -> Color {
         switch role {
         case .destructive: return deleteAccent
-        case .change: return Color.primary.opacity(0.08)
+        case .change: return shellPalette.glassReadabilityTint(for: colorScheme).opacity(0.45)
         case .edit: return shellPalette.tintColor(for: colorScheme)
         }
     }
@@ -542,7 +547,10 @@ struct PairingVehicleEditorForm: View {
 
                 if isProcessingPhoto {
                     RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .fill(.ultraThinMaterial)
+                        .fill(
+                            shellPalette.glassReadabilityTint(for: colorScheme)
+                                .opacity(GlassContrast.nestedTileTintOpacity)
+                        )
                         .frame(width: photoHeroSide, height: photoHeroSide)
                     ProgressView()
                 }

@@ -48,6 +48,7 @@ struct LocationPermissionBadge: View {
 
 struct LocationAlwaysRequiredBanner: View {
   @Environment(LocationService.self) private var locationService
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     if locationService.authorizationState == .authorizedAlways {
@@ -59,7 +60,7 @@ struct LocationAlwaysRequiredBanner: View {
         VStack(alignment: .leading, spacing: 6) {
           Text(L10n.pairingLocationWarning)
             .font(.caption)
-            .foregroundStyle(.primary)
+            .foregroundStyle(GlassText.primary(for: colorScheme))
             .fixedSize(horizontal: false, vertical: true)
           locationAction
         }
@@ -94,6 +95,7 @@ struct LocationAlwaysRequiredBanner: View {
 
 struct LocationPermissionBanner: View {
   @Environment(LocationService.self) private var locationService
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     switch locationService.authorizationState {
@@ -135,7 +137,7 @@ struct LocationPermissionBanner: View {
         .foregroundStyle(.orange)
       Text(message)
         .font(.caption)
-        .foregroundStyle(.primary)
+        .foregroundStyle(GlassText.primary(for: colorScheme))
       Spacer(minLength: 0)
       if let actionTitle, let action {
         Button(actionTitle, action: action)

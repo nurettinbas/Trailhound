@@ -161,7 +161,6 @@ struct DeleteConfirmHostModifier: ViewModifier {
 private struct DeleteConfirmCard: View {
     let request: DeleteConfirmRequest
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
 
     private let buttonHeight: CGFloat = 48
 
@@ -175,23 +174,25 @@ private struct DeleteConfirmCard: View {
 
             Text(request.title)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(titleInk)
+                .foregroundStyle(GlassText.primary(for: colorScheme))
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
             Text(request.message)
                 .font(.subheadline)
-                .foregroundStyle(messageInk)
+                .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 10) {
                 Button {
                     DeleteConfirmPresenter.shared.cancel()
                 } label: {
-                    buttonLabel(L10n.cancel, color: cancelTitleColor)
+                    buttonLabel(L10n.cancel, color: GlassText.primary(for: colorScheme))
                 }
                 .buttonStyle(.plain)
-                .background { cancelGlass }
+                .background {
+                    GlassToolbarControlBackground(shape: Capsule(style: .continuous))
+                }
                 .frame(maxWidth: .infinity, minHeight: buttonHeight)
 
                 Button {
@@ -219,34 +220,6 @@ private struct DeleteConfirmCard: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity, minHeight: buttonHeight)
-    }
-
-    private var titleInk: Color {
-        colorScheme == .dark ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.14)
-    }
-
-    private var messageInk: Color {
-        colorScheme == .dark ? Color.white.opacity(0.72) : Color.black.opacity(0.55)
-    }
-
-    /// Absolute ink so confirm/cancel labels stay readable on the glass dialog.
-    private var cancelTitleColor: Color {
-        colorScheme == .dark
-            ? Color.white
-            : Color(red: 0.12, green: 0.12, blue: 0.14)
-    }
-
-    private var cancelGlass: some View {
-        Capsule(style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay {
-                Capsule(style: .continuous)
-                    .fill(shellPalette.tintColor(for: colorScheme).opacity(colorScheme == .dark ? 0.28 : 0.16))
-            }
-            .overlay {
-                Capsule(style: .continuous)
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.22 : 0.35), lineWidth: 1)
-            }
     }
 }
 

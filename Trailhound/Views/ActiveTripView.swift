@@ -144,13 +144,12 @@ private struct RecordingLiveMapOpenButton: View {
                     )
                 }
             }
-            // Solid white pill — never `glassAccentForeground` (that follows shell white).
-            .foregroundStyle(shellPalette.chromeColor(for: .light))
+            .foregroundStyle(Color.white)
             .padding(.horizontal, hintExpanded ? 11 : 9)
             .frame(width: hintExpanded ? nil : 32, height: 32, alignment: .center)
             .background {
                 Capsule(style: .continuous)
-                    .fill(Color.white)
+                    .fill(shellPalette.glassReadabilityTint(for: colorScheme))
             }
             .overlay {
                 Capsule(style: .continuous)

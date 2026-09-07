@@ -71,7 +71,7 @@ struct VehicleExpenseEditorView: View {
                 if isCompletingSchedule, let schedule = completeSchedule {
                     LabeledContent(L10n.string("vehicles.care.schedule.title")) {
                         Text(schedule.title)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                     .glassRow(position: .first)
                 } else {
@@ -90,7 +90,7 @@ struct VehicleExpenseEditorView: View {
                             .keyboardType(.numberPad)
                             .focused($focusedField, equals: .amount)
                         Text(settings.fuelCurrency.symbol)
-                            .foregroundStyle(.secondary)
+                            .glassSecondaryInk()
                     }
                 }
                 .glassRow(position: .middle)
@@ -106,7 +106,7 @@ struct VehicleExpenseEditorView: View {
                 if activeDraft.isInstallmentPlan, let preview = installmentPreviewText {
                     Text(preview)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .glassSecondaryInk()
                         .glassRow(position: .middle)
                 }
 

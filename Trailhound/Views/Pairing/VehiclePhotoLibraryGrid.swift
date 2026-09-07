@@ -87,7 +87,9 @@ struct VehiclePhotoLibraryGrid: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                    .background {
+                        GlassToolbarControlBackground(shape: Capsule(style: .continuous))
+                    }
             }
             .buttonStyle(VehiclePhotoPressStyle())
             .accessibilityLabel(L10n.pairingTabVehiclePhotoAllPhotos)
@@ -100,13 +102,13 @@ struct VehiclePhotoLibraryGrid: View {
         VStack(spacing: 14) {
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
             Text(L10n.pairingTabVehiclePhotoLibraryDeniedTitle)
                 .font(.headline)
                 .multilineTextAlignment(.center)
             Text(L10n.pairingTabVehiclePhotoLibraryDeniedMessage)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .multilineTextAlignment(.center)
             Button(L10n.pairingTabVehiclePhotoOpenSettings, action: onOpenSettings)
                 .trailhoundProminentButton()
@@ -120,10 +122,10 @@ struct VehiclePhotoLibraryGrid: View {
         VStack(spacing: 12) {
             Image(systemName: "photo")
                 .font(.largeTitle)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
             Text(L10n.pairingTabVehiclePhotoLibraryEmpty)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .glassSecondaryInk()
                 .multilineTextAlignment(.center)
         }
         .padding(28)
@@ -140,7 +142,9 @@ struct VehiclePhotoLibraryGrid: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
+                .background {
+                    GlassToolbarControlBackground(shape: Circle())
+                }
         }
         .buttonStyle(VehiclePhotoPressStyle())
         .accessibilityLabel(accessibility)
