@@ -489,7 +489,7 @@ private struct ShellPalettePicker: View {
                                 .strokeBorder(Color.white, lineWidth: 2.5)
                             Image(systemName: "checkmark")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(palette.usesLightChrome(for: colorScheme) ? Color.primary : Color.white)
+                                .foregroundStyle(Color.white)
                         }
                     }
                     .frame(width: 36, height: 36)

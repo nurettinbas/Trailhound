@@ -19,7 +19,11 @@ private struct GlassToggleTintModifier: ViewModifier {
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
-        content.tint(GlassControlTint.toggle(for: colorScheme, palette: shellPalette))
+        content
+            .tint(GlassControlTint.toggle(for: colorScheme, palette: shellPalette))
+            // Keep the system switch on the real Light/Dark chrome. A dark-scheme
+            // switch on a light grouped row is a white pill with no track.
+            .environment(\.colorScheme, colorScheme)
     }
 }
 
@@ -44,26 +48,47 @@ struct GlassSectionFooter: View {
     }
 }
 
-/// Nav-bar map control that matches the system back chip (light well + dark glyph
-/// in Light). Ignores `glassControlScheme` flipping the environment to dark.
+/// Palette-colored nav control used over maps where neutral system glass can clash
+/// with the selected shell appearance.
 struct GlassNavCircleIcon: View {
     let systemName: String
+    var isLoading: Bool = false
+
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
-        Image(systemName: systemName)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Color.primary)
-            .symbolRenderingMode(.monochrome)
-            .frame(width: 36, height: 36)
-            .background {
+        Group {
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: systemName)
+                    .font(.body.weight(.semibold))
+                    .symbolRenderingMode(.monochrome)
+            }
+        }
+        .foregroundStyle(Color.white)
+        .tint(Color.white)
+        .frame(width: 36, height: 36)
+        .background {
+            ZStack {
                 Circle()
                     .fill(.ultraThinMaterial)
-            }
-            .overlay {
                 Circle()
-                    .strokeBorder(Color.primary.opacity(chipScheme == .dark ? 0.22 : 0.10), lineWidth: 1)
+                    .fill(controlFill.opacity(chipScheme == .dark ? 0.72 : 0.88))
             }
-            .environment(\.colorScheme, chipScheme)
+        }
+        .overlay {
+            Circle()
+                .strokeBorder(Color.white.opacity(0.34), lineWidth: 1)
+        }
+        .environment(\.colorScheme, chipScheme)
+    }
+
+    private var controlFill: Color {
+        chipScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
     }
 
     /// Window / Settings appearance — not the flipped leaf `colorScheme`.

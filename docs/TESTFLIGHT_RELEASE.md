@@ -78,7 +78,7 @@ Optional smoke:
 
 ## Share card
 
-- [ ] **Share from trip detail** — preview then system share; home/work privacy radius clips the route (no raw GPS at saved places)
+- [ ] **Share from trip detail** — preview then system share; card + icon follow Appearance palette (not a fixed dark poster); home/work privacy radius clips the route (no raw GPS at saved places)
 
 ## Smart category (V20)
 

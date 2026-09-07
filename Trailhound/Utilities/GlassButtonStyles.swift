@@ -20,7 +20,7 @@ private struct TrailhoundProminentButtonModifier: ViewModifier {
     }
 }
 
-/// Light wells + `glassProminent` + chrome tint read as a dark-mode pill.
+/// Saturated shell: tint pill + white label.
 private struct LightChromeProminentButtonStyle: ButtonStyle {
     var chrome: Color
     var tint: Color
@@ -29,16 +29,12 @@ private struct LightChromeProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.semibold))
-            .foregroundStyle(chrome)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background {
                 Capsule(style: .continuous)
-                    .fill(LightGlassPalette.selectedChipFill)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .fill(tint.opacity(0.16))
-                    }
+                    .fill(tint)
                     .overlay {
                         Capsule(style: .continuous)
                             .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
@@ -74,7 +70,7 @@ private struct TrailhoundDestructiveButtonModifier: ViewModifier {
         content
             .buttonStyle(.plain)
             .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 34)
             .background {
                 Capsule(style: .continuous)
                     .fill(GlassSemantic.notificationBadge)

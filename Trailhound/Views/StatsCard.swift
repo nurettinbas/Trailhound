@@ -42,17 +42,19 @@ private struct StatsNestedTileModifier: ViewModifier {
         }
         return colorScheme == .dark
             ? Color.white.opacity(0.10)
-            : Color.white.opacity(0.16)
+            : Color.white.opacity(0.28)
     }
 }
 
 extension View {
-    /// Full-width Stats card in a clear List row — one Material, no list-row glass behind it.
+    /// Full-width Stats card in a clear List row — same frost as Vehicles / trip list
+    /// (`allowsNative: false`). Native light glass is a clear plate and the atmosphere leaks.
     func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset, frozen: Bool = false) -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
             contentInset: contentInset,
-            frozen: frozen
+            frozen: frozen,
+            allowsNative: false
         )
         .statsCardListRow()
     }
@@ -61,7 +63,8 @@ extension View {
     func statsHalfCard() -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
-            contentInset: StatsCardTokens.contentInset
+            contentInset: StatsCardTokens.contentInset,
+            allowsNative: false
         )
         .frame(
             maxWidth: .infinity,

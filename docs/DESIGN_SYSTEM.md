@@ -1,18 +1,18 @@
 # Design system — Liquid Glass
 
-Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards. Settings → Appearance includes a **20-color palette**. One hue is stored; Light uses a mid-tone pastel of that hue and Dark uses a deep shade of the same color. Default is **Sky** (the original brand blue). Pale Light hues (Gold, Lime, Sand) switch to dark type (`usesLightChrome`); other Light hues keep the white text hierarchy.
+Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards. Settings → Appearance includes a **20-color palette**. One hue is stored; Light uses a vivid wash of that hue with **white type**, and Dark uses a deep shade of the same color. Default is **Sky**.
 
 ## Tokens
 
 | Token | Light | Dark |
 |---|---|---|
-| Atmosphere | Selected `ShellPalette` light triplet (Sky default `#7DBDF5` → `#4F9BE6` → `#2F73C9`) | Selected `ShellPalette` dark triplet (Sky default navy) |
+| Atmosphere | Selected `ShellPalette` light triplet (Sky default `#7DBCF5` → `#4F9BE6` → `#2E73C9`) | Selected `ShellPalette` dark triplet (Sky default navy) |
 | Panel fill | white 0.10 + palette tint 0.22 + 1 pt white rim 0.22 | `ultraThinMaterial` + palette tint |
-| Chrome / chips | white 0.08; selected white 0.92 + palette chrome text | palette tint selected pill |
+| Chrome / chips | white 0.08; selected tint fill + white type | palette tint selected pill |
 | Native glass tint | palette tint 0.18 (not milky white) | n/a (legacy material) |
-| Text | white / 0.74 / 0.52, or `.primary` when `usesLightChrome` | `.primary` / `.secondary` |
-| Control tint | palette chrome (Sky `#174B8F`) — also the glyph on light glass wells | palette tint |
-| Tab selection | palette tint icon + iOS 26 pill; unselected dark type (light glass capsule) | palette tint; unselected secondary |
+| Text | white / white 0.74 | `.primary` / `.secondary` |
+| Control tint | white on the colored shell | palette tint |
+| Tab selection | palette tint icon + iOS 26 pill; unselected dark ink on the white floating bar | palette tint; unselected secondary |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
 | Recording / live follow | Selected palette glow + tint on the card, follow path, and vehicle puck | Same hue, dark shade |
 | Pause chip (live follow) | Opaque orange (`TrailhoundBrandColors.paused`) + white type — never glass + hierarchical white | Same |
@@ -22,7 +22,7 @@ Source of truth: `ShellPalette.swift`, `GlassPalette.swift`, `GlassStyle.swift`.
 
 Palette hues: Sky, Ocean, Teal, Mint, Forest, Lime, Gold, Sunset, Orange, Coral, Rose, Pink, Magenta, Purple, Violet, Indigo, Slate, Graphite, Sand, Ember. Stored in the App Group as `shellPalette`.
 
-The Home Screen icon follows the same hue. **Sky** is the primary Liquid Glass `Trailhound.icon` (light fill + dark navy appearance) plus `Trailhound.appiconset` for iOS 17/18. Every other palette is an alternate Icon Composer file `AppIcons/AppIcon<Name>.icon` with the same light/dark fills — not an `.appiconset`. Xcode 26 flags alternate PNG catalogs as an unassigned Dark `[1d]` child. `AppIconSync` calls `setAlternateIconName` when Appearance changes; iOS always shows a system confirmation. Home Screen light/dark still follows the iPhone appearance, not the in-app Light/Dark picker. Rebuild icons with `scripts/export_alternate_app_icons.py`.
+The Home Screen icon follows the same hue. **Sky** is the primary Liquid Glass `Trailhound.icon` (light fill + dark navy appearance) plus `Trailhound.appiconset` for iOS 17/18. Every other palette is an alternate Icon Composer file `AppIcons/AppIcon<Name>.icon` with the same light/dark fills — not an `.appiconset`. Xcode 26 flags alternate PNG catalogs as an unassigned Dark `[1d]` child. `AppIconSync` calls `setAlternateIconName` when Appearance changes; iOS always shows a system confirmation. Home Screen light/dark still follows the iPhone appearance, not the in-app Light/Dark picker. In-app brand marks and the share-card raster use the same fill (`homeScreenIconFill`: light tint / dark mid) on `TrailhoundLogo`. Rebuild icons with `scripts/export_alternate_app_icons.py`.
 
 ## Engine
 
@@ -43,7 +43,7 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 
 ## Accessibility
 
-- Increased Contrast darkens the light atmosphere by 15% and raises panel fill to 0.32.
+- Increased Contrast raises Light panel fill to 0.32. It does not darken the pastel atmosphere.
 - Reduce Transparency uses `GlassEngine.solid`.
 - Reduce Motion skips chip morph and sheen animation.
 - VoiceOver labels are unchanged. Palette swatches use `settings.shellPalette.<id>`.
@@ -56,8 +56,9 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `GlassEngine.swift` | Resolve native / material / solid |
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
 | `GlassEnvironment.swift` | `.onGlassShell()`, `.glassAccentForeground()`, `shellPalette` env |
-| `GlassControls.swift` | Leaf control scheme, section header/footer |
+| `GlassControls.swift` | Toggle tint, section header/footer, nav circle icon |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |
 | `TrailhoundTabBarCompact.swift` | Palette selected-tab tint (system floating-bar width) |
 | `AppIconSync.swift` | Palette → alternate Home Screen icon |
+| `TrailhoundBrandMark.swift` | In-app / share-card logo recolored to `homeScreenIconFill` |

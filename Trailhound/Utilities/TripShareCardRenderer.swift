@@ -10,7 +10,9 @@ enum TripShareCardRenderer {
         trip: Trip,
         places: [SavedPlace],
         privacyRadius: Double,
-        size: CGSize = defaultSize
+        size: CGSize = defaultSize,
+        palette: ShellPalette,
+        scheme: ColorScheme
     ) async -> UIImage? {
         // Fault points once on the main actor, then hop off for clip / decimate / chart / bands.
         let points = TripShareRoutePrep.points(
@@ -42,7 +44,8 @@ enum TripShareCardRenderer {
                     CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
                 },
                 size: mapSize,
-                displayScale: displayScale
+                displayScale: displayScale,
+                appearance: MapSnapshotAppearance(scheme)
             ) ?? UIImage()
         } else {
             mapImage = UIImage()
@@ -55,7 +58,8 @@ enum TripShareCardRenderer {
             privacyRadius: privacyRadius,
             chartSamples: prep.chartSeries,
             chartMaxKmh: prep.chartMaxKmh,
-            size: size
+            size: size,
+            theme: TripShareCardTheme(palette: palette, scheme: scheme)
         )
     }
 
@@ -66,7 +70,8 @@ enum TripShareCardRenderer {
         start: CLLocationCoordinate2D?,
         end: CLLocationCoordinate2D?,
         size: CGSize,
-        displayScale: CGFloat
+        displayScale: CGFloat,
+        appearance: MapSnapshotAppearance
     ) async -> UIImage? {
         let coordinates = strokes.flatMap(\.coordinates)
         guard !coordinates.isEmpty else { return nil }
@@ -76,7 +81,7 @@ enum TripShareCardRenderer {
         options.size = size
         options.mapType = .standard
         options.traitCollection = UITraitCollection { mutableTraits in
-            mutableTraits.userInterfaceStyle = .dark
+            mutableTraits.userInterfaceStyle = appearance.userInterfaceStyle
             mutableTraits.displayScale = displayScale
         }
 
@@ -239,7 +244,8 @@ enum TripShareCardRenderer {
         privacyRadius: Double,
         chartSamples: SpeedChartSeries.Series,
         chartMaxKmh: Double,
-        size: CGSize
+        size: CGSize,
+        theme: TripShareCardTheme
     ) -> UIImage {
         let viewModel = TripDetailViewModel(trip: trip, places: places, privacyRadius: privacyRadius)
         let metrics = viewModel.summaryMetrics
@@ -249,15 +255,14 @@ enum TripShareCardRenderer {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let rect = CGRect(origin: .zero, size: size)
-            UIColor(red: 0.11, green: 0.12, blue: 0.14, alpha: 1).setFill()
-            context.fill(rect)
+            fillAtmosphere(theme.atmosphere, in: rect, context: context.cgContext)
 
             let mapHeight = size.height * 0.55
             let mapRect = CGRect(x: 0, y: 0, width: size.width, height: mapHeight)
             if mapImage.size.width > 0 {
                 mapImage.draw(in: mapRect)
             } else {
-                UIColor(white: 0.18, alpha: 1).setFill()
+                theme.atmosphere.mid.uiColor.setFill()
                 context.fill(mapRect)
             }
 
@@ -267,11 +272,11 @@ enum TripShareCardRenderer {
 
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 36, weight: .bold),
-                .foregroundColor: UIColor.white
+                .foregroundColor: theme.title
             ]
             let bodyAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 24, weight: .regular),
-                .foregroundColor: UIColor(white: 0.72, alpha: 1)
+                .foregroundColor: theme.secondary
             ]
 
             (route as NSString).draw(
@@ -288,7 +293,8 @@ enum TripShareCardRenderer {
             y = drawMetrics(
                 metrics,
                 origin: CGPoint(x: contentX, y: y),
-                width: contentWidth
+                width: contentWidth,
+                theme: theme
             )
 
             if !chartSamples.samples.isEmpty {
@@ -298,38 +304,72 @@ enum TripShareCardRenderer {
                     trip: trip,
                     maxKmh: chartMaxKmh,
                     origin: CGPoint(x: contentX, y: y),
-                    width: contentWidth
+                    width: contentWidth,
+                    theme: theme
                 )
             }
 
             drawBrandMark(
                 in: rect,
                 contentX: contentX,
-                contentWidth: contentWidth
+                contentWidth: contentWidth,
+                theme: theme
             )
         }
+    }
+
+    private static func fillAtmosphere(
+        _ atmosphere: ShellAtmosphere,
+        in rect: CGRect,
+        context: CGContext
+    ) {
+        let colors = [
+            atmosphere.top.uiColor.cgColor,
+            atmosphere.mid.uiColor.cgColor,
+            atmosphere.bottom.uiColor.cgColor
+        ]
+        guard let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: colors as CFArray,
+            locations: [0, 0.5, 1]
+        ) else {
+            atmosphere.mid.uiColor.setFill()
+            context.fill(rect)
+            return
+        }
+        context.saveGState()
+        context.addRect(rect)
+        context.clip()
+        context.drawLinearGradient(
+            gradient,
+            start: CGPoint(x: rect.midX, y: rect.minY),
+            end: CGPoint(x: rect.midX, y: rect.maxY),
+            options: []
+        )
+        context.restoreGState()
     }
 
     private static func drawBrandMark(
         in bounds: CGRect,
         contentX: CGFloat,
-        contentWidth: CGFloat
+        contentWidth: CGFloat,
+        theme: TripShareCardTheme
     ) {
         let logoSize: CGFloat = 44
         let wordmark = "Trailhound" as NSString
         let wordAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 22, weight: .bold),
-            .foregroundColor: UIColor.white.withAlphaComponent(0.92)
+            .foregroundColor: theme.title.withAlphaComponent(0.92)
         ]
         let wordSize = wordmark.size(withAttributes: wordAttributes)
         let gap: CGFloat = 12
-        let hasLogo = UIImage(named: "TrailhoundLogo") != nil
+        let logo = TrailhoundThemedLogo.image(palette: theme.palette, scheme: theme.scheme)
+        let hasLogo = logo != nil
         let rowWidth = (hasLogo ? logoSize + gap : 0) + wordSize.width
         let originX = contentX + max(0, (contentWidth - rowWidth) / 2)
         let originY = bounds.height - 56 - logoSize
 
-        if let logo = UIImage(named: "TrailhoundLogo"),
-           let context = UIGraphicsGetCurrentContext() {
+        if let logo, let context = UIGraphicsGetCurrentContext() {
             let logoRect = CGRect(x: originX, y: originY, width: logoSize, height: logoSize)
             context.saveGState()
             UIBezierPath(roundedRect: logoRect, cornerRadius: logoSize * 0.22).addClip()
@@ -350,7 +390,8 @@ enum TripShareCardRenderer {
     private static func drawMetrics(
         _ metrics: [TripSummaryMetric],
         origin: CGPoint,
-        width: CGFloat
+        width: CGFloat,
+        theme: TripShareCardTheme
     ) -> CGFloat {
         let primaryIDs: Set<String> = ["duration", "movingDuration", "distance", "maxSpeed"]
         let primary = metrics.filter { primaryIDs.contains($0.id) }
@@ -362,7 +403,8 @@ enum TripShareCardRenderer {
                 primary,
                 origin: CGPoint(x: origin.x, y: y),
                 width: width,
-                columns: primary.count
+                columns: primary.count,
+                theme: theme
             )
             y += 16
         }
@@ -371,7 +413,8 @@ enum TripShareCardRenderer {
                 secondary,
                 origin: CGPoint(x: origin.x, y: y),
                 width: width,
-                columns: secondary.count
+                columns: secondary.count,
+                theme: theme
             )
         }
         return y
@@ -381,7 +424,8 @@ enum TripShareCardRenderer {
         _ metrics: [TripSummaryMetric],
         origin: CGPoint,
         width: CGFloat,
-        columns: Int
+        columns: Int,
+        theme: TripShareCardTheme
     ) -> CGFloat {
         let spacing: CGFloat = 14
         let cardWidth = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
@@ -393,16 +437,16 @@ enum TripShareCardRenderer {
             let x = origin.x + CGFloat(index) * (cardWidth + spacing)
             let cardRect = CGRect(x: x, y: origin.y, width: cardWidth, height: cardHeight)
             let path = UIBezierPath(roundedRect: cardRect, cornerRadius: 18)
-            UIColor(white: 0.18, alpha: 1).setFill()
+            theme.tileFill.setFill()
             path.fill()
 
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: titleFont,
-                .foregroundColor: UIColor(white: 0.65, alpha: 1)
+                .foregroundColor: theme.secondary
             ]
             let valueAttributes: [NSAttributedString.Key: Any] = [
                 .font: valueFont,
-                .foregroundColor: UIColor.white
+                .foregroundColor: theme.title
             ]
 
             (metric.title as NSString).draw(
@@ -423,19 +467,20 @@ enum TripShareCardRenderer {
         trip: Trip,
         maxKmh: Double,
         origin: CGPoint,
-        width: CGFloat
+        width: CGFloat,
+        theme: TripShareCardTheme
     ) -> CGFloat {
         let titleHeight: CGFloat = 36
         let chartHeight: CGFloat = 160
         let cardHeight = titleHeight + chartHeight + 40
         let cardRect = CGRect(x: origin.x, y: origin.y, width: width, height: cardHeight)
         let path = UIBezierPath(roundedRect: cardRect, cornerRadius: 20)
-        UIColor(white: 0.18, alpha: 1).setFill()
+        theme.tileFill.setFill()
         path.fill()
 
         let titleAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
-            .foregroundColor: UIColor.white
+            .foregroundColor: theme.title
         ]
         (L10n.tripSpeedChart as NSString).draw(
             at: CGPoint(x: cardRect.minX + 20, y: cardRect.minY + 16),
@@ -445,7 +490,7 @@ enum TripShareCardRenderer {
         let axisFont = UIFont.systemFont(ofSize: 16, weight: .regular)
         let axisAttributes: [NSAttributedString.Key: Any] = [
             .font: axisFont,
-            .foregroundColor: UIColor(white: 0.55, alpha: 1)
+            .foregroundColor: theme.secondary
         ]
         let topLabel = L10n.formatSpeedKmh(maxKmh)
         let bottomLabel = L10n.formatSpeedKmh(0)
@@ -479,7 +524,8 @@ enum TripShareCardRenderer {
             tripStartedAt: chartStart,
             tripEndedAt: chartEnd,
             maxKmh: maxKmh,
-            in: plotRect
+            in: plotRect,
+            brand: theme.chart
         )
 
         return cardRect.maxY
@@ -491,14 +537,14 @@ enum TripShareCardRenderer {
         tripStartedAt: Date,
         tripEndedAt: Date,
         maxKmh: Double,
-        in rect: CGRect
+        in rect: CGRect,
+        brand: UIColor
     ) {
         guard !samples.isEmpty else { return }
 
         let gapBreak = SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: medianInterval)
         let dateSpan = max(tripEndedAt.timeIntervalSince(tripStartedAt), 1)
         let speedMax = max(maxKmh, 1)
-        let brand = UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: 1)
         let points = SpeedChartSeries.strokePoints(
             samples: samples.map { ($0.date, $0.speedKmh) },
             gapBreakSeconds: gapBreak,
@@ -574,6 +620,35 @@ enum TripShareCardRenderer {
             longitudeDelta: max(0.01, (maxLon - minLon) * 1.5)
         )
         return MKCoordinateRegion(center: center, span: span)
+    }
+}
+
+// MARK: - Theme
+
+struct TripShareCardTheme: Equatable {
+    var palette: ShellPalette
+    var scheme: ColorScheme
+
+    var atmosphere: ShellAtmosphere { palette.atmosphere(for: scheme) }
+
+    var title: UIColor { .white }
+
+    var secondary: UIColor {
+        UIColor.white.withAlphaComponent(0.72)
+    }
+
+    var tileFill: UIColor {
+        UIColor.white.withAlphaComponent(scheme == .dark ? 0.12 : 0.22)
+    }
+
+    var chart: UIColor {
+        atmosphere.tint.uiColor
+    }
+}
+
+extension ShellRGB {
+    var uiColor: UIColor {
+        UIColor(red: r, green: g, blue: b, alpha: 1)
     }
 }
 

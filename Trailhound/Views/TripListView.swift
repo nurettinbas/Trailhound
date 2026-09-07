@@ -1264,7 +1264,7 @@ struct TripListView: View {
     }
 }
 
-/// Incomplete-recording card. Light glass + `onGlassShell` white type makes Resume vanish.
+/// Incomplete-recording card. Light glass wells need chrome ink so Resume stays readable.
 private struct OrphanRecoveryBanner: View {
     let onResume: () -> Void
     let onSave: () -> Void
@@ -1378,10 +1378,8 @@ private struct TripListActiveRecordingNavIcon: View {
     var isPaused: Bool
     var reduceMotion: Bool
 
-    @State private var steeringTilt: Double = 0
-
     private var accent: Color {
-        isPaused ? TrailhoundBrandColors.paused : GlassSemantic.notificationBadge
+        isPaused ? TrailhoundBrandColors.paused : TrailhoundBrandColors.recording
     }
 
     private let badgeSize: CGFloat = 30
@@ -1389,51 +1387,42 @@ private struct TripListActiveRecordingNavIcon: View {
     /// in its layout box.
     private let glyphNudge = CGSize(width: 3, height: 0.35)
     private let maxTilt: Double = 55
+    /// One ease-in-out half-swing (right → left). Full cycle is 2× this.
     private let swingDuration: Double = 2.4
+    private var tickInterval: TimeInterval {
+        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
+    }
+
+    private var shouldAnimate: Bool {
+        !isPaused && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     var body: some View {
-        Image(systemName: "steeringwheel")
-            .font(.system(size: 15, weight: .semibold))
-            .symbolRenderingMode(.monochrome)
-            .foregroundStyle(accent)
-            .compositingGroup()
-            // Must stay inside the frame and nudge below. Applied outside them, the anchor is
-            // the badge center while the glyph has been moved away from it, so the wheel
-            // orbits that point instead of spinning in place.
-            .rotationEffect(.degrees(steeringTilt))
-            .frame(width: badgeSize, height: badgeSize)
-            .offset(glyphNudge)
-            .accessibilityHidden(true)
-            .task(id: wobbleTaskID) {
-                await runSteeringWobble()
-            }
+        TimelineView(
+            .animation(
+                minimumInterval: tickInterval,
+                paused: !shouldAnimate
+            )
+        ) { context in
+            Image(systemName: "steeringwheel")
+                .font(.system(size: 15, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(accent)
+                // Must stay inside the frame and nudge below. Applied outside them, the
+                // anchor is the badge center while the glyph has been moved away from it,
+                // so the wheel orbits that point instead of spinning in place.
+                .rotationEffect(.degrees(tilt(at: context.date)))
+                .frame(width: badgeSize, height: badgeSize)
+                .offset(glyphNudge)
+        }
+        .accessibilityHidden(true)
     }
 
-    private var wobbleTaskID: String {
-        "\(isPaused)-\(reduceMotion)"
-    }
-
-    @MainActor
-    private func runSteeringWobble() async {
-        var reset = Transaction()
-        reset.disablesAnimations = true
-        withTransaction(reset) { steeringTilt = 0 }
-
-        guard !isPaused, !reduceMotion else { return }
-
-        // Half-length intro: leaving neutral covers half the travel of a full swing, so at the
-        // same duration the very first swing read slower than every one after it.
-        withAnimation(.easeOut(duration: swingDuration / 2)) {
-            steeringTilt = maxTilt
-        }
-        try? await Task.sleep(for: .seconds(swingDuration / 2))
-        guard !Task.isCancelled else { return }
-
-        // One repeating animation instead of a sleep loop: no periodic main-actor wake-ups and
-        // no drift between the sleep and the animation clock.
-        withAnimation(.easeInOut(duration: swingDuration).repeatForever(autoreverses: true)) {
-            steeringTilt = -maxTilt
-        }
+    private func tilt(at date: Date) -> Double {
+        guard shouldAnimate else { return 0 }
+        let period = swingDuration * 2
+        let unit = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+        return maxTilt * sin(unit * 2 * .pi)
     }
 }
 

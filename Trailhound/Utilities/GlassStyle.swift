@@ -101,7 +101,6 @@ struct AtmosphericBackground: View {
     var style: Style = .full
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
@@ -161,11 +160,7 @@ struct AtmosphericBackground: View {
     }
 
     private var gradientColors: [Color] {
-        var colors = shellPalette.gradientColors(for: colorScheme)
-        if colorScheme == .light, contrast == .increased {
-            colors = colors.map { LightGlassPalette.darkened($0) }
-        }
-        return colors
+        shellPalette.gradientColors(for: colorScheme)
     }
 
     /// A soft radial falloff instead of `Circle().blur(...)`. These sit underneath every
@@ -329,13 +324,13 @@ struct FormSolidSectionRowBackground: View {
 
     var body: some View {
         ZStack {
-            if reduceTransparency {
-                shape.fill(GlassTokens.solidFallback)
-            } else {
-                shape.fill(GlassTokens.formPanelFill(for: colorScheme))
+            // Opaque grouped plate — Light is system light, Dark is system dark.
+            // Do not start from a 12% wash; that leaves the atmosphere showing through.
+            shape.fill(GlassTokens.solidFallback)
+            if !reduceTransparency {
                 shape.fill(
                     shellPalette.tintColor(for: colorScheme).opacity(
-                        colorScheme == .dark ? 0.14 : 0.10
+                        colorScheme == .dark ? 0.10 : 0.06
                     )
                 )
                 shape.fill(
@@ -388,7 +383,12 @@ struct GlassCardModifier: ViewModifier {
         } else {
             padded
                 .background {
-                    GlassSurface(cornerRadius: cornerRadius, density: density, frozen: frozen)
+                    GlassSurface(
+                        cornerRadius: cornerRadius,
+                        density: density,
+                        frozen: frozen,
+                        allowsNative: allowsNative
+                    )
                 }
                 .clipShape(shape)
         }
@@ -510,8 +510,13 @@ struct GlassFilterChip: View {
         if colorScheme == .dark {
             return isSelected ? Color.white : Color.primary
         }
-        // Light wells are pale glass — white `shellForeground` vanishes on them.
-        return shellPalette.chromeColor(for: .light)
+        return Color.white
+    }
+
+    private var selectionFill: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
     }
 
     var body: some View {
@@ -555,7 +560,7 @@ struct GlassFilterChip: View {
     private var chipBackground: some View {
         if isSelected {
             Capsule()
-                .fill(colorScheme == .dark ? shellPalette.tintColor(for: .dark) : LightGlassPalette.selectedChipFill)
+                .fill(selectionFill)
                 .matchedGeometryEffect(id: highlightID, in: namespace)
         } else {
             Capsule()
@@ -596,7 +601,7 @@ private struct NativeFilterChipGlass: ViewModifier {
                 .glassEffect(
                     .regular.tint(
                         isSelected
-                            ? LightGlassPalette.selectedChipFill
+                            ? selectedTint
                             : LightGlassPalette.nativeTint(for: shellPalette)
                     ).interactive(),
                     in: Capsule()
@@ -606,9 +611,16 @@ private struct NativeFilterChipGlass: ViewModifier {
             content
         }
     }
+
+    private var selectedTint: Color {
+        colorScheme == .dark
+            ? shellPalette.tintColor(for: .dark)
+            : shellPalette.chromeColor(for: .light)
+    }
 }
 
-/// Navigation bar save control — pill matching Cancel, not the iOS 26 circle.
+/// Compact navigation-bar pill — Cancel and Save share this so iOS 26 does not
+/// wrap Cancel in the large system glass capsule.
 struct GlassToolbarSaveButton: View {
     let title: String
 
@@ -617,10 +629,10 @@ struct GlassToolbarSaveButton: View {
 
     var body: some View {
         Text(title)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(colorScheme == .dark ? Color.white : shellPalette.chromeColor(for: .light))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background {
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)

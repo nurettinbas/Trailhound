@@ -93,26 +93,34 @@ public enum ShellPalette: String, CaseIterable, Identifiable, Sendable {
         atmosphere(for: scheme).gradientColors
     }
 
-    /// Pale light atmospheres (gold / lime / sand) need dark type instead of white.
-    public func usesLightChrome(for scheme: ColorScheme) -> Bool {
-        guard scheme == .light else { return false }
-        return atmosphere(for: .light).mid.relativeLuminance > Self.lightChromeLuminanceThreshold
+    /// Light shell is saturated color — type is always white. Kept for call sites.
+    public func usesLightChrome(for _: ColorScheme) -> Bool {
+        false
     }
 
     public func shellForeground(for scheme: ColorScheme) -> Color {
-        if scheme == .dark { return Color.primary }
-        return usesLightChrome(for: .light) ? Color.primary : Color.white
+        scheme == .dark ? Color.primary : Color.white
     }
 
     public func shellTint(for scheme: ColorScheme) -> Color {
         if scheme == .dark { return tintColor(for: .dark) }
-        // iOS 26 nav/tab wells are light glass. White glyphs vanish on them.
-        return chromeColor(for: .light)
+        return Color.white
     }
 
-    public func toolbarColorScheme(for scheme: ColorScheme) -> ColorScheme {
-        if scheme == .dark { return .dark }
-        return .light
+    public func toolbarColorScheme(for _: ColorScheme) -> ColorScheme {
+        .dark
+    }
+
+    /// Alternate Home Screen icon fill — light tint, dark atmosphere mid.
+    /// Matches `AppIcons/AppIcon*.icon` (Sky uses the primary illustrated icon instead).
+    public func homeScreenIconFill(for scheme: ColorScheme) -> Color {
+        homeScreenIconFillRGB(for: scheme).color
+    }
+
+    public func homeScreenIconFillRGB(for scheme: ColorScheme) -> ShellRGB {
+        scheme == .dark
+            ? atmosphere(for: .dark).mid
+            : atmosphere(for: .light).tint
     }
 }
 

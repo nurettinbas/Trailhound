@@ -48,37 +48,24 @@ enum LightGlassPalette {
 }
 
 enum GlassText {
-    static func primary(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        if scheme == .dark { return Color.primary }
-        return palette.usesLightChrome(for: .light) ? Color.primary : LightGlassPalette.textPrimary
+    static func primary(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        scheme == .dark ? Color.primary : LightGlassPalette.textPrimary
     }
 
-    static func secondary(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        if scheme == .dark { return Color.secondary }
-        return palette.usesLightChrome(for: .light)
-            ? Color.secondary
-            : LightGlassPalette.textSecondary
+    static func secondary(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        scheme == .dark ? Color.secondary : LightGlassPalette.textSecondary
     }
 
-    static func tertiary(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        if scheme == .dark { return Color.secondary.opacity(0.8) }
-        return palette.usesLightChrome(for: .light)
-            ? Color.secondary.opacity(0.8)
-            : LightGlassPalette.textTertiary
+    static func tertiary(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        scheme == .dark ? Color.secondary.opacity(0.8) : LightGlassPalette.textTertiary
     }
 
-    static func placeholder(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        if scheme == .dark { return Color.secondary.opacity(0.7) }
-        return palette.usesLightChrome(for: .light)
-            ? Color.secondary.opacity(0.7)
-            : LightGlassPalette.textPlaceholder
+    static func placeholder(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        scheme == .dark ? Color.secondary.opacity(0.7) : LightGlassPalette.textPlaceholder
     }
 
-    static func disabled(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        if scheme == .dark { return Color.primary.opacity(0.28) }
-        return palette.usesLightChrome(for: .light)
-            ? Color.primary.opacity(0.28)
-            : LightGlassPalette.textDisabled
+    static func disabled(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        scheme == .dark ? Color.primary.opacity(0.28) : LightGlassPalette.textDisabled
     }
 }
 
@@ -105,7 +92,8 @@ enum GlassSemantic {
 
 enum GlassControlTint {
     static func toggle(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
-        scheme == .dark ? palette.tintColor(for: .dark) : palette.chromeColor(for: .light)
+        // ON fill must stay saturated — white-on-beige Light rows make the switch vanish.
+        palette.tintColor(for: scheme)
     }
 
     static func control(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {

@@ -188,7 +188,12 @@ struct VehicleExpenseEditorView: View {
         )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button(L10n.cancel) { dismiss() }
+                Button {
+                    dismiss()
+                } label: {
+                    GlassToolbarSaveButton(title: L10n.cancel)
+                }
+                .glassToolbarSaveControl()
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button {

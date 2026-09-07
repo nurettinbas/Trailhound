@@ -154,12 +154,12 @@ struct VehicleDetailView: View {
             Section {
                 if schedules.isEmpty {
                     Text(L10n.string("vehicles.care.schedules.empty"))
-                        .foregroundStyle(.secondary)
-                        .glassRow(position: .only)
+                        .foregroundStyle(careRowSecondaryInk)
+                        .glassRow(position: .first)
                 } else {
                     ForEach(Array(schedules.enumerated()), id: \.element.id) { index, schedule in
                         trackingCardRow(schedule)
-                            .listRowInsets(cardRowInsets(index: index))
+                            .glassRow(position: GlassRowPosition.index(index, in: schedules.count + 1))
                             .confirmingDeleteSwipe {
                                 deleteSchedule(schedule)
                             }
@@ -174,7 +174,10 @@ struct VehicleDetailView: View {
                     }
                 }
 
-                addCareRowButton(title: L10n.string("vehicles.care.tracking.add")) {
+                addCareRowButton(
+                    title: L10n.string("vehicles.care.tracking.add"),
+                    rowPosition: .last
+                ) {
                     showAddSchedule = true
                 }
             } header: {
@@ -187,19 +190,22 @@ struct VehicleDetailView: View {
             Section {
                 if expenses.isEmpty {
                     Text(L10n.string("vehicles.care.expenses.empty"))
-                        .foregroundStyle(.secondary)
-                        .glassRow(position: .only)
+                        .foregroundStyle(careRowSecondaryInk)
+                        .glassRow(position: .first)
                 } else {
                     ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
-                            .listRowInsets(cardRowInsets(index: index))
+                            .glassRow(position: GlassRowPosition.index(index, in: expenses.count + 1))
                             .confirmingDeleteSwipe {
                                 deleteExpense(expense)
                             }
                     }
                 }
 
-                addCareRowButton(title: L10n.string("vehicles.care.expense.add")) {
+                addCareRowButton(
+                    title: L10n.string("vehicles.care.expense.add"),
+                    rowPosition: .last
+                ) {
                     showAddExpense = true
                 }
             } header: {
@@ -213,7 +219,7 @@ struct VehicleDetailView: View {
                 Section {
                     ForEach(Array(upcomingInstallments.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
-                            .listRowInsets(cardRowInsets(index: index))
+                            .glassRow(position: GlassRowPosition.index(index, in: upcomingInstallments.count))
                             .confirmingDeleteSwipe {
                                 deleteExpense(expense)
                             }
@@ -234,51 +240,37 @@ struct VehicleDetailView: View {
         )
     }
 
-    private func addCareRowButton(title: String, action: @escaping () -> Void) -> some View {
-        PairingCardContainer(allowsNative: false) {
-            Button(action: action) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                    Text(title)
-                }
+    private func addCareRowButton(
+        title: String,
+        rowPosition: GlassRowPosition,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: "plus.circle.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(addCareInk)
+                .foregroundStyle(careRowPrimaryInk)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
-        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        .buttonStyle(.plain)
+        .glassRow(position: rowPosition)
     }
 
-    private var addCareInk: Color {
-        colorScheme == .dark
-            ? Color.white
-            : shellPalette.chromeColor(for: .light)
+    /// Hierarchical text on the palette-tinted Liquid Glass rows.
+    private var careRowPrimaryInk: Color {
+        GlassText.primary(for: colorScheme, palette: shellPalette)
     }
 
-    private func cardRowInsets(index: Int) -> EdgeInsets {
-        EdgeInsets(
-            top: index == 0 ? 4 : 2,
-            leading: 0,
-            bottom: 2,
-            trailing: 0
-        )
+    private var careRowSecondaryInk: Color {
+        GlassText.secondary(for: colorScheme, palette: shellPalette)
     }
 
-    /// Matches Vehicles tab vehicle card: glass card, leading icon tile, title, due date trailing.
+    /// Matches Vehicles tab vehicle card: grouped plate, leading icon tile, title, due date trailing.
     private func trackingCardRow(_ schedule: VehicleSchedule) -> some View {
         CareTrackingCardRow(
             schedule: schedule,
             onEdit: { editingScheduleID = schedule.id },
             onComplete: { completingScheduleID = schedule.id }
         )
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     /// Matches tracking cards: glass card, leading icon tile, title, subtitle, chevron.
@@ -287,8 +279,7 @@ struct VehicleDetailView: View {
         let note = expense.note?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasNote = !(note?.isEmpty ?? true)
 
-        return PairingCardContainer(allowsNative: false) {
-            Button {
+        return Button {
                 editingExpenseID = expense.id
             } label: {
                 HStack(alignment: .center, spacing: 10) {
@@ -353,13 +344,8 @@ struct VehicleDetailView: View {
                         .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
             }
             .buttonStyle(.plain)
-        }
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     private func installmentBadge(for expense: VehicleExpense) -> String? {
@@ -410,8 +396,7 @@ private struct CareTrackingCardRow: View {
     }
 
     var body: some View {
-        PairingCardContainer(allowsNative: false) {
-            HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
                 Button(action: onEdit) {
                     HStack(alignment: .center, spacing: 10) {
                         VehicleCareUrgencyIconTile(
@@ -459,10 +444,6 @@ private struct CareTrackingCardRow: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.leading, 12)
-            .padding(.trailing, 12)
-            .padding(.vertical, 8)
-        }
         .onAppear(perform: consumeChipEntranceIfNeeded)
     }
 

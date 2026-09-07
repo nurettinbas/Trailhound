@@ -2,7 +2,7 @@ import MapKit
 import SwiftUI
 import UIKit
 
-/// Light vs dark MapKit snapshot. Disk and memory keep both; share cards stay dark separately.
+/// Light vs dark MapKit snapshot. Disk and memory keep both; share cards use the same appearance.
 enum MapSnapshotAppearance: String, Hashable, CaseIterable, Sendable {
     case light
     case dark

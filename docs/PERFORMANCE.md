@@ -104,7 +104,7 @@ While the in-place expand/collapse runs, panel glass uses a solid fill (`glassCh
 - One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
 - Path prep (`TripShareRoutePrep`: privacy clip → decimate → chart series → `SpeedColoredSegmentBuilder`) runs off the main actor; points are faulted once before the hop. Map strokes and the speed chart share the same clipped samples.
 - Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
-- Brand logo is drawn into the raster at compose time; no ActivityKit / widget images.
+- Brand logo is drawn into the raster at compose time (palette-tinted `TrailhoundLogo`, same fill as the Home Screen icon); map snapshot follows Light/Dark. No ActivityKit / widget images.
 
 ## Recording cold-open
 

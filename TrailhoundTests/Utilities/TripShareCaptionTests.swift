@@ -81,4 +81,13 @@ final class TripShareCaptionTests: XCTestCase {
         XCTAssertFalse(line.contains("– \(endTime)"), line)
         XCTAssertTrue(line.contains(DateFormatters.tripTime.string(from: started)), line)
     }
+
+    func testShareCardThemeFollowsPaletteInsteadOfFixedCharcoal() {
+        let sand = TripShareCardTheme(palette: .sand, scheme: .light)
+        let skyDark = TripShareCardTheme(palette: .sky, scheme: .dark)
+        XCTAssertEqual(sand.title, UIColor.white)
+        XCTAssertEqual(sand.chart, sand.atmosphere.tint.uiColor)
+        XCTAssertEqual(skyDark.title, UIColor.white)
+        XCTAssertGreaterThan(sand.tileFill.cgColor.alpha, skyDark.tileFill.cgColor.alpha)
+    }
 }

@@ -579,11 +579,13 @@ struct LiveFollowMapView: View {
                 .controlSize(.small)
                 .frame(maxWidth: .infinity, minHeight: 34)
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
         // Width fills the HUD slot; height stays intrinsic so settled layout does not
         // stretch into the Spacer (morphing phase applies an explicit height separately).
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .fixedSize(horizontal: false, vertical: true)
         .background {
             if useGlass {
                 RecordingCardStyle.glassSurface(isPaused: isPaused)

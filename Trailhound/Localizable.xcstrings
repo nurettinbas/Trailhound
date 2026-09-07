@@ -3848,7 +3848,6 @@
       }
     },
     "onboarding.back" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8504,163 +8503,6 @@
         }
       }
     },
-    "settings.shell_palette.coral" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Coral" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mercan" } }
-      }
-    },
-    "settings.shell_palette.ember" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ember" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kor" } }
-      }
-    },
-    "settings.shell_palette.forest" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Forest" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Orman" } }
-      }
-    },
-    "settings.shell_palette.gold" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gold" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Altın" } }
-      }
-    },
-    "settings.shell_palette.graphite" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Graphite" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Grafit" } }
-      }
-    },
-    "settings.shell_palette.hint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The background uses a light shade in Light appearance and a dark shade of the same color in Dark. The Home Screen icon follows the selected color; iOS shows a confirmation when it changes."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arka plan Açık görünümde açık ton, Koyu görünümde aynı rengin koyu tonunu kullanır. Ana ekran ikonu seçilen rengi izler; iOS değişince bir onay gösterir."
-          }
-        }
-      }
-    },
-    "settings.shell_palette.indigo" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Indigo" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Çivit" } }
-      }
-    },
-    "settings.shell_palette.lime" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lime" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Limon yeşili" } }
-      }
-    },
-    "settings.shell_palette.magenta" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Magenta" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Magenta" } }
-      }
-    },
-    "settings.shell_palette.mint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mint" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Nane" } }
-      }
-    },
-    "settings.shell_palette.ocean" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ocean" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Okyanus" } }
-      }
-    },
-    "settings.shell_palette.orange" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Orange" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Turuncu" } }
-      }
-    },
-    "settings.shell_palette.pink" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pink" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Pembe" } }
-      }
-    },
-    "settings.shell_palette.purple" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Purple" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mor" } }
-      }
-    },
-    "settings.shell_palette.rose" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rose" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gül" } }
-      }
-    },
-    "settings.shell_palette.sand" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sand" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kum" } }
-      }
-    },
-    "settings.shell_palette.sky" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sky" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gökyüzü" } }
-      }
-    },
-    "settings.shell_palette.slate" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Slate" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Arduvaz" } }
-      }
-    },
-    "settings.shell_palette.sunset" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sunset" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gün batımı" } }
-      }
-    },
-    "settings.shell_palette.teal" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Teal" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Turkuaz" } }
-      }
-    },
-    "settings.shell_palette.violet" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Violet" } },
-        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Menekşe" } }
-      }
-    },
     "settings.backup.csv" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9762,6 +9604,363 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mola algılama hızı (km/s)"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.coral" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coral"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mercan"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.ember" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ember"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kor"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.forest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forest"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orman"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.gold" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gold"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altın"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.graphite" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graphite"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grafit"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The background uses a light shade in Light appearance and a dark shade of the same color in Dark. The Home Screen icon follows the selected color; iOS shows a confirmation when it changes."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arka plan Açık görünümde açık ton, Koyu görünümde aynı rengin koyu tonunu kullanır. Ana ekran ikonu seçilen rengi izler; iOS değişince bir onay gösterir."
+          }
+        }
+      }
+    },
+    "settings.shell_palette.indigo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indigo"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çivit"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.lime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lime"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limon yeşili"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.magenta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magenta"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magenta"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.mint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mint"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nane"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.ocean" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocean"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Okyanus"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.orange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orange"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turuncu"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.pink" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pink"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pembe"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.purple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purple"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mor"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.rose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rose"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gül"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sand" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sand"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kum"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sky" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sky"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gökyüzü"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.slate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slate"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arduvaz"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.sunset" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunset"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gün batımı"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.teal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teal"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turkuaz"
+          }
+        }
+      }
+    },
+    "settings.shell_palette.violet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Violet"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menekşe"
           }
         }
       }

@@ -20,6 +20,7 @@ enum DeviceTestChecklist {
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",
         "Second open of the same long trip is instant (memory cache)",
         "App kill → reopen → long trip detail still fast (disk cache)",
+        "Share card: Light/Dark + palette wash (not fixed charcoal); app icon matches Appearance hue",
         "After GPS trim, map updates (cache invalidation)",
         "After merge, combined route draws correctly",
         "Trip with tunnel/signal loss keeps a broken route (no bird-flight fill)",
@@ -65,6 +66,7 @@ enum DeviceTestChecklist {
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
-        "Recording start/stop sounds play; same tone as before, no cut-off"
+        "Recording start/stop sounds play; same tone as before, no cut-off",
+        "Appearance Light: pastel shell (not navy), dark type, light tab bar and DatePickers; Graphite/Gold palettes stay light; Dark is still navy"
     ]
 }

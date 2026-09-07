@@ -37,16 +37,20 @@ final class ShellPaletteTests: XCTestCase {
                 "\(palette.rawValue) dark mid should be darker than light mid"
             )
             XCTAssertLessThan(dark.mid.relativeLuminance, 0.25, palette.rawValue)
+            XCTAssertFalse(
+                palette.usesLightChrome(for: .light),
+                "\(palette.rawValue) light type is white on the saturated shell"
+            )
         }
     }
 
-    func testPaleLightHuesUseLightChrome() {
-        XCTAssertTrue(ShellPalette.gold.usesLightChrome(for: .light))
-        XCTAssertTrue(ShellPalette.lime.usesLightChrome(for: .light))
-        XCTAssertTrue(ShellPalette.sand.usesLightChrome(for: .light))
-        XCTAssertFalse(ShellPalette.sky.usesLightChrome(for: .light))
-        XCTAssertFalse(ShellPalette.orange.usesLightChrome(for: .light))
-        XCTAssertFalse(ShellPalette.gold.usesLightChrome(for: .dark))
+    func testLightTypeIsWhiteOnEveryPalette() {
+        XCTAssertEqual(ShellPalette.sky.shellForeground(for: .light), Color.white)
+        XCTAssertEqual(ShellPalette.sand.shellForeground(for: .light), Color.white)
+        XCTAssertEqual(ShellPalette.gold.shellForeground(for: .light), Color.white)
+        XCTAssertEqual(ShellPalette.sky.shellTint(for: .light), Color.white)
+        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .light), .dark)
+        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .dark), .dark)
     }
 
     func testStoredFallsBackToSky() {
@@ -107,20 +111,6 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertGreaterThan(sr, sb)
     }
 
-    func testLightShellTintIsChromeOnGlassWells() {
-        XCTAssertEqual(
-            ShellPalette.sky.shellTint(for: .light),
-            ShellPalette.sky.chromeColor(for: .light)
-        )
-        XCTAssertEqual(
-            ShellPalette.pink.shellTint(for: .light),
-            ShellPalette.pink.chromeColor(for: .light)
-        )
-        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .light), .light)
-        XCTAssertEqual(ShellPalette.pink.toolbarColorScheme(for: .light), .light)
-        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .dark), .dark)
-    }
-
     func testTabBarPagePlateFollowsAtmosphereMid() {
         let pink = TrailhoundTabBarTheme.pagePlateUIColor(palette: .pink, scheme: .light)
         let expected = TrailhoundTabBarTheme.uiColor(ShellPalette.pink.atmosphere(for: .light).mid)
@@ -129,6 +119,29 @@ final class ShellPaletteTests: XCTestCase {
         pink.getRed(&r, green: &g, blue: &b, alpha: &a)
         XCTAssertGreaterThan(r, 0.5)
         XCTAssertGreaterThan((r + g + b) / 3, 0.4)
+    }
+
+    func testHomeScreenIconFillMatchesAlternateIconRecipes() {
+        XCTAssertEqual(
+            ShellPalette.sand.homeScreenIconFillRGB(for: .light),
+            ShellPalette.sand.atmosphere(for: .light).tint
+        )
+        XCTAssertEqual(
+            ShellPalette.sand.homeScreenIconFillRGB(for: .dark),
+            ShellPalette.sand.atmosphere(for: .dark).mid
+        )
+        XCTAssertEqual(
+            ShellPalette.forest.homeScreenIconFillRGB(for: .light),
+            ShellRGB(0.16, 0.48, 0.24)
+        )
+        XCTAssertEqual(
+            ShellPalette.forest.homeScreenIconFillRGB(for: .dark),
+            ShellRGB(0.07, 0.16, 0.08)
+        )
+        XCTAssertEqual(
+            ShellPalette.sky.homeScreenIconFill(for: .light),
+            TrailhoundBrandColors.brandBottom
+        )
     }
 
     func testTabBarUnselectedUsesDarkInkInLight() {

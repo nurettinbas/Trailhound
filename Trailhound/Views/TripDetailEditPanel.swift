@@ -138,7 +138,7 @@ struct TripDetailEditPanel: View {
         selectedDetailVehicle?.name ?? L10n.string("trip.edit.vehicle_none")
     }
 
-    /// Light glass wells + `onGlassShell` turn `.primary` / `.secondary` white.
+    /// Light glass wells use palette chrome so field labels stay readable on frost.
     private var fieldInk: Color {
         colorScheme == .dark ? Color.primary : shellPalette.chromeColor(for: .light)
     }
@@ -1322,8 +1322,7 @@ private struct TripStopEditRow: View {
     }
 }
 
-/// Light `glassChrome` + `onGlassShell` paints type white on a pale well.
-/// These tiles use a tinted fill and absolute chrome ink instead.
+/// Light `glassChrome` wells use a tinted fill and absolute chrome ink.
 private struct TripDetailEditWell: ViewModifier {
     var padding: CGFloat = 8
     var fillsHeight: Bool = false

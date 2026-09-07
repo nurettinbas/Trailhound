@@ -25,6 +25,7 @@ private enum TripDetailPanelLayout {
 
 struct TripDetailView: View {
     @Bindable var trip: Trip
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.colorScheme) private var colorScheme
@@ -229,20 +230,34 @@ struct TripDetailView: View {
         .accessibilityIdentifier("tripDetail.screen")
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .background(TripDetailInteractivePopEnabler())
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    GlassNavCircleIcon(systemName: "chevron.backward")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("onboarding.back"))
+            }
+            .hideSharedToolbarBackgroundIfAvailable()
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await renderShareCard() }
                 } label: {
-                    if isRenderingShareCard {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                    }
+                    GlassNavCircleIcon(
+                        systemName: "square.and.arrow.up",
+                        isLoading: isRenderingShareCard
+                    )
                 }
+                .buttonStyle(.plain)
                 .disabled(isRenderingShareCard)
                 .accessibilityLabel(L10n.share)
-
+            }
+            .hideSharedToolbarBackgroundIfAvailable()
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     toggleMapExpanded()
                 } label: {
@@ -712,7 +727,7 @@ struct TripDetailView: View {
         .glassChrome(cornerRadius: 14, frozen: glassFrozen)
     }
 
-    /// Light glass well + `onGlassShell` white type is unreadable over the map.
+    /// Light glass well over the map uses chrome ink so the legend stays readable.
     private var legendInk: Color {
         if settings.appearanceMode.preferredColorScheme == .dark {
             return Color.primary
@@ -791,7 +806,9 @@ struct TripDetailView: View {
         guard let image = await TripShareCardRenderer.render(
             trip: trip,
             places: places,
-            privacyRadius: privacyRadius
+            privacyRadius: privacyRadius,
+            palette: shellPalette,
+            scheme: colorScheme
         ) else {
             AppErrorPresenter.shared.present(L10n.string("share.card.error"))
             return
@@ -851,6 +868,18 @@ struct TripDetailView: View {
                 .tripDetail,
                 "left detail before reveal finished — next open may flash empty until instant reveal"
             )
+        }
+    }
+}
+
+private struct TripDetailInteractivePopEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        UIViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         }
     }
 }

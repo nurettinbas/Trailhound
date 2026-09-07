@@ -82,6 +82,18 @@ final class GlassPaletteTests: XCTestCase {
         )
     }
 
+    func testToggleTintIsSaturatedNotWhite() {
+        XCTAssertEqual(
+            GlassControlTint.toggle(for: .light, palette: .sand),
+            ShellPalette.sand.tintColor(for: .light)
+        )
+        XCTAssertNotEqual(GlassControlTint.toggle(for: .light, palette: .sand), Color.white)
+        XCTAssertEqual(
+            GlassControlTint.toggle(for: .dark, palette: .sky),
+            ShellPalette.sky.tintColor(for: .dark)
+        )
+    }
+
     func testNativeGlassTintFollowsPalette() {
         let sky = LightGlassPalette.nativeTint(for: .sky)
         let magenta = LightGlassPalette.nativeTint(for: .magenta)

@@ -229,7 +229,7 @@ private struct DeleteConfirmCard: View {
         colorScheme == .dark ? Color.white.opacity(0.72) : Color.black.opacity(0.55)
     }
 
-    /// Absolute ink — `onGlassShell` makes `.primary` / `.white` hierarchical and washes labels out.
+    /// Absolute ink so confirm/cancel labels stay readable on the glass dialog.
     private var cancelTitleColor: Color {
         colorScheme == .dark
             ? Color.white
