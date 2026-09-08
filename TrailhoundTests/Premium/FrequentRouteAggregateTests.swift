@@ -1,4 +1,5 @@
 import CoreLocation
+import MapKit
 import SwiftData
 import XCTest
 @testable import Trailhound
@@ -159,5 +160,26 @@ final class FrequentRouteMergeDeltaTests: XCTestCase {
         let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows.first?.count, 1)
+    }
+
+    func testMapCameraFitsTheFeaturedCorridorNotARegionalPad() {
+        let start = CLLocationCoordinate2D(latitude: 37.323, longitude: -122.032)
+        let end = CLLocationCoordinate2D(latitude: 37.379, longitude: -122.118)
+        let focused = FrequentRoutesMapCamera.visibleRect(start: start, end: end)
+        var regional = MKMapRect.null
+        for coordinate in [
+            start,
+            end,
+            CLLocationCoordinate2D(latitude: 37.70, longitude: -122.45),
+            CLLocationCoordinate2D(latitude: 37.55, longitude: -121.97)
+        ] {
+            let point = MKMapPoint(coordinate)
+            regional = regional.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        regional = regional.insetBy(dx: -120_000, dy: -120_000)
+        XCTAssertLessThan(focused.size.width, regional.size.width * 0.45)
+        XCTAssertLessThan(focused.size.height, regional.size.height * 0.45)
+        XCTAssertFalse(focused.isNull)
+        XCTAssertFalse(focused.isEmpty)
     }
 }

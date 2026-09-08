@@ -153,7 +153,7 @@ private struct GlassToolbarFrozenCircle: ViewModifier {
     func body(content: Content) -> some View {
         if enabled {
             content
-                .frame(width: 36, height: 36)
+                .frame(width: 36, height: 36, alignment: .center)
                 .background {
                     GlassToolbarFrozenPlate(shape: Circle())
                 }

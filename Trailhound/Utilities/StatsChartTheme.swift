@@ -248,6 +248,9 @@ enum StatsChartTheme {
         return .system(size: size, weight: .semibold, design: .rounded)
     }
 
+    /// Tick and unit labels on glass charts. Swift Charts defaults to primary (black on Light).
+    static let axisLabelInk = Color.white.opacity(GlassContrast.textTertiaryOpacity)
+
     private static func stableHash(_ string: String) -> Int {
         var hash = 5381
         for byte in string.utf8 {
@@ -265,7 +268,7 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.2))
                 AxisValueLabel()
                     .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
+                    .foregroundStyle(StatsChartTheme.axisLabelInk)
             }
         }
     }
@@ -278,9 +281,30 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.10))
                 AxisValueLabel()
                     .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
+                    .foregroundStyle(StatsChartTheme.axisLabelInk)
             }
         }
+    }
+
+    /// Unit title (`km`, `h`, currency). Unstyled `.chartYAxisLabel` stays black on Light.
+    func chartStatsYAxisUnit(_ title: String) -> some View {
+        chartYAxisLabel {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(StatsChartTheme.axisLabelInk)
+        }
+    }
+
+    /// Artwork sparkline — no axis chrome, no plot inset (forecast poster).
+    func chartStatsSparklineFill() -> some View {
+        chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
+            .chartXScale(range: .plotDimension(padding: 0))
+            .chartYScale(range: .plotDimension(padding: 0))
+            .chartPlotStyle { plot in
+                plot.padding(0)
+            }
     }
 
     func chartBarValueHeadroom(maxValue: Double) -> some View {
@@ -300,7 +324,7 @@ extension View {
                     AxisValueLabel(centered: true) {
                         Text(label(date))
                             .font(.caption2)
-                            .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
+                            .foregroundStyle(StatsChartTheme.axisLabelInk)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                     }
@@ -316,7 +340,7 @@ extension View {
                     .foregroundStyle(Color.secondary.opacity(0.2))
                 AxisValueLabel()
                     .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(GlassContrast.textTertiaryOpacity))
+                    .foregroundStyle(StatsChartTheme.axisLabelInk)
             }
         }
         .chartStatsYAxisStyle()

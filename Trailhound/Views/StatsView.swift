@@ -43,9 +43,19 @@ struct StatsView: View {
     @State private var achievements: [AchievementDisplay] = []
     @State private var routeAggregates: [FrequentRouteAggregate] = []
     @State private var showForecastDetail = false
+    @State private var forecastExpanded = false
+    @State private var forecastCardFrame: CGRect = .zero
+    @State private var frozenForecastCardFrame: CGRect = .zero
     @State private var showAchievements = false
+    @State private var achievementsExpanded = false
+    @State private var badgesCardFrame: CGRect = .zero
+    @State private var frozenBadgesCardFrame: CGRect = .zero
     @State private var showRoutesMap = false
-    @State private var showRecapStory = false
+    @State private var routesExpanded = false
+    @State private var routesCardFrame: CGRect = .zero
+    @State private var frozenRoutesCardFrame: CGRect = .zero
+    @State private var pendingRecapPlay = false
+    @State private var recapStorySession: RecapStorySession?
     @State private var unlockQueue: [AchievementDisplay] = []
     @Bindable private var tabSelection = TabSelection.shared
     @State private var yearAwardsLoader: StatsYearAwardsLoader?
@@ -276,27 +286,56 @@ struct StatsView: View {
             .onChange(of: earliestTripStart) { _, _ in
                 clampSelectedAwardsYear()
             }
+            .onChange(of: tabSelection.pendingStatsAnchor) { _, _ in
+                consumeStatsDeepLink()
+            }
     }
 
     private func applyPremiumPresentations<Content: View>(_ content: Content) -> some View {
         content
-            .sheet(isPresented: $showForecastDetail) {
-                StatsForecastDetailSheet(
-                    forecast: forecast,
-                    currencyCode: settings.fuelCurrency.rawValue
+            .onPreferenceChange(AchievementCardGlobalFrameKey.self) { badgesCardFrame = $0 }
+            .onPreferenceChange(FrequentRoutesCardGlobalFrameKey.self) { routesCardFrame = $0 }
+            .onPreferenceChange(StatsForecastCardGlobalFrameKey.self) { forecastCardFrame = $0 }
+            .fullScreenCover(isPresented: $showAchievements) {
+                AchievementGalleryExpandOverlay(
+                    achievements: achievements,
+                    sourceGlobal: frozenBadgesCardFrame,
+                    isExpanded: $achievementsExpanded,
+                    onClose: closeAchievements
                 )
-            }
-            .sheet(isPresented: $showAchievements) {
-                AchievementGalleryView(achievements: achievements)
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled()
+                .ignoresSafeArea()
             }
             .fullScreenCover(isPresented: $showRoutesMap) {
-                FrequentRoutesMapView(aggregates: routeAggregates)
+                FrequentRoutesExpandOverlay(
+                    aggregates: routeAggregates,
+                    sourceGlobal: frozenRoutesCardFrame,
+                    isExpanded: $routesExpanded,
+                    onClose: closeRoutesMap
+                )
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled()
+                .ignoresSafeArea()
             }
-            .fullScreenCover(isPresented: $showRecapStory) {
-                YearRecapStoryView(snapshot: recapSnapshot ?? .empty(year: Calendar.current.component(.year, from: Date()))) {
-                    showRecapStory = false
+            .fullScreenCover(isPresented: $showForecastDetail) {
+                StatsForecastExpandOverlay(
+                    forecast: forecast,
+                    currencyCode: settings.fuelCurrency.rawValue,
+                    sourceGlobal: frozenForecastCardFrame,
+                    isExpanded: $forecastExpanded,
+                    onClose: closeForecastDetail
+                )
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled()
+                .ignoresSafeArea()
+            }
+            .fullScreenCover(item: $recapStorySession) { session in
+                YearRecapStoryView(snapshot: session.snapshot) {
                     markRecapSeen()
+                    recapStorySession = nil
                 }
+                .interactiveDismissDisabled()
             }
             .overlay {
                 achievementUnlockOverlay
@@ -305,17 +344,32 @@ struct StatsView: View {
 
     @ViewBuilder
     private var achievementUnlockOverlay: some View {
-        if let item = unlockQueue.first {
-            Color.black.opacity(0.28).ignoresSafeArea()
-            AchievementUnlockOverlay(item: item) {
-                AchievementEvaluator.markSeen([item.id], in: modelContext)
-                if !unlockQueue.isEmpty {
-                    unlockQueue.removeFirst()
+        ZStack {
+            if let item = unlockQueue.first {
+                Color.black.opacity(0.28).ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        advanceUnlockQueue(from: item)
+                    }
+                AchievementUnlockOverlay(item: item) {
+                    advanceUnlockQueue(from: item)
                 }
-                try? modelContext.save()
-                achievements = AchievementEvaluator.displays(in: modelContext)
+                .id(item.id)
+                .transition(TrailhoundMotion.badgeUnlockCardTransition(reduceMotion: reduceMotion))
             }
         }
+        .animation(TrailhoundMotion.badgeUnlock(reduceMotion: reduceMotion), value: unlockQueue.first?.id)
+        .allowsHitTesting(unlockQueue.first != nil)
+    }
+
+    private func advanceUnlockQueue(from item: AchievementDisplay) {
+        guard unlockQueue.contains(where: { $0.id == item.id }) else { return }
+        AchievementEvaluator.markSeen([item.id], in: modelContext)
+        withAnimation(TrailhoundMotion.badgeUnlock(reduceMotion: reduceMotion)) {
+            unlockQueue.removeAll { $0.id == item.id }
+        }
+        try? modelContext.save()
+        achievements = AchievementEvaluator.displays(in: modelContext)
     }
 
     private func handleStatsAppear() {
@@ -371,27 +425,6 @@ struct StatsView: View {
                 } right: {
                     statsHeroCard(currencyCode: currencyCode)
                 }
-            }
-
-            Section(L10n.string("premium.section.title")) {
-                YearRecapHubCard(
-                    snapshot: recapSnapshot ?? .empty(year: Calendar.current.component(.year, from: Date())),
-                    onPlay: { showRecapStory = true }
-                )
-                .statsFullCard()
-
-                StatsAchievementsStrip(achievements: achievements, onOpen: { showAchievements = true })
-                    .statsFullCard()
-
-                FrequentRoutesPreviewCard(aggregates: routeAggregates, onOpen: { showRoutesMap = true })
-                    .statsFullCard()
-
-                StatsForecastCard(
-                    forecast: forecast,
-                    currencyCode: currencyCode,
-                    onOpen: { showForecastDetail = true }
-                )
-                .statsFullCard()
             }
 
             Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
@@ -463,6 +496,63 @@ struct StatsView: View {
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             }
 
+            Section(L10n.string("premium.section.title")) {
+                YearRecapHubCard(
+                    snapshot: recapSnapshot ?? .empty(year: RecapYearPolicy.displayYear()),
+                    onPlay: { openRecapStory() }
+                )
+                .statsFullCard(contentInset: 0)
+
+                StatsAchievementsStrip(
+                    achievements: achievements,
+                    isExpanded: showAchievements,
+                    onOpen: openAchievements
+                )
+                .statsFullCard()
+                .opacity(showAchievements ? 0 : 1)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: AchievementCardGlobalFrameKey.self,
+                            value: proxy.frame(in: .global)
+                        )
+                    }
+                }
+
+                FrequentRoutesPreviewCard(
+                    aggregates: routeAggregates,
+                    isExpanded: showRoutesMap,
+                    onOpen: openRoutesMap
+                )
+                .statsFullCard()
+                .opacity(showRoutesMap ? 0 : 1)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: FrequentRoutesCardGlobalFrameKey.self,
+                            value: proxy.frame(in: .global)
+                        )
+                    }
+                }
+
+                StatsForecastCard(
+                    forecast: forecast,
+                    currencyCode: currencyCode,
+                    isExpanded: showForecastDetail,
+                    onOpen: openForecastDetail
+                )
+                .statsFullCard(contentInset: 0)
+                .opacity(showForecastDetail ? 0 : 1)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: StatsForecastCardGlobalFrameKey.self,
+                            value: proxy.frame(in: .global)
+                        )
+                    }
+                }
+            }
+
             Section {
                 StatsYearAwardsCard(
                     snapshot: yearAwards,
@@ -521,7 +611,7 @@ struct StatsView: View {
         if forecastLoader == nil { forecastLoader = forecastActor }
         let recapActor = recapLoader ?? YearRecapSnapshotLoader(modelContainer: modelContext.container)
         if recapLoader == nil { recapLoader = recapActor }
-        let year = Calendar.current.component(.year, from: Date())
+        let year = RecapYearPolicy.displayYear()
         let request = MonthCostForecastRequest(
             storeVersion: storeVersion,
             selectedVehicleID: selectedVehicleID,
@@ -536,10 +626,140 @@ struct StatsView: View {
                 achievements = AchievementEvaluator.displays(in: modelContext)
                 routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
                 let pending = achievements.filter(\.needsCelebration)
-                if unlockQueue.isEmpty {
-                    unlockQueue = pending
-                }
+                unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
                 PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
+                if pendingRecapPlay {
+                    pendingRecapPlay = false
+                    if RecapYearPolicy.shouldPresent(builtRecap) {
+                        recapStorySession = RecapStorySession(snapshot: builtRecap)
+                    }
+                }
+            }
+        }
+    }
+
+    private func openAchievements() {
+        guard !showAchievements else { return }
+        TrailhoundHaptics.selection()
+        frozenBadgesCardFrame = badgesCardFrame
+        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenBadgesCardFrame)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showAchievements = true
+            achievementsExpanded = !morph
+        }
+        guard morph else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+                achievementsExpanded = true
+            }
+        }
+    }
+
+    private func closeAchievements() {
+        TrailhoundHaptics.selection()
+        if reduceMotion {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                achievementsExpanded = false
+                showAchievements = false
+            }
+            return
+        }
+        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+            achievementsExpanded = false
+        } completion: {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                showAchievements = false
+            }
+        }
+    }
+
+    private func openRoutesMap() {
+        guard !showRoutesMap else { return }
+        TrailhoundHaptics.selection()
+        frozenRoutesCardFrame = routesCardFrame
+        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenRoutesCardFrame)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showRoutesMap = true
+            routesExpanded = !morph
+        }
+        guard morph else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+                routesExpanded = true
+            }
+        }
+    }
+
+    private func closeRoutesMap() {
+        TrailhoundHaptics.selection()
+        if reduceMotion {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                routesExpanded = false
+                showRoutesMap = false
+            }
+            return
+        }
+        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+            routesExpanded = false
+        } completion: {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                showRoutesMap = false
+            }
+        }
+    }
+
+    private func openForecastDetail() {
+        guard !showForecastDetail else { return }
+        TrailhoundHaptics.selection()
+        frozenForecastCardFrame = forecastCardFrame
+        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenForecastCardFrame)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showForecastDetail = true
+            forecastExpanded = !morph
+        }
+        guard morph else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+                forecastExpanded = true
+            }
+        }
+    }
+
+    private func closeForecastDetail() {
+        TrailhoundHaptics.selection()
+        if reduceMotion {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                forecastExpanded = false
+                showForecastDetail = false
+            }
+            return
+        }
+        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+            forecastExpanded = false
+        } completion: {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                showForecastDetail = false
             }
         }
     }
@@ -550,35 +770,47 @@ struct StatsView: View {
         case .goal:
             break
         case .forecast:
-            showForecastDetail = true
+            openForecastDetail()
         case .recap:
-            if recapSnapshot?.hasData == true {
-                showRecapStory = true
-            }
+            playRecapWhenReady()
         case .routes:
-            showRoutesMap = true
+            openRoutesMap()
         case .achievements:
-            showAchievements = true
+            openAchievements()
         }
     }
 
+    private func playRecapWhenReady() {
+        if RecapYearPolicy.shouldPresent(recapSnapshot) {
+            openRecapStory()
+            return
+        }
+        pendingRecapPlay = true
+        schedulePremiumRefresh()
+    }
+
+    private func openRecapStory() {
+        guard let recapSnapshot, recapSnapshot.hasData else { return }
+        recapStorySession = RecapStorySession(snapshot: recapSnapshot)
+    }
+
     private func recapSeenKey(for year: Int) -> String {
-        "recap.seen.\(year)"
+        RecapYearPolicy.seenKey(for: year)
     }
 
     private func markRecapSeen() {
-        let year = Calendar.current.component(.year, from: Date())
-        UserDefaults.standard.set(true, forKey: recapSeenKey(for: year))
+        let year = RecapYearPolicy.displayYear()
+        RecapNotificationScheduler.noteRecapConsumed(year: year)
     }
 
     private func maybeAutoplayRecap() {
         guard !UITestSupport.isEnabled, !UITestSupport.isUnitTesting else { return }
-        let year = Calendar.current.component(.year, from: Date())
+        let year = RecapYearPolicy.displayYear()
         let month = Calendar.current.component(.month, from: Date())
         guard month == 12 || month == 1 else { return }
-        guard recapSnapshot?.hasData == true else { return }
+        guard RecapYearPolicy.shouldPresent(recapSnapshot) else { return }
         guard !UserDefaults.standard.bool(forKey: recapSeenKey(for: year)) else { return }
-        showRecapStory = true
+        openRecapStory()
         markRecapSeen()
     }
 
@@ -1926,7 +2158,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyChartData.map(\.distanceKilometers).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.distance_km"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.distance_km"))
         .frame(height: 200)
     }
 
@@ -1943,7 +2175,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyDurationChartData.map(\.durationHours).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.duration_hours"))
         .frame(height: 200)
     }
 
@@ -1960,7 +2192,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyAverageSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
     }
 
@@ -1977,7 +2209,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyMaxSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
     }
 
@@ -1994,7 +2226,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyCruiseSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
     }
 
@@ -2011,7 +2243,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyMostCommonSpeedChartData.map(\.speedKmh).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.speed_kmh"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.speed_kmh"))
         .frame(height: 200)
     }
 
@@ -2028,7 +2260,7 @@ struct StatsView: View {
         .chartBarValueHeadroom(maxValue: dailyStopDurationChartData.map(\.durationHours).max() ?? 0)
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.duration_hours"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.duration_hours"))
         .frame(height: 200)
     }
 
@@ -2067,7 +2299,7 @@ struct StatsView: View {
         .chartYScale(domain: [0, max(maxValue * 1.12, 1)])
         .chartStatsQuietYAxisStyle()
         .chartXAxis { dailyChartXAxis(days: days) }
-        .chartYAxisLabel(L10n.string("stats.chart.fuel_cost"))
+        .chartStatsYAxisUnit(L10n.string("stats.chart.fuel_cost"))
         .frame(height: 200)
     }
 

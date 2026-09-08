@@ -1,7 +1,10 @@
 import SwiftUI
+import UserNotifications
 
-struct LocationPermissionBadge: View {
-  let state: LocationService.AuthorizationState
+struct PermissionStatusCapsule: View {
+  let icon: String
+  let label: String
+  let fillColors: [Color]
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
@@ -39,6 +42,15 @@ struct LocationPermissionBadge: View {
     .compositingGroup()
     .accessibilityLabel(label)
   }
+}
+
+struct LocationPermissionBadge: View {
+  let state: LocationService.AuthorizationState
+  @Environment(\.colorScheme) private var colorScheme
+
+  var body: some View {
+    PermissionStatusCapsule(icon: icon, label: label, fillColors: fillColors)
+  }
 
   private var icon: String {
     switch state {
@@ -73,6 +85,49 @@ struct LocationPermissionBadge: View {
       Color(red: 0.18, green: 0.70, blue: 0.36),
       Color(red: 0.09, green: 0.55, blue: 0.25)
     ]
+  }
+}
+
+struct NotificationPermissionBadge: View {
+  let status: UNAuthorizationStatus
+  @Environment(\.colorScheme) private var colorScheme
+
+  var body: some View {
+    PermissionStatusCapsule(icon: icon, label: label, fillColors: fillColors)
+  }
+
+  private var icon: String {
+    switch status {
+    case .authorized, .provisional, .ephemeral: "bell.fill"
+    case .denied: "bell.slash.fill"
+    case .notDetermined: "bell"
+    @unknown default: "bell.slash.fill"
+    }
+  }
+
+  private var label: String {
+    switch status {
+    case .authorized, .provisional, .ephemeral: L10n.notificationsBadgeAllowed
+    case .notDetermined: L10n.notificationsBadgeAsk
+    case .denied: L10n.notificationsBadgeDenied
+    @unknown default: L10n.notificationsBadgeDenied
+    }
+  }
+
+  private var fillColors: [Color] {
+    switch status {
+    case .authorized, .provisional, .ephemeral:
+      [
+        Color(red: 0.18, green: 0.70, blue: 0.36),
+        Color(red: 0.09, green: 0.55, blue: 0.25)
+      ]
+    case .notDetermined:
+      [GlassSemantic.paused(for: colorScheme), GlassSemantic.paused(for: colorScheme)]
+    case .denied:
+      [GlassSemantic.destructive(for: colorScheme), GlassSemantic.destructive(for: colorScheme)]
+    @unknown default:
+      [GlassSemantic.destructive(for: colorScheme), GlassSemantic.destructive(for: colorScheme)]
+    }
   }
 }
 

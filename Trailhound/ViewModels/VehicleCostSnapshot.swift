@@ -200,6 +200,11 @@ enum StatsVehicleCompareBuilder {
             )
         }
     }
+
+    static func barShare(amount: Double, maxAmount: Double) -> Double {
+        guard maxAmount > 0, amount > 0 else { return 0 }
+        return min(1, amount / maxAmount)
+    }
 }
 
 struct VehicleCostSnapshot: Sendable, Equatable {

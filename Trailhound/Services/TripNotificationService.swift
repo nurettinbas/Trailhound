@@ -5,13 +5,19 @@ import UserNotifications
 enum TripNotificationService {
     /// userInfo key carried on notifications that should deep-link somewhere on tap.
     static let actionUserInfoKey = "trailhound.action"
+    static let tripIDUserInfoKey = "trailhound.tripID"
+    static let targetUserInfoKey = "trailhound.target"
     /// Action value that opens the Pairing tab when the notification is tapped.
     static let openPairingAction = "openPairing"
+    static let openTripAction = "openTrip"
+    static let openAchievementsAction = "openAchievements"
+    static let openRecapAction = "openRecap"
 
     static func requestAuthorizationIfNeeded() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             guard settings.authorizationStatus == .notDetermined else { return }
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
     }
 
@@ -26,7 +32,9 @@ enum TripNotificationService {
                 kind: .tripStarted,
                 title: L10n.tripStartedTitle,
                 body: body,
-                tripID: tripID
+                tripID: tripID,
+                action: openTripAction,
+                target: tripID.uuidString
             )
         }
         // Prefer posting the system banner once we know "From …". If place is already
@@ -35,7 +43,9 @@ enum TripNotificationService {
             postSystemNotification(
                 identifier: identifier,
                 title: L10n.tripStartedTitle,
-                body: body
+                body: body,
+                action: openTripAction,
+                tripID: tripID
             )
             return true
         }
@@ -57,7 +67,9 @@ enum TripNotificationService {
         postSystemNotification(
             identifier: startedNotificationID(tripID: tripID),
             title: L10n.tripStartedTitle,
-            body: body
+            body: body,
+            action: openTripAction,
+            tripID: tripID
         )
     }
 
@@ -85,11 +97,13 @@ enum TripNotificationService {
         content.title = L10n.tripStartedTitle
         content.body = L10n.tripStartedBody
         content.sound = .default
-        content.userInfo = ["trailhound.inboxRecorded": true]
+        content.userInfo = tripUserInfo(tripID: tripID, action: openTripAction, inboxRecorded: true)
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2.5, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
+        Task {
+            try? await UNUserNotificationCenter.current().add(request)
+        }
     }
 
     static func cancelDeferredStartedPush(tripID: UUID) {
@@ -98,17 +112,54 @@ enum TripNotificationService {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [identifier])
     }
 
-    private static func postSystemNotification(identifier: String, title: String, body: String) {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+    private static func postSystemNotification(
+        identifier: String,
+        title: String,
+        body: String,
+        action: String? = nil,
+        tripID: UUID? = nil,
+        target: String? = nil,
+        skipWhenStatsSelected: Bool = false
+    ) {
+        Task { @MainActor in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             guard settings.authorizationStatus == .authorized else { return }
+            if skipWhenStatsSelected, TabSelection.shared.selectedTab == .stats { return }
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
             content.sound = .default
-            content.userInfo = ["trailhound.inboxRecorded": true]
+            content.userInfo = tripUserInfo(
+                tripID: tripID,
+                action: action,
+                target: target,
+                inboxRecorded: true
+            )
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(request)
+            try? await UNUserNotificationCenter.current().add(request)
         }
+    }
+
+    private static func tripUserInfo(
+        tripID: UUID? = nil,
+        action: String? = nil,
+        target: String? = nil,
+        inboxRecorded: Bool
+    ) -> [String: Any] {
+        var userInfo: [String: Any] = [:]
+        if inboxRecorded {
+            userInfo["trailhound.inboxRecorded"] = true
+        }
+        if let action {
+            userInfo[actionUserInfoKey] = action
+        }
+        if let tripID {
+            userInfo[tripIDUserInfoKey] = tripID.uuidString
+        }
+        if let target {
+            userInfo[targetUserInfoKey] = target
+        }
+        return userInfo
     }
 
     static func notifyTripEnded(
@@ -117,6 +168,7 @@ enum TripNotificationService {
         duration: TimeInterval,
         routeSummary: String
     ) {
+        requestAuthorizationIfNeeded()
         let km = DateFormatters.formatDistance(distanceMeters)
         let durationText = DateFormatters.formatDuration(duration)
         let format = L10n.string("trip.ended.rich.body")
@@ -126,7 +178,8 @@ enum TripNotificationService {
             kind: .tripEnded,
             title: L10n.tripEndedTitle,
             body: body,
-            tripID: tripID
+            tripID: tripID,
+            action: openTripAction
         )
     }
 
@@ -146,7 +199,38 @@ enum TripNotificationService {
             kind: .tripsMerged,
             title: L10n.tripsMergedTitle,
             body: L10n.tripsMergedBody(legCount),
-            tripID: tripID
+            tripID: tripID,
+            action: openTripAction
+        )
+    }
+
+    @MainActor
+    static func notifyAchievementsUnlocked(_ ids: [AchievementID]) {
+        let unique = Array(Set(ids)).sorted { $0.sortOrder < $1.sortOrder }
+        guard !unique.isEmpty else { return }
+        let title = L10n.string("premium.achievements.unlocked")
+        for id in unique {
+            AppNotificationStore.shared.record(
+                kind: .achievementUnlocked,
+                title: title,
+                body: L10n.achievementTitle(id),
+                action: openAchievementsAction,
+                target: id.rawValue
+            )
+        }
+        let body = unique.count == 1
+            ? L10n.achievementTitle(unique[0])
+            : L10n.achievementsUnlockedCount(unique.count)
+        let identifier = unique.count == 1
+            ? "trailhound.achievement.\(unique[0].rawValue)"
+            : "trailhound.achievement.batch"
+        postSystemNotification(
+            identifier: identifier,
+            title: title,
+            body: body,
+            action: openAchievementsAction,
+            target: unique.count == 1 ? unique[0].rawValue : nil,
+            skipWhenStatsSelected: true
         )
     }
 
@@ -160,7 +244,8 @@ enum TripNotificationService {
             return
         }
 
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             guard settings.authorizationStatus == .authorized else { return }
 
             let title = L10n.string("orphan.stale.title")
@@ -169,7 +254,7 @@ enum TripNotificationService {
             content.title = title
             content.body = body
             content.sound = .default
-            content.userInfo = ["trailhound.inboxRecorded": true]
+            content.userInfo = tripUserInfo(tripID: tripID, action: openTripAction, inboxRecorded: true)
 
             let components = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute, .second],
@@ -177,7 +262,7 @@ enum TripNotificationService {
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-            UNUserNotificationCenter.current().add(request)
+            try? await UNUserNotificationCenter.current().add(request)
         }
     }
 
@@ -193,7 +278,8 @@ enum TripNotificationService {
             kind: .orphanStale,
             title: L10n.string("orphan.stale.title"),
             body: L10n.string("orphan.stale.body"),
-            tripID: tripID
+            tripID: tripID,
+            action: openTripAction
         )
     }
 
@@ -207,18 +293,24 @@ enum TripNotificationService {
         title: String,
         body: String,
         tripID: UUID? = nil,
-        action: String? = nil
+        action: String? = nil,
+        target: String? = nil
     ) {
+        let resolvedAction = action
+        let resolvedTarget = target ?? tripID?.uuidString
         Task { @MainActor in
             AppNotificationStore.shared.record(
                 kind: kind,
                 title: title,
                 body: body,
-                tripID: tripID
+                tripID: tripID,
+                action: resolvedAction,
+                target: resolvedTarget
             )
         }
 
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        Task { @MainActor in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             guard settings.authorizationStatus == .authorized else {
                 #if DEBUG
                 print("TripNotificationService: skipped push '\(identifier)' — authorization is \(settings.authorizationStatus.rawValue)")
@@ -230,22 +322,23 @@ enum TripNotificationService {
             content.title = title
             content.body = body
             content.sound = .default
-            var userInfo: [String: Any] = ["trailhound.inboxRecorded": true]
-            if let action {
-                userInfo[actionUserInfoKey] = action
-            }
-            content.userInfo = userInfo
+            content.userInfo = tripUserInfo(
+                tripID: tripID,
+                action: resolvedAction,
+                target: resolvedTarget,
+                inboxRecorded: true
+            )
 
             let request = UNNotificationRequest(
                 identifier: identifier,
                 content: content,
                 trigger: nil
             )
-            UNUserNotificationCenter.current().add(request) { error in
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+            } catch {
                 #if DEBUG
-                if let error {
-                    print("TripNotificationService: failed to deliver '\(identifier)': \(error.localizedDescription)")
-                }
+                print("TripNotificationService: failed to deliver '\(identifier)': \(error.localizedDescription)")
                 #endif
             }
         }

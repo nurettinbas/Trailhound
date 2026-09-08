@@ -3,6 +3,7 @@ import MessageUI
 import SwiftData
 import SwiftUI
 import UIKit
+import UserNotifications
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -26,8 +27,10 @@ struct SettingsView: View {
     @State private var showReportShareSheet = false
     @State private var showReportShareFailed = false
     @State private var reportFileURL: URL?
-
     @FocusState private var focusedField: SettingsFocusedField?
+
+    @State private var notificationAuthorization: UNAuthorizationStatus = .notDetermined
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Form {
@@ -176,6 +179,16 @@ struct SettingsView: View {
             }
 
             Section {
+                Button(L10n.settingsRecapPlay) {
+                    TabSelection.shared.openStats(anchor: .recap)
+                }
+                .accessibilityIdentifier("settings.recap.play")
+                .glassRow(position: .only)
+            } footer: {
+                Text(L10n.settingsRecapHint)
+            }
+
+            Section {
                 Button(L10n.settingsOpenSystemSettings) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
@@ -254,24 +267,37 @@ struct SettingsView: View {
                 LabeledContent(L10n.settingsLocationPermission) {
                     LocationPermissionBadge(state: locationService.authorizationState)
                 }
-                .glassRow(position: permissionsPositions.labeled)
+                .glassRow(position: .first)
+
+                LabeledContent(L10n.settingsNotificationsPermission) {
+                    NotificationPermissionBadge(status: notificationAuthorization)
+                }
+                .glassRow(position: .middle)
 
                 if !locationService.canRecordInBackground {
                     Text(L10n.settingsBackgroundLocationHint)
                         .font(.footnote)
                         .glassSecondaryInk()
-                        .glassRow(position: permissionsPositions.hint)
+                        .glassRow(position: .middle)
                 }
 
                 Button(L10n.settingsRequestLocationPermission) { locationService.requestPermission() }
-                    .glassRow(position: permissionsPositions.request)
+                    .glassRow(position: .middle)
+
+                if notificationAuthorization == .notDetermined {
+                    Button(L10n.settingsRequestNotificationsPermission) {
+                        requestNotificationPermission()
+                    }
+                    .accessibilityIdentifier("settings.permissions.requestNotifications")
+                    .glassRow(position: .middle)
+                }
 
                 Button(L10n.settingsOpenSystemSettings) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
                 }
-                .glassRow(position: permissionsPositions.openSettings)
+                .glassRow(position: .last)
             }
 
             Section(L10n.settingsBackupSection) {
@@ -323,7 +349,13 @@ struct SettingsView: View {
         )
         .onAppear {
             runCleanupIfNeeded()
+            refreshNotificationAuthorization()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                refreshNotificationAuthorization()
+            }
         }
         .sheet(isPresented: $showExportSheet) {
             if let exportURL {
@@ -407,11 +439,24 @@ struct SettingsView: View {
         (places.isEmpty ? 1 : 0) + places.count + 1
     }
 
-    private var permissionsPositions: (labeled: GlassRowPosition, hint: GlassRowPosition, request: GlassRowPosition, openSettings: GlassRowPosition) {
-        if locationService.canRecordInBackground {
-            return (.first, .middle, .middle, .last)
+    private func refreshNotificationAuthorization() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let status = settings.authorizationStatus
+            Task { @MainActor in
+                notificationAuthorization = status
+            }
         }
-        return (.first, .middle, .middle, .last)
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                let status = settings.authorizationStatus
+                Task { @MainActor in
+                    notificationAuthorization = status
+                }
+            }
+        }
     }
 
     private var diagnosticMailSubject: String {

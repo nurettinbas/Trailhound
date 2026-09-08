@@ -19,10 +19,16 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
     var busiestMonth: Int?
     var busiestMonthDistanceMeters: Double
     var businessDistanceMeters: Double
+    /// Non-business distance (custom categories included). Display as "Other".
     var personalDistanceMeters: Double
     var estimatedFuelCost: Double
     var paidExpenses: Double
     var unlockedAchievementIDs: [String]
+
+    var otherDistanceMeters: Double {
+        get { personalDistanceMeters }
+        set { personalDistanceMeters = newValue }
+    }
 
     static func empty(year: Int) -> YearRecapSnapshot {
         YearRecapSnapshot(
@@ -55,7 +61,13 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
 }
 
 enum YearRecapCache {
+    static let schemaVersion = 3
     private static let directoryName = "YearRecapSnapshots"
+
+    private struct Record: Codable {
+        var schemaVersion: Int
+        var snapshot: YearRecapSnapshot
+    }
 
     static func invalidate(yearContaining date: Date, calendar: Calendar = .current) {
         let year = calendar.component(.year, from: date)
@@ -73,13 +85,19 @@ enum YearRecapCache {
     static func load(year: Int) -> YearRecapSnapshot? {
         let url = fileURL(for: year)
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(YearRecapSnapshot.self, from: data)
+        guard let record = try? JSONDecoder().decode(Record.self, from: data),
+              record.schemaVersion == schemaVersion
+        else {
+            return nil
+        }
+        return record.snapshot
     }
 
     static func save(_ snapshot: YearRecapSnapshot) {
         let directory = directoryURL()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(snapshot) {
+        let record = Record(schemaVersion: schemaVersion, snapshot: snapshot)
+        if let data = try? JSONEncoder().encode(record) {
             try? data.write(to: fileURL(for: snapshot.year), options: .atomic)
         }
     }

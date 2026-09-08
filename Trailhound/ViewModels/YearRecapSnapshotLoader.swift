@@ -7,12 +7,13 @@ actor YearRecapSnapshotLoader {
     private var cachedStoreVersion: Int?
 
     func snapshot(year: Int, storeVersion: Int, now: Date = Date()) -> YearRecapSnapshot {
+        let storeChanged = cachedStoreVersion != nil && cachedStoreVersion != storeVersion
         if cachedStoreVersion != storeVersion {
             cache.removeAll(keepingCapacity: true)
             cachedStoreVersion = storeVersion
         }
         if let cached = cache[year] { return cached }
-        if let disk = YearRecapCache.load(year: year) {
+        if !storeChanged, let disk = YearRecapCache.load(year: year) {
             cache[year] = disk
             return disk
         }
@@ -28,6 +29,7 @@ actor YearRecapSnapshotLoader {
     }
 
     private func build(year: Int, now: Date) -> YearRecapSnapshot {
+        _ = now
         let calendar = Calendar.current
         guard
             let yearStart = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
@@ -49,7 +51,7 @@ actor YearRecapSnapshotLoader {
         var night = 0.0
         var fuel = 0.0
         var businessDistance = 0.0
-        var personalDistance = 0.0
+        var otherDistance = 0.0
         var monthDistance: [Int: Double] = [:]
         var activeDays = Set<Date>()
 
@@ -64,7 +66,7 @@ actor YearRecapSnapshotLoader {
             if rollup.categoryID == businessID || rollup.categoryID == legacyBusiness {
                 businessDistance += rollup.distanceMeters
             } else {
-                personalDistance += rollup.distanceMeters
+                otherDistance += rollup.distanceMeters
             }
             let month = calendar.component(.month, from: rollup.dayStart)
             monthDistance[month, default: 0] += rollup.distanceMeters
@@ -84,17 +86,13 @@ actor YearRecapSnapshotLoader {
             for name in TripLocalityResolver.localities(on: trip) {
                 cityCounts[name, default: 0] += 1
             }
-            trip.invalidatePointCaches()
         }
         let topCities = cityCounts.sorted { lhs, rhs in
             if lhs.value != rhs.value { return lhs.value > rhs.value }
             return lhs.key < rhs.key
         }.prefix(3).map(\.key)
 
-        let routes = ((try? modelContext.fetch(FetchDescriptor<FrequentRouteAggregate>())) ?? [])
-            .filter { $0.lastStartedAt >= yearStart && $0.lastStartedAt < yearEnd }
-            .sorted { $0.count > $1.count }
-        let topRoute = routes.first
+        let topRoute = yearTopRoute(from: trips)
 
         let expenseDescriptor = FetchDescriptor<VehicleExpense>(
             predicate: #Predicate { expense in
@@ -103,12 +101,16 @@ actor YearRecapSnapshotLoader {
         )
         let paid = ((try? modelContext.fetch(expenseDescriptor)) ?? []).reduce(0) { $0 + $1.amount }
 
-        let unlocked = ((try? modelContext.fetch(FetchDescriptor<AchievementProgress>())) ?? [])
-            .compactMap { row -> String? in
-                guard let unlockedAt = row.unlockedAt else { return nil }
-                let unlockedYear = calendar.component(.year, from: unlockedAt)
-                return unlockedYear == year ? row.achievementID : nil
-            }
+        let progressRows = ((try? modelContext.fetch(FetchDescriptor<AchievementProgress>())) ?? [])
+        let yearUnlocked = progressRows.compactMap { row -> String? in
+            guard let unlockedAt = row.unlockedAt else { return nil }
+            let unlockedYear = calendar.component(.year, from: unlockedAt)
+            return unlockedYear == year ? row.achievementID : nil
+        }
+        let lifetimeUnlocked = progressRows.compactMap { row -> String? in
+            row.unlockedAt == nil ? nil : row.achievementID
+        }
+        let unlocked = yearUnlocked.isEmpty ? lifetimeUnlocked : yearUnlocked
 
         let busiest = monthDistance.max { lhs, rhs in
             if lhs.value != rhs.value { return lhs.value < rhs.value }
@@ -122,8 +124,8 @@ actor YearRecapSnapshotLoader {
             duration: duration,
             cityCount: cityCounts.count,
             topCities: Array(topCities),
-            topRouteStart: topRoute?.startDisplay,
-            topRouteEnd: topRoute?.endDisplay,
+            topRouteStart: topRoute?.start,
+            topRouteEnd: topRoute?.end,
             topRouteCount: topRoute?.count ?? 0,
             topRouteStartLatitude: topRoute?.startLatitude,
             topRouteStartLongitude: topRoute?.startLongitude,
@@ -134,11 +136,57 @@ actor YearRecapSnapshotLoader {
             busiestMonth: busiest?.key,
             busiestMonthDistanceMeters: busiest?.value ?? 0,
             businessDistanceMeters: businessDistance,
-            personalDistanceMeters: personalDistance,
+            personalDistanceMeters: otherDistance,
             estimatedFuelCost: fuel,
             paidExpenses: paid,
             unlockedAchievementIDs: unlocked
         )
+    }
+
+    private struct YearTopRoute {
+        var start: String
+        var end: String
+        var count: Int
+        var startLatitude: Double?
+        var startLongitude: Double?
+        var endLatitude: Double?
+        var endLongitude: Double?
+    }
+
+    private func yearTopRoute(from trips: [Trip]) -> YearTopRoute? {
+        let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let privacyRadius = privacyRadiusMeters()
+        var counts: [String: (snapshot: FrequentRouteSnapshot, count: Int)] = [:]
+        for trip in trips {
+            guard let snapshot = FrequentRouteAggregateService.snapshot(
+                of: trip,
+                places: places,
+                privacyRadius: privacyRadius
+            ) else { continue }
+            var entry = counts[snapshot.pairKey] ?? (snapshot, 0)
+            entry.count += 1
+            entry.snapshot = snapshot
+            counts[snapshot.pairKey] = entry
+        }
+        guard let best = counts.values.max(by: { lhs, rhs in
+            if lhs.count != rhs.count { return lhs.count < rhs.count }
+            return lhs.snapshot.pairKey > rhs.snapshot.pairKey
+        }) else { return nil }
+        return YearTopRoute(
+            start: best.snapshot.startDisplay,
+            end: best.snapshot.endDisplay,
+            count: best.count,
+            startLatitude: best.snapshot.startLatitude,
+            startLongitude: best.snapshot.startLongitude,
+            endLatitude: best.snapshot.endLatitude,
+            endLongitude: best.snapshot.endLongitude
+        )
+    }
+
+    private func privacyRadiusMeters() -> Double {
+        let defaults = UserDefaults(suiteName: RecordingControlBridge.appGroupSuiteName) ?? .standard
+        let value = defaults.double(forKey: "privacyRadiusMeters")
+        return value > 0 ? value : 500
     }
 
     private func longestStreak(in days: Set<Date>, calendar: Calendar) -> Int {

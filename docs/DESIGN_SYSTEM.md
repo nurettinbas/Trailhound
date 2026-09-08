@@ -49,7 +49,7 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 
 - Body copy on Light glass is white. Do **not** darken cards to force a WCAG 4.5:1 composite — that turns Forest/Gold into olive plates. Increased Contrast raises mid-family tint and rim, not white frost.
 - Reduce Transparency uses `GlassEngine.solid` with opaque mid-family fill, not system grouped white and not chrome.
-- Reduce Motion skips chip morph and sheen animation.
+- Reduce Motion skips chip morph, sheen, card-press scale, forecast glint, segment-bar grow-in, recap hub idle, Play-chip pulse, badge flag-wave, distance path-node travel, and night sky bob.
 - VoiceOver labels are unchanged. Palette swatches use `settings.shellPalette.<id>`.
 - System exceptions stay system: `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity. Light floating tab bar keeps system glass with a one-step mid-family tint.
 - Legitimate blacks stay black: map vignette/dimming, delete/merge scrims, shadows, camera/crop stage. Semantic Stop/unread remains solid red.
@@ -63,8 +63,24 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
 | `GlassEnvironment.swift` | `.onGlassShell()`, ink hierarchy, `.glassDisclosureInk()`, `shellPalette` env |
 | `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, toolbar symbol/title/cluster |
-| `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` |
+| `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundCompactProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` / `.trailhoundCardPress()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |
+| `StatsCard.swift` | Stats full/half cards, nested tiles, `.statsNestedPanel()` (variable-height frost in expand overlays), `.statsFrostChip()`, `StatsSegmentBar` / `StatsSegmentSwatch` / `StatsShareBar` (vehicle-compare share of top spend, donut slice fill), overlay `posterHeight` / `posterExpandedHeight`. Recap and month-forecast posters use `contentInset: 0` plus `.statsPosterOverlayPadding()` so artwork fills the card. |
+| `TrailhoundMotion.swift` | `.numericTextAnimation`, `.glassEntranceGlint` (alias `.photoEntranceGlint`) |
 | `TrailhoundTabBarCompact.swift` | Palette selected-tab tint (system floating-bar width) |
 | `AppIconSync.swift` | Palette → alternate Home Screen icon; coalesced public API call |
 | `TrailhoundBrandMark.swift` | In-app / share-card logo recolored to `homeScreenIconFill` |
+| `RecapShareRenderer.swift` | Year recap Share PNG is `ImageRenderer` of the visible story page (`RecapPageScene` + copy), 9:16. Not a separate Core Graphics poster. |
+| `AchievementTheme.swift` | 3D medal chrome (`AchievementMedalChrome`: bezel, face, specular, inner shade). Km medals are metal (100 silver, 1,000 gold, 10,000 **teal platinum**, 100,000 **lavender diamond**); other families keep enamel family hues in the same chrome. Cards stay glass — color only on the disc. Locked medals keep the full-color chrome and overlay `AchievementMedalLockOverlay` (black 0.45 + `GlassText.placeholder` lock) — never a washed-out fill. Unlocked first-trip glyph uses `AchievementFlagWaveEffect` (pole-anchored flutter, not a disc pulse). Distance glyphs use `AchievementDistancePathGlyph` so the two nodes travel the S (`AchievementDistancePathMotion`: 100 convoy, 1,000 rendezvous, 10,000 patrol, 100,000 bloom; ink follows the metal). Night uses `AchievementNightSkyGlyph` (moon and stars bob together; stars sparkle). Stats badges and Year in review share this overlay. |
+| `PermissionBanner.swift` | `LocationPermissionBadge` / `NotificationPermissionBadge` share `PermissionStatusCapsule` (same opaque pill chrome as location status) |
+| `StatsChartTheme.swift` | Chart fills, bar radius, axis chrome. Tick labels and Y-axis units (`km`, `h`, currency) use `axisLabelInk` / `.chartStatsYAxisUnit` — never unstyled `.chartYAxisLabel` (black on Light). |
+
+## Buttons
+
+| Intent | API |
+|---|---|
+| Primary (forms, sheets) | `.trailhoundProminentButton()` |
+| Compact in-card CTA | `.trailhoundCompactProminentButton()` — intrinsic tint capsule, ~32 pt visual, 44 pt hit; **never truncates** |
+| Secondary on glass | `.trailhoundGlassButton()` |
+| Destructive / Stop | `.trailhoundDestructiveButton()` |
+| Whole card press | `.trailhoundCardPress()` |

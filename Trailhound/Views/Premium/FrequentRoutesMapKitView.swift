@@ -1,6 +1,26 @@
 import MapKit
 import SwiftUI
 
+enum FrequentRoutesMapCamera {
+    /// Fits one corridor (start, end, arc control) with modest padding — not a regional overview.
+    static func visibleRect(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) -> MKMapRect {
+        let control = FrequentRouteAggregateService.arcControlPoint(start: start, end: end)
+        var rect = MKMapRect.null
+        for coordinate in [start, end, control] {
+            let point = MKMapPoint(coordinate)
+            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        let latitude = (start.latitude + end.latitude) / 2
+        let metersPerPoint = MKMetersPerMapPointAtLatitude(latitude)
+        let minPad = 900 / max(metersPerPoint, 0.001)
+        let padX = max(rect.size.width * 0.42, minPad)
+        let padY = max(rect.size.height * 0.42, minPad)
+        return rect.insetBy(dx: -padX, dy: -padY)
+    }
+
+    static let edgePadding = UIEdgeInsets(top: 56, left: 28, bottom: 160, right: 28)
+}
+
 final class FrequentRouteArcOverlay: NSObject, MKOverlay {
     let start: CLLocationCoordinate2D
     let end: CLLocationCoordinate2D
@@ -185,6 +205,7 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             }
             if let best {
                 onSelect?(best.0)
+                focus(map, on: best.0, animated: true)
             }
         }
 
@@ -206,9 +227,8 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             if !samples.isEmpty {
                 map.addOverlay(FrequentRoutesHeatmapOverlay(samples: samples), level: .aboveLabels)
             }
-            if let first = aggregates.first, first.hasValidCoordinates {
-                let coords = aggregates.flatMap { [$0.startCoordinate, $0.endCoordinate] }
-                map.setVisibleMapRect(rect(for: coords), edgePadding: UIEdgeInsets(top: 48, left: 36, bottom: 120, right: 36), animated: false)
+            if let first = aggregates.first(where: \.hasValidCoordinates) {
+                focus(map, on: first, animated: false)
             }
         }
 
@@ -219,13 +239,16 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             return FrequentRouteArcRenderer(overlay: overlay)
         }
 
-        private func rect(for coordinates: [CLLocationCoordinate2D]) -> MKMapRect {
-            var rect = MKMapRect.null
-            for coordinate in coordinates {
-                let point = MKMapPoint(coordinate)
-                rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
-            }
-            return rect.insetBy(dx: -120_000, dy: -120_000)
+        private func focus(_ map: MKMapView, on aggregate: FrequentRouteAggregate, animated: Bool) {
+            guard aggregate.hasValidCoordinates else { return }
+            map.setVisibleMapRect(
+                FrequentRoutesMapCamera.visibleRect(
+                    start: aggregate.startCoordinate,
+                    end: aggregate.endCoordinate
+                ),
+                edgePadding: FrequentRoutesMapCamera.edgePadding,
+                animated: animated
+            )
         }
     }
 }
@@ -330,12 +353,7 @@ final class FrequentRoutesSnapshotCache {
         options.size = size
         options.mapType = .standard
         options.pointOfInterestFilter = .excludingAll
-        var rect = MKMapRect.null
-        for coordinate in coordinates {
-            let point = MKMapPoint(coordinate)
-            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
-        }
-        options.mapRect = rect.insetBy(dx: -80_000, dy: -80_000)
+        options.mapRect = FrequentRoutesMapCamera.visibleRect(start: arcs[0].start, end: arcs[0].end)
         let snapshot: MKMapSnapshotter.Snapshot
         do {
             snapshot = try await MKMapSnapshotter(options: options).start()

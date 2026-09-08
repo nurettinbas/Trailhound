@@ -101,6 +101,7 @@ public extension TrailhoundDeepLink {
     static let statsForecast = URL(string: "trailhound://stats/forecast")!
     static let statsRecap = URL(string: "trailhound://stats/recap")!
     static let statsRoutes = URL(string: "trailhound://stats/routes")!
+    static let statsAchievements = URL(string: "trailhound://stats/achievements")!
 
     static func trip(_ id: UUID) -> URL {
         URL(string: "trailhound://trip/\(id.uuidString)")!

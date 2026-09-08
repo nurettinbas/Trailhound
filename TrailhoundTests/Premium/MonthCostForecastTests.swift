@@ -55,6 +55,49 @@ final class MonthCostForecastTests: XCTestCase {
         XCTAssertEqual(forecast.dailyRunRate, 300, accuracy: 0.1)
         XCTAssertEqual(forecast.confidence, .low)
     }
+
+    func testCompositionSharesExcludeLoggedFuel() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let monthStart = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 6, day: 16, hour: 12))!
+        var mtd: [Date: Double] = [:]
+        for day in 1...15 {
+            let date = calendar.date(from: DateComponents(year: 2026, month: 6, day: day))!
+            mtd[date] = 100
+        }
+        let expenses = [
+            ForecastExpense(amount: 200, category: .casco, isInstallment: true, occurredAt: monthStart),
+            ForecastExpense(amount: 50, category: .fuel, isInstallment: false, occurredAt: monthStart),
+            ForecastExpense(amount: 80, category: .service, isInstallment: false, occurredAt: monthStart)
+        ]
+        let forecast = MonthCostForecastMath.forecast(
+            now: now,
+            calendar: calendar,
+            mtdTripFuelByDay: mtd,
+            previousMonthTripFuelByDay: [:],
+            thisMonthExpenses: expenses,
+            previousMonthExpenses: []
+        )
+        let mix = forecast.compositionShares
+        let mixTotal = forecast.projectedFuel + forecast.installmentsDue + forecast.otherExpenses
+        XCTAssertEqual(mix.drive, forecast.projectedFuel / mixTotal, accuracy: 0.0001)
+        XCTAssertEqual(mix.installments, forecast.installmentsDue / mixTotal, accuracy: 0.0001)
+        XCTAssertEqual(mix.other, forecast.otherExpenses / mixTotal, accuracy: 0.0001)
+        XCTAssertEqual(mix.drive + mix.installments + mix.other, 1, accuracy: 0.0001)
+        XCTAssertGreaterThan(forecast.loggedFuel, 0)
+        XCTAssertEqual(
+            mix.drive * mixTotal + mix.installments * mixTotal + mix.other * mixTotal,
+            forecast.projectedTotal,
+            accuracy: 0.1
+        )
+    }
+
+    func testCompositionSharesZeroWhenEmpty() {
+        let shares = MonthCostForecast.empty.compositionShares
+        XCTAssertEqual(shares, .zero)
+        XCTAssertFalse(MonthCostForecast.empty.hasComposition)
+    }
 }
 
 @MainActor

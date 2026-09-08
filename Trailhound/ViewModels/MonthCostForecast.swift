@@ -44,6 +44,37 @@ struct MonthCostForecast: Equatable, Sendable {
         guard previousMonthTotal > 0 else { return nil }
         return (projectedTotal - previousMonthTotal) / previousMonthTotal
     }
+
+    /// Drive / installments / other as fractions of the hero total. Logged pump fuel is excluded.
+    var compositionShares: MonthCostForecastShares {
+        MonthCostForecastShares.shares(
+            drive: projectedFuel,
+            installments: installmentsDue,
+            other: otherExpenses
+        )
+    }
+
+    var hasComposition: Bool {
+        projectedFuel > 0 || installmentsDue > 0 || otherExpenses > 0
+    }
+}
+
+struct MonthCostForecastShares: Equatable, Sendable {
+    var drive: Double
+    var installments: Double
+    var other: Double
+
+    static let zero = MonthCostForecastShares(drive: 0, installments: 0, other: 0)
+
+    static func shares(drive: Double, installments: Double, other: Double) -> MonthCostForecastShares {
+        let total = drive + installments + other
+        guard total > 0 else { return .zero }
+        return MonthCostForecastShares(
+            drive: drive / total,
+            installments: installments / total,
+            other: other / total
+        )
+    }
 }
 
 struct MonthCostForecastRequest: Sendable, Hashable {

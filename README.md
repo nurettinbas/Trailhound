@@ -49,10 +49,10 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered. The Stats filter card uses titled selection fields (category, vehicle, place, travel) that keep long names on one line, plus **Clear All** to return to Last 7 days. Summary tiles show a packed skeleton while the filtered snapshot loads, so the grid does not leave empty holes
 - Category filters, trip merge (select completed trips on the list; there is no split)
 - **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps), drawn in the current Light/Dark palette with the matching app icon
-- **Year recap** on Stats: year-to-date hub plus a full-screen story (distance, cities, frequent corridor, night/streak, categories, cost, badges). Replay any time; December–January autoplay once
-- **Badges** (in-app only): cumulative km, business trips, streaks, cities, night km, regular corridor — locked badges show progress without spoiling the next tier
-- **Frequent-routes map** (MapKit arcs + heatmap, privacy-safe home/work labels, top 40 corridors)
-- **Month cost forecast** on Stats: driving fuel estimate + this month’s installments and other expenses (logged pump fuel is a separate line, never double-counted into the hero total)
+- **Year recap** on Stats: compact poster hub (scene fills the card, Play chip never truncates) opens a cinematic full-screen story — palette Canvas pages fill the cover with looping scenes, tap the left third of the screen (including the edge) to go back and the rest to go forward like Instagram (no Next), segment bars tuck under the Dynamic Island, Close and Share sit under them. Share exports the page you’re on (same scene and copy, 9:16), not a leftover km poster. The badges page sits medals inside the glowing orbs (sparkles on the story), copy overlays the scene, compact frozen chrome. Badges unlocked that year show as the same 3D medals as Stats. The last page wraps the year (not a slogan); its segment fills like the others, then the story closes. Hold to pause. January plays the previous year; other months are year-to-date. Corridor counts are for that year only. Estimated driving fuel and logged expenses stay on separate lines. Replay any time; December–January autoplay once. In January a local notification + inbox row opens the story when last year’s recap has trips and you have not watched it yet
+- **Badges**: cumulative km (100 silver, 1,000 gold, 10,000 teal platinum, 100,000 lavender diamond — each km medal runs a different motion on the S; the full km ladder stays in the gallery even while locked), business trips, streaks, cities, night km, regular corridor — Stats strip shows unlocked medals only; expand is a plain toolbar glyph on the card, then a circled collapse once expanded; the card grows into a glass gallery with 3D round medals (unlocked first); locked badges show formatted progress (km or counts) without spoiling the next non-km tier. Newly unlocked badges celebrate on Stats (3 s each, then the next) and also land in the notifications inbox with a local banner (tap opens the gallery)
+- **Frequent-routes map** (Stats card grows like Badges into MapKit arcs + heatmap; privacy-safe home/work labels, top 40 corridors)
+- **Month cost forecast** on Stats: driving fuel estimate + this month’s installments and other expenses (logged pump fuel is a separate line, never double-counted into the hero total); the hub card grows into a full-screen poster and frost breakdown like Badges (atmosphere + glass, not a grouped list)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
@@ -66,7 +66,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
 - **Travel journal** — Trips tab segment **Trips | Travels**; group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
-- In-app notifications inbox
+- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap); tap opens the matching screen
 - Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
 ---
@@ -91,7 +91,7 @@ Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern 
 | Requirement | Used for |
 |-------------|----------|
 | GPS (Always / When In Use) | Route recording and background trips |
-| Notifications | Trip started/ended alerts; vehicle care due reminders |
+| Notifications | Trip started/ended alerts; vehicle care due reminders; badge unlocks; January year recap |
 | Face ID (optional) | App lock |
 | Shortcuts (system) | Auto-start/stop Personal Automations |
 

@@ -275,11 +275,28 @@ enum L10n {
     static var settingsAutoDeleteNever: String { string("settings.privacy.auto_delete.never") }
     static var settingsPermissionsSection: String { string("settings.permissions.section") }
     static var settingsLocationPermission: String { string("settings.permissions.location") }
+    static var settingsNotificationsPermission: String { string("settings.permissions.notifications") }
     static var settingsPermissionGranted: String { string("settings.permissions.granted") }
     static var settingsPermissionRequired: String { string("settings.permissions.required") }
     static var settingsRequestLocationPermission: String { string("settings.permissions.request_location") }
+    static var settingsRequestNotificationsPermission: String { string("settings.permissions.request_notifications") }
     static var settingsOpenSystemSettings: String { string("settings.permissions.open_settings") }
     static var settingsBackgroundLocationHint: String { string("settings.permissions.background_location_hint") }
+    static var notificationsBadgeAllowed: String { string("notifications.badge.allowed") }
+    static var notificationsBadgeDenied: String { string("notifications.badge.denied") }
+    static var notificationsBadgeAsk: String { string("notifications.badge.ask") }
+
+    static func achievementTitle(_ id: AchievementID) -> String {
+        string(id.titleKey)
+    }
+
+    static func achievementsUnlockedCount(_ count: Int) -> String {
+        String(format: string("premium.achievements.unlocked_count"), count)
+    }
+
+    static func recapNotificationTitle(_ year: Int) -> String {
+        String(format: string("premium.recap.notification.title"), year)
+    }
     static var settingsBackupSection: String { string("settings.backup.section") }
     static var settingsExportJSON: String { string("settings.backup.json") }
     static var settingsExportCSV: String { string("settings.backup.csv") }
@@ -290,6 +307,8 @@ enum L10n {
     static var settingsAboutSection: String { string("settings.about.section") }
     static var settingsVersion: String { string("settings.about.version") }
     static var settingsAboutPrivacy: String { string("settings.about.privacy") }
+    static var settingsRecapPlay: String { string("settings.recap.play") }
+    static var settingsRecapHint: String { string("settings.recap.hint") }
     static var settingsReportProblem: String { string("settings.report_problem") }
     static var settingsReportProblemTitle: String { string("settings.report_problem.title") }
     static var settingsReportProblemDisclosure: String { string("settings.report_problem.disclosure") }

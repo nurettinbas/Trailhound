@@ -174,7 +174,6 @@ final class TrailhoundUITests: TrailhoundUITestCase {
     func testStatsTabShowsPremiumRecapCard() {
         XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
         statsTab.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["stats.premium.recap"].waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 15))
         let summary = app.descendants(matching: .any)["stats.summary.grid"]
         let skeleton = app.descendants(matching: .any)["stats.summary.skeleton"]
@@ -183,6 +182,32 @@ final class TrailhoundUITests: TrailhoundUITestCase {
             summaryAppeared || skeleton.exists,
             "Summary should show packed tiles or a skeleton, not an empty hole"
         )
+
+        let recap = app.descendants(matching: .any)["stats.premium.recap"]
+        for _ in 0..<12 {
+            if recap.waitForExistence(timeout: 1), recap.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(recap.waitForExistence(timeout: uiTimeout), "Year recap sits after by-category charts")
+
+        let play = app.buttons["stats.premium.recap.play"]
+        if play.waitForExistence(timeout: 8) {
+            play.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["stats.premium.recap.story"].waitForExistence(timeout: 8))
+            XCTAssertTrue(app.descendants(matching: .any)["stats.premium.recap.segments"].waitForExistence(timeout: 5))
+            let forward = app.descendants(matching: .any)["stats.premium.recap.forward"]
+            if forward.waitForExistence(timeout: 2) {
+                forward.tap()
+            }
+            let back = app.descendants(matching: .any)["stats.premium.recap.back"]
+            if back.waitForExistence(timeout: 2) {
+                back.tap()
+            }
+            let close = app.buttons["stats.premium.recap.close"]
+            XCTAssertTrue(close.waitForExistence(timeout: 5))
+            close.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["stats.premium.recap"].waitForExistence(timeout: 8))
+        }
     }
 
     func testStatsFiltersClearResetsToLast7Days() {

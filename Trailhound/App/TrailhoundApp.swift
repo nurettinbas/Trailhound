@@ -125,6 +125,7 @@ final class AppRuntime {
         VehicleCareSummaryStore.shared.refresh(in: container.mainContext)
         if !UITestSupport.isEnabled {
             VehicleCareNotificationScheduler.rescheduleAll(in: container.mainContext)
+            RecapNotificationScheduler.reschedule(in: container.mainContext)
             TripStore.syncWidgetWeekDistance(in: container.mainContext)
         }
         TripRecoveryService.finalizeStaleOrphans(in: container.mainContext)
@@ -274,6 +275,7 @@ struct TrailhoundApp: App {
             case "/forecast": anchor = .forecast
             case "/recap": anchor = .recap
             case "/routes": anchor = .routes
+            case "/achievements": anchor = .achievements
             default: anchor = nil
             }
             TabSelection.shared.openStats(anchor: anchor)

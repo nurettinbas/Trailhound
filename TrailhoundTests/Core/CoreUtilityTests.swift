@@ -145,6 +145,26 @@ final class TabSelectionTests: XCTestCase {
         XCTAssertEqual(tabs.consumePendingVehicleCareID(), id)
         XCTAssertNil(tabs.consumePendingVehicleCareID())
     }
+
+    func testOpenStatsAchievementsAndRecap() {
+        let tabs = TabSelection.shared
+        tabs.selectedTab = .trips
+        tabs.openStats(anchor: .achievements)
+        XCTAssertEqual(tabs.selectedTab, .stats)
+        XCTAssertEqual(tabs.consumePendingStatsAnchor(), .achievements)
+        tabs.openStats(anchor: .recap)
+        XCTAssertEqual(tabs.consumePendingStatsAnchor(), .recap)
+    }
+
+    func testOpenTripSetsPendingID() {
+        let tabs = TabSelection.shared
+        tabs.selectedTab = .stats
+        let id = UUID()
+        tabs.openTrip(id: id)
+        XCTAssertEqual(tabs.selectedTab, .trips)
+        XCTAssertEqual(tabs.consumePendingTripID(), id)
+        XCTAssertNil(tabs.consumePendingTripID())
+    }
 }
 
 final class DeviceTestChecklistTests: XCTestCase {
