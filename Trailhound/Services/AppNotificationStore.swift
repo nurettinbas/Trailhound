@@ -10,6 +10,8 @@ enum AppNotificationKind: String {
     case recordingStopped
     case pairingSuggestion
     case vehicleCareReminder
+    case achievementUnlocked
+    case yearRecapReady
 
     var systemImage: String {
         switch self {
@@ -21,6 +23,8 @@ enum AppNotificationKind: String {
         case .recordingStopped: "stop.circle.fill"
         case .pairingSuggestion: "link.circle.fill"
         case .vehicleCareReminder: "wrench.and.screwdriver.fill"
+        case .achievementUnlocked: "medal.fill"
+        case .yearRecapReady: "sparkles"
         }
     }
 
@@ -34,7 +38,73 @@ enum AppNotificationKind: String {
         case .recordingStopped: "red"
         case .pairingSuggestion: "blue"
         case .vehicleCareReminder: "orange"
+        case .achievementUnlocked: "gold"
+        case .yearRecapReady: "purple"
         }
+    }
+}
+
+enum NotificationRoute: Equatable {
+    case pairing
+    case vehicleCare(UUID)
+    case trip(UUID)
+    case achievements
+    case recap
+    case none
+
+    static func resolve(
+        action: String?,
+        target: String?,
+        tripID: UUID?
+    ) -> NotificationRoute {
+        switch action {
+        case TripNotificationService.openPairingAction:
+            return .pairing
+        case VehicleCareNotificationScheduler.openVehicleCareAction:
+            if let target, let id = UUID(uuidString: target) {
+                return .vehicleCare(id)
+            }
+            return .pairing
+        case TripNotificationService.openTripAction:
+            if let tripID {
+                return .trip(tripID)
+            }
+            if let target, let id = UUID(uuidString: target) {
+                return .trip(id)
+            }
+            return .none
+        case TripNotificationService.openAchievementsAction:
+            return .achievements
+        case TripNotificationService.openRecapAction:
+            return .recap
+        default:
+            if let tripID {
+                return .trip(tripID)
+            }
+            return .none
+        }
+    }
+
+    @MainActor
+    func perform() {
+        switch self {
+        case .pairing:
+            TabSelection.shared.openPairing()
+        case .vehicleCare(let id):
+            TabSelection.shared.openVehicleCare(vehicleID: id)
+        case .trip(let id):
+            TabSelection.shared.openTrip(id: id)
+        case .achievements:
+            TabSelection.shared.openStats(anchor: .achievements)
+        case .recap:
+            TabSelection.shared.openStats(anchor: .recap)
+        case .none:
+            break
+        }
+    }
+
+    var opensDestination: Bool {
+        self != .none
     }
 }
 
@@ -62,6 +132,8 @@ final class AppNotificationStore {
         title: String,
         body: String,
         tripID: UUID? = nil,
+        action: String? = nil,
+        target: String? = nil,
         createdAt: Date = Date()
     ) {
         let record = StoredAppNotification(
@@ -69,7 +141,9 @@ final class AppNotificationStore {
             title: title,
             body: body,
             createdAt: createdAt,
-            tripID: tripID
+            tripID: tripID,
+            action: action,
+            target: target
         )
         items.insert(record, at: 0)
         if items.count > 100 {
@@ -78,11 +152,23 @@ final class AppNotificationStore {
         persist()
     }
 
-    func recordSystemNotification(title: String, body: String, identifier: String) {
+    func recordSystemNotification(
+        title: String,
+        body: String,
+        identifier: String,
+        userInfo: [AnyHashable: Any] = [:]
+    ) {
         let kind = kindForIdentifier(identifier)
-        let tripID = tripIDFromIdentifier(identifier)
+        let payload = routePayload(identifier: identifier, userInfo: userInfo)
         guard !containsDuplicate(title: title, body: body, within: 5) else { return }
-        record(kind: kind, title: title, body: body, tripID: tripID)
+        record(
+            kind: kind,
+            title: title,
+            body: body,
+            tripID: payload.tripID,
+            action: payload.action,
+            target: payload.target
+        )
     }
 
     /// Refreshes an existing trip-started inbox row once the start place is known.
@@ -103,6 +189,8 @@ final class AppNotificationStore {
             body: body,
             createdAt: existing.createdAt,
             tripID: existing.tripID,
+            action: existing.action,
+            target: existing.target,
             isRead: existing.isRead
         )
         persist()
@@ -113,10 +201,30 @@ final class AppNotificationStore {
         title: String,
         body: String,
         identifier: String,
+        userInfo: [AnyHashable: Any] = [:],
         reload: Bool = false
     ) {
+        let action = userInfo[TripNotificationService.actionUserInfoKey] as? String
+        let tripRaw = userInfo[TripNotificationService.tripIDUserInfoKey] as? String
+        let target = (userInfo[TripNotificationService.targetUserInfoKey] as? String)
+            ?? (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
         Task { @MainActor in
-            shared.recordSystemNotification(title: title, body: body, identifier: identifier)
+            var copied: [AnyHashable: Any] = [:]
+            if let action {
+                copied[TripNotificationService.actionUserInfoKey] = action
+            }
+            if let tripRaw {
+                copied[TripNotificationService.tripIDUserInfoKey] = tripRaw
+            }
+            if let target {
+                copied[TripNotificationService.targetUserInfoKey] = target
+            }
+            shared.recordSystemNotification(
+                title: title,
+                body: body,
+                identifier: identifier,
+                userInfo: copied
+            )
             if reload {
                 shared.reload()
             }
@@ -152,6 +260,14 @@ final class AppNotificationStore {
         AppNotificationKind(rawValue: record.kind) ?? .tripEnded
     }
 
+    func route(for record: StoredAppNotification) -> NotificationRoute {
+        NotificationRoute.resolve(
+            action: record.action ?? inferredAction(identifierHint: record.kind, tripID: record.tripID),
+            target: record.target,
+            tripID: record.tripID
+        )
+    }
+
     private func persist() {
         AppNotificationArchive.save(items)
     }
@@ -163,6 +279,8 @@ final class AppNotificationStore {
     }
 
     private func kindForIdentifier(_ identifier: String) -> AppNotificationKind {
+        if identifier.contains(".recap.") { return .yearRecapReady }
+        if identifier.contains(".achievement.") { return .achievementUnlocked }
         if identifier.contains("started") { return .tripStarted }
         if identifier.contains("ended") { return .tripEnded }
         if identifier.contains("discarded") { return .tripDiscarded }
@@ -178,5 +296,71 @@ final class AppNotificationStore {
         let parts = identifier.split(separator: ".")
         guard let raw = parts.last else { return nil }
         return UUID(uuidString: String(raw))
+    }
+
+    private func routePayload(
+        identifier: String,
+        userInfo: [AnyHashable: Any]
+    ) -> (action: String?, target: String?, tripID: UUID?) {
+        let action = (userInfo[TripNotificationService.actionUserInfoKey] as? String)
+            ?? inferredAction(identifier: identifier)
+        let tripFromInfo = (userInfo[TripNotificationService.tripIDUserInfoKey] as? String)
+            .flatMap(UUID.init(uuidString:))
+        let targetFromInfo = (userInfo[TripNotificationService.targetUserInfoKey] as? String)
+            ?? (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
+        return (
+            action,
+            targetFromInfo ?? targetFromIdentifier(identifier),
+            tripFromInfo ?? tripIDFromIdentifier(identifier)
+        )
+    }
+
+    private func inferredAction(identifier: String) -> String? {
+        if identifier.contains(".care.") {
+            return VehicleCareNotificationScheduler.openVehicleCareAction
+        }
+        if identifier.contains(".recap.") {
+            return TripNotificationService.openRecapAction
+        }
+        if identifier.contains(".achievement.") {
+            return TripNotificationService.openAchievementsAction
+        }
+        if identifier.contains("pairing") {
+            return TripNotificationService.openPairingAction
+        }
+        if identifier.contains(".trip.") || identifier.contains("orphan") {
+            return TripNotificationService.openTripAction
+        }
+        return nil
+    }
+
+    private func inferredAction(identifierHint kind: String, tripID: UUID?) -> String? {
+        switch AppNotificationKind(rawValue: kind) {
+        case .vehicleCareReminder: VehicleCareNotificationScheduler.openVehicleCareAction
+        case .yearRecapReady: TripNotificationService.openRecapAction
+        case .achievementUnlocked: TripNotificationService.openAchievementsAction
+        case .pairingSuggestion: TripNotificationService.openPairingAction
+        case .tripStarted, .tripEnded, .tripsMerged, .orphanStale:
+            tripID == nil ? nil : TripNotificationService.openTripAction
+        default:
+            nil
+        }
+    }
+
+    private func targetFromIdentifier(_ identifier: String) -> String? {
+        if identifier.contains(".care.") {
+            let parts = identifier.split(separator: ".")
+            if parts.count >= 5 {
+                return String(parts[2])
+            }
+        }
+        if identifier.contains(".recap.") {
+            return identifier.split(separator: ".").last.map(String.init)
+        }
+        if let range = identifier.range(of: "trailhound.achievement.") {
+            let rest = String(identifier[range.upperBound...])
+            if rest != "batch" { return rest }
+        }
+        return nil
     }
 }

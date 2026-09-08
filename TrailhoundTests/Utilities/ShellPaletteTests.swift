@@ -103,6 +103,25 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertNotEqual(forest, sky)
     }
 
+    func testVehicleSliceColorsDifferAcrossStableKeys() {
+        let keys = ["puma", "vespa"]
+        let puma = StatsChartTheme.sliceColor(
+            forStableKey: "puma",
+            durationStyle: false,
+            domainKeys: keys,
+            palette: .sky,
+            scheme: .light
+        )
+        let vespa = StatsChartTheme.sliceColor(
+            forStableKey: "vespa",
+            durationStyle: false,
+            domainKeys: keys,
+            palette: .sky,
+            scheme: .light
+        )
+        XCTAssertNotEqual(puma, vespa)
+    }
+
     func testTabBarSelectionFollowsPaletteTint() {
         let forest = TrailhoundTabBarTheme.selectedUIColor(palette: .forest, scheme: .light)
         let sunset = TrailhoundTabBarTheme.selectedUIColor(palette: .sunset, scheme: .light)

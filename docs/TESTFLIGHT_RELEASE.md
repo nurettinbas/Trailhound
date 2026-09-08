@@ -92,6 +92,12 @@ Optional smoke:
 
 - [ ] **Suggestion** — Settings toggle on; a completed commute/work-hours trip shows a pending category on the list row; swipe accepts; nothing applies automatically
 
+## Premium Stats (V21)
+
+- [ ] **Year recap** — Stats hub + Play story; badges strip; frequent-routes map; month cost forecast (pump fuel on its own line)
+- [ ] **Widgets** — goal ring, last trip, cost summary; Last Trip route preview toggle under Settings → Privacy
+- [ ] **Schema upgrade** — existing journal + smart-category data survive; locality/caches backfill without store reset
+
 ## Auto-record with Shortcuts
 
 - Auto start/stop is set up via **Shortcuts** (guide under the Pairing tab): named Shortcut with **Vehicle**, then Personal Automation → **Run Shortcut**.

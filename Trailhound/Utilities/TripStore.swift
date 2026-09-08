@@ -88,6 +88,7 @@ enum TripStore {
         let todayTrips = completedSince(startOfDay, from: context)
         let todayDistance = todayTrips.reduce(0) { $0 + $1.distanceMeters }
         TodayKmProvider.syncTodayDistance(todayDistance)
+        PremiumWidgetBridge.sync(in: context)
     }
 
     private static func isCompleted(_ trip: Trip) -> Bool {

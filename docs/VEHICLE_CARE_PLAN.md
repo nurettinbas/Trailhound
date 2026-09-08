@@ -60,7 +60,7 @@ Staged ladder (each stage at most once; no spam):
 
 - Service / inspection / custom: 30 days → 1 week → due day → morning after due (single overdue)
 - Insurance / casco: 1 week → due day → overdue (single)
-- OS push + in-app inbox; tap opens that vehicle’s care screen
+- OS push + in-app inbox; tap (banner or inbox row) opens that vehicle’s care screen
 - Overdue catch-up: if the due date already passed when the app opens, one notification (UserDefaults prevents repeats)
 - Red in-app banner also surfaces urgent dues
 

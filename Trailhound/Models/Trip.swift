@@ -45,6 +45,11 @@ final class Trip {
     var stopDurationSeconds: Double?
     /// Driving-pace mode from `TripSpeedProfile`. `nil` = not computed; `0` = nothing to report.
     var mostCommonSpeedKmh: Double?
+    /// City-level reverse-geocode locality. Nil inside a privacy zone or when not yet geocoded.
+    var startLocality: String?
+    var endLocality: String?
+    var startCountryCode: String?
+    var endCountryCode: String?
     /// Pending smart-category suggestion (`UserCategory` id). `nil` = none / already decided.
     var pendingSuggestedCategoryID: String?
     /// `TripCategorySuggestionReason` raw value for the pending suggestion.
@@ -87,6 +92,10 @@ final class Trip {
         matchedDistanceMeters: Double? = nil,
         startPlaceName: String? = nil,
         endPlaceName: String? = nil,
+        startLocality: String? = nil,
+        endLocality: String? = nil,
+        startCountryCode: String? = nil,
+        endCountryCode: String? = nil,
         vehicleID: UUID? = nil,
         vehicle: VehicleProfile? = nil,
         journalID: UUID? = nil,
@@ -114,6 +123,10 @@ final class Trip {
         self.matchedDistanceMeters = matchedDistanceMeters
         self.startPlaceName = startPlaceName
         self.endPlaceName = endPlaceName
+        self.startLocality = startLocality
+        self.endLocality = endLocality
+        self.startCountryCode = startCountryCode
+        self.endCountryCode = endCountryCode
         self.vehicleID = vehicleID
         self.vehicle = vehicle
         self.journalID = journalID

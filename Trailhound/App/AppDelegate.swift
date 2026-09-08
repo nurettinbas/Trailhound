@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let userInfo = notification.request.content.userInfo
         VehicleCareNotificationScheduler.markOverdueDeliveredIfNeeded(from: userInfo)
+        RecapNotificationScheduler.markNotifiedIfNeeded(from: userInfo)
         if !isAlreadyRecordedInInbox(userInfo) {
             let title = notification.request.content.title
             let body = notification.request.content.body
@@ -50,7 +51,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             AppNotificationStore.enqueueSystemNotification(
                 title: title,
                 body: body,
-                identifier: identifier
+                identifier: identifier,
+                userInfo: userInfo
             )
         }
         completionHandler([.banner, .sound])
@@ -63,6 +65,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let userInfo = response.notification.request.content.userInfo
         VehicleCareNotificationScheduler.markOverdueDeliveredIfNeeded(from: userInfo)
+        RecapNotificationScheduler.markNotifiedIfNeeded(from: userInfo)
         if !isAlreadyRecordedInInbox(userInfo) {
             let title = response.notification.request.content.title
             let body = response.notification.request.content.body
@@ -70,7 +73,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             AppNotificationStore.enqueueSystemNotification(
                 title: title,
                 body: body,
-                identifier: identifier
+                identifier: identifier,
+                userInfo: userInfo
             )
         } else {
             Task { @MainActor in
@@ -78,21 +82,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
         }
 
-        if userInfo[TripNotificationService.actionUserInfoKey] as? String == TripNotificationService.openPairingAction {
-            Task { @MainActor in
-                TabSelection.shared.openPairing()
-            }
-        } else if userInfo[VehicleCareNotificationScheduler.actionUserInfoKey] as? String
-            == VehicleCareNotificationScheduler.openVehicleCareAction {
-            let vehicleID = (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
-                .flatMap(UUID.init(uuidString:))
-            Task { @MainActor in
-                if let vehicleID {
-                    TabSelection.shared.openVehicleCare(vehicleID: vehicleID)
-                } else {
-                    TabSelection.shared.openPairing()
-                }
-            }
+        let action = userInfo[TripNotificationService.actionUserInfoKey] as? String
+        let tripID = (userInfo[TripNotificationService.tripIDUserInfoKey] as? String)
+            .flatMap(UUID.init(uuidString:))
+        let target = (userInfo[TripNotificationService.targetUserInfoKey] as? String)
+            ?? (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
+        let route = NotificationRoute.resolve(action: action, target: target, tripID: tripID)
+        Task { @MainActor in
+            route.perform()
         }
         completionHandler()
     }

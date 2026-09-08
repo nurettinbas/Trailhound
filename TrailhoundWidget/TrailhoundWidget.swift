@@ -40,7 +40,7 @@ private enum WidgetPalette {
     }
 }
 
-private struct WidgetAdaptiveBackground: View {
+struct WidgetAdaptiveBackground: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1059,6 +1059,9 @@ struct TrailhoundWidgetBundle: WidgetBundle {
     var body: some Widget {
         TrailhoundWidget()
         TrailhoundLockScreenWidget()
+        GoalRingWidget()
+        LastTripWidget()
+        CostSummaryWidget()
         if #available(iOS 18.0, *) {
             TrailhoundLiveActivity()
         }

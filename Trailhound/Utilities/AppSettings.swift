@@ -100,6 +100,7 @@ final class AppSettings {
         static let recordingVehicleID = "recording.vehicleID"
         static let liveFollowMap3DEnabled = "recording.liveFollowMap3DEnabled"
         static let appearanceMode = "appearanceMode"
+        static let widgetShowRoutePreview = "widget.showRoutePreview"
         static let shellPalette = ShellPalette.storageKey
         static let smartCategorySuggestionsEnabled = "smartCategorySuggestionsEnabled"
         static let workHourStart = "smartCategory.workHourStart"
@@ -349,6 +350,18 @@ final class AppSettings {
     var blurExportCoordinates: Bool {
         get { defaults.bool(forKey: Key.blurExportCoordinates) }
         set { defaults.set(newValue, forKey: Key.blurExportCoordinates) }
+    }
+
+    /// When false, the last-trip home-screen widget hides the route thumbnail.
+    var widgetShowRoutePreview: Bool {
+        get {
+            if defaults.object(forKey: Key.widgetShowRoutePreview) == nil { return true }
+            return defaults.bool(forKey: Key.widgetShowRoutePreview)
+        }
+        set {
+            defaults.set(newValue, forKey: Key.widgetShowRoutePreview)
+            PremiumWidgetBridge.reloadPremiumWidgetTimelines()
+        }
     }
 
     /// Smart category suggestions after a trip ends. Default on.

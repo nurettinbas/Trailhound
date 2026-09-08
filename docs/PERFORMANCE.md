@@ -183,7 +183,7 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 ## Stats tab
 
-- **One chrome, still a `List`.** Filter, 2-up goal/hero, summary, each chart pager, and year awards are separate `List` rows. Do not collapse Stats into a `ScrollView` + `VStack` of cards (loses below-fold deferral).
+- **One chrome, still a `List`.** Filter, 2-up goal/hero, summary, each chart pager, premium (year recap / badges / routes / forecast), and year awards are separate `List` rows. Do not collapse Stats into a `ScrollView` + `VStack` of cards (loses below-fold deferral).
 - **One `Material` per card.** `statsFullCard` / `statsHalfCard` use `glassCard` on a **clear** list-row background. Nested tiles are frost *fills*, not extra `ultraThinMaterial`. Never stack `glassListRow` behind an inner `glassCard`.
 - **No `GeometryReader` in the 2-up row.** Half cards use a fixed `StatsCardTokens.halfMinHeight`.
 - Chart aggregations build into a `StatsDisplaySnapshot` on filter/store changes, not on every scroll frame.
@@ -217,7 +217,8 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 - **Comparison surfaces stay off the tab-open critical path.** Month-over-month trends are
   `StatsTrend` values on the existing trip/cost snapshots (MTD is a *slice* of the already-fetched
   previous month — the fetch window is still `selected ∪ previous ∪ goalMonth`). Logged vehicle
-  expenses are built from `VehicleCompareSeed` + trip distances with Capsule bars, not Swift Charts,
+  expenses are built from `VehicleCompareSeed` + trip distances with `StatsShareBar` (slice color per
+  vehicle, scaled to the top spend), not Swift Charts,
   on their **own** List row (below the fold, same cost snapshot — no extra fetch). The year Awards card has its own
   `StatsYearAwardsLoader` (`StatsYearAwardsBuild` signpost) that must **not** start in Stats
   `onAppear`: it waits until the first `StatsDisplaySnapshot` lands, then idles ~300 ms (or runs
@@ -274,6 +275,39 @@ six-figure library viable.
   or a month holds few enough trips to read directly. The fetch window is
   `selected ∪ previous ∪ goalMonth`; a single calendar month still stays under the threshold.
 
+## Premium derived caches (schema V21)
+
+Year recap, frequent-route overlays, badges, and the month cost forecast all sit on the same
+write path as daily rollups. They are **derived**, not a second source of truth: `Trip` (and
+`VehicleExpense` for cash costs) still wins, and a rebuild version bump regenerates the tables.
+
+- **Delta hook.** `TripRollupDelta` also runs `PremiumDerivedDelta` on finalize, merge, delete, and
+  category/vehicle edits. GPS points are never faulted on that path.
+- **Year recap.** `YearRecapSnapshotLoader` reads that year's `TripDailyRollup` rows plus trip
+  *endpoint* fields (locality, start/end place names and coordinates, category). GPS `points`
+  are never faulted and `invalidatePointCaches` is not called. JSON cache in Application Support
+  is stamped with `YearRecapCache.schemaVersion` (currently 3); a `storeVersion` change skips disk and rebuilds.
+  Story pages are built before the cover appears; the snapshot is frozen at open; there is no fetch
+  on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
+  is not rebuilt every frame (Low Power 12 fps). Stats badges compact strip and gallery share **one** 12 fps clock
+  (`achievementIdleTime`) so idle glyphs still move when TabView sets `animation = nil`.
+  Reduce Motion and UI tests pause that clock. Hold / background / Reduce Motion / UI tests freeze `t`. The Stats hub
+  teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,
+  background, and UI tests). Page changes use
+  `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
+  atmosphere layer). Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is frozen solid circles (Close + Share under the
+  segment bars), not live Material.
+  Share PNG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
+  The last page keeps the same clock; when the segment fills, the cover dismisses.
+- **Frequent-route map.** Overlay budget is **40 arcs**. Heatmap samples come from quadratic bezier
+  control points (≤8 per corridor), never from a GPS polyline. Rendering uses `MKMapView` overlay
+  renderers with `canDraw` / zoom fade — not thousands of SwiftUI `MapPolyline` views. The Stats
+  mini-preview and expanded camera frame the **featured corridor**, not every overlay’s bounding box.
+- **Widgets.** Goal ring, last trip, and cost summary read App Group `UserDefaults` plus optional
+  `LastTrip.jpg` (kept under 100 KB). The widget extension does not open SwiftData.
+  `PremiumWidgetBridge.reloadPremiumWidgetTimelines` runs on stop / finalize / expense / Stats
+  refresh — not on every GPS tick. Recording control widgets keep their own home/lock reload path.
+
 ## Memory
 
 `Trip.sortedPointsCache` is a `@Transient` array of materialised `TripPoint`s, so anything that
@@ -306,6 +340,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Trip detail and travel-journal **toolbar** icons stay on `GlassToolbarSampling.frozen` at all times. Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Live system / native glass over MapKit would resample the map every frame.
 - Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
+- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel).
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist

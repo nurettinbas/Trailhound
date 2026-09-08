@@ -68,6 +68,8 @@ struct TripListView: View {
     @State private var hasMorePages = false
     @State private var hasAnyTrips = false
     @State private var weekSummaryText = ""
+    @State private var showDeepLinkedTrip = false
+    @State private var deepLinkedTrip: Trip?
 
     private var isSearchBusy: Bool {
         TripListViewModel.isSearchActivityVisible(
@@ -119,6 +121,23 @@ struct TripListView: View {
         let visible = Array(matching.prefix(pageLimit))
         loadedTrips = visible
         tripGroups = TripDateGrouping.groupedSections(from: visible)
+    }
+
+    private func consumeTripDeepLink() {
+        guard let id = tabSelection.consumePendingTripID() else { return }
+        if let existing = loadedTrips.first(where: { $0.id == id }) {
+            deepLinkedTrip = existing
+            showDeepLinkedTrip = true
+            return
+        }
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        if let match = (try? modelContext.fetch(descriptor))?.first {
+            deepLinkedTrip = match
+            showDeepLinkedTrip = true
+        }
     }
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
@@ -604,6 +623,11 @@ struct TripListView: View {
         .navigationDestination(for: Trip.self) { trip in
             TripDetailView(trip: trip)
         }
+        .navigationDestination(isPresented: $showDeepLinkedTrip) {
+            if let trip = deepLinkedTrip {
+                TripDetailView(trip: trip)
+            }
+        }
         .navigationDestination(for: TravelJournal.self) { journal in
             TravelJournalDetailView(journal: journal)
         }
@@ -627,6 +651,7 @@ struct TripListView: View {
             reloadJournals()
             careSummary.refresh(in: modelContext)
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
+            consumeTripDeepLink()
         }
         .onStoreSave {
             // Row identity must refresh before the next body pass or a deleted model crashes.

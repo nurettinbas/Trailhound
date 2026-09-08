@@ -245,6 +245,8 @@
 		B10000000000000000000015 /* DateFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000020 /* DateFormatters.swift */; };
 		B10000000000000000000016 /* SharedL10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* SharedL10n.swift */; };
 		B10000000000000000000017 /* SharedL10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* SharedL10n.swift */; };
+		B1PREMWIDGETPAYAPP0001 /* PremiumWidgetPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2PREMWIDGETPAY000001 /* PremiumWidgetPayload.swift */; };
+		B1PREMWIDGETPAYWID0001 /* PremiumWidgetPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2PREMWIDGETPAY000001 /* PremiumWidgetPayload.swift */; };
 		B10000000000000000000018 /* TrailhoundBrandColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000022 /* TrailhoundBrandColors.swift */; };
 		B10000000000000000000019 /* TrailhoundBrandColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000022 /* TrailhoundBrandColors.swift */; };
 		B1000000000000000000001B /* ShellPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000024 /* ShellPalette.swift */; };
@@ -255,6 +257,9 @@
 		A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */; };
 		B1000000000000000000001A /* TrailhoundLockScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */; };
 		B10000000000000000000005 /* TrailhoundWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* TrailhoundWidget.swift */; };
+		B1COSTSUMWIDGET000001 /* CostSummaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2COSTSUMWIDGET000001 /* CostSummaryWidget.swift */; };
+		B1LASTTRIPWIDGET00001 /* LastTripWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2LASTTRIPWIDGET00001 /* LastTripWidget.swift */; };
+		B1GOALRINGWIDGET00001 /* GoalRingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2GOALRINGWIDGET00001 /* GoalRingWidget.swift */; };
 		B10000000000000000000006 /* WidgetRecordingIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* WidgetRecordingIntents.swift */; };
 		B10000000000000000000007 /* TripRecordingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* TripRecordingAttributes.swift */; };
 		B10000000000000000000010 /* TrailhoundWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* TrailhoundWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -282,6 +287,32 @@
 		A1TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */; };
 		A1TRIPROLLUPSERVICE00001 /* TripRollupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */; };
 		A1TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */; };
+		A1FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift */; };
+		A1ACHIEVEMODEL0000001 /* AchievementProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEMODEL0000001 /* AchievementProgress.swift */; };
+		A1VISITLOCALMODEL0001 /* VisitedLocality.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VISITLOCALMODEL0001 /* VisitedLocality.swift */; };
+		A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */; };
+		A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVECAT000000001 /* AchievementCatalog.swift */; };
+		A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */; };
+		A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */; };
+		A1LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift */; };
+		A1MONTHFORECAST000001 /* MonthCostForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECAST000001 /* MonthCostForecast.swift */; };
+		A1MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift */; };
+		A1YEARRECAPSNAP000001 /* YearRecapSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */; };
+		A1RECAPPLAYBACK000001 /* RecapStoryPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */; };
+		A1RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */; };
+		A1RECAPYEARPOLICY0001 /* RecapYearPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */; };
+		A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */; };
+		A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */; };
+		A1RECAPSHARERENDER001 /* RecapShareRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */; };
+		A1YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */; };
+		A1PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */; };
+		A1TRIPLOCALITYRES0001 /* TripLocalityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */; };
+		A1STATFORECASTCARD001 /* StatsForecastCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATFORECASTCARD001 /* StatsForecastCard.swift */; };
+		A1STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift */; };
+		A1ACHIEVETHEME0000001 /* AchievementTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEME0000001 /* AchievementTheme.swift */; };
+		A1FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */; };
+		A1FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */; };
+		A1YEARRECAPHUB0000001 /* YearRecapHubCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */; };
 		A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREENUMS000000001 /* VehicleCareEnums.swift */; };
 		A1VSCHEDULE0000000001 /* VehicleSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDULE0000000001 /* VehicleSchedule.swift */; };
 		A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPENSE00000000001 /* VehicleExpense.swift */; };
@@ -290,6 +321,7 @@
 		A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */; };
 		A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */; };
 		A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */; };
+		A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */; };
 		A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */; };
 		A1VCARESUMMARY000001 /* VehicleCareSummaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */; };
 		A1VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */; };
@@ -307,6 +339,11 @@
 		A1STATSCHARTTHEME0001 /* StatsChartTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */; };
 		A1STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */; };
 		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
+		A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */; };
+		A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */; };
+		A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+		A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */; };
+		A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */; };
 		A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */; };
         A1RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */; };
 		A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDIAG000000000001 /* RecordingDiagnostics.swift */; };
@@ -610,6 +647,7 @@
 		B2DEVLOG0000000000001 /* DevLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevLog.swift; sourceTree = "<group>"; };
 		B20000000000000000000020 /* DateFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatters.swift; sourceTree = "<group>"; };
 		B20000000000000000000021 /* SharedL10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedL10n.swift; sourceTree = "<group>"; };
+		B2PREMWIDGETPAY000001 /* PremiumWidgetPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumWidgetPayload.swift; sourceTree = "<group>"; };
 		B20000000000000000000022 /* TrailhoundBrandColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundBrandColors.swift; sourceTree = "<group>"; };
 		B20000000000000000000024 /* ShellPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellPalette.swift; sourceTree = "<group>"; };
 		B20000000000000000000025 /* GlassContrast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassContrast.swift; sourceTree = "<group>"; };
@@ -622,6 +660,32 @@
 		A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDerivedBackfillService.swift; sourceTree = "<group>"; };
 		A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRollupService.swift; sourceTree = "<group>"; };
 		A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDailyRollup.swift; sourceTree = "<group>"; };
+		A2FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRouteAggregate.swift; sourceTree = "<group>"; };
+		A2ACHIEVEMODEL0000001 /* AchievementProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementProgress.swift; sourceTree = "<group>"; };
+		A2VISITLOCALMODEL0001 /* VisitedLocality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitedLocality.swift; sourceTree = "<group>"; };
+		A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRouteAggregateService.swift; sourceTree = "<group>"; };
+		A2ACHIEVECAT000000001 /* AchievementCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementCatalog.swift; sourceTree = "<group>"; };
+		A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEvaluator.swift; sourceTree = "<group>"; };
+		A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumDerivedMaintenance.swift; sourceTree = "<group>"; };
+		A2LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripLocalityBackfillService.swift; sourceTree = "<group>"; };
+		A2MONTHFORECAST000001 /* MonthCostForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthCostForecast.swift; sourceTree = "<group>"; };
+		A2MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthCostForecastLoader.swift; sourceTree = "<group>"; };
+		A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearRecapSnapshot.swift; sourceTree = "<group>"; };
+		A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapStoryPlayback.swift; sourceTree = "<group>"; };
+		A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapStoryPagePolicy.swift; sourceTree = "<group>"; };
+		A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapYearPolicy.swift; sourceTree = "<group>"; };
+		A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearRecapSnapshotLoader.swift; sourceTree = "<group>"; };
+		A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumWidgetBridge.swift; sourceTree = "<group>"; };
+		A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripLocalityResolver.swift; sourceTree = "<group>"; };
+		A2STATFORECASTCARD001 /* StatsForecastCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/StatsForecastCard.swift; sourceTree = "<group>"; };
+		A2STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/StatsAchievementsStrip.swift; sourceTree = "<group>"; };
+		A2ACHIEVETHEME0000001 /* AchievementTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/AchievementTheme.swift; sourceTree = "<group>"; };
+		A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/FrequentRoutesMapKitView.swift; sourceTree = "<group>"; };
+		A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/FrequentRoutesMapView.swift; sourceTree = "<group>"; };
+		A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapHubCard.swift; sourceTree = "<group>"; };
+		A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapScenes.swift; sourceTree = "<group>"; };
+		A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapStoryView.swift; sourceTree = "<group>"; };
+		A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/RecapShareRenderer.swift; sourceTree = "<group>"; };
 		A2VCAREENUMS000000001 /* VehicleCareEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareEnums.swift; sourceTree = "<group>"; };
 		A2VSCHEDULE0000000001 /* VehicleSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleSchedule.swift; sourceTree = "<group>"; };
 		A2VEXPENSE00000000001 /* VehicleExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpense.swift; sourceTree = "<group>"; };
@@ -630,6 +694,7 @@
 		A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentPlan.swift; sourceTree = "<group>"; };
 		A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentService.swift; sourceTree = "<group>"; };
 		A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareNotificationScheduler.swift; sourceTree = "<group>"; };
+		A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderPlanner.swift; sourceTree = "<group>"; };
 		A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareSummaryStore.swift; sourceTree = "<group>"; };
 		A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostSnapshot.swift; sourceTree = "<group>"; };
@@ -647,6 +712,11 @@
 		A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsChartTheme.swift; sourceTree = "<group>"; };
 		A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsDonutLegendGrid.swift; sourceTree = "<group>"; };
 		A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDetailView.swift; sourceTree = "<group>"; };
+		A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/YearRecapSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
+		A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementEvaluatorTests.swift; sourceTree = SOURCE_ROOT; };
+		A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementThemeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/MonthCostForecastTests.swift; sourceTree = SOURCE_ROOT; };
+		A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/FrequentRouteAggregateTests.swift; sourceTree = SOURCE_ROOT; };
 		A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingConfiguration.swift; sourceTree = "<group>"; };
 		A2RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingMovementPolicy.swift; sourceTree = "<group>"; };
 		A2RECDIAG000000000001 /* RecordingDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDiagnostics.swift; sourceTree = "<group>"; };
@@ -658,6 +728,9 @@
 		A2TOASTVIEW00000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000005 /* TrailhoundWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundWidget.swift; sourceTree = "<group>"; };
+		B2COSTSUMWIDGET000001 /* CostSummaryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CostSummaryWidget.swift; sourceTree = "<group>"; };
+		B2LASTTRIPWIDGET00001 /* LastTripWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastTripWidget.swift; sourceTree = "<group>"; };
+		B2GOALRINGWIDGET00001 /* GoalRingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalRingWidget.swift; sourceTree = "<group>"; };
 		B20000000000000000000006 /* WidgetRecordingIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRecordingIntents.swift; sourceTree = "<group>"; };
 		B20000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B20000000000000000000008 /* TrailhoundWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrailhoundWidget.entitlements; sourceTree = "<group>"; };
@@ -839,6 +912,9 @@
 				A2VCAREENUMS000000001 /* VehicleCareEnums.swift */,
 				A2VSCHEDULE0000000001 /* VehicleSchedule.swift */,
 				A2VEXPENSE00000000001 /* VehicleExpense.swift */,
+				A2FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift */,
+				A2ACHIEVEMODEL0000001 /* AchievementProgress.swift */,
+				A2VISITLOCALMODEL0001 /* VisitedLocality.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -853,6 +929,10 @@
 				A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */,
 				983DA16F5A6E442FAAD35B73 /* ExportService.swift */,
 				A2FREQROUTES00000000001 /* FrequentRoutesService.swift */,
+				A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */,
+				A2ACHIEVECAT000000001 /* AchievementCatalog.swift */,
+				A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */,
+				A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
 				4B6254BADAB2452485AC086C /* TripMergeService.swift */,
 				A2STANDSTILLMARK00001 /* TripStandstill.swift */,
@@ -863,6 +943,7 @@
 				A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */,
 				A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */,
 				A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */,
+				A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */,
 				A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */,
 				A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */,
 				7E7218250D954707A753EAFC /* RecordingLiveActivityService.swift */,
@@ -871,6 +952,7 @@
 				A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */,
 				A2TRIPDERIVEDMETRICS0001 /* TripDerivedMetrics.swift */,
 				A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */,
+				A2LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift */,
 				A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */,
 				B20000000000000000000001 /* TripNotificationService.swift */,
 				A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */,
@@ -904,6 +986,13 @@
 				A2STATSYEARLOAD0000001 /* StatsYearAwardsLoader.swift */,
 				A2VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift */,
 				A2VCOSTSNAPLOAD000001 /* VehicleCostSnapshotLoader.swift */,
+				A2MONTHFORECAST000001 /* MonthCostForecast.swift */,
+				A2MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift */,
+				A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */,
+				A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */,
+				A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */,
+				A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */,
+				A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
 				A2TRIPSTATSROW000000001 /* TripStatsRow.swift */,
 				A2TRAVELJOURNALPAGE001 /* TravelJournalPage.swift */,
@@ -962,6 +1051,15 @@
 				A2STATSDONUTLEGEND0001 /* StatsDonutLegendGrid.swift */,
 				A2STATSDEFCHART00000001 /* StatsDeferredChart.swift */,
 				A2STATSCHARTPAGER000001 /* StatsChartPager.swift */,
+				A2STATFORECASTCARD001 /* StatsForecastCard.swift */,
+				A2STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift */,
+				A2ACHIEVETHEME0000001 /* AchievementTheme.swift */,
+				A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */,
+				A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */,
+				A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */,
+				A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */,
+				A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */,
+				A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */,
 				89C5F75B18D74EB4B35E48C0 /* PlacePickerView.swift */,
 				1F8346A303B84C5089017287 /* AppLockView.swift */,
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
@@ -1052,6 +1150,8 @@
 				A20000000000000000000021 /* PreviewData.swift */,
 				A2TABSELECTION000001 /* TabSelection.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
+				A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */,
+				A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */,
 				A2TRIPDATEGROUP000000001 /* TripDateGrouping.swift */,
 				A2TRIPMAPSNAP00000000001 /* TripMapSnapshotCache.swift */,
 				A2TRIPROUTEPATHCACHE0001 /* TripRoutePathCache.swift */,
@@ -1084,6 +1184,7 @@
 			children = (
 				B20000000000000000000020 /* DateFormatters.swift */,
 				B20000000000000000000021 /* SharedL10n.swift */,
+				B2PREMWIDGETPAY000001 /* PremiumWidgetPayload.swift */,
 				B20000000000000000000022 /* TrailhoundBrandColors.swift */,
 				B20000000000000000000024 /* ShellPalette.swift */,
 				B20000000000000000000025 /* GlassContrast.swift */,
@@ -1102,6 +1203,9 @@
 			isa = PBXGroup;
 			children = (
 				B20000000000000000000005 /* TrailhoundWidget.swift */,
+				B2GOALRINGWIDGET00001 /* GoalRingWidget.swift */,
+				B2LASTTRIPWIDGET00001 /* LastTripWidget.swift */,
+				B2COSTSUMWIDGET000001 /* CostSummaryWidget.swift */,
 				B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */,
 				B20000000000000000000006 /* WidgetRecordingIntents.swift */,
 				B20000000000000000000007 /* Info.plist */,
@@ -1192,6 +1296,11 @@
 				E5ACD28885C4418F9292D4BD /* StatsTrendTests.swift */,
 				A8B5E66F95F3433B89AD63FB /* StatsViewModelTests.swift */,
 				A6648EC5820A4B88BD79B773 /* StatsYearAwardsLoaderTests.swift */,
+				A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */,
+				A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */,
+				A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */,
+				A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */,
+				A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */,
 				20290C43221C4C39A401E998 /* TripDetailPathPerformanceTests.swift */,
 				9AE8CE0DE058422A9473961D /* TripDetailRevealPolicyTests.swift */,
 				24D5C07052284E998E1F2E94 /* TripDetailViewModelRevealTests.swift */,
@@ -1440,6 +1549,11 @@
 				1FDB73B03A254A57990F8CF5 /* StatsTrendTests.swift in Sources */,
 				D33EF1A1209146568795782E /* StatsViewModelTests.swift in Sources */,
 				BE1C61AC817C4B6C85998D57 /* StatsYearAwardsLoaderTests.swift in Sources */,
+				A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */,
+				A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */,
+				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */,
+				A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */,
+				A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */,
 				56C8F9DC4D854B889105D381 /* TripDetailPathPerformanceTests.swift in Sources */,
 				B17222536EEF467B924A927F /* TripDetailRevealPolicyTests.swift in Sources */,
 				248A1279A28C4ED9AC8429EB /* TripDetailViewModelRevealTests.swift in Sources */,
@@ -1587,6 +1701,32 @@
 				A1TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift in Sources */,
 				A1TRIPROLLUPSERVICE00001 /* TripRollupService.swift in Sources */,
 				A1TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift in Sources */,
+				A1YEARRECAPHUB0000001 /* YearRecapHubCard.swift in Sources */,
+				A1FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift in Sources */,
+				A1FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift in Sources */,
+				A1STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift in Sources */,
+				A1ACHIEVETHEME0000001 /* AchievementTheme.swift in Sources */,
+				A1STATFORECASTCARD001 /* StatsForecastCard.swift in Sources */,
+				A1TRIPLOCALITYRES0001 /* TripLocalityResolver.swift in Sources */,
+				A1PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift in Sources */,
+				A1YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift in Sources */,
+				A1YEARRECAPSNAP000001 /* YearRecapSnapshot.swift in Sources */,
+				A1RECAPPLAYBACK000001 /* RecapStoryPlayback.swift in Sources */,
+				A1RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift in Sources */,
+				A1RECAPYEARPOLICY0001 /* RecapYearPolicy.swift in Sources */,
+				A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */,
+				A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */,
+				A1RECAPSHARERENDER001 /* RecapShareRenderer.swift in Sources */,
+				A1MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift in Sources */,
+				A1MONTHFORECAST000001 /* MonthCostForecast.swift in Sources */,
+				A1LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift in Sources */,
+				A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */,
+				A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */,
+				A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */,
+				A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */,
+				A1VISITLOCALMODEL0001 /* VisitedLocality.swift in Sources */,
+				A1ACHIEVEMODEL0000001 /* AchievementProgress.swift in Sources */,
+				A1FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift in Sources */,
 				A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */,
 				A1RECMOVEPOLICY00000001 /* RecordingMovementPolicy.swift in Sources */,
 				A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */,
@@ -1605,6 +1745,7 @@
 				A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */,
 				A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */,
 				A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */,
+				A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */,
 				A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */,
 				A1VCARESUMMARY000001 /* VehicleCareSummaryStore.swift in Sources */,
 				A1VCOSTSNAP0000000001 /* VehicleCostSnapshot.swift in Sources */,
@@ -1651,6 +1792,7 @@
 				B1LIVEBREADCRUMB00000001 /* LiveBreadcrumbCanvas.swift in Sources */,
 				B10000000000000000000014 /* DateFormatters.swift in Sources */,
 				B10000000000000000000016 /* SharedL10n.swift in Sources */,
+				B1PREMWIDGETPAYAPP0001 /* PremiumWidgetPayload.swift in Sources */,
 				B10000000000000000000018 /* TrailhoundBrandColors.swift in Sources */,
 				B1000000000000000000001B /* ShellPalette.swift in Sources */,
 				B1000000000000000000001D /* GlassContrast.swift in Sources */,
@@ -1675,10 +1817,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000005 /* TrailhoundWidget.swift in Sources */,
+				B1COSTSUMWIDGET000001 /* CostSummaryWidget.swift in Sources */,
+				B1LASTTRIPWIDGET00001 /* LastTripWidget.swift in Sources */,
+				B1GOALRINGWIDGET00001 /* GoalRingWidget.swift in Sources */,
 				B1000000000000000000001A /* TrailhoundLockScreenWidget.swift in Sources */,
 				B10000000000000000000006 /* WidgetRecordingIntents.swift in Sources */,
 				B10000000000000000000015 /* DateFormatters.swift in Sources */,
 				B10000000000000000000017 /* SharedL10n.swift in Sources */,
+				B1PREMWIDGETPAYWID0001 /* PremiumWidgetPayload.swift in Sources */,
 				B10000000000000000000019 /* TrailhoundBrandColors.swift in Sources */,
 				B1000000000000000000001C /* ShellPalette.swift in Sources */,
 				B1000000000000000000001E /* GlassContrast.swift in Sources */,

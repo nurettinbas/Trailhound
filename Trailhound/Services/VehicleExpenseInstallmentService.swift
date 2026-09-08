@@ -52,6 +52,7 @@ enum VehicleExpenseInstallmentService {
             )
             context.insert(expense)
             if first == nil { first = expense }
+            YearRecapCache.invalidate(yearContaining: slice.dueDate)
         }
         try context.save()
         return first!
@@ -115,19 +116,25 @@ enum VehicleExpenseInstallmentService {
         }
 
         for leftover in byIndex.values {
+            YearRecapCache.invalidate(yearContaining: leftover.occurredAt)
             context.delete(leftover)
+        }
+        for slice in slices {
+            YearRecapCache.invalidate(yearContaining: slice.dueDate)
         }
         try context.save()
         return first ?? existing
     }
 
     static func deleteOne(_ expense: VehicleExpense, in context: ModelContext) {
+        YearRecapCache.invalidate(yearContaining: expense.occurredAt)
         context.delete(expense)
         try? context.save()
     }
 
     static func deleteGroup(of expense: VehicleExpense, in context: ModelContext) {
         for sibling in siblings(of: expense, in: context) {
+            YearRecapCache.invalidate(yearContaining: sibling.occurredAt)
             context.delete(sibling)
         }
         try? context.save()

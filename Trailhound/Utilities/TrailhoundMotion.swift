@@ -138,6 +138,69 @@ enum TrailhoundMotion {
         )
     }
 
+    static func recapPage(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(response: 0.46, dampingFraction: 0.86)
+    }
+
+    /// Full-bleed scene push — next from trailing, back from leading.
+    static func recapSceneTransition(reduceMotion: Bool, advancing: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        let insert: Edge = advancing ? .trailing : .leading
+        let remove: Edge = advancing ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: insert).combined(with: .opacity),
+            removal: .move(edge: remove).combined(with: .opacity)
+        )
+    }
+
+    /// Overlay copy / medals settle in from below as the scene pushes.
+    static func recapCopyTransition(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .opacity
+                .combined(with: .offset(y: 28))
+                .combined(with: .scale(scale: 0.92)),
+            removal: .opacity
+                .combined(with: .offset(y: -16))
+                .combined(with: .scale(scale: 1.04))
+        )
+    }
+
+    static func recapCountUp(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: 1.15)
+    }
+
+    static func recapHold(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.12)
+    }
+
+    static func recapSegmentFill(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .linear(duration: RecapStoryPlayback.pageDuration)
+    }
+
+    static func badgeUnlock(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.78)
+    }
+
+    /// Swap one unlock card for the next — short scale, not a long crossfade.
+    static func badgeUnlockCardTransition(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.86)),
+            removal: .opacity.combined(with: .scale(scale: 0.94))
+        )
+    }
+
+    /// Stats badges card grows up and down from its own frame (not a sheet).
+    static func badgeCardExpand(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(response: 0.76, dampingFraction: 0.90)
+    }
+
+    /// Gallery content fade after the card has grown — no vertical offset.
+    static func badgeGalleryAppear(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.22)
+    }
+
     static func fadeScaleTransition(reduceMotion: Bool) -> AnyTransition {
         guard !reduceMotion else { return .identity }
         return .opacity.combined(with: .scale(scale: 0.98))
@@ -180,6 +243,10 @@ enum TrailhoundHaptics {
     }
 
     static func pairingSucceeded() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    static func badgeUnlocked() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
@@ -234,6 +301,7 @@ private struct ShimmerModifier: ViewModifier {
 private struct PhotoEntranceGlintModifier: ViewModifier {
     let cornerRadius: CGFloat
     let glintID: String
+    var isEnabled: Bool = true
     var onFinished: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -246,7 +314,7 @@ private struct PhotoEntranceGlintModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay {
-                if !reduceMotion, !finished {
+                if isEnabled, playsMotion, !finished {
                     GeometryReader { geometry in
                         LinearGradient(
                             colors: [
@@ -273,10 +341,21 @@ private struct PhotoEntranceGlintModifier: ViewModifier {
                 playedID = nil
                 playIfNeeded()
             }
+            .onChange(of: isEnabled) { _, _ in
+                playIfNeeded()
+            }
+    }
+
+    private var playsMotion: Bool {
+        !reduceMotion && !UITestSupport.isEnabled
     }
 
     private func playIfNeeded() {
-        guard !reduceMotion else {
+        guard isEnabled else {
+            finished = true
+            return
+        }
+        guard playsMotion else {
             finished = true
             onFinished?()
             return
@@ -427,10 +506,21 @@ extension View {
         id: String,
         onFinished: (() -> Void)? = nil
     ) -> some View {
+        glassEntranceGlint(cornerRadius: cornerRadius, id: id, onFinished: onFinished)
+    }
+
+    /// One-shot glass sheen for Stats / photo heroes. Reduce Motion and UI tests skip it.
+    func glassEntranceGlint(
+        cornerRadius: CGFloat,
+        id: String,
+        isEnabled: Bool = true,
+        onFinished: (() -> Void)? = nil
+    ) -> some View {
         modifier(
             PhotoEntranceGlintModifier(
                 cornerRadius: cornerRadius,
                 glintID: id,
+                isEnabled: isEnabled,
                 onFinished: onFinished
             )
         )

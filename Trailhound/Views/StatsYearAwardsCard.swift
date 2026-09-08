@@ -74,11 +74,15 @@ struct StatsYearAwardsCard: View {
         VStack(spacing: 6) {
             ZStack {
                 Circle()
-                    .fill(medal.kind.badgeFill(unlocked: medal.isUnlocked))
-                    .frame(width: 52, height: 52)
-                Image(systemName: medal.isUnlocked ? medal.systemImage : "lock.fill")
+                    .fill(medal.kind.badgeFill)
+                    .frame(width: Self.medalSize, height: Self.medalSize)
+                Image(systemName: medal.systemImage)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(medal.isUnlocked ? Color.white : medal.kind.badgeAccent)
+                    .foregroundStyle(Color.white)
+                if !medal.isUnlocked {
+                    AchievementMedalLockOverlay(size: Self.medalSize)
+                        .frame(width: Self.medalSize, height: Self.medalSize)
+                }
             }
             Text(medal.title)
                 .font(.system(size: 10, weight: .semibold))
@@ -94,10 +98,11 @@ struct StatsYearAwardsCard: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
-        .opacity(medal.isUnlocked ? 1 : 0.78)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(medal.title), \(medal.isUnlocked ? medal.detail : L10n.string("stats.awards.locked"))")
     }
+
+    private static let medalSize: CGFloat = 52
 }
 
 private extension StatsYearAwardKind {
@@ -123,19 +128,9 @@ private extension StatsYearAwardKind {
         }
     }
 
-    func badgeFill(unlocked: Bool) -> LinearGradient {
-        if unlocked {
-            return LinearGradient(
-                colors: [badgeHighlight, badgeAccent],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        return LinearGradient(
-            colors: [
-                badgeHighlight.opacity(0.28),
-                badgeAccent.opacity(0.16)
-            ],
+    var badgeFill: LinearGradient {
+        LinearGradient(
+            colors: [badgeHighlight, badgeAccent],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

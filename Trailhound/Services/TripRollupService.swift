@@ -5,17 +5,23 @@ import SwiftData
 enum TripRollupDelta {
     static func add(_ trip: Trip, in context: ModelContext) {
         applyDelta(for: trip, sign: 1, in: context)
+        PremiumDerivedDelta.add(trip, in: context)
     }
 
     static func remove(_ trip: Trip, in context: ModelContext) {
+        PremiumDerivedDelta.remove(trip, in: context)
         applyDelta(for: trip, sign: -1, in: context)
     }
 
     static func update(_ trip: Trip, from previous: TripRollupEntry?, in context: ModelContext) {
         if let previous {
             applyDelta(key: previous.key, contribution: previous.contribution, sign: -1, in: context)
+            if let premium = previous.premium {
+                PremiumDerivedDelta.apply(trip: trip, snapshot: premium, sign: -1, in: context)
+            }
         }
         applyDelta(for: trip, sign: 1, in: context)
+        PremiumDerivedDelta.add(trip, in: context)
     }
 
     private static func applyDelta(for trip: Trip, sign: Double, in context: ModelContext) {
@@ -114,7 +120,13 @@ enum TripRollupService {
     /// Everything a trip contributed before an edit, so the edit can be applied as a delta.
     static func snapshot(of trip: Trip) -> TripRollupEntry? {
         guard trip.endedAt != nil else { return nil }
-        return TripRollupEntry(key: TripRollupKey(trip: trip), contribution: Contribution(trip: trip))
+        let places = (try? trip.modelContext?.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let privacyRadius = AppSettings.shared.privacyRadiusMeters
+        return TripRollupEntry(
+            key: TripRollupKey(trip: trip),
+            contribution: Contribution(trip: trip),
+            premium: PremiumDerivedDelta.snapshot(of: trip, places: places, privacyRadius: privacyRadius)
+        )
     }
 
     /// Re-points a trip's contribution after an edit that may have moved it to another day,
@@ -302,6 +314,7 @@ struct TripRollupKey: Hashable {
 struct TripRollupEntry {
     fileprivate let key: TripRollupKey
     fileprivate let contribution: Contribution
+    fileprivate let premium: PremiumTripSnapshot?
 }
 
 fileprivate struct Contribution {
