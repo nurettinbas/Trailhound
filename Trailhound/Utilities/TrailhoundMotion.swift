@@ -4,7 +4,7 @@ import UIKit
 
 enum TrailhoundMotion {
     static let snappy = Animation.snappy(duration: 0.28)
-    /// Tab bar content switch — keep snappy so tab taps don't feel laggy.
+    /// Tab content switch.
     static let tabSwitch = Animation.easeOut(duration: 0.15)
     /// Notifications playback switch thumb — short snappy slide, no mush.
     static let recordingToggle = Animation.spring(response: 0.22, dampingFraction: 0.86)

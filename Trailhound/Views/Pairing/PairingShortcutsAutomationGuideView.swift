@@ -1,70 +1,143 @@
 import AppIntents
+import SwiftData
 import SwiftUI
 import UIKit
 
 struct PairingShortcutsAutomationCard: View {
-    let onOpenGuide: () -> Void
+    var onOpenGuide: () -> Void
+    var onOpenTest: () -> Void
+    var onOpenTroubleshoot: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Bindable private var settings = AppSettings.shared
+    @Bindable private var setup = ShortcutsSetupStore.shared
 
     var body: some View {
-        Button(action: onOpenGuide) {
-            HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "bolt.horizontal.circle.fill")
-                        .font(.body)
-                        .glassAccentForeground()
+        Group {
+            if settings.hasCompletedShortcutsGuide {
+                completedRow
+            } else {
+                Button(action: onOpenGuide) {
+                    cardRow {
+                        Text(L10n.pairingShortcutsGuideCardButton)
+                            .font(.caption2.weight(.semibold))
+                            .glassAccentForeground()
+                            .lineLimit(1)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .glassDisclosureInk()
+                    }
                 }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.pairingShortcutsGuideCardTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .glassPrimaryInk()
-                    Text(L10n.pairingShortcutsGuideCardSubtitle)
-                        .font(.caption)
-                        .glassSecondaryInk()
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                Text(L10n.pairingShortcutsGuideCardButton)
-                    .font(.caption2.weight(.semibold))
-                    .glassAccentForeground()
-                    .lineLimit(1)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .glassDisclosureInk()
+                .buttonStyle(.plain)
             }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+    }
+
+    private var completedRow: some View {
+        cardRow {
+            VStack(alignment: .trailing, spacing: 6) {
+                Button(action: onOpenTest) {
+                    Text(L10n.pairingShortcutsGuideCardTest)
+                        .font(.caption2.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .glassAccentForeground()
+
+                Button(action: onOpenTroubleshoot) {
+                    Text(L10n.pairingShortcutsGuideCardTroubleshoot)
+                        .font(.caption2.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .glassAccentForeground()
+            }
+        }
+    }
+
+    private func cardRow<Trailing: View>(@ViewBuilder trailing: () -> Trailing) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .font(.body)
+                    .glassAccentForeground()
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.pairingShortcutsGuideCardTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .glassPrimaryInk()
+                Text(cardSubtitle)
+                    .font(.caption)
+                    .glassSecondaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+
+            trailing()
+        }
+        .contentShape(Rectangle())
+    }
+
+    private var cardSubtitle: String {
+        if settings.hasCompletedShortcutsGuide, setup.hasCompletedTest {
+            return L10n.pairingShortcutsGuideCardTested
+        }
+        return L10n.pairingShortcutsGuideCardSubtitle
     }
 }
 
 struct PairingShortcutsAutomationGuideView: View {
+    var entry: ShortcutsWizardEntry = .start
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.modelContext) private var modelContext
+    @Environment(LocationService.self) private var locationService
     @Bindable private var settings = AppSettings.shared
+    @Bindable private var setup = ShortcutsSetupStore.shared
+    @Query private var vehicles: [VehicleProfile]
 
     @State private var stepIndex = 0
     @State private var completedStepIDs: Set<String> = []
     @State private var stepCompletePulse = false
     @State private var heroBeat: CGFloat = 0
+    @State private var didApplyEntry = false
+    @State private var editingVehicle: EditingVehicleSheet?
+    @State private var testOutcome: ShortcutsWizardTestOutcome?
+    @State private var watchArmed = false
 
     private var brandAccent: Color { shellPalette.tintColor(for: colorScheme) }
     private var steps: [GuideWizardStep] { Self.makeSteps() }
     private var currentStep: GuideWizardStep { steps[min(stepIndex, steps.count - 1)] }
     private var isLastStep: Bool { stepIndex >= steps.count - 1 }
     private var isFirstStep: Bool { stepIndex <= 0 }
+
+    private var sortedVehicles: [VehicleProfile] {
+        vehicles.sorted { lhs, rhs in
+            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private var selectedVehicleName: String? {
+        guard let id = setup.vehicleID else { return nil }
+        return vehicles.first(where: { $0.id == id })?.name
+    }
+
+    private var canAdvance: Bool {
+        switch currentStep.kind {
+        case .trigger: setup.trigger != nil
+        case .vehicle: setup.vehicleID != nil
+        default: true
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -75,33 +148,30 @@ struct PairingShortcutsAutomationGuideView: View {
                     progressRail
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 8)
+
+                    summaryStrip
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
 
                     heroChrome
                         .padding(.bottom, 8)
 
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            Group {
-                                if showsStackedAutomationSteps {
-                                    stackedAutomationSteps
-                                } else {
-                                    stepContent(for: currentStep)
-                                        .id(currentStep.id)
-                                        .transition(reduceMotion ? .opacity : TrailhoundMotion.softRiseTransition)
-                                }
-                            }
+                    if currentStep.kind == .silentStart,
+                       locationService.authorizationState != .authorizedAlways {
+                        LocationAlwaysRequiredBanner()
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
+                    }
+
+                    ScrollView {
+                        stepContent(for: currentStep)
+                            .id(currentStep.id)
+                            .transition(.opacity)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 24)
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
-                        .onChange(of: stepIndex) { _, newIndex in
-                            guard showsStackedAutomationSteps else { return }
-                            withAnimation(reduceMotion ? nil : TrailhoundMotion.snappy) {
-                                proxy.scrollTo(steps[newIndex].id, anchor: .top)
-                            }
-                        }
                     }
+                    .scrollBounceBehavior(.basedOnSize)
 
                     bottomChrome
                 }
@@ -119,43 +189,11 @@ struct PairingShortcutsAutomationGuideView: View {
                 }
             }
             .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: stepIndex)
-        }
-    }
-
-    /// Connect + disconnect steps accumulate on screen (newest on top).
-    private var showsStackedAutomationSteps: Bool {
-        switch currentStep.kind {
-        case .connectStep, .disconnectStep:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private var firstAutomationStepIndex: Int {
-        steps.firstIndex { step in
-            switch step.kind {
-            case .connectStep, .disconnectStep: true
-            default: false
-            }
-        } ?? 2
-    }
-
-    private var stackedAutomationSteps: some View {
-        let revealed = Array(steps[firstAutomationStepIndex...stepIndex].reversed())
-        return VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(revealed.enumerated()), id: \.element.id) { _, step in
-                let isCurrent = step.id == currentStep.id
-                stackedAutomationCard(for: step, isCurrent: isCurrent)
-                    .id(step.id)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity.combined(with: .scale(scale: 0.98))
-                            )
-                    )
+            .onAppear(perform: applyEntryIfNeeded)
+            .sheet(item: $editingVehicle) { item in
+                NavigationStack {
+                    VehicleDetailView(vehicleID: item.id)
+                }
             }
         }
     }
@@ -180,10 +218,27 @@ struct PairingShortcutsAutomationGuideView: View {
         }
     }
 
+    private var summaryStrip: some View {
+        HStack(spacing: 8) {
+            if let trigger = setup.trigger {
+                Label(triggerTitle(trigger), systemImage: resolvedTriggerSymbol(for: trigger))
+                    .labelStyle(.titleAndIcon)
+            }
+            if let name = selectedVehicleName {
+                Text(name)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.caption.weight(.semibold))
+        .glassSecondaryInk()
+        .frame(minHeight: 16)
+    }
+
     @ViewBuilder
     private var heroChrome: some View {
         switch currentStep.kind {
-        case .prereq, .handoff:
+        case .silentStart, .handoff:
             ZStack {
                 OnboardingHeroScene(
                     kind: currentStep.kind == .handoff ? .shortcutsLink : .welcomeDrive,
@@ -205,55 +260,23 @@ struct PairingShortcutsAutomationGuideView: View {
             }
             .frame(height: 140)
             .padding(.horizontal, 16)
-        case .triggers, .connectStep, .disconnectStep:
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    private func stepContent(for step: GuideWizardStep) -> some View {
-        switch step.kind {
-        case .prereq:
-            prerequisiteSection
-        case .triggers:
-            triggerOptionsSection
-        case .connectStep, .disconnectStep:
-            // Rendered via `stackedAutomationSteps` while in this range.
-            EmptyView()
-        case .handoff:
-            handoffSection
-        }
-    }
-
-    @ViewBuilder
-    private func stackedAutomationCard(for step: GuideWizardStep, isCurrent: Bool) -> some View {
-        switch step.kind {
-        case .connectStep(let index):
-            automationStepCard(
-                sectionTitle: L10n.pairingShortcutsGuideConnectTitle,
-                sectionSymbol: "play.circle.fill",
-                number: index + 1,
-                text: connectSteps[index],
-                icon: connectIcons[index],
-                showsTriggerChips: index == 2,
-                showsActionChip: index == 3,
-                actionChipTitle: L10n.shortcutStartTitle,
-                isCurrent: isCurrent,
-                isComplete: !isCurrent || completedStepIDs.contains(step.id)
-            )
-        case .disconnectStep(let index):
-            automationStepCard(
-                sectionTitle: L10n.pairingShortcutsGuideDisconnectTitle,
-                sectionSymbol: "stop.circle.fill",
-                number: index + 1,
-                text: disconnectSteps[index],
-                icon: disconnectIcons[index],
-                showsTriggerChips: index == 1,
-                showsActionChip: index == 2,
-                actionChipTitle: L10n.shortcutStopTitle,
-                isCurrent: isCurrent,
-                isComplete: !isCurrent || completedStepIDs.contains(step.id)
-            )
+        case .test:
+            ZStack {
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(brandAccent)
+                if stepCompletePulse {
+                    SoftPulseRing(
+                        color: UIColor(brandAccent),
+                        isActive: true,
+                        reduceMotion: reduceMotion
+                    )
+                    .frame(width: 72, height: 72)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
+            }
+            .frame(height: 88)
         default:
             EmptyView()
         }
@@ -280,6 +303,7 @@ struct PairingShortcutsAutomationGuideView: View {
             }
             .trailhoundProminentButton()
             .tint(brandAccent)
+            .disabled(!canAdvance)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -288,79 +312,248 @@ struct PairingShortcutsAutomationGuideView: View {
         }
     }
 
-    private var prerequisiteSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            guideSectionHeader(title: L10n.pairingShortcutsGuidePrerequisiteTitle, symbol: "checkmark.shield")
+    @ViewBuilder
+    private func stepContent(for step: GuideWizardStep) -> some View {
+        switch step.kind {
+        case .trigger:
+            triggerSection
+        case .vehicle:
+            vehicleSection
+        case .silentStart:
+            silentStartSection
+        case .connect:
+            connectSection
+        case .disconnect:
+            disconnectSection
+        case .handoff:
+            handoffSection
+        case .test:
+            testSection
+        case .checklist:
+            checklistSection
+        }
+    }
 
-            Text(L10n.pairingShortcutsGuidePrerequisiteBody)
+    private var triggerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideTriggersTitle, symbol: "list.bullet.rectangle")
+            Text(L10n.pairingShortcutsGuideTriggersIntro)
                 .font(.subheadline)
                 .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
 
+            triggerChoice(
+                trigger: .bluetooth,
+                title: L10n.pairingShortcutsGuideTriggersBluetoothTitle,
+                body: L10n.pairingShortcutsGuideTriggersBluetoothBody
+            )
+            triggerChoice(
+                trigger: .carplay,
+                title: L10n.pairingShortcutsGuideTriggersCarPlayTitle,
+                body: L10n.pairingShortcutsGuideTriggersCarPlayBody,
+                note: L10n.pairingShortcutsGuideTriggersCarPlayWirelessNote
+            )
+            triggerChoice(
+                trigger: .wifi,
+                title: L10n.pairingShortcutsGuideTriggersWiFiTitle,
+                body: L10n.pairingShortcutsGuideTriggersWiFiBody
+            )
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+    }
+
+    private func triggerChoice(
+        trigger: ShortcutsSetupTrigger,
+        title: String,
+        body: String,
+        note: String? = nil
+    ) -> some View {
+        let selected = setup.trigger == trigger
+        return Button {
+            setup.persistTrigger(trigger)
+            TrailhoundHaptics.selection()
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: resolvedTriggerSymbol(for: trigger))
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(body)
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let note {
+                        Text(note)
+                            .font(.caption2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
+        }
+        .buttonStyle(.plain)
+        .trailhoundCardPress()
+        .glassNestedChoice(isSelected: selected)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var vehicleSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideVehicleTitle, symbol: "car.fill")
+            Text(L10n.pairingShortcutsGuideVehicleBody)
+                .font(.subheadline)
+                .glassSecondaryInk()
+                .fixedSize(horizontal: false, vertical: true)
+            Text(L10n.pairingShortcutsGuideVehicleNote)
+                .font(.footnote)
+                .glassSecondaryInk()
+                .fixedSize(horizontal: false, vertical: true)
+
+            if sortedVehicles.isEmpty {
+                Text(L10n.pairingShortcutsGuideVehicleEmpty)
+                    .font(.subheadline)
+                    .glassSecondaryInk()
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(sortedVehicles, id: \.id) { vehicle in
+                        vehicleChoice(vehicle)
+                    }
+                }
+            }
+
+            Button(action: addVehicle) {
+                Text(L10n.pairingShortcutsGuideVehicleAdd)
+            }
+            .trailhoundCompactProminentButton()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+    }
+
+    private func vehicleChoice(_ vehicle: VehicleProfile) -> some View {
+        let selected = setup.vehicleID == vehicle.id
+        return Button {
+            setup.persistVehicleID(vehicle.id)
+            TrailhoundHaptics.selection()
+        } label: {
+            HStack(spacing: 12) {
+                VehicleAvatarView(
+                    systemImage: vehicle.systemImage,
+                    photoFileName: vehicle.photoFileName,
+                    size: 36,
+                    cornerRadius: 8,
+                    isElectricAccent: vehicle.fuelType == .electric,
+                    showsPhotoShine: vehicle.photoFileName != nil
+                )
+                Text(vehicle.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                }
+            }
+            .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
+        }
+        .buttonStyle(.plain)
+        .trailhoundCardPress()
+        .glassNestedChoice(isSelected: selected)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var silentStartSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuidePrerequisiteTitle, symbol: "checkmark.shield")
+            Text(L10n.pairingShortcutsGuidePrerequisiteBody)
+                .font(.subheadline)
+                .glassSecondaryInk()
+                .fixedSize(horizontal: false, vertical: true)
             Toggle(L10n.pairingShortcutsGuideSilentStart, isOn: $settings.confirmExternalRecordingStart.inverted)
                 .glassToggleStyle()
                 .font(.subheadline)
                 .tint(brandAccent)
         }
         .padding(14)
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassChrome(cornerRadius: 12)
     }
 
-    private var triggerOptionsSection: some View {
+    private var connectSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            guideSectionHeader(title: L10n.pairingShortcutsGuideTriggersTitle, symbol: "list.bullet.rectangle")
-
-            Text(L10n.pairingShortcutsGuideTriggersIntro)
-                .font(.subheadline)
-                .glassSecondaryInk()
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 0) {
-                triggerOptionRow(
-                    symbol: "bluetooth",
-                    title: L10n.pairingShortcutsGuideTriggersBluetoothTitle,
-                    body: L10n.pairingShortcutsGuideTriggersBluetoothBody
-                )
-                Divider().padding(.leading, 52)
-                triggerOptionRow(
-                    symbol: "carplay",
-                    title: L10n.pairingShortcutsGuideTriggersCarPlayTitle,
-                    body: L10n.pairingShortcutsGuideTriggersCarPlayBody
-                )
-                Divider().padding(.leading, 52)
-                triggerOptionRow(
-                    symbol: "wifi",
-                    title: L10n.pairingShortcutsGuideTriggersWiFiTitle,
-                    body: L10n.pairingShortcutsGuideTriggersWiFiBody
+            guideSectionHeader(title: L10n.pairingShortcutsGuideConnectTitle, symbol: "play.circle.fill")
+            ForEach(Array(connectSteps.enumerated()), id: \.offset) { index, _ in
+                numberedInstructionRow(
+                    number: index + 1,
+                    icon: connectIcons[index],
+                    text: connectStepText(index)
                 )
             }
-            .glassChrome(cornerRadius: 10)
         }
         .padding(14)
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassChrome(cornerRadius: 12)
+    }
+
+    private var disconnectSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideDisconnectTitle, symbol: "stop.circle.fill")
+            ForEach(Array(disconnectSteps.enumerated()), id: \.offset) { index, text in
+                numberedInstructionRow(
+                    number: index + 1,
+                    icon: disconnectIcons[index],
+                    text: text
+                )
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+    }
+
+    private func numberedInstructionRow(number: Int, icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(brandAccent)
+                    .frame(width: 28, height: 28)
+                Text("\(number)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(brandAccent)
+                Text(text)
+                    .font(.subheadline)
+                    .glassPrimaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .glassNestedChoice(isSelected: false)
     }
 
     private var handoffSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             guideSectionHeader(title: L10n.pairingShortcutsGuideHandoffTitle, symbol: "arrow.up.forward.app")
-
             Text(L10n.pairingShortcutsGuideHandoffBody)
                 .font(.subheadline)
                 .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
-
             Text(L10n.pairingShortcutsGuideNote)
                 .font(.footnote)
                 .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
-
             ShortcutsLink()
                 .shortcutsLinkStyle(.automaticOutline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel(L10n.pairingShortcutsGuideOpenShortcuts)
-
             Toggle(
                 L10n.pairingShortcutsGuideFinishedToggle,
                 isOn: Binding(
@@ -380,120 +573,106 @@ struct PairingShortcutsAutomationGuideView: View {
             .disabled(settings.hasCompletedShortcutsGuide)
         }
         .padding(14)
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassChrome(cornerRadius: 12)
     }
 
-    private func automationStepCard(
-        sectionTitle: String,
-        sectionSymbol: String,
-        number: Int,
-        text: String,
-        icon: String,
-        showsTriggerChips: Bool,
-        showsActionChip: Bool,
-        actionChipTitle: String,
-        isCurrent: Bool,
-        isComplete: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: sectionSymbol)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isCurrent ? brandAccent : brandAccent.opacity(0.55))
-                Text(sectionTitle)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isCurrent ? .primary : .secondary)
-                Spacer(minLength: 0)
-                if isComplete && !isCurrent {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.green)
-                        .transition(.scale.combined(with: .opacity))
-                }
+    private var testSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideTestTitle, symbol: "bolt.horizontal.circle")
+            Text(L10n.pairingShortcutsGuideTestBody)
+                .font(.subheadline)
+                .glassSecondaryInk()
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button(action: runWizardTest) {
+                Text(L10n.pairingShortcutsGuideTestButton)
+                    .frame(maxWidth: .infinity)
+            }
+            .trailhoundProminentButton()
+            .tint(brandAccent)
+
+            if let testOutcome {
+                Text(outcomeText(testOutcome))
+                    .font(.subheadline.weight(.medium))
+                    .glassPrimaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
+                    .glassNestedChoice(isSelected: false)
             }
 
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(isComplete && !isCurrent ? Color.green : brandAccent)
-                        .frame(width: 32, height: 32)
-                    if isComplete && !isCurrent {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                    } else {
-                        Text("\(number)")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+            if testOutcome == .recordingStarted || testOutcome == .awaitingConfirmation {
+                Button(action: stopWizardTest) {
+                    Text(L10n.pairingShortcutsGuideTestStop)
+                        .frame(maxWidth: .infinity)
                 }
-                .scaleEffect(isCurrent ? 1.06 : 1)
-                .animation(reduceMotion ? nil : TrailhoundMotion.pinPop, value: isCurrent)
+                .trailhoundDestructiveButton()
+            }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: icon)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(isCurrent ? brandAccent : .secondary)
-                            .padding(.top, 2)
-                        Text(text)
-                            .font(isCurrent ? .subheadline.weight(.medium) : .subheadline)
-                            .foregroundStyle(isCurrent ? .primary : .secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if isCurrent, showsTriggerChips {
-                        triggerChipsRow
-                    }
-                    if isCurrent, showsActionChip {
-                        actionChip(title: actionChipTitle)
-                    }
-                }
+            Toggle(L10n.pairingShortcutsGuideTestWatch, isOn: watchBinding)
+                .font(.subheadline)
+                .tint(brandAccent)
+            if watchArmed || setup.pendingWatchAt != nil {
+                Text(L10n.pairingShortcutsGuideTestWatchArmed)
+                    .font(.caption)
+                    .glassSecondaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassChrome(cornerRadius: 12)
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(
-                    brandAccent.opacity(isCurrent ? 0.35 : 0.12),
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
-        }
-        .opacity(isCurrent ? 1 : 0.78)
-        .scaleEffect(isCurrent ? 1 : 0.985, anchor: .top)
     }
 
-    private func triggerOptionRow(
-        symbol: String,
-        title: String,
-        body: String
-    ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(brandAccent)
-                    .frame(width: 36, height: 36)
-                Image(systemName: resolvedTriggerSymbol(symbol))
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
+    private var watchBinding: Binding<Bool> {
+        Binding(
+            get: { watchArmed || setup.pendingWatchAt != nil },
+            set: { newValue in
+                watchArmed = newValue
+                if newValue {
+                    setup.armExternalStartWatch()
+                } else {
+                    _ = setup.consumePendingWatchIfReached(now: Date.distantPast)
+                }
             }
+        )
+    }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(body)
-                    .font(.caption)
-                    .glassSecondaryInk()
-                    .fixedSize(horizontal: false, vertical: true)
+    private var checklistSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            guideSectionHeader(title: L10n.pairingShortcutsGuideChecklistTitle, symbol: "checklist")
+            Text(L10n.pairingShortcutsGuideChecklistIntro)
+                .font(.subheadline)
+                .glassSecondaryInk()
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(ShortcutsSetupChecklistItem.allCases) { item in
+                checklistRow(item)
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassChrome(cornerRadius: 12)
+    }
+
+    private func checklistRow(_ item: ShortcutsSetupChecklistItem) -> some View {
+        let checked = setup.isChecked(item)
+        return Button {
+            setup.toggle(item)
+            TrailhoundHaptics.selection()
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: checked ? "checkmark.circle.fill" : "circle")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(checked ? brandAccent : GlassText.secondary(for: colorScheme))
+                Text(checklistText(item))
+                    .font(.subheadline)
+                    .glassPrimaryInk()
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+        }
+        .buttonStyle(.plain)
+        .glassNestedChoice(isSelected: false)
     }
 
     private func guideSectionHeader(title: String, symbol: String) -> some View {
@@ -503,21 +682,6 @@ struct PairingShortcutsAutomationGuideView: View {
                 .foregroundStyle(brandAccent)
             Text(title)
                 .font(.headline)
-        }
-    }
-
-    private func resolvedTriggerSymbol(_ symbol: String) -> String {
-        switch symbol {
-        case "bluetooth":
-            return UIImage(systemName: "bluetooth") != nil
-                ? "bluetooth"
-                : "antenna.radiowaves.left.and.right"
-        case "carplay":
-            return UIImage(systemName: "carplay") != nil
-                ? "carplay"
-                : "play.circle.fill"
-        default:
-            return symbol
         }
     }
 
@@ -558,55 +722,133 @@ struct PairingShortcutsAutomationGuideView: View {
         ["plus.circle.fill", "point.3.connected.trianglepath.dotted", "stop.fill", "bell.slash.fill"]
     }
 
-    private var triggerChipsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                triggerChip(symbol: "bluetooth", label: L10n.pairingShortcutsGuideTriggersBluetoothTitle)
-                triggerChip(symbol: "carplay", label: L10n.pairingShortcutsGuideTriggersCarPlayTitle)
-                triggerChip(symbol: "wifi", label: L10n.pairingShortcutsGuideTriggersWiFiTitle)
-            }
+    private func connectStepText(_ index: Int) -> String {
+        guard index == 4 else { return connectSteps[index] }
+        switch setup.trigger {
+        case .bluetooth: return L10n.pairingShortcutsGuideConnectStep5Bluetooth
+        case .carplay: return L10n.pairingShortcutsGuideConnectStep5CarPlay
+        case .wifi: return L10n.pairingShortcutsGuideConnectStep5WiFi
+        case nil: return L10n.pairingShortcutsGuideConnectStep5
         }
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .clipped()
     }
 
-    private func triggerChip(symbol: String, label: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: resolvedTriggerSymbol(symbol))
-                .font(.system(size: 9, weight: .bold))
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .lineLimit(1)
+    private func triggerTitle(_ trigger: ShortcutsSetupTrigger) -> String {
+        switch trigger {
+        case .bluetooth: L10n.pairingShortcutsGuideTriggersBluetoothTitle
+        case .carplay: L10n.pairingShortcutsGuideTriggersCarPlayTitle
+        case .wifi: L10n.pairingShortcutsGuideTriggersWiFiTitle
         }
-        .foregroundStyle(brandAccent)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(brandAccent.opacity(0.12))
-        .clipShape(Capsule())
     }
 
-    private func actionChip(title: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "app.fill")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(brandAccent)
-            Text("Trailhound")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(brandAccent)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 7, weight: .bold))
-                .glassTertiaryInk()
-            Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(brandAccent)
+    private func resolvedTriggerSymbol(for trigger: ShortcutsSetupTrigger) -> String {
+        switch trigger {
+        case .bluetooth:
+            return UIImage(systemName: "bluetooth") != nil
+                ? "bluetooth"
+                : "antenna.radiowaves.left.and.right"
+        case .carplay:
+            return UIImage(systemName: "carplay") != nil
+                ? "carplay"
+                : "play.circle.fill"
+        case .wifi:
+            return "wifi"
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .glassChrome(cornerRadius: 12)
-        .overlay {
-            Capsule()
-                .strokeBorder(brandAccent.opacity(0.25), lineWidth: 1)
+    }
+
+    private func outcomeText(_ outcome: ShortcutsWizardTestOutcome) -> String {
+        switch outcome {
+        case .noVehicle: L10n.pairingShortcutsGuideTestResultNoVehicle
+        case .awaitingConfirmation: L10n.pairingShortcutsGuideTestResultConfirm
+        case .recordingStarted: L10n.pairingShortcutsGuideTestResultStarted
+        case .locationNotAlways: L10n.pairingShortcutsGuideTestResultNoLocation
+        case .idle: L10n.pairingShortcutsGuideTestResultIdle
         }
+    }
+
+    private func checklistText(_ item: ShortcutsSetupChecklistItem) -> String {
+        switch item {
+        case .personalAutomationEnabled: L10n.pairingShortcutsGuideChecklistPersonalAutomation
+        case .askBeforeRunningOff: L10n.pairingShortcutsGuideChecklistAskBeforeRunning
+        case .runShortcutNamed: L10n.pairingShortcutsGuideChecklistRunShortcut
+        case .secondVehicleSecondShortcut: L10n.pairingShortcutsGuideChecklistSecondVehicle
+        case .locationAlways: L10n.pairingShortcutsGuideChecklistLocationAlways
+        case .silentStart: L10n.pairingShortcutsGuideChecklistSilentStart
+        case .carplayWireless: L10n.pairingShortcutsGuideChecklistCarPlayWireless
+        case .focusDoesNotBlock: L10n.pairingShortcutsGuideChecklistFocus
+        case .returnViaShortcutsLink: L10n.pairingShortcutsGuideChecklistReturnLink
+        }
+    }
+
+    private func runWizardTest() {
+        let recording = AppServices.runtime.tripRecordingService
+        guard let vehicleID = setup.vehicleID else {
+            testOutcome = .noVehicle
+            return
+        }
+        setup.markTestInFlight()
+        ShortcutStartVehicleSelection.apply(
+            vehicleID: vehicleID,
+            using: recording
+        )
+        RecordingControlBridge.requestStartFromControlSurface()
+        AppServices.runtime.processPendingRecordingRequests()
+        let outcome = ShortcutsWizardTestClassifier.classify(
+            hasVehicle: true,
+            awaitingConfirmation: settings.awaitingExternalStartConfirmation,
+            isRecording: recording.state.isActiveSession,
+            locationAlways: locationService.authorizationState == .authorizedAlways
+        )
+        testOutcome = outcome
+        if outcome == .recordingStarted || outcome == .awaitingConfirmation {
+            setup.markTestCompleted()
+            playStepComplete()
+        }
+        TrailhoundHaptics.selection()
+    }
+
+    private func stopWizardTest() {
+        AppServices.runtime.tripRecordingService.discardActiveRecordingSession()
+        testOutcome = nil
+        TrailhoundHaptics.selection()
+    }
+
+    private func addVehicle() {
+        let vehicle = VehicleProfile(
+            name: suggestedVehicleName(),
+            consumption: settings.fuelLitersPer100km
+        )
+        modelContext.insert(vehicle)
+        guard (try? modelContext.save()) != nil else { return }
+        setup.persistVehicleID(vehicle.id)
+        if !UITestSupport.shouldSkipExternalEffects {
+            TrailhoundShortcuts.updateAppShortcutParameters()
+        }
+        editingVehicle = EditingVehicleSheet(id: vehicle.id)
+    }
+
+    private func suggestedVehicleName() -> String {
+        let base = L10n.vehicleDefaultName
+        let existing = Set(vehicles.map(\.name))
+        if !existing.contains(base) { return base }
+        var index = 2
+        while existing.contains("\(base) \(index)") {
+            index += 1
+        }
+        return "\(base) \(index)"
+    }
+
+    private func applyEntryIfNeeded() {
+        guard !didApplyEntry else { return }
+        didApplyEntry = true
+        switch entry {
+        case .start:
+            break
+        case .test:
+            stepIndex = steps.firstIndex { $0.kind == .test } ?? 6
+        case .checklist:
+            stepIndex = steps.firstIndex { $0.kind == .checklist } ?? 7
+        }
+        watchArmed = setup.pendingWatchAt != nil
     }
 
     private func advance() {
@@ -615,9 +857,7 @@ struct PairingShortcutsAutomationGuideView: View {
             dismiss()
             return
         }
-
-        // Stacking range keeps prior cards visible — short beat, then push the next on top.
-        let delayMs: UInt64 = reduceMotion ? 0 : (showsStackedAutomationSteps ? 140 : 220)
+        let delayMs: UInt64 = reduceMotion ? 0 : 180
         Task { @MainActor in
             if delayMs > 0 {
                 try? await Task.sleep(for: .milliseconds(delayMs))
@@ -666,28 +906,29 @@ struct PairingShortcutsAutomationGuideView: View {
     }
 
     private static func makeSteps() -> [GuideWizardStep] {
-        var result: [GuideWizardStep] = [
-            GuideWizardStep(id: "prereq", kind: .prereq),
-            GuideWizardStep(id: "triggers", kind: .triggers)
+        [
+            GuideWizardStep(id: "trigger", kind: .trigger),
+            GuideWizardStep(id: "vehicle", kind: .vehicle),
+            GuideWizardStep(id: "silentStart", kind: .silentStart),
+            GuideWizardStep(id: "connect", kind: .connect),
+            GuideWizardStep(id: "disconnect", kind: .disconnect),
+            GuideWizardStep(id: "handoff", kind: .handoff),
+            GuideWizardStep(id: "test", kind: .test),
+            GuideWizardStep(id: "checklist", kind: .checklist)
         ]
-        for index in 0..<5 {
-            result.append(GuideWizardStep(id: "connect-\(index)", kind: .connectStep(index)))
-        }
-        for index in 0..<4 {
-            result.append(GuideWizardStep(id: "disconnect-\(index)", kind: .disconnectStep(index)))
-        }
-        result.append(GuideWizardStep(id: "handoff", kind: .handoff))
-        return result
     }
 }
 
 private struct GuideWizardStep: Identifiable, Equatable {
     enum Kind: Equatable {
-        case prereq
-        case triggers
-        case connectStep(Int)
-        case disconnectStep(Int)
+        case trigger
+        case vehicle
+        case silentStart
+        case connect
+        case disconnect
         case handoff
+        case test
+        case checklist
     }
 
     let id: String
@@ -703,14 +944,12 @@ private extension Binding where Value == Bool {
     }
 }
 
-#Preview("Card") {
-    List {
-        PairingShortcutsAutomationCard(onOpenGuide: {})
-            .glassListRow()
-    }
-    .glassListChrome()
+private struct EditingVehicleSheet: Identifiable {
+    let id: UUID
 }
 
-#Preview("Guide") {
+#Preview {
     PairingShortcutsAutomationGuideView()
+        .modelContainer(PreviewData.shared.container)
+        .environment(LocationService())
 }

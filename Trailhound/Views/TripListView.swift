@@ -1424,33 +1424,31 @@ private struct TripListActiveRecordingNavIcon: View {
     private let maxTilt: Double = 55
     /// One ease-in-out half-swing (right → left). Full cycle is 2× this.
     private let swingDuration: Double = 2.4
-    private var tickInterval: TimeInterval {
-        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
-    }
 
     private var shouldAnimate: Bool {
         !isPaused && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
+    @State private var clockDate = Date()
+
     var body: some View {
-        TimelineView(
-            .animation(
-                minimumInterval: tickInterval,
-                paused: !shouldAnimate
-            )
-        ) { context in
-            Image(systemName: "steeringwheel")
-                .font(.system(size: 15, weight: .semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(accent)
-                // Must stay inside the frame and nudge below. Applied outside them, the
-                // anchor is the badge center while the glyph has been moved away from it,
-                // so the wheel orbits that point instead of spinning in place.
-                .rotationEffect(.degrees(tilt(at: context.date)))
-                .frame(width: badgeSize, height: badgeSize)
-                .offset(glyphNudge)
-        }
-        .accessibilityHidden(true)
+        Image(systemName: "steeringwheel")
+            .font(.system(size: 15, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(accent)
+            .rotationEffect(.degrees(tilt(at: clockDate)))
+            .frame(width: badgeSize, height: badgeSize)
+            .offset(glyphNudge)
+            .overlay(alignment: .topLeading) {
+                TrailhoundDisplayLinkTicker(
+                    isRunning: shouldAnimate,
+                    framesPerSecond: ProcessInfo.processInfo.isLowPowerModeEnabled ? 10 : 20
+                ) { clockDate = Date(timeIntervalSinceReferenceDate: $0) }
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            .accessibilityHidden(true)
     }
 
     private func tilt(at date: Date) -> Double {

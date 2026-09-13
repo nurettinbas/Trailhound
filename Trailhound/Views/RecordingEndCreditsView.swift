@@ -204,22 +204,21 @@ private struct BrakeToStopScene: View {
     var noseDive: CGFloat
     var showsServiceDue: Bool = false
     var serviceIsOverdue: Bool = false
+    @State private var clock = Date.timeIntervalSinceReferenceDate
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            let speedFactor = max(0.02, 1 - brakeProgress)
-            let roadTime = time * Double(speedFactor)
+        let speedFactor = max(0.02, 1 - brakeProgress)
+        let roadTime = clock * Double(speedFactor)
 
-            GeometryReader { geo in
-                let width = geo.size.width
-                let height = geo.size.height
-                let roadHeight: CGFloat = 16
-                let carSize: CGFloat = 22
-                let carX = width * 0.58
-                let carY = height - roadHeight - carSize * 0.18 + noseDive
+        GeometryReader { geo in
+            let width = geo.size.width
+            let height = geo.size.height
+            let roadHeight: CGFloat = 16
+            let carSize: CGFloat = 22
+            let carX = width * 0.58
+            let carY = height - roadHeight - carSize * 0.18 + noseDive
 
-                ZStack(alignment: .bottom) {
+            ZStack(alignment: .bottom) {
                     LinearGradient(
                         colors: [
                             Color.black.opacity(0.18 + 0.1 * Double(brakeProgress)),
@@ -276,11 +275,16 @@ private struct BrakeToStopScene: View {
                             }
                         }
                         .position(x: carX, y: carY)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .background(Color.white.opacity(0.06))
+        .overlay(alignment: .topLeading) {
+            TrailhoundDisplayLinkTicker(isRunning: brakeProgress < 1, framesPerSecond: 30) { clock = $0 }
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 
     private func laneDashes(width: CGFloat, roadHeight: CGFloat, time: TimeInterval) -> some View {

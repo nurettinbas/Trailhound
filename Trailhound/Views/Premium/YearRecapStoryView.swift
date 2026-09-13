@@ -183,7 +183,7 @@ struct YearRecapStoryView: View {
     @ViewBuilder
     private var visualLayers: some View {
         if liveMotion {
-            TimelineView(.animation(minimumInterval: motionInterval)) { timeline in
+            TimelineView(TrailhoundIndependentClock.periodic(interval: motionInterval)) { timeline in
                 storyLayers(now: timeline.date)
             }
         } else {
@@ -195,7 +195,7 @@ struct YearRecapStoryView: View {
     private var chromeLayer: some View {
         Group {
             if liveMotion {
-                TimelineView(.animation(minimumInterval: motionInterval)) { timeline in
+                TimelineView(TrailhoundIndependentClock.periodic(interval: motionInterval)) { timeline in
                     topChrome(now: timeline.date)
                 }
             } else {
@@ -232,24 +232,26 @@ struct YearRecapStoryView: View {
             )
             .frame(maxWidth: .infinity)
             .allowsHitTesting(false)
-            HStack(spacing: 8) {
+            HStack(spacing: 0) {
                 Spacer(minLength: 0)
                     .allowsHitTesting(false)
-                ShareLink(
-                    item: shareItem,
-                    preview: SharePreview("Trailhound", image: Image(uiImage: shareItem.image))
-                ) {
-                    GlassToolbarSymbol(systemName: "square.and.arrow.up", sampling: .frozen)
+                GlassToolbarCluster {
+                    ShareLink(
+                        item: shareItem,
+                        preview: SharePreview("Trailhound", image: Image(uiImage: shareItem.image))
+                    ) {
+                        GlassToolbarSymbol(systemName: "square.and.arrow.up", sampling: .frozenControl)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(shareItem.image.size.width < 2)
+                    .accessibilityIdentifier("stats.premium.recap.share")
+                    Button(action: close) {
+                        GlassToolbarSymbol(systemName: "xmark", sampling: .frozenControl)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("stats.premium.recap.close")
+                    .accessibilityLabel(L10n.string("premium.recap.close_a11y"))
                 }
-                .buttonStyle(.plain)
-                .disabled(shareItem.image.size.width < 2)
-                .accessibilityIdentifier("stats.premium.recap.share")
-                Button(action: close) {
-                    GlassToolbarSymbol(systemName: "xmark", sampling: .frozen)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("stats.premium.recap.close")
-                .accessibilityLabel(L10n.string("premium.recap.close_a11y"))
             }
         }
         .padding(.horizontal, 12)

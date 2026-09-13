@@ -16,8 +16,9 @@ Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards
 | Control tint | white on the colored shell | palette tint |
 | Row disclosure `>` | Palette chrome (`GlassControlTint.disclosure` / `GlassDisclosureChevron`) — not tertiary gray | `.secondary` |
 | Tab selection | palette tint icon + iOS 26 pill; Light capsule = system glass + mid-family tint 0.28; unselected dark ink | palette tint; unselected secondary |
-| Nav toolbar | System iOS 26 platter + `tintColor` glyphs (`GlassToolbarSymbol` / `Title` / `Cluster`). `onGlassShell` white tint is overridden so icons stay visible on the platter. Form/list screens only. | Same platter recipe; glyphs use the dark `tintColor` |
-| Map toolbar | Frozen 36pt circle: opaque white + mid-family tint 0.28 (`GlassContrast.toolbarLightFill`) + `tintColor` glyphs — never the dark solid panel, never live Material / `glassEffect` over MapKit | Grouped solid + palette tint glyphs |
+| Nav toolbar | System iOS 26 platter + `tintColor` glyphs (`GlassToolbarSymbol` / `Title` / `Cluster`). `onGlassShell` white tint is overridden so icons stay visible on the platter. Form/list, Trip/Travel detail, and Vehicles detail (same metrics as the Trips cluster). Custom back still hides the system chevron; `NavigationInteractivePopEnabler` restores edge-swipe pop (Vehicles blocks it only while the editor has unsaved edits). | Same platter recipe; glyphs use the dark `tintColor` |
+| Map overlay | Frozen 44pt circle (`GlassNavCircleIcon` / `GlassToolbarSampling.frozenControl`): opaque white + mid-family tint 0.28 (`GlassContrast.toolbarLightFill`) + `tintColor` glyphs — never the dark solid panel, never live Material / `glassEffect` over MapKit. Stats expand collapse (Badges, Frequent routes, month forecast). | Grouped solid + palette tint glyphs |
+| Overlay toolbar | Same 44pt `frozenControl` plate as map overlay (Year recap story Share/Close). Not live Material over the story Canvas. | Same grouped solid |
 | Overlay chrome | `GlassToolbarControlBackground` Material / solid — never native `glassEffect` (camera, photo grid, delete confirm) | Same |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
 | Recording / live follow | Selected palette glow + tint on the card, follow path, and vehicle puck | Same hue, dark shade |
@@ -43,7 +44,7 @@ List rows always pass `allowsNative: false`. Native glass is reserved for standa
 
 ## Shape is not restyled
 
-This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeights, grids, animations, and accessibility identifiers stay put. The Stats filter card (`stats.filters.*`) is the shape reference. Form/list nav items are the exception: they use system toolbar metrics (the Trips cluster) instead of custom 36pt circles. Map-backed nav stays 36pt frozen.
+This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeights, grids, animations, and accessibility identifiers stay put. Tab switches use `TrailhoundMotion.tabSwitch`. Never put `animation = nil` on `TabView` — it pauses `TimelineView.animation` (recap, onboarding). List-hosted motion (recording road, Start hound, steering-wheel badge) uses `TrailhoundDisplayLinkTicker`, not `TimelineView`. Recap / onboarding clocks use `TrailhoundIndependentClock.periodic`. The Stats filter card (`stats.filters.*`) is the shape reference. Form/list **and** Trip/Travel detail nav items use system toolbar metrics (the Trips cluster) instead of custom circles. Overlay collapse and story Share/Close use the 44pt frozen circle (`frozenControl` / `GlassNavCircleIcon`). Compact `.frozen` 36pt stays available for a smaller map chip.
 
 ## Accessibility
 
@@ -63,17 +64,20 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
 | `GlassEnvironment.swift` | `.onGlassShell()`, ink hierarchy, `.glassDisclosureInk()`, `shellPalette` env |
 | `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, toolbar symbol/title/cluster |
+| `NavigationInteractivePopEnabler.swift` | Edge-swipe pop when the system back button is hidden; `disabled` blocks pop while a vehicle editor has unsaved edits |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundCompactProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` / `.trailhoundCardPress()` |
-| `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome |
-| `StatsCard.swift` | Stats full/half cards, nested tiles, `.statsNestedPanel()` (variable-height frost in expand overlays), `.statsFrostChip()`, `StatsSegmentBar` / `StatsSegmentSwatch` / `StatsShareBar` (vehicle-compare share of top spend, donut slice fill), overlay `posterHeight` / `posterExpandedHeight`. Recap and month-forecast posters use `contentInset: 0` plus `.statsPosterOverlayPadding()` so artwork fills the card. |
-| `TrailhoundMotion.swift` | `.numericTextAnimation`, `.glassEntranceGlint` (alias `.photoEntranceGlint`) |
+| `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome, `.glassNestedChoice(isSelected:)` (frost fill inside a card — not a second Material) |
+| `StatsCard.swift` | Stats full/half cards, nested tiles, `.statsNestedPanel()` (variable-height frost in expand overlays), `.statsFrostChip()`, `StatsSegmentBar` / `StatsSegmentSwatch` / `StatsShareBar` (vehicle-compare share of top spend, donut slice fill), overlay `posterHeight` / `posterExpandedHeight`. Recap and month-forecast posters use `contentInset: 0` plus `.statsPosterOverlayPadding()` so artwork fills the card. Forecast sparkline uses `.statsPosterSparklineVeil()` so hero copy reads. |
+| `TrailhoundMotion.swift` | `.numericTextAnimation`, `.glassEntranceGlint` (alias `.photoEntranceGlint`), `tabSwitch` |
+| `TrailhoundIndependentClock` | Periodic `TimelineView` clocks for recap / onboarding (not inside a `List`) — not `TimelineView.animation` |
+| `TrailhoundDisplayLinkTicker` | `CADisplayLink` host for List cells (recording road, Start hound, steering-wheel, stop-credits). Keep it **outside** `.drawingGroup`. |
 | `TrailhoundTabBarCompact.swift` | Palette selected-tab tint (system floating-bar width) |
 | `AppIconSync.swift` | Palette → alternate Home Screen icon; coalesced public API call |
 | `TrailhoundBrandMark.swift` | In-app / share-card logo recolored to `homeScreenIconFill` |
 | `RecapShareRenderer.swift` | Year recap Share PNG is `ImageRenderer` of the visible story page (`RecapPageScene` + copy), 9:16. Not a separate Core Graphics poster. |
-| `AchievementTheme.swift` | 3D medal chrome (`AchievementMedalChrome`: bezel, face, specular, inner shade). Km medals are metal (100 silver, 1,000 gold, 10,000 **teal platinum**, 100,000 **lavender diamond**); other families keep enamel family hues in the same chrome. Cards stay glass — color only on the disc. Locked medals keep the full-color chrome and overlay `AchievementMedalLockOverlay` (black 0.45 + `GlassText.placeholder` lock) — never a washed-out fill. Unlocked first-trip glyph uses `AchievementFlagWaveEffect` (pole-anchored flutter, not a disc pulse). Distance glyphs use `AchievementDistancePathGlyph` so the two nodes travel the S (`AchievementDistancePathMotion`: 100 convoy, 1,000 rendezvous, 10,000 patrol, 100,000 bloom; ink follows the metal). Night uses `AchievementNightSkyGlyph` (moon and stars bob together; stars sparkle). Stats badges and Year in review share this overlay. |
+| `AchievementTheme.swift` | 3D medal chrome (`AchievementMedalChrome`). Km medals are metal (100 silver, 1,000 gold, 10,000 **teal platinum**, 100,000 **lavender diamond**). Glyphs are **white** on every disc (including silver/gold). Every other family has a unique hue (≥18° apart), unique SF icon per ID, and unique idle (`AchievementFamilyIdleEffect`) — no shared pulse. Enamel ladders shift hue +8° per tier so rungs are not clones. Cards stay glass. Locked medals dim the disc under an opaque family glyph; the lock is a small opaque rim badge (`AchievementMedalLockOverlay`), not a translucent film over the icon. First-trip flag waves; distance S-path choreography; night owl moon+stars; 24h hourglass pours 180° on X; trips wheel sways ±20° (not a full spin); 100 km one-trip car drives left→right and fades (not a reverse). Stats and Year in review share this overlay. |
 | `PermissionBanner.swift` | `LocationPermissionBadge` / `NotificationPermissionBadge` share `PermissionStatusCapsule` (same opaque pill chrome as location status) |
-| `StatsChartTheme.swift` | Chart fills, bar radius, axis chrome. Tick labels and Y-axis units (`km`, `h`, currency) use `axisLabelInk` / `.chartStatsYAxisUnit` — never unstyled `.chartYAxisLabel` (black on Light). |
+| `StatsChartTheme.swift` | Chart fills, bar radius, axis chrome. Tick labels and Y-axis units (`km`, `h`, currency) use `axisLabelInk` / `.chartStatsYAxisUnit` — never unstyled `.chartYAxisLabel` (black on Light). Forecast sparkline uses `chartStatsSparklineFill(maxValue:)` (Y headroom + 12pt plot padding) so the peak is not clipped. |
 
 ## Buttons
 
@@ -84,3 +88,9 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | Secondary on glass | `.trailhoundGlassButton()` |
 | Destructive / Stop | `.trailhoundDestructiveButton()` |
 | Whole card press | `.trailhoundCardPress()` |
+
+## Nested fills
+
+| Intent | API |
+|---|---|
+| Choice / instruction tile inside a glass card | `.glassNestedChoice(isSelected:)` — selected = chip mid-family fill + white type; unselected = nested frost tint. Not `statsNestedTile`, not a second Material. Pair with `.trailhoundCardPress()` when tappable. |

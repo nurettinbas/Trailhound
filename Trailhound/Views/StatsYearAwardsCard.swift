@@ -76,12 +76,16 @@ struct StatsYearAwardsCard: View {
                 Circle()
                     .fill(medal.kind.badgeFill)
                     .frame(width: Self.medalSize, height: Self.medalSize)
+                if !medal.isUnlocked {
+                    AchievementMedalLockScrim(size: Self.medalSize)
+                }
                 Image(systemName: medal.systemImage)
                     .font(.system(size: 18, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
                     .foregroundStyle(Color.white)
+                    .opacity(1)
                 if !medal.isUnlocked {
                     AchievementMedalLockOverlay(size: Self.medalSize)
-                        .frame(width: Self.medalSize, height: Self.medalSize)
                 }
             }
             Text(medal.title)

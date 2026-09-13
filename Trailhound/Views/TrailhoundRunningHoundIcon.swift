@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Compact running-hound mark for the trip-list Start control.
-/// Timeline-driven gallop + speed streaks so theme / parent transactions
+/// Display-link gallop + speed streaks so List / theme transactions
 /// cannot hijack mid-flight offsets (the classic “streak jump” on appearance change).
 struct TrailhoundRunningHoundIcon: View {
     var size: CGFloat = 30
@@ -22,19 +22,20 @@ struct TrailhoundRunningHoundIcon: View {
     private let gallopPeriod: TimeInterval = 0.72
     /// One seamless lane-width scroll — original default speed.
     private let streakPeriod: TimeInterval = 0.48
-    private var tickInterval: TimeInterval {
-        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
-    }
+
+    @State private var clockDate = Date()
 
     var body: some View {
-        TimelineView(
-            .animation(
-                minimumInterval: tickInterval,
-                paused: !shouldAnimate
-            )
-        ) { context in
-            let phases = motionPhases(at: context.date)
-            mark(gallopPhase: phases.gallop, streakPhase: phases.streak)
+        let phases = motionPhases(at: clockDate)
+        mark(gallopPhase: phases.gallop, streakPhase: phases.streak)
+        .overlay(alignment: .topLeading) {
+            TrailhoundDisplayLinkTicker(
+                isRunning: shouldAnimate,
+                framesPerSecond: ProcessInfo.processInfo.isLowPowerModeEnabled ? 10 : 20
+            ) { clockDate = Date(timeIntervalSinceReferenceDate: $0) }
+            .frame(width: 1, height: 1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
         .frame(minWidth: size)
         .fixedSize()

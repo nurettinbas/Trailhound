@@ -53,19 +53,34 @@ enum AchievementTheme {
 
     static func familyHue(for family: AchievementFamily) -> Double {
         switch family {
-        case .firstTrip: 142
-        case .distance: 178
-        case .business: 38
+        case .longhaul: 5
         case .streak: 24
+        case .business: 44
+        case .dawn: 62
+        case .firstTrip: 142
+        case .fleet: 160
+        case .distance: 178
+        case .hours: 196
         case .cities: 214
+        case .countries: 234
         case .night: 252
-        case .routes: 278
+        case .routes: 274
+        case .weekend: 304
+        case .trips: 332
         }
     }
 
+    /// Ladder rungs shift hue so unlocked siblings are not clones. Km uses metals instead.
+    static func enamelHue(for id: AchievementID) -> Double {
+        let base = familyHue(for: id.family)
+        return (base + 8 * Double(id.familyTier) + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    static let minimumFamilyHueDelta: Double = 18
+
     static func familyAccent(for id: AchievementID, scheme: ColorScheme, unlocked: Bool) -> Color {
         hsl(
-            hue: familyHue(for: id.family),
+            hue: enamelHue(for: id),
             saturation: saturation(for: id, unlocked: unlocked, scheme: scheme),
             lightness: accentLightness(scheme: scheme, unlocked: unlocked)
         )
@@ -73,7 +88,7 @@ enum AchievementTheme {
 
     static func familyHighlight(for id: AchievementID, scheme: ColorScheme, unlocked: Bool) -> Color {
         hsl(
-            hue: familyHue(for: id.family),
+            hue: enamelHue(for: id),
             saturation: saturation(for: id, unlocked: unlocked, scheme: scheme) * 0.9,
             lightness: min(0.86, accentLightness(scheme: scheme, unlocked: unlocked) + 0.16)
         )
@@ -85,7 +100,7 @@ enum AchievementTheme {
         }
         let accent = familyAccent(for: id, scheme: scheme, unlocked: true)
         let highlight = familyHighlight(for: id, scheme: scheme, unlocked: true)
-        let hue = familyHue(for: id.family)
+        let hue = enamelHue(for: id)
         let sat = saturation(for: id, unlocked: true, scheme: scheme)
         let light = accentLightness(scheme: scheme, unlocked: true)
         return AchievementMedalPalette(
@@ -121,7 +136,7 @@ enum AchievementTheme {
                 faceAccent: hex(dark ? 0x6A747E : 0x8A949E),
                 rimHighlight: hex(dark ? 0xD8DEE4 : 0xF2F5F7),
                 rimAccent: hex(dark ? 0x4A5258 : 0x6E767E),
-                glyph: hex(0x1A2230),
+                glyph: .white,
                 glow: hex(dark ? 0xA8B0B8 : 0xC8D0D8),
                 specularOpacity: 0.55
             )
@@ -131,7 +146,7 @@ enum AchievementTheme {
                 faceAccent: hex(dark ? 0x9A6A12 : 0xC48A1A),
                 rimHighlight: hex(dark ? 0xE8C878 : 0xFFE9B0),
                 rimAccent: hex(dark ? 0x6A4408 : 0x8A5A10),
-                glyph: hex(0x3A2208),
+                glyph: .white,
                 glow: hex(dark ? 0xD4A84A : 0xF3D08A),
                 specularOpacity: 0.45
             )
@@ -311,7 +326,7 @@ enum AchievementMedalIdle {
     static var pathTravelDuration: TimeInterval { AchievementDistancePathMotion.convoy.duration }
     static let nightBobDuration: TimeInterval = 1.8
     static let nightSparkleDuration: TimeInterval = 0.55
-    /// Stats strip / gallery share one clock. TabView sets `animation = nil`, so `withAnimation` never runs there.
+    /// Optional fallback clock. Do not wrap Stats List idle in `TimelineView` (iOS pauses it).
     static let compactClockInterval: TimeInterval = 1.0 / 12.0
 
     /// One-way drift of the moon and stars. Disc stays put.
@@ -321,12 +336,69 @@ enum AchievementMedalIdle {
 
     static func discTilts(_ family: AchievementFamily) -> Bool {
         switch family {
-        case .firstTrip, .distance, .night: false
-        default: true
+        case .routes, .weekend, .fleet: true
+        default: false
         }
     }
 
-    /// Eased 0...1...0. Time-driven idle so medals still move when SwiftUI animation is nil.
+    static func glyphOverflows(_ family: AchievementFamily) -> Bool {
+        switch family {
+        case .firstTrip, .distance, .night, .dawn, .streak, .hours, .longhaul: true
+        default: false
+        }
+    }
+
+    static func period(for family: AchievementFamily) -> TimeInterval {
+        switch family {
+        case .streak: 1.6
+        case .business: 1.35
+        case .cities: 2.4
+        case .routes: 2.0
+        case .trips: 2.1
+        case .hours: 2.7
+        case .longhaul: 3.0
+        case .dawn: 2.2
+        case .weekend: 2.4
+        case .fleet: 1.8
+        case .countries: 4.0
+        case .night: 2.2
+        case .firstTrip: 2.8
+        case .distance: 2.4
+        }
+    }
+
+    /// Steering wheel yaw, one side. Ping-pong is left then right — not a full spin.
+    static let steeringSwayDegrees: Double = 20
+
+    static func steeringSway(phase: CGFloat) -> Double {
+        (Double(phase) - 0.5) * 2 * steeringSwayDegrees
+    }
+
+    /// One pour is 180° on X (top becomes bottom). Ping-pong reads as turn over, then back.
+    static func hourglassFlipDegrees(phase: CGFloat) -> Double {
+        Double(phase) * 180
+    }
+
+    /// One-way drive across the disc (not fleet ping-pong). Loop 0...1 is left → right.
+    static let longhaulTravel: CGFloat = 0.48
+
+    static func longhaulTravelX(loop: CGFloat, size: CGFloat) -> CGFloat {
+        (loop - 0.5) * size * longhaulTravel
+    }
+
+    /// Fade at the rims so the reset is a new trip, not a reverse.
+    static func longhaulTravelOpacity(loop: CGFloat) -> Double {
+        sin(Double(loop) * .pi)
+    }
+
+    /// 0...1 looping (not ping-pong) for globe / longhaul.
+    static func loop(at time: TimeInterval, duration: TimeInterval) -> CGFloat {
+        guard duration > 0, time.isFinite else { return 0 }
+        let t = time.truncatingRemainder(dividingBy: duration)
+        return CGFloat((t + duration).truncatingRemainder(dividingBy: duration) / duration)
+    }
+
+    /// Eased 0...1...0. Time-driven idle when a parent publishes `achievementIdleTime`.
     static func pingPong(at time: TimeInterval, duration: TimeInterval) -> CGFloat {
         guard duration > 0, time.isFinite else { return 0 }
         let cycle = time.truncatingRemainder(dividingBy: duration * 2)
@@ -343,6 +415,46 @@ extension EnvironmentValues {
     var achievementIdleTime: TimeInterval? {
         get { self[AchievementIdleTimeKey.self] }
         set { self[AchievementIdleTimeKey.self] = newValue }
+    }
+}
+
+/// Optional 12 fps idle `t` via `Task.sleep` (not `TimelineView` — iOS pauses that inside a `List`).
+/// Recap story still publishes `achievementIdleTime` from `TimelineView`. Gallery overlay may
+/// fall back to `withAnimation` when no parent clock is published.
+private struct AchievementIdleClockModifier: ViewModifier {
+    var isEnabled: Bool
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var tick: TimeInterval?
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.achievementIdleTime, publishesClock ? tick : nil)
+            .task(id: publishesClock) {
+                guard publishesClock else {
+                    tick = nil
+                    return
+                }
+                tick = Date.timeIntervalSinceReferenceDate
+                while !Task.isCancelled {
+                    do {
+                        try await Task.sleep(for: .seconds(AchievementMedalIdle.compactClockInterval))
+                    } catch {
+                        break
+                    }
+                    guard !Task.isCancelled else { break }
+                    tick = Date.timeIntervalSinceReferenceDate
+                }
+            }
+    }
+
+    private var publishesClock: Bool {
+        isEnabled && scenePhase == .active
+    }
+}
+
+extension View {
+    func achievementIdleClock(enabled: Bool) -> some View {
+        modifier(AchievementIdleClockModifier(isEnabled: enabled))
     }
 }
 
@@ -364,6 +476,9 @@ struct AchievementFlagWaveEffect: ViewModifier {
             .scaleEffect(x: foldScale, y: 1, anchor: .leading)
             .onAppear(perform: start)
             .onChange(of: isActive) { _, _ in
+                start()
+            }
+            .onChange(of: idleTime) { _, _ in
                 start()
             }
     }
@@ -403,6 +518,114 @@ struct AchievementFlagWaveEffect: ViewModifier {
             .repeatForever(autoreverses: true)
         ) {
             waving = true
+        }
+    }
+}
+
+/// Unique idle per family. No shared pulse. SwiftUI `withAnimation` unless a parent publishes idle time.
+struct AchievementFamilyIdleEffect: ViewModifier {
+    var family: AchievementFamily
+    var isActive: Bool
+    var size: CGFloat
+    @Environment(\.achievementIdleTime) private var idleTime
+    @State private var ping = false
+    @State private var spin: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        idleContent(content)
+            .onAppear(perform: start)
+            .onChange(of: isActive) { _, _ in start() }
+            .onChange(of: idleTime) { _, _ in start() }
+    }
+
+    @ViewBuilder
+    private func idleContent(_ content: Content) -> some View {
+        let p = pingPhase
+        let loop = loopPhase
+        switch family {
+        case .firstTrip:
+            content.modifier(AchievementFlagWaveEffect(isActive: isActive))
+        case .distance:
+            content
+        case .night:
+            content.offset(y: isActive ? (p - 0.5) * 2 * AchievementMedalIdle.nightBobAmplitude(for: size) : 0)
+        case .business:
+            content.offset(y: isActive ? (1 - p) * 3 : 0)
+        case .streak:
+            content
+                .scaleEffect(isActive ? 1 + 0.10 * p : 1)
+                .rotationEffect(.degrees(isActive ? (p - 0.5) * 16 : 0))
+        case .cities:
+            content.offset(y: isActive ? -7 * p : 0)
+        case .routes:
+            content
+        case .trips:
+            content.rotationEffect(.degrees(isActive ? AchievementMedalIdle.steeringSway(phase: p) : 0))
+        case .hours:
+            content.rotation3DEffect(
+                .degrees(isActive ? AchievementMedalIdle.hourglassFlipDegrees(phase: p) : 0),
+                axis: (x: 1, y: 0.08, z: 0),
+                perspective: 0.55
+            )
+        case .longhaul:
+            content
+                .offset(x: isActive ? AchievementMedalIdle.longhaulTravelX(loop: loop, size: size) : 0)
+                .opacity(isActive ? AchievementMedalIdle.longhaulTravelOpacity(loop: loop) : 1)
+        case .dawn:
+            content
+                .offset(y: isActive ? (1 - p) * size * 0.18 : 0)
+                .opacity(isActive ? 0.55 + 0.45 * Double(p) : 1)
+        case .weekend:
+            content.rotation3DEffect(
+                .degrees(isActive ? (p - 0.5) * 40 : 0),
+                axis: (x: 1, y: 0, z: 0),
+                perspective: 0.4
+            )
+        case .fleet:
+            content.offset(x: isActive ? (p - 0.5) * size * 0.14 : 0)
+        case .countries:
+            content.rotation3DEffect(
+                .degrees(isActive ? Double(loop) * 360 : 0),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.5
+            )
+        }
+    }
+
+    private var pingPhase: CGFloat {
+        guard isActive else { return 0 }
+        if let idleTime {
+            return AchievementMedalIdle.pingPong(at: idleTime, duration: AchievementMedalIdle.period(for: family))
+        }
+        return ping ? 1 : 0
+    }
+
+    private var loopPhase: CGFloat {
+        guard isActive else { return 0 }
+        if let idleTime {
+            return AchievementMedalIdle.loop(at: idleTime, duration: AchievementMedalIdle.period(for: family))
+        }
+        return spin
+    }
+
+    private func start() {
+        guard isActive, idleTime == nil else {
+            ping = false
+            spin = 0
+            return
+        }
+        ping = false
+        spin = 0
+        let duration = AchievementMedalIdle.period(for: family)
+        switch family {
+        case .longhaul, .countries:
+            withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+                spin = 1
+            }
+        default:
+            withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
+                ping = true
+            }
         }
     }
 }
@@ -522,6 +745,9 @@ struct AchievementDistancePathGlyph: View {
             .onChange(of: isActive) { _, _ in
                 start()
             }
+            .onChange(of: idleTime) { _, _ in
+                start()
+            }
     }
 
     private var displayedProgress: CGFloat {
@@ -614,6 +840,9 @@ struct AchievementNightSkyGlyph: View {
         .onChange(of: isActive) { _, _ in
             start()
         }
+        .onChange(of: idleTime) { _, _ in
+            start()
+        }
     }
 
     private var bobPhase: CGFloat {
@@ -670,24 +899,44 @@ struct AchievementNightSkyGlyph: View {
     }
 }
 
-/// Dark disc + pale lock shared by Stats badges and Year in review.
-struct AchievementMedalLockOverlay: View {
+/// Dims the disc under the family glyph. Do not paint this over the icon — the glyph stays opaque.
+struct AchievementMedalLockScrim: View {
     var size: CGFloat
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        Circle()
+            .fill(Color.black.opacity(AchievementTheme.lockScrimOpacity))
+            .frame(width: size, height: size)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Opaque lock badge on the disc rim. Not a translucent film over the family icon.
+struct AchievementMedalLockOverlay: View {
+    var size: CGFloat
+
+    var body: some View {
+        let badge = Self.lockBadgeSize(for: size)
         ZStack {
             Circle()
-                .fill(Color.black.opacity(AchievementTheme.lockScrimOpacity))
+                .fill(Color.black.opacity(0.88))
             Image(systemName: "lock.fill")
                 .font(.system(size: Self.lockGlyphSize(for: size), weight: .bold))
-                .foregroundStyle(GlassText.placeholder(for: colorScheme))
+                .foregroundStyle(Color.white)
+                .symbolRenderingMode(.monochrome)
         }
+        .frame(width: badge, height: badge)
+        .offset(y: size * 0.30)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
+    static func lockBadgeSize(for medalSize: CGFloat) -> CGFloat {
+        max(14, medalSize * 0.28)
+    }
+
     static func lockGlyphSize(for medalSize: CGFloat) -> CGFloat {
-        max(13, medalSize * 0.36)
+        max(8, medalSize * 0.16)
     }
 }

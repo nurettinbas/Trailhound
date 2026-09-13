@@ -40,7 +40,7 @@ struct StatsAchievementsStrip: View {
 
     @ViewBuilder
     private var idleMedals: some View {
-        let row = ViewThatFits(in: .horizontal) {
+        ViewThatFits(in: .horizontal) {
             medalRow
             ScrollView(.horizontal, showsIndicators: false) {
                 medalRow
@@ -48,13 +48,7 @@ struct StatsAchievementsStrip: View {
             .scrollClipDisabled()
         }
         .frame(maxWidth: .infinity)
-        if ticksIdleClock {
-            TimelineView(.animation(minimumInterval: AchievementMedalIdle.compactClockInterval)) { timeline in
-                row.environment(\.achievementIdleTime, timeline.date.timeIntervalSinceReferenceDate)
-            }
-        } else {
-            row
-        }
+        .achievementIdleClock(enabled: ticksIdleClock && !isExpanded)
     }
 
     private var ticksIdleClock: Bool {
@@ -64,7 +58,7 @@ struct StatsAchievementsStrip: View {
     private var medalRow: some View {
         HStack(spacing: 10) {
             ForEach(visible) { item in
-                AchievementBadgeView(item: item, compact: true)
+                AchievementBadgeView(item: item, compact: true, playsMotion: !isExpanded)
                     .accessibilityHidden(true)
             }
         }
@@ -81,13 +75,15 @@ struct AchievementBadgeView: View {
     var compact: Bool = false
     var showsLabels: Bool = true
     var emphasized: Bool = false
+    var playsMotion: Bool = true
 
     var body: some View {
         VStack(spacing: 6) {
             AchievementMedalMark(
                 item: item,
                 size: compact ? AchievementGalleryTokens.compactMedalSize : AchievementGalleryTokens.medalSize,
-                emphasized: emphasized
+                emphasized: emphasized,
+                playsMotion: playsMotion
             )
             if showsLabels, !compact {
                 Text(L10n.string(item.id.titleKey))
@@ -132,13 +128,17 @@ struct AchievementMedalMark: View {
         let palette = AchievementTheme.medalPalette(for: item.id, scheme: colorScheme)
         ZStack {
             AchievementMedalChrome(id: item.id, size: size)
+            if !item.isUnlocked {
+                AchievementMedalLockScrim(size: size)
+            }
             glyph(ink: palette.glyph)
+                .opacity(1)
             if !item.isUnlocked {
                 AchievementMedalLockOverlay(size: size)
             }
         }
         .frame(width: size, height: size)
-        .modifier(AchievementMedalDiscClip(allowsGlyphOverflow: playsIdleSymbol && !AchievementMedalIdle.discTilts(item.id.family)))
+        .modifier(AchievementMedalDiscClip(allowsGlyphOverflow: playsIdleSymbol && AchievementMedalIdle.glyphOverflows(item.id.family)))
         .shadow(
             color: Color.black.opacity(reduceMotion ? 0.12 : 0.28),
             radius: reduceMotion ? 2 : 4,
@@ -158,6 +158,9 @@ struct AchievementMedalMark: View {
         .onChange(of: item.isUnlocked) { _, _ in
             startFamilyMotion()
         }
+        .onChange(of: idleTime) { _, _ in
+            startFamilyMotion()
+        }
     }
 
     private var playsIdleSymbol: Bool {
@@ -174,26 +177,19 @@ struct AchievementMedalMark: View {
                 ink: ink,
                 motion: item.id.medalMaterial.map(AchievementDistancePathMotion.for) ?? .rendezvous
             )
-        case .night:
+        case .night where item.id == .nightOwl:
             AchievementNightSkyGlyph(size: size, isActive: playsIdleSymbol)
         default:
             Image(systemName: item.id.systemImage)
                 .font(size < 50 ? .body.weight(.semibold) : .title3.weight(.semibold))
+                .symbolRenderingMode(.monochrome)
                 .foregroundStyle(ink)
-                .modifier(AchievementMedalSymbolEffect(family: item.id.family, isActive: playsIdleSymbol))
+                .modifier(AchievementFamilyIdleEffect(family: item.id.family, isActive: playsIdleSymbol, size: size))
         }
     }
 
     private var familyPeriod: Double {
-        switch item.id.family {
-        case .streak: 1.6
-        case .night: 2.2
-        case .firstTrip: 2.8
-        case .distance: 2.4
-        case .business: 2.6
-        case .cities: 3.0
-        case .routes: 2.0
-        }
+        AchievementMedalIdle.period(for: item.id.family)
     }
 
     private var idlePhase: CGFloat {
@@ -231,6 +227,8 @@ struct AchievementMedalMark: View {
         switch item.id.family {
         case .routes: return -16 + 32 * p
         case .business: return -5 + 10 * p
+        case .weekend: return -8 + 16 * p
+        case .fleet: return -6 + 12 * p
         default: return -4 + 8 * p
         }
     }
@@ -286,6 +284,7 @@ struct AchievementGalleryExpandOverlay: View {
     @Binding var isExpanded: Bool
     var onClose: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var idleClockOn = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -311,6 +310,23 @@ struct AchievementGalleryExpandOverlay: View {
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.achievements.expanded")
+        .onAppear(perform: syncIdleClock)
+        .onChange(of: isExpanded) { _, _ in
+            syncIdleClock()
+        }
+    }
+
+    private func syncIdleClock() {
+        if isExpanded {
+            Task { @MainActor in
+                try? await Task.sleep(
+                    for: .milliseconds(reduceMotion ? 0 : 780)
+                )
+                idleClockOn = isExpanded
+            }
+        } else {
+            idleClockOn = false
+        }
     }
 
     /// `GeometryReader` under `.ignoresSafeArea()` reports zero insets — same as trip-detail map.
@@ -333,15 +349,18 @@ struct AchievementGalleryExpandOverlay: View {
             )
             .padding(StatsCardTokens.contentInset)
             .opacity(isExpanded ? 0 : 1)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(false)
             AchievementGalleryView(
                 achievements: achievements,
                 topInset: topInset,
                 bottomInset: bottomInset,
-                onClose: onClose
+                onClose: onClose,
+                playsIdleClock: idleClockOn
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .opacity(isExpanded ? 1 : 0)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(isExpanded)
         }
         .background {
@@ -357,9 +376,9 @@ struct AchievementGalleryView: View {
     var topInset: CGFloat
     var bottomInset: CGFloat
     var onClose: () -> Void
+    var playsIdleClock: Bool = true
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -381,12 +400,7 @@ struct AchievementGalleryView: View {
             .padding(.trailing, 12)
             .padding(.top, topInset)
             .padding(.bottom, 8)
-            ScrollView {
-                idleGalleryGrid
-                    .padding(16)
-                    .padding(.bottom, bottomInset)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            galleryScroll
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGlassShell()
@@ -397,24 +411,17 @@ struct AchievementGalleryView: View {
         achievements.sorted(by: AchievementDisplay.listOrder)
     }
 
-    @ViewBuilder
-    private var idleGalleryGrid: some View {
-        let grid = LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(galleryItems) { item in
-                AchievementGalleryCard(item: item)
+    private var galleryScroll: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(galleryItems) { item in
+                    AchievementGalleryCard(item: item, playsMotion: playsIdleClock)
+                }
             }
+            .padding(16)
+            .padding(.bottom, bottomInset)
         }
-        if ticksIdleClock {
-            TimelineView(.animation(minimumInterval: AchievementMedalIdle.compactClockInterval)) { timeline in
-                grid.environment(\.achievementIdleTime, timeline.date.timeIntervalSinceReferenceDate)
-            }
-        } else {
-            grid
-        }
-    }
-
-    private var ticksIdleClock: Bool {
-        !reduceMotion && !UITestSupport.isEnabled && achievements.contains(where: \.isUnlocked)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var columns: [GridItem] {
@@ -429,13 +436,18 @@ struct AchievementGalleryView: View {
 
 struct AchievementGalleryCard: View {
     let item: AchievementDisplay
+    var playsMotion: Bool = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(spacing: 5) {
             VStack(spacing: 5) {
-                AchievementMedalMark(item: item, size: AchievementGalleryTokens.medalSize)
+                AchievementMedalMark(
+                    item: item,
+                    size: AchievementGalleryTokens.medalSize,
+                    playsMotion: playsMotion
+                )
                 Text(L10n.string(item.id.titleKey))
                     .font(.caption.weight(.semibold))
                     .glassPrimaryInk()
@@ -533,45 +545,6 @@ private struct AchievementMedalDiscClip: ViewModifier {
     }
 }
 
-private struct AchievementMedalSymbolEffect: ViewModifier {
-    let family: AchievementFamily
-    let isActive: Bool
-
-    func body(content: Content) -> some View {
-        switch family {
-        case .firstTrip:
-            content.modifier(AchievementFlagWaveEffect(isActive: isActive))
-        default:
-            if #available(iOS 18.0, *) {
-                content.modifier(AchievementMedalSymbolEffect18(family: family, isActive: isActive))
-            } else {
-                content.symbolEffect(.pulse, options: .repeating, isActive: isActive)
-            }
-        }
-    }
-}
-
-@available(iOS 18.0, *)
-private struct AchievementMedalSymbolEffect18: ViewModifier {
-    let family: AchievementFamily
-    let isActive: Bool
-
-    func body(content: Content) -> some View {
-        switch family {
-        case .cities:
-            content.symbolEffect(.bounce, options: .repeating, isActive: isActive)
-        case .streak, .business, .routes:
-            content.symbolEffect(.pulse, options: .repeating, isActive: isActive)
-        case .firstTrip:
-            content.modifier(AchievementFlagWaveEffect(isActive: isActive))
-        case .distance, .night:
-            content
-        }
-    }
-}
-
-
-
 struct AchievementUnlockOverlay: View {
     let item: AchievementDisplay
     var onDismiss: () -> Void
@@ -600,14 +573,7 @@ struct AchievementUnlockOverlay: View {
 
     @ViewBuilder
     private var medal: some View {
-        if ticksMedalClock {
-            TimelineView(.animation(minimumInterval: AchievementMedalIdle.compactClockInterval)) { timeline in
-                medalMark
-                    .environment(\.achievementIdleTime, timeline.date.timeIntervalSinceReferenceDate)
-            }
-        } else {
-            medalMark
-        }
+        medalMark
     }
 
     private var medalMark: some View {
@@ -617,10 +583,6 @@ struct AchievementUnlockOverlay: View {
             emphasized: true
         )
         .accessibilityHidden(true)
-    }
-
-    private var ticksMedalClock: Bool {
-        !reduceMotion && !UITestSupport.isEnabled
     }
 
     private var dwell: TimeInterval {

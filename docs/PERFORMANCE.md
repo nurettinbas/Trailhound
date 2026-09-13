@@ -8,13 +8,13 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 - Visual chrome matches the rest of the app (`glassListChrome()` / `glassRow()`); draft keeps keyboard work off the model layer.
 - Optional vehicle photos are 256 px JPEG/PNG thumbs on disk (`VehiclePhotoStore`); SwiftData stores only `photoFileName`. Decode/resize runs off the main actor; list rows use a memory cache hit when scrolling.
 - Identity surfaces (pairing rows, recording capsule, trip/stats vehicle filters, trip-detail picker) reuse `VehicleAvatarView` + `VehiclePhotoStore.prefetch` so thumbs are warm before scroll/chips appear.
-- Recording road animation (`RecordingCarAnimationView` in TrailhoundShared) accepts a **pre-decoded** `UIImage?` plus optional `systemImage` from the app. Shared never opens photo files; `TimelineView` / `drawingGroup` must not do per-frame I/O.
+- Recording road animation (`RecordingCarAnimationView` in TrailhoundShared) accepts a **pre-decoded** `UIImage?` plus optional `systemImage` from the app. Shared never opens photo files; `drawingGroup` must not do per-frame I/O.
 
 ## Trips list scroll (recording card)
 
 - Trips list hides in-progress recordings with an `endedAt != nil` predicate. Do not add ad-hoc SwiftData schema fields without a versioned migration plan.
 - Card frame for stop credits is kept inside `ActiveTripView` (not propagated to `TripListView` on every scroll frame).
-- Road + exhaust animation uses `RecordingCarAnimationView`; `TimelineView` only runs while recording, unpaused, and the card is on-screen.
+- Road + exhaust animation uses `RecordingCarAnimationView`; the `CADisplayLink` ticker (`TrailhoundDisplayLinkTicker`) only runs while recording, unpaused, and the card is on-screen.
 
 ## Active recording card
 
@@ -22,8 +22,8 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 - The recording card no longer shows a live mini-map (only the car animation + stats).
 - Stop credits still use `LiveBreadcrumbCanvas` briefly.
 - The road animation pauses when another tab is selected or the card scrolls off-screen (`isRecordingCardInViewport`).
-- `TimelineView` runs only while the road animation is active (paused / off-screen = static frame).
-- **Live follow map** (`LiveFollowMapView` + `LiveFollowMapKitView`): `CADisplayLink` (capped at 60 fps, `dt` from `targetTimestamp`) drives `LiveFollowCamera`. The same `lastLocation` is not re-ingested every frame (that reset the dead-reckon clock and snapped at ~1 Hz). Camera center is the vehicle so the puck sits at screen center while following; **eye distance grows with speed** (`followDistance`) so a motorway sweep does not read as a lurch. Follow camera stays live during the **open hero flight** (not gated on `openSettled`) so a 120 km/h tick cannot slide the blue trail off the curved landing; pan-to-break waits until the handoff finishes. Motion is **velocity integration** (`speed × dt`) between GPS samples — implied speed/path bearing when Core Location reports `-1` (common in Simulator). The published center aims at where the car should be *now* (last fix advanced by `speed × age`), not the stale GPS point — otherwise the breadcrumb trail draws ahead of the puck and lurches once a second. Two other rules keep that continuous: the fresh window (`maxDeadReckonSeconds`) is well above the ~1 Hz fix interval, and once a fix *is* stale the coast **decays** (`deadReckonDecayTauSeconds`) instead of zeroing speed in one frame. GPS is only a trim on the integrated position: along-track pushes only when the (aged) fix is *ahead*, and a spent coast on a stale fix **holds** rather than rewinding. `LiveFollowSession.camera` is observation-ignored so 60 fps ticks do not rebuild SwiftUI. Camera writes use `map.camera` inside `CATransaction` (actions disabled) **only while following**; after pan, pose/puck keep updating. Follow tiles stay `.flat` with pitch for 3D feel. History is **chunked `MKPolyline`s** of *completed* 240-point blocks (immutable until a chunk fills); the **growing remainder rides in the tip overlay** with the vehicle chord, swapped at most 10 Hz — one solid blue stroke. A breadcrumb therefore never `removeOverlay`/`addOverlay`s history next to the puck. Route geometry is pulled by the coordinator from `LiveFollowSession` (`recordingService` is observation-ignored) on display ticks, so a 1 Hz breadcrumb append cannot rebuild SwiftUI or `updateUIView`. Both use MapKit's *own* vector renderers on purpose: a custom `MKOverlayRenderer` is rasterised flat and then perspective-warped, which fattens the stroke toward the bottom of a 3D view. A tip longer than 120 m, or pointing against the direction of travel, is dropped. While following, the puck artwork stays screen-up (the camera already faces travel). After **Show entire route** / pan, the photo + chevron rotate around the circle centre so the sharp tip still faces travel on a north-up map. Pan/zoom stay enabled while paused. `ScreenIdleLock` keeps the display awake only while the cover is open. Start / pause / trip-stop pins render on the live map. While the cover is open, the card’s road `TimelineView` stays paused (`!showLiveFollowMap`).
+- The road clock runs only while the animation is active (paused / off-screen = static frame). Do **not** use `TimelineView` (animation or periodic) for this card: iOS pauses those clocks inside a SwiftUI `List`. Drive list-hosted motion with `TrailhoundDisplayLinkTicker` **outside** `.drawingGroup` — a representable inside the rasterizer never mounts, so the car sits still.
+- **Live follow map** (`LiveFollowMapView` + `LiveFollowMapKitView`): `CADisplayLink` (capped at 60 fps, `dt` from `targetTimestamp`) drives `LiveFollowCamera`. The same `lastLocation` is not re-ingested every frame (that reset the dead-reckon clock and snapped at ~1 Hz). Camera center is the vehicle so the puck sits at screen center while following; **eye distance grows with speed** (`followDistance`) so a motorway sweep does not read as a lurch. Follow camera stays live during the **open hero flight** (not gated on `openSettled`) so a 120 km/h tick cannot slide the blue trail off the curved landing; pan-to-break waits until the handoff finishes. Motion is **velocity integration** (`speed × dt`) between GPS samples — implied speed/path bearing when Core Location reports `-1` (common in Simulator). The published center aims at where the car should be *now* (last fix advanced by `speed × age`), not the stale GPS point — otherwise the breadcrumb trail draws ahead of the puck and lurches once a second. Two other rules keep that continuous: the fresh window (`maxDeadReckonSeconds`) is well above the ~1 Hz fix interval, and once a fix *is* stale the coast **decays** (`deadReckonDecayTauSeconds`) instead of zeroing speed in one frame. GPS is only a trim on the integrated position: along-track pushes only when the (aged) fix is *ahead*, and a spent coast on a stale fix **holds** rather than rewinding. `LiveFollowSession.camera` is observation-ignored so 60 fps ticks do not rebuild SwiftUI. Camera writes use `map.camera` inside `CATransaction` (actions disabled) **only while following**; after pan, pose/puck keep updating. Follow tiles stay `.flat` with pitch for 3D feel. History is **chunked `MKPolyline`s** of *completed* 240-point blocks (immutable until a chunk fills); the **growing remainder rides in the tip overlay** with the vehicle chord, swapped at most 10 Hz — one solid blue stroke. A breadcrumb therefore never `removeOverlay`/`addOverlay`s history next to the puck. Route geometry is pulled by the coordinator from `LiveFollowSession` (`recordingService` is observation-ignored) on display ticks, so a 1 Hz breadcrumb append cannot rebuild SwiftUI or `updateUIView`. Both use MapKit's *own* vector renderers on purpose: a custom `MKOverlayRenderer` is rasterised flat and then perspective-warped, which fattens the stroke toward the bottom of a 3D view. A tip longer than 120 m, or pointing against the direction of travel, is dropped. While following, the puck artwork stays screen-up (the camera already faces travel). After **Show entire route** / pan, the photo + chevron rotate around the circle centre so the sharp tip still faces travel on a north-up map. Pan/zoom stay enabled while paused. `ScreenIdleLock` keeps the display awake only while the cover is open. Start / pause / trip-stop pins render on the live map. While the cover is open, the card’s road clock stays paused (`!showLiveFollowMap`).
 
 ### Observation isolation
 
@@ -109,12 +109,16 @@ While the in-place expand/collapse runs, panel glass uses a solid fill (`glassCh
 ## Recording cold-open
 
 - `TripListView` arms `coldOpenArmed` for manual, Shortcuts, and widget deep-link starts; `ActiveTripView.playEntranceReveal` must stay wired to that flag.
-- Road `TimelineView` remains gated (recording, unpaused, on-screen, LPM 12 FPS). Do not reintroduce a live mini-map on the card.
+- Road `TrailhoundDisplayLinkTicker` remains gated (recording, unpaused, on-screen, LPM 12 FPS). Do not reintroduce a live mini-map on the card.
 
 ## Shortcuts guide wizard
 
-- At most one live `OnboardingHeroScene` `TimelineView` (prereq / handoff pages only); pause when backgrounded or Reduce Motion.
-- Step-complete uses `SoftPulseRing` + haptics — not a continuous road loop while paging.
+- Eight pages, **one** native glass card at a time. Connect (7) and disconnect (4) are numbered frost rows inside that card — never stacked `glassChrome` hosts.
+- Trigger choices use `.glassNestedChoice(isSelected:)` (chip fill, not a second Material).
+- At most one live `OnboardingHeroScene` `TimelineView` (silent-start / handoff pages only); pause when backgrounded, Reduce Motion, or when the sheet is open over onboarding.
+- Test and checklist pages use static SF symbols. `SoftPulseRing` only on step complete — not a continuous road loop while paging.
+- Vehicle `@Query` reads `VehicleProfile` name/photo only — do not fault `trips`.
+- Optional “watch for a real start” is a `Date` in `UserDefaults.standard`. No timer, `CADisplayLink`, or GPS poll.
 
 ## Derived trip fields (schema V10)
 
@@ -291,13 +295,18 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   is stamped with `YearRecapCache.schemaVersion` (currently 3); a `storeVersion` change skips disk and rebuilds.
   Story pages are built before the cover appears; the snapshot is frozen at open; there is no fetch
   on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
-  is not rebuilt every frame (Low Power 12 fps). Stats badges compact strip and gallery share **one** 12 fps clock
-  (`achievementIdleTime`) so idle glyphs still move when TabView sets `animation = nil`.
-  Reduce Motion and UI tests pause that clock. Hold / background / Reduce Motion / UI tests freeze `t`. The Stats hub
+  is not rebuilt every frame (Low Power 12 fps). Stats badges compact strip uses `achievementIdleClock`
+  (`Task.sleep` at 12 fps) because iOS pauses `TimelineView` and often `withAnimation` inside a `List`.
+  Gallery overlay may use `withAnimation` after the morph. Tab switches use `TrailhoundMotion.tabSwitch`.
+  Do not put `animation = nil` on `TabView` — that pauses `TimelineView.animation` (recap / onboarding)
+  and used to freeze the recording road. List-hosted clocks (recording road, Start hound, steering-wheel
+  badge, stop-credits road) use `TrailhoundDisplayLinkTicker`, not `TimelineView`. Recap / onboarding
+  (not inside a List) still use `TrailhoundIndependentClock.periodic`.
+  Reduce Motion and UI tests skip idle. Hold / background / Reduce Motion / UI tests freeze `t`. The Stats hub
   teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,
   background, and UI tests). Page changes use
   `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
-  atmosphere layer). Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is frozen solid circles (Close + Share under the
+  atmosphere layer). Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is frozen 44pt circles (`GlassToolbarSampling.frozenControl` — Close + Share under the
   segment bars), not live Material.
   Share PNG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
   The last page keeps the same clock; when the segment fills, the cover dismisses.
@@ -336,13 +345,13 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Atmosphere still uses `RadialGradient` overlays, never `Circle().blur`. Light veil is 0.06 — not a milky white wash. Light cards overlay mid-family tint at ~0.22, not chrome.
 - List rows (`glassRow`) and Stats cards stay on the Material / solid recipe (`allowsNative: false`) and keep the same open glass as iOS 26 native hosts — not a darker plate. Native `glassEffect` is only for standalone cards, chips, chrome, and buttons, grouped in `GlassEffectContainer` / `GlassChipGroup` when several sit together.
 - Budget: at most eight native glass hosts on a screen (`GlassHostBudget.maxNativeHostsPerScreen`). If trips-list scroll, Stats scroll, or the recording card drops below ~58 fps on an iPhone 12-class device, pin that surface with `allowsNative: false`.
-- Recording hero stays on the custom Material recipe so `TimelineView` does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
+- Recording hero stays on the custom Material recipe so the road clock does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
 - Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
-- Form/list nav buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`.
-- Trip detail and travel-journal **toolbar** icons stay on `GlassToolbarSampling.frozen` at all times. Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Live system / native glass over MapKit would resample the map every frame.
+- Form/list, Trip/Travel detail, and Vehicles detail **nav-bar** buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`. Custom back keeps the system chevron hidden; `NavigationInteractivePopEnabler` re-enables the edge-swipe pop (including over MapKit). Vehicles passes `disabled` while the embedded editor has unsaved edits so swipe cannot discard silently.
+- Frozen overlay circles (`GlassToolbarSampling.frozenControl` / `GlassNavCircleIcon`, 44pt) stay on chrome that sits **on** the map or story Canvas (Stats expand collapse, Year recap Share/Close). Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Do not add a custom `glassEffect` over MapKit. Compact `.frozen` 36pt is unused on these screens.
 - Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
-- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel).
+- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip idle is `achievementIdleClock` (12 fps `Task.sleep`); gallery idle may use `withAnimation` after expand. Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist

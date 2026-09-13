@@ -45,6 +45,7 @@ These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestCheck
 - [ ] **30+ min real drive** — distance and duration advance
 - [ ] **Background** — background the app, wait 5 min: recording continues
 - [ ] **Shortcuts auto-start** — recording starts when connecting to the car (Bluetooth / CarPlay / Wi‑Fi automation)
+- [ ] **Shortcuts wizard test** — Pairing guide “Test start in Trailhound”; session discards on “This was a test, stop”
 - [ ] **Shortcuts vehicle pick** — separate CarPlay vs Bluetooth automations assign different vehicles on Start trip
 - [ ] **Shortcuts auto-stop** — recording stops when leaving the car
 - [ ] **Orphan recovery** — force-quit → reopen → orphan banner / recovery
@@ -100,8 +101,10 @@ Optional smoke:
 
 ## Auto-record with Shortcuts
 
-- Auto start/stop is set up via **Shortcuts** (guide under the Pairing tab): named Shortcut with **Vehicle**, then Personal Automation → **Run Shortcut**.
+- Auto start/stop is set up via **Shortcuts** (wizard under the Pairing tab): named Shortcut with **Vehicle**, then Personal Automation → **Run Shortcut**.
 - On **Start trip**, set **Vehicle** in that named Shortcut (Personal Automations often hide the picker).
+- In-app test proves Trailhound handles the external start; it does **not** prove the car automation fired. Stop the test session so an empty trip is not saved.
+- “Not working” checklist: Ask Before Running off, Run Shortcut (not a bare Start trip), Location Always, silent start.
 - In-app Bluetooth audio-route matching was removed; no extra Bluetooth entitlement is required.
 - Location + background location mode are used only during an active recording.
 

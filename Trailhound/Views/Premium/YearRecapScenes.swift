@@ -54,7 +54,7 @@ struct RecapHubTeaserScene: View {
     var body: some View {
         Group {
             if liveMotion {
-                TimelineView(.animation(minimumInterval: RecapHubTeaserMetrics.idleInterval)) { timeline in
+                TimelineView(TrailhoundIndependentClock.periodic(interval: RecapHubTeaserMetrics.idleInterval)) { timeline in
                     canvas(motion: timeline.date.timeIntervalSinceReferenceDate)
                 }
             } else {

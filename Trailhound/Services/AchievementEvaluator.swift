@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 
 enum AchievementEvaluator {
+    static let catalogSeedKey = "trailhound.achievements.catalogSeed"
+
     @discardableResult
     static func apply(
         trip: Trip,
@@ -17,6 +19,7 @@ enum AchievementEvaluator {
         func collect(_ id: AchievementID, unlocked: Bool) {
             if unlocked { newly.append(id) }
         }
+        let seededNew = seedNewFamiliesIfNeeded(in: context)
         collect(.firstTrip, unlocked: bump(.firstTrip, by: sign, at: eventDate, silent: silent, in: context))
         collect(.distance100, unlocked: bump(.distance100, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
         collect(.distance1000, unlocked: bump(.distance1000, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
@@ -26,11 +29,36 @@ enum AchievementEvaluator {
         if trip.categoryID == BuiltInCategory.businessID.uuidString {
             collect(.business10, unlocked: bump(.business10, by: sign, at: eventDate, silent: silent, in: context))
             collect(.business50, unlocked: bump(.business50, by: sign, at: eventDate, silent: silent, in: context))
+            collect(.business100, unlocked: bump(.business100, by: sign, at: eventDate, silent: silent, in: context))
         }
         collect(.nightOwl, unlocked: bump(.nightOwl, by: sign * (trip.nightDistanceMeters ?? 0), at: eventDate, silent: silent, in: context))
+        collect(.night1000, unlocked: bump(.night1000, by: sign * (trip.nightDistanceMeters ?? 0), at: eventDate, silent: silent, in: context))
+        if !seededNew {
+            collect(.trips50, unlocked: bump(.trips50, by: sign, at: eventDate, silent: silent, in: context))
+            collect(.trips250, unlocked: bump(.trips250, by: sign, at: eventDate, silent: silent, in: context))
+            let hours = sign * (trip.duration ?? 0) / 3600
+            collect(.hours24, unlocked: bump(.hours24, by: hours, at: eventDate, silent: silent, in: context))
+            collect(.hours100, unlocked: bump(.hours100, by: hours, at: eventDate, silent: silent, in: context))
+            if trip.distanceMeters + 0.000_1 >= 100_000 {
+                collect(.longhaul1, unlocked: bump(.longhaul1, by: sign, at: eventDate, silent: silent, in: context))
+                collect(.longhaul10, unlocked: bump(.longhaul10, by: sign, at: eventDate, silent: silent, in: context))
+            }
+            let calendar = Calendar.current
+            let hour = calendar.component(.hour, from: trip.startedAt)
+            if (5...8).contains(hour) {
+                collect(.dawn10, unlocked: bump(.dawn10, by: sign, at: eventDate, silent: silent, in: context))
+                collect(.dawn50, unlocked: bump(.dawn50, by: sign, at: eventDate, silent: silent, in: context))
+            }
+            if calendar.isDateInWeekend(trip.startedAt) {
+                collect(.weekend10, unlocked: bump(.weekend10, by: sign, at: eventDate, silent: silent, in: context))
+                collect(.weekend50, unlocked: bump(.weekend50, by: sign, at: eventDate, silent: silent, in: context))
+            }
+            newly.append(contentsOf: refreshFleetAndCountries(at: eventDate, silent: silent, in: context))
+        }
         newly.append(contentsOf: applyLocalities(localities, sign: sign, at: eventDate, silent: silent, in: context))
         newly.append(contentsOf: refreshStreak(at: eventDate, silent: silent, in: context))
         newly.append(contentsOf: refreshRouteRegular(at: eventDate, silent: silent, in: context))
+        seedFillLadders(in: context)
         if notify, sign > 0, !newly.isEmpty, !UITestSupport.isUnitTesting {
             let ids = newly
             Task { @MainActor in
@@ -41,7 +69,9 @@ enum AchievementEvaluator {
     }
 
     static func displays(in context: ModelContext) -> [AchievementDisplay] {
+        seedNewFamiliesIfNeeded(in: context)
         seedDistance100000(in: context)
+        seedFillLadders(in: context)
         let rows = (try? context.fetch(FetchDescriptor<AchievementProgress>())) ?? []
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.achievementID, $0) })
         let unlocked = Set(rows.compactMap { row -> AchievementID? in
@@ -83,6 +113,7 @@ enum AchievementEvaluator {
             context.delete(row)
         }
 
+        UserDefaults.standard.set(2, forKey: catalogSeedKey)
         let descriptor = FetchDescriptor<Trip>(
             predicate: #Predicate { $0.endedAt != nil },
             sortBy: [SortDescriptor(\.startedAt, order: .forward)]
@@ -96,6 +127,93 @@ enum AchievementEvaluator {
                 in: context,
                 notify: false
             )
+        }
+    }
+
+    @discardableResult
+    private static func seedNewFamiliesIfNeeded(in context: ModelContext) -> Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.integer(forKey: catalogSeedKey) < 2 else { return false }
+        let trips = ((try? context.fetch(FetchDescriptor<Trip>())) ?? []).filter { $0.endedAt != nil }
+        applyTotals(totals(from: trips), in: context, silent: true)
+        defaults.set(2, forKey: catalogSeedKey)
+        return true
+    }
+
+    private struct TripCatalogTotals {
+        var trips = 0.0
+        var hours = 0.0
+        var longhaul = 0.0
+        var dawn = 0.0
+        var weekend = 0.0
+        var vehicleIDs = Set<UUID>()
+        var countries = Set<String>()
+    }
+
+    private static func totals(from trips: [Trip], calendar: Calendar = .current) -> TripCatalogTotals {
+        var t = TripCatalogTotals()
+        for trip in trips {
+            t.trips += 1
+            t.hours += (trip.duration ?? 0) / 3600
+            if trip.distanceMeters + 0.000_1 >= 100_000 {
+                t.longhaul += 1
+            }
+            let hour = calendar.component(.hour, from: trip.startedAt)
+            if (5...8).contains(hour) {
+                t.dawn += 1
+            }
+            if calendar.isDateInWeekend(trip.startedAt) {
+                t.weekend += 1
+            }
+            if let vehicleID = trip.vehicleID {
+                t.vehicleIDs.insert(vehicleID)
+            }
+            if let code = trip.startCountryCode, !code.isEmpty {
+                t.countries.insert(code)
+            }
+            if let code = trip.endCountryCode, !code.isEmpty {
+                t.countries.insert(code)
+            }
+        }
+        return t
+    }
+
+    private static func applyTotals(_ t: TripCatalogTotals, in context: ModelContext, silent: Bool) {
+        let eventDate = Date()
+        setValue(.trips50, t.trips, at: eventDate, silent: silent, in: context)
+        setValue(.trips250, t.trips, at: eventDate, silent: silent, in: context)
+        setValue(.hours24, t.hours, at: eventDate, silent: silent, in: context)
+        setValue(.hours100, t.hours, at: eventDate, silent: silent, in: context)
+        setValue(.longhaul1, t.longhaul, at: eventDate, silent: silent, in: context)
+        setValue(.longhaul10, t.longhaul, at: eventDate, silent: silent, in: context)
+        setValue(.dawn10, t.dawn, at: eventDate, silent: silent, in: context)
+        setValue(.dawn50, t.dawn, at: eventDate, silent: silent, in: context)
+        setValue(.weekend10, t.weekend, at: eventDate, silent: silent, in: context)
+        setValue(.weekend50, t.weekend, at: eventDate, silent: silent, in: context)
+        setValue(.fleet2, Double(t.vehicleIDs.count), at: eventDate, silent: silent, in: context)
+        setValue(.countries2, Double(t.countries.count), at: eventDate, silent: silent, in: context)
+    }
+
+    private static func seedFillLadders(in context: ModelContext) {
+        copyUp(.business100, from: [.business10, .business50], in: context)
+        copyUp(.night1000, from: [.nightOwl], in: context)
+        copyUp(.cities50, from: [.cities10, .cities25], in: context)
+        copyUp(.routes25, from: [.routesRegular], in: context)
+        copyUp(.streak100, from: [.streak7, .streak30], in: context)
+    }
+
+    private static func copyUp(_ id: AchievementID, from sources: [AchievementID], in context: ModelContext) {
+        let value = sources.map { storedValue(for: $0, in: context) }.max() ?? 0
+        guard value > 0 else { return }
+        let row = progress(for: id, in: context)
+        if row.currentValue + 0.000_1 < value {
+            row.currentValue = value
+        }
+        if row.unlockedAt == nil, row.currentValue + 0.000_1 >= id.threshold {
+            let now = Date()
+            row.unlockedAt = now
+            row.seenAt = now
+            YearRecapCache.invalidate(yearContaining: now)
         }
     }
 
@@ -173,6 +291,7 @@ enum AchievementEvaluator {
         var newly: [AchievementID] = []
         if setValue(.cities10, count, at: eventDate, silent: silent, in: context) { newly.append(.cities10) }
         if setValue(.cities25, count, at: eventDate, silent: silent, in: context) { newly.append(.cities25) }
+        if setValue(.cities50, count, at: eventDate, silent: silent, in: context) { newly.append(.cities50) }
         return newly
     }
 
@@ -182,6 +301,7 @@ enum AchievementEvaluator {
         var newly: [AchievementID] = []
         if setValue(.streak7, Double(streak), at: eventDate, silent: silent, in: context) { newly.append(.streak7) }
         if setValue(.streak30, Double(streak), at: eventDate, silent: silent, in: context) { newly.append(.streak30) }
+        if setValue(.streak100, Double(streak), at: eventDate, silent: silent, in: context) { newly.append(.streak100) }
         return newly
     }
 
@@ -191,11 +311,25 @@ enum AchievementEvaluator {
             sortBy: [SortDescriptor(\.count, order: .reverse)]
         )
         descriptor.fetchLimit = 1
-        let best = (try? context.fetch(descriptor))?.first?.count ?? 0
-        if setValue(.routesRegular, Double(best), at: eventDate, silent: silent, in: context) {
-            return [.routesRegular]
-        }
-        return []
+        let best = Double((try? context.fetch(descriptor))?.first?.count ?? 0)
+        var newly: [AchievementID] = []
+        if setValue(.routesRegular, best, at: eventDate, silent: silent, in: context) { newly.append(.routesRegular) }
+        if setValue(.routes25, best, at: eventDate, silent: silent, in: context) { newly.append(.routes25) }
+        return newly
+    }
+
+    @discardableResult
+    private static func refreshFleetAndCountries(
+        at eventDate: Date,
+        silent: Bool,
+        in context: ModelContext
+    ) -> [AchievementID] {
+        let trips = ((try? context.fetch(FetchDescriptor<Trip>())) ?? []).filter { $0.endedAt != nil }
+        let t = totals(from: trips)
+        var newly: [AchievementID] = []
+        if setValue(.fleet2, Double(t.vehicleIDs.count), at: eventDate, silent: silent, in: context) { newly.append(.fleet2) }
+        if setValue(.countries2, Double(t.countries.count), at: eventDate, silent: silent, in: context) { newly.append(.countries2) }
+        return newly
     }
 
     static func currentStreakDays(in context: ModelContext, now: Date = Date(), calendar: Calendar = .current) -> Int {

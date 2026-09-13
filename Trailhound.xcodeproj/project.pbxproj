@@ -161,6 +161,7 @@
 		A1GLASSPALETTE000000001 /* GlassPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSPALETTE000000001 /* GlassPalette.swift */; };
 		A1GLASSENVIRON000000001 /* GlassEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSENVIRON000000001 /* GlassEnvironment.swift */; };
 		A1GLASSCONTROLS00000001 /* GlassControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSCONTROLS00000001 /* GlassControls.swift */; };
+		A1NAVINTERACTIVEPOP0001 /* NavigationInteractivePopEnabler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2NAVINTERACTIVEPOP0001 /* NavigationInteractivePopEnabler.swift */; };
 		A1GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift */; };
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
@@ -368,6 +369,8 @@
 		A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */; };
 		A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
 		A1PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */; };
+		A1SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */; };
+		A1SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */; };
 		A1PAIRINGSTYLE000001 /* PairingCardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGSTYLE000001 /* PairingCardStyle.swift */; };
 		A1PAIRINGVEHROW00001 /* PairingVehicleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGVEHROW00001 /* PairingVehicleRow.swift */; };
 /* End PBXBuildFile section */
@@ -565,6 +568,7 @@
 		A2GLASSPALETTE000000001 /* GlassPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassPalette.swift; sourceTree = "<group>"; };
 		A2GLASSENVIRON000000001 /* GlassEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEnvironment.swift; sourceTree = "<group>"; };
 		A2GLASSCONTROLS00000001 /* GlassControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassControls.swift; sourceTree = "<group>"; };
+		A2NAVINTERACTIVEPOP0001 /* NavigationInteractivePopEnabler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationInteractivePopEnabler.swift; sourceTree = "<group>"; };
 		A2GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButtonStyles.swift; sourceTree = "<group>"; };
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
@@ -767,6 +771,8 @@
 		A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingVehicleEditorView.swift; sourceTree = "<group>"; };
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
 		A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingShortcutsAutomationGuideView.swift; sourceTree = "<group>"; };
+		A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSetupStore.swift; sourceTree = "<group>"; };
+		A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/ShortcutsSetupStoreTests.swift; sourceTree = SOURCE_ROOT; };
 		A2PAIRINGSTYLE000001 /* PairingCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingCardStyle.swift; sourceTree = "<group>"; };
 		A2PAIRINGVEHROW00001 /* PairingVehicleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingVehicleRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1128,6 +1134,7 @@
 				A2GLASSPALETTE000000001 /* GlassPalette.swift */,
 				A2GLASSENVIRON000000001 /* GlassEnvironment.swift */,
 				A2GLASSCONTROLS00000001 /* GlassControls.swift */,
+				A2NAVINTERACTIVEPOP0001 /* NavigationInteractivePopEnabler.swift */,
 				A2GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift */,
 				A2STATSCHARTTHEME0001 /* StatsChartTheme.swift */,
 				A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */,
@@ -1147,6 +1154,7 @@
 				A2UITESTSUPPORT00000001 /* UITestSupport.swift */,
 				A2TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift */,
 				A20000000000000000000020 /* AppSettings.swift */,
+				A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */,
 				A20000000000000000000021 /* PreviewData.swift */,
 				A2TABSELECTION000001 /* TabSelection.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
@@ -1236,6 +1244,7 @@
 				2CA7C0E212D84E9896AE4334 /* VehicleIconOptionTests.swift */,
 				E2F8701911CD408FAA7FE8E9 /* VehicleInlineCameraAvailabilityTests.swift */,
 				48C44432D37F4A14833C0780 /* VehiclePairingServiceTests.swift */,
+				A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */,
 				0C4703CC8E404735A60767EB /* VehiclePhotoCaptureHandoffTests.swift */,
 				70B1A0E3DABE44F49F83B288 /* VehiclePhotoCapturePipelineTests.swift */,
 				63F12D1C003244C588CF48CC /* VehiclePhotoCropMathTests.swift */,
@@ -1489,6 +1498,7 @@
 				FB100B1B37804BBC8BF6C83A /* VehicleIconOptionTests.swift in Sources */,
 				13D70E0AB0344689AD7A0165 /* VehicleInlineCameraAvailabilityTests.swift in Sources */,
 				BBBC3A70C9F54984A181246A /* VehiclePairingServiceTests.swift in Sources */,
+				A1SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift in Sources */,
 				CC3D608E01694C0B90AD39DD /* VehiclePhotoCaptureHandoffTests.swift in Sources */,
 				CC1E1556DA53452FB6A12FD8 /* VehiclePhotoCapturePipelineTests.swift in Sources */,
 				3892CE5A56D544CB972D56B2 /* VehiclePhotoCropMathTests.swift in Sources */,
@@ -1629,6 +1639,7 @@
 				A1GLASSPALETTE000000001 /* GlassPalette.swift in Sources */,
 				A1GLASSENVIRON000000001 /* GlassEnvironment.swift in Sources */,
 				A1GLASSCONTROLS00000001 /* GlassControls.swift in Sources */,
+				A1NAVINTERACTIVEPOP0001 /* NavigationInteractivePopEnabler.swift in Sources */,
 				A1GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift in Sources */,
 				A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */,
 				A1LIVEFOLLOWCAM0000001 /* LiveFollowCamera.swift in Sources */,
@@ -1662,6 +1673,7 @@
 				A1UITESTSUPPORT00000001 /* UITestSupport.swift in Sources */,
 				A1TRAILHOUNDSOUNDS00000001 /* TrailhoundSounds.swift in Sources */,
 				A10000000000000000000020 /* AppSettings.swift in Sources */,
+				A1SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift in Sources */,
 				A10000000000000000000021 /* PreviewData.swift in Sources */,
 				A10000000000000000000023 /* AppDelegate.swift in Sources */,
 				A1APPSERVICES00000001 /* AppServices.swift in Sources */,

@@ -8,6 +8,7 @@ final class AchievementEvaluatorTests: XCTestCase {
         AppNotificationArchive.save([])
         AppNotificationStore.shared.reload()
         AppNotificationStore.shared.clearAll()
+        UserDefaults.standard.set(0, forKey: AchievementEvaluator.catalogSeedKey)
     }
     func testBusinessLegacyAndUUIDCountTowardTen() throws {
         let container = try ModelContainerFactory.makeInMemory()
@@ -285,5 +286,68 @@ final class AchievementEvaluatorTests: XCTestCase {
         XCTAssertEqual(displays.first { $0.id == .distance100 }?.unlockedAt, ended)
         XCTAssertFalse(displays.first { $0.id == .firstTrip }?.needsCelebration ?? true)
         XCTAssertFalse(displays.first { $0.id == .distance100 }?.needsCelebration ?? true)
+    }
+
+    func testBusiness100SeedsFromSiblingWithoutCelebration() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let row = AchievementProgress(achievementID: AchievementID.business50.rawValue, currentValue: 120)
+        row.unlockedAt = Date().addingTimeInterval(-86_400)
+        context.insert(row)
+        try context.save()
+        let badge = AchievementEvaluator.displays(in: context).first { $0.id == .business100 }
+        XCTAssertEqual(badge?.currentValue ?? 0, 120, accuracy: 0.1)
+        XCTAssertNotNil(badge?.unlockedAt)
+        XCTAssertFalse(badge?.needsCelebration ?? true)
+    }
+
+    func testCatalogSeedWalksEndedTripsOnce() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-600),
+            endedAt: Date(),
+            distanceMeters: 1_000
+        )
+        context.insert(trip)
+        try context.save()
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: AchievementEvaluator.catalogSeedKey), 0)
+        _ = AchievementEvaluator.displays(in: context)
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: AchievementEvaluator.catalogSeedKey), 2)
+        XCTAssertEqual(
+            AchievementEvaluator.displays(in: context).first { $0.id == .trips50 }?.currentValue ?? 0,
+            1,
+            accuracy: 0.1
+        )
+    }
+
+    func testDawnWeekendAndLonghaulSeedFromTrip() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        var day = calendar.startOfDay(for: Date())
+        var start = day
+        for _ in 0..<8 {
+            if calendar.isDateInWeekend(day) {
+                start = calendar.date(byAdding: .hour, value: 6, to: day)!
+                break
+            }
+            day = calendar.date(byAdding: .day, value: -1, to: day)!
+        }
+        XCTAssertTrue(calendar.isDateInWeekend(start))
+        XCTAssertEqual(calendar.component(.hour, from: start), 6)
+        let trip = Trip(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(3600),
+            distanceMeters: 120_000
+        )
+        context.insert(trip)
+        try context.save()
+        let displays = AchievementEvaluator.displays(in: context)
+        XCTAssertNotNil(displays.first { $0.id == .longhaul1 }?.unlockedAt)
+        XCTAssertEqual(displays.first { $0.id == .dawn10 }?.currentValue ?? 0, 1, accuracy: 0.1)
+        XCTAssertEqual(displays.first { $0.id == .weekend10 }?.currentValue ?? 0, 1, accuracy: 0.1)
+        XCTAssertEqual(displays.first { $0.id == .trips50 }?.currentValue ?? 0, 1, accuracy: 0.1)
+        XCTAssertEqual(displays.first { $0.id == .hours24 }?.currentValue ?? 0, 1, accuracy: 0.05)
     }
 }

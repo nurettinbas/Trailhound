@@ -1,17 +1,93 @@
+import QuartzCore
 import SwiftUI
 import UIKit
 
+/// `TimelineView` (animation *or* periodic) does not tick inside a SwiftUI `List`.
+/// iOS pauses those clocks, which froze the recording road. This CADisplayLink
+/// keeps running in a list cell.
+struct TrailhoundDisplayLinkTicker: UIViewRepresentable {
+    var isRunning: Bool
+    var framesPerSecond: Int
+    var onTick: (TimeInterval) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTick: onTick)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+        context.coordinator.install(framesPerSecond: framesPerSecond, running: isRunning)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onTick = onTick
+        context.coordinator.install(framesPerSecond: framesPerSecond, running: isRunning)
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.stop()
+    }
+
+    final class Coordinator: NSObject {
+        var onTick: (TimeInterval) -> Void
+        private var link: CADisplayLink?
+
+        init(onTick: @escaping (TimeInterval) -> Void) {
+            self.onTick = onTick
+        }
+
+        func install(framesPerSecond: Int, running: Bool) {
+            let fps = max(8, min(60, framesPerSecond))
+            if link == nil {
+                let created = CADisplayLink(target: self, selector: #selector(step(_:)))
+                created.add(to: .main, forMode: .common)
+                link = created
+            }
+            let preferred = Float(fps)
+            link?.preferredFrameRateRange = CAFrameRateRange(
+                minimum: max(8, preferred / 2),
+                maximum: preferred,
+                preferred: preferred
+            )
+            link?.isPaused = !running
+        }
+
+        func stop() {
+            link?.invalidate()
+            link = nil
+        }
+
+        @objc func step(_ link: CADisplayLink) {
+            let time = Date.timeIntervalSinceReferenceDate
+            onTick(time)
+        }
+    }
+}
+
+/// Still used by recap / onboarding (not inside a `List` row).
+enum TrailhoundIndependentClock {
+    static let pausedInterval: TimeInterval = 86_400
+
+    static func periodic(interval: TimeInterval, paused: Bool = false) -> PeriodicTimelineSchedule {
+        .periodic(from: .now, by: paused ? pausedInterval : interval)
+    }
+}
+
 struct RecordingCarAnimationView<CarOverlay: View>: View {
     var compact: Bool = false
-    /// When true, the road clock ticks (TimelineView stays mounted). Independent of pause.
+    /// When true, the road clock ticks. Independent of pause.
     var isAnimating: Bool = true
-    /// Freeze dashes / smoke / bounce and show the pause badge — does not tear down TimelineView.
+    /// Freeze dashes / smoke / bounce and show the pause badge — does not tear down the clock.
     var isPaused: Bool = false
     /// 0 = car off-screen left, 1 = settled driving position.
     var driveInProgress: CGFloat = 1
     /// Side-profile SF Symbol fallback; default is the fixed right-facing car.
     var systemImage: String? = nil
-    /// Pre-decoded thumb from the app target — never load from disk here (TimelineView hot path).
+    /// Pre-decoded thumb from the app target — never load from disk here (per-frame hot path).
     var vehiclePhoto: UIImage? = nil
     /// `scaleEffect(x:)` for the symbol so it faces right. Default `-1` matches `car.side.fill`.
     var symbolScaleX: CGFloat = -1
@@ -20,17 +96,19 @@ struct RecordingCarAnimationView<CarOverlay: View>: View {
     @ViewBuilder var carOverlay: (TrailhoundRoadSceneLayout) -> CarOverlay
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var clock = Date.timeIntervalSinceReferenceDate
 
     private var metrics: TrailhoundRoadSceneMetrics { compact ? .compact : .regular }
     /// Keep the same view tree on pause/resume — only freeze the clock when not animating.
     private var shouldRunClock: Bool { isAnimating && !reduceMotion }
-    private var animationInterval: TimeInterval {
-        if ProcessInfo.processInfo.isLowPowerModeEnabled { return 1 / 12 }
-        return compact ? (1 / 15) : (1 / 30)
+    private var ticksRoad: Bool { shouldRunClock && !isPaused }
+    private var framesPerSecond: Int {
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { return 12 }
+        return compact ? 15 : 30
     }
 
     /// Remount when the mark asset changes. Pause/resume keeps the same id (no swap jank);
-    /// vehicle photo swaps must bust `drawingGroup` + paused TimelineView caches.
+    /// vehicle photo swaps must bust `drawingGroup` caches.
     private var markIdentity: String {
         if let vehiclePhoto {
             return "photo-\(ObjectIdentifier(vehiclePhoto))"
@@ -39,35 +117,37 @@ struct RecordingCarAnimationView<CarOverlay: View>: View {
     }
 
     var body: some View {
-        // Always keep TimelineView mounted so pause/resume never swaps view trees
-        // (that remount was the main notification-card jank source). Pause the
-        // schedule instead — frozen last frame, no continuous redraws.
-        TimelineView(
-            .animation(
-                minimumInterval: animationInterval,
-                paused: !shouldRunClock || isPaused
-            )
-        ) { timeline in
-            RoadSceneDriver(
-                liveTime: timeline.date.timeIntervalSinceReferenceDate,
-                shouldAnimate: shouldRunClock && !isPaused,
-                isPaused: isPaused,
-                metrics: metrics,
-                driveInProgress: driveInProgress,
-                showsPauseBadge: true,
-                systemImage: systemImage,
-                vehiclePhoto: vehiclePhoto,
-                symbolScaleX: symbolScaleX,
-                allowsVerticalBounce: allowsVerticalBounce,
-                carOverlay: carOverlay
-            )
-        }
+        RoadSceneDriver(
+            liveTime: clock,
+            shouldAnimate: ticksRoad,
+            isPaused: isPaused,
+            metrics: metrics,
+            driveInProgress: driveInProgress,
+            showsPauseBadge: true,
+            systemImage: systemImage,
+            vehiclePhoto: vehiclePhoto,
+            symbolScaleX: symbolScaleX,
+            allowsVerticalBounce: allowsVerticalBounce,
+            carOverlay: carOverlay
+        )
         .id(markIdentity)
         // Extra top chrome so service badge can sit above the mark without shrinking photos.
         .frame(height: TrailhoundRoadVehicleMarkLayout.sceneFrameHeight(for: metrics))
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 10))
+        // Flatten only the road pixels. Keep the display-link host *outside* this
+        // rasterizer — `drawingGroup` does not mount `UIViewRepresentable` children,
+        // which is why a ticker in `.background` never fired and the car sat still.
         .drawingGroup(opaque: false, colorMode: .linear)
+        .overlay(alignment: .topLeading) {
+            TrailhoundDisplayLinkTicker(
+                isRunning: ticksRoad,
+                framesPerSecond: framesPerSecond
+            ) { clock = $0 }
+            .frame(width: 1, height: 1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
         .accessibilityHidden(true)
     }
 }
@@ -538,7 +618,7 @@ extension TrailhoundRoadDrivingScene where Overlay == EmptyView {
 }
 
 private struct RoadSceneDriver<CarOverlay: View>: View {
-    /// Live clock while animating; `nil` uses a frozen frame (no `TimelineView` tick).
+    /// Live clock while animating; `nil` uses a frozen frame.
     let liveTime: TimeInterval?
     let shouldAnimate: Bool
     let isPaused: Bool

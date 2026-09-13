@@ -213,6 +213,7 @@ struct StatsForecastHeroPoster: View {
         ZStack(alignment: .bottomLeading) {
             sparkline
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .statsPosterSparklineVeil()
                 .allowsHitTesting(false)
             LinearGradient(
                 colors: [
@@ -243,6 +244,7 @@ struct StatsForecastHeroPoster: View {
         Color.clear
             .overlay {
                 if !forecast.monthlyTotals.isEmpty {
+                    let peak = forecast.monthlyTotals.map(\.total).max() ?? 1
                     Chart(forecast.monthlyTotals) { month in
                         AreaMark(
                             x: .value("m", month.monthStart, unit: .month),
@@ -273,7 +275,7 @@ struct StatsForecastHeroPoster: View {
                         .symbolSize(isCurrentMonth(month.monthStart) ? 36 : 0)
                         .foregroundStyle(Color.white)
                     }
-                    .chartStatsSparklineFill()
+                    .chartStatsSparklineFill(maxValue: peak)
                 }
             }
             .accessibilityHidden(true)
@@ -348,6 +350,7 @@ struct StatsForecastExpandOverlay: View {
                 onOpen: {}
             )
             .opacity(isExpanded ? 0 : 1)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(false)
             StatsForecastDetailSheet(
                 forecast: forecast,
@@ -358,6 +361,7 @@ struct StatsForecastExpandOverlay: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .opacity(isExpanded ? 1 : 0)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(isExpanded)
         }
         .background {

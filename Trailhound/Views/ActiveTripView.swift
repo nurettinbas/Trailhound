@@ -304,7 +304,7 @@ struct ActiveTripView: View {
         cardReveal > 0.02
     }
 
-    /// Keep TimelineView mounted while the card is on-screen (pause freezes the scene, no view swap).
+    /// Keep the road clock mounted while the card is on-screen (pause freezes the scene, no view swap).
     private var shouldRunRoadClock: Bool {
         cardVisible && isRecordingCardVisible
     }

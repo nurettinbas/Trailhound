@@ -12,6 +12,15 @@ enum GlassTokens {
     /// List row content inset from the screen edge (`panel` + inner content padding).
     static var listContentHorizontalInset: CGFloat { panelHorizontalInset + cardContentInset }
 
+    /// Nested frost tiles inside a glass card (wizard choices, instruction rows).
+    static let nestedChoiceRadius: CGFloat = 12
+
+    /// Compact frozen circle on a live map (Stats overlay collapse).
+    static let toolbarFrozenCircleSide: CGFloat = 36
+    /// Overlay toolbar circle (Year recap story Share/Close, Stats expand collapse).
+    /// Matches camera overlay hit size (`GlassToolbarControlBackground` 44pt).
+    static let toolbarControlCircleSide: CGFloat = 44
+
     static func fieldFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         if scheme == .dark {
             return Color.white.opacity(0.10)
@@ -921,6 +930,39 @@ final class GlassSegmentedProbeView: UIView {
     }
 }
 
+/// Frost fill inside a glass card — chip selected/unselected recipe, never a second Material.
+private struct GlassNestedChoiceModifier: ViewModifier {
+    var isSelected: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+                    .fill(fill)
+            }
+    }
+
+    private var fill: Color {
+        if isSelected {
+            return colorScheme == .dark
+                ? shellPalette.tintColor(for: .dark)
+                : LightGlassPalette.selectedChipFill(for: shellPalette)
+        }
+        if reduceTransparency {
+            return shellPalette.opaquePanelFill(for: colorScheme)
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.10)
+            : shellPalette.glassReadabilityTint(for: .light).opacity(GlassContrast.nestedTileTintOpacity)
+    }
+}
+
 /// Batches chip glass into one render pass on iOS 26 without changing HStack spacing.
 struct GlassChipGroup<Content: View>: View {
     var spacing: CGFloat
@@ -968,6 +1010,11 @@ extension View {
 
     func glassChrome(cornerRadius: CGFloat = GlassTokens.chipRadius, frozen: Bool = false) -> some View {
         modifier(GlassChromeModifier(cornerRadius: cornerRadius, frozen: frozen))
+    }
+
+    /// Nested frost inside a glass card. Selected = chip chrome; unselected = nested tint fill.
+    func glassNestedChoice(isSelected: Bool) -> some View {
+        modifier(GlassNestedChoiceModifier(isSelected: isSelected))
     }
 
     /// Inline inputs on glass panels — frosted tint instead of system grouped black/white.

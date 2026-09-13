@@ -137,6 +137,7 @@ struct FrequentRoutesExpandOverlay: View {
             .padding(StatsCardTokens.contentInset)
             .glassCard(cornerRadius: radius, contentInset: 0, frozen: true, allowsNative: false)
             .opacity(isExpanded ? 0 : 1)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(false)
             FrequentRoutesMapView(
                 aggregates: aggregates,
@@ -145,6 +146,7 @@ struct FrequentRoutesExpandOverlay: View {
                 bottomInset: bottomInset
             )
             .opacity(isExpanded ? 1 : 0)
+            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
             .allowsHitTesting(isExpanded)
         }
     }

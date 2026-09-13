@@ -280,8 +280,25 @@ final class TripRecordingService {
         }
     }
 
+    func discardActiveRecordingSession() {
+        if settings.awaitingExternalStartConfirmation {
+            cancelExternalStartRecording()
+            return
+        }
+        guard state.isActiveSession else { return }
+        stopRecording(saveTrip: false)
+    }
+
     func processExternalStartRequest() {
         DevLog.shared.log(.recording, "processExternalStartRequest (state: \(state))")
+        let isWizardTest = ShortcutsSetupStore.shared.consumeTestInFlight()
+        defer {
+            if !isWizardTest, ShortcutsSetupStore.shared.consumePendingWatchIfReached() {
+                if !UITestSupport.isUnitTesting {
+                    ToastPresenter.shared.show(.shortcutsAutomationReached)
+                }
+            }
+        }
         guard state == .idle else {
             settings.pendingStartRecordingRequest = false
             settings.awaitingExternalStartConfirmation = false

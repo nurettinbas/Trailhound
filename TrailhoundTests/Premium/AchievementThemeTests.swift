@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -22,6 +23,86 @@ final class AchievementThemeTests: XCTestCase {
     func testFamilyHuesAreUnique() {
         let hues = AchievementFamily.allCases.map { AchievementTheme.familyHue(for: $0) }
         XCTAssertEqual(Set(hues).count, hues.count)
+        let sorted = hues.sorted()
+        for index in sorted.indices {
+            let a = sorted[index]
+            let b = sorted[(index + 1) % sorted.count]
+            let delta = index + 1 == sorted.count ? (360 - a + b) : (b - a)
+            XCTAssertGreaterThanOrEqual(
+                delta,
+                AchievementTheme.minimumFamilyHueDelta - 0.01,
+                "hue gap \(a) → \(b)"
+            )
+        }
+    }
+
+    func testEnamelLadderShiftsHueWithinFamily() {
+        XCTAssertNotEqual(
+            AchievementTheme.enamelHue(for: .business10),
+            AchievementTheme.enamelHue(for: .business50)
+        )
+        XCTAssertNotEqual(
+            AchievementTheme.enamelHue(for: .business50),
+            AchievementTheme.enamelHue(for: .business100)
+        )
+        XCTAssertEqual(AchievementTheme.enamelHue(for: .business10), 44, accuracy: 0.01)
+        XCTAssertEqual(AchievementTheme.enamelHue(for: .business50), 52, accuracy: 0.01)
+        for family in AchievementFamily.allCases where family != .distance {
+            let ids = AchievementID.allCases.filter { $0.family == family }
+            let hues = Set(ids.map { AchievementTheme.enamelHue(for: $0) })
+            XCTAssertEqual(hues.count, ids.count, "enamel hue clones in \(family.rawValue)")
+        }
+    }
+
+    func testSystemImagesAreUniqueExceptDistanceCanvas() {
+        let icons = AchievementID.allCases.filter { !$0.usesCanvasGlyph }.map(\.systemImage)
+        XCTAssertEqual(Set(icons).count, icons.count)
+    }
+
+    func testNewCatalogIDs() {
+        XCTAssertEqual(AchievementID.business100.predecessor, .business50)
+        XCTAssertEqual(AchievementID.streak100.threshold, 100)
+        XCTAssertEqual(AchievementID.night1000.progressKind, .distanceMeters)
+        XCTAssertEqual(AchievementID.trips50.family, .trips)
+        XCTAssertEqual(AchievementID.hours24.family, .hours)
+        XCTAssertEqual(AchievementID.longhaul1.threshold, 1)
+        XCTAssertEqual(AchievementID.dawn10.family, .dawn)
+        XCTAssertEqual(AchievementID.weekend50.predecessor, .weekend10)
+        XCTAssertEqual(AchievementID.fleet2.family, .fleet)
+        XCTAssertEqual(AchievementID.countries2.family, .countries)
+        XCTAssertEqual(AchievementID.allCases.count, 30)
+    }
+
+    func testIdleContractsPerFamily() {
+        XCTAssertTrue(AchievementMedalIdle.discTilts(.routes))
+        XCTAssertTrue(AchievementMedalIdle.discTilts(.weekend))
+        XCTAssertTrue(AchievementMedalIdle.discTilts(.fleet))
+        XCTAssertFalse(AchievementMedalIdle.discTilts(.business))
+        XCTAssertFalse(AchievementMedalIdle.discTilts(.trips))
+        XCTAssertEqual(AchievementMedalIdle.steeringSway(phase: 0), -AchievementMedalIdle.steeringSwayDegrees, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.steeringSway(phase: 1), AchievementMedalIdle.steeringSwayDegrees, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.steeringSwayDegrees, 20, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.period(for: .trips), 2.1, accuracy: 0.001)
+        XCTAssertTrue(AchievementMedalIdle.glyphOverflows(.dawn))
+        XCTAssertTrue(AchievementMedalIdle.glyphOverflows(.streak))
+        XCTAssertTrue(AchievementMedalIdle.glyphOverflows(.hours))
+        XCTAssertFalse(AchievementMedalIdle.discTilts(.hours))
+        XCTAssertEqual(AchievementMedalIdle.hourglassFlipDegrees(phase: 0), 0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.hourglassFlipDegrees(phase: 1), 180, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.period(for: .hours), 2.7, accuracy: 0.001)
+        XCTAssertEqual(AchievementID.hours24.systemImage, "hourglass")
+        XCTAssertEqual(AchievementID.hours100.systemImage, "hourglass.bottomhalf.filled")
+        XCTAssertEqual(AchievementID.longhaul1.systemImage, "car.side.fill")
+        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 0), 0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 0.5), 1, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 1), 0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.longhaulTravelX(loop: 0, size: 100), -24, accuracy: 0.01)
+        XCTAssertEqual(AchievementMedalIdle.longhaulTravelX(loop: 1, size: 100), 24, accuracy: 0.01)
+        XCTAssertFalse(AchievementMedalIdle.discTilts(.longhaul))
+        XCTAssertTrue(AchievementMedalIdle.glyphOverflows(.longhaul))
+        XCTAssertEqual(AchievementMedalIdle.period(for: .longhaul), 3.0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.loop(at: 0.5, duration: 1), 0.5, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.loop(at: 1.5, duration: 1), 0.5, accuracy: 0.001)
     }
 
     func testDistanceTiersShareFamilyAndIncreaseStrength() {
@@ -42,6 +123,28 @@ final class AchievementThemeTests: XCTestCase {
         XCTAssertNil(AchievementID.firstTrip.medalMaterial)
         XCTAssertNil(AchievementID.business10.medalMaterial)
         XCTAssertNil(AchievementID.nightOwl.medalMaterial)
+    }
+
+    func testMedalGlyphsAreWhiteIncludingSilverAndGold() {
+        let white = String(describing: Color.white)
+        for scheme in [ColorScheme.light, .dark] {
+            XCTAssertEqual(
+                String(describing: AchievementTheme.medalPalette(for: .distance100, scheme: scheme).glyph),
+                white
+            )
+            XCTAssertEqual(
+                String(describing: AchievementTheme.medalPalette(for: .distance1000, scheme: scheme).glyph),
+                white
+            )
+            XCTAssertEqual(
+                String(describing: AchievementTheme.medalPalette(for: .distance10000, scheme: scheme).glyph),
+                white
+            )
+            XCTAssertEqual(
+                String(describing: AchievementTheme.medalPalette(for: .firstTrip, scheme: scheme).glyph),
+                white
+            )
+        }
     }
 
     func testPlatinumChromeIsTealNotGray() {
@@ -121,12 +224,15 @@ final class AchievementThemeTests: XCTestCase {
 
     func testLockedOverlayKeepsSaturatedMedal() {
         XCTAssertEqual(AchievementTheme.lockScrimOpacity, 0.45)
-        XCTAssertEqual(AchievementMedalLockOverlay.lockGlyphSize(for: 52), max(13, 52 * 0.36))
-        XCTAssertEqual(AchievementMedalLockOverlay.lockGlyphSize(for: 48), max(13, 48 * 0.36))
+        XCTAssertEqual(AchievementMedalLockOverlay.lockGlyphSize(for: 52), max(8, 52 * 0.16))
+        XCTAssertEqual(AchievementMedalLockOverlay.lockGlyphSize(for: 48), max(8, 48 * 0.16))
+        XCTAssertEqual(AchievementMedalLockOverlay.lockBadgeSize(for: 52), max(14, 52 * 0.28))
+        XCTAssertLessThan(AchievementMedalLockOverlay.lockBadgeSize(for: 48), 48 * 0.45)
         XCTAssertFalse(AchievementMedalIdle.discTilts(.firstTrip))
         XCTAssertFalse(AchievementMedalIdle.discTilts(.distance))
         XCTAssertFalse(AchievementMedalIdle.discTilts(.night))
         XCTAssertTrue(AchievementMedalIdle.discTilts(.routes))
+        XCTAssertFalse(AchievementMedalIdle.discTilts(.business))
         XCTAssertEqual(AchievementMedalIdle.flagWaveDuration, 0.72, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.flagWaveSwayDegrees, 36, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.flagWaveFold, 0.24, accuracy: 0.001)

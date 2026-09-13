@@ -232,6 +232,14 @@ enum StatsChartTheme {
         return [lower, paddedUpper]
     }
 
+    /// Room above the sparkline peak so the stroke and current-month dot are not clipped.
+    static let sparklinePlotPadding: CGFloat = 12
+
+    static func sparklineValueHeadroom(maxValue: Double) -> [Double] {
+        guard maxValue.isFinite, maxValue > 0 else { return [0, 1] }
+        return [0, maxValue * 1.12]
+    }
+
     /// Room above the tallest bar so value labels are not clipped.
     static func barValueHeadroom(maxValue: Double) -> [Double] {
         guard maxValue.isFinite, maxValue > 0 else { return [0, 1] }
@@ -295,13 +303,17 @@ extension View {
         }
     }
 
-    /// Artwork sparkline — no axis chrome, no plot inset (forecast poster).
-    func chartStatsSparklineFill() -> some View {
+    /// Artwork sparkline — no axis chrome. Y headroom + padding keep the peak
+    /// and stroke inside the card.
+    func chartStatsSparklineFill(maxValue: Double) -> some View {
         chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .chartLegend(.hidden)
             .chartXScale(range: .plotDimension(padding: 0))
-            .chartYScale(range: .plotDimension(padding: 0))
+            .chartYScale(
+                domain: StatsChartTheme.sparklineValueHeadroom(maxValue: maxValue),
+                range: .plotDimension(padding: StatsChartTheme.sparklinePlotPadding)
+            )
             .chartPlotStyle { plot in
                 plot.padding(0)
             }

@@ -433,7 +433,70 @@ enum L10n {
     static func pairingShortcutsGuideStepProgress(current: Int, total: Int) -> String {
         String(format: string("pairing.shortcuts.guide.step_progress"), current, total)
     }
+    static var pairingShortcutsGuideTriggersCarPlayWirelessNote: String {
+        string("pairing.shortcuts.guide.triggers.carplay.wireless_note")
+    }
+    static var pairingShortcutsGuideVehicleTitle: String { string("pairing.shortcuts.guide.vehicle.title") }
+    static var pairingShortcutsGuideVehicleBody: String { string("pairing.shortcuts.guide.vehicle.body") }
+    static var pairingShortcutsGuideVehicleEmpty: String { string("pairing.shortcuts.guide.vehicle.empty") }
+    static var pairingShortcutsGuideVehicleAdd: String { string("pairing.shortcuts.guide.vehicle.add") }
+    static var pairingShortcutsGuideVehicleNote: String { string("pairing.shortcuts.guide.vehicle.note") }
+    static var pairingShortcutsGuideConnectStep5Bluetooth: String {
+        string("pairing.shortcuts.guide.connect.step5.bluetooth")
+    }
+    static var pairingShortcutsGuideConnectStep5CarPlay: String {
+        string("pairing.shortcuts.guide.connect.step5.carplay")
+    }
+    static var pairingShortcutsGuideConnectStep5WiFi: String {
+        string("pairing.shortcuts.guide.connect.step5.wifi")
+    }
+    static var pairingShortcutsGuideCardTest: String { string("pairing.shortcuts.guide.card.test") }
+    static var pairingShortcutsGuideCardTroubleshoot: String { string("pairing.shortcuts.guide.card.troubleshoot") }
+    static var pairingShortcutsGuideCardTested: String { string("pairing.shortcuts.guide.card.tested") }
+    static var pairingShortcutsGuideTestTitle: String { string("pairing.shortcuts.guide.test.title") }
+    static var pairingShortcutsGuideTestBody: String { string("pairing.shortcuts.guide.test.body") }
+    static var pairingShortcutsGuideTestButton: String { string("pairing.shortcuts.guide.test.button") }
+    static var pairingShortcutsGuideTestStop: String { string("pairing.shortcuts.guide.test.stop") }
+    static var pairingShortcutsGuideTestWatch: String { string("pairing.shortcuts.guide.test.watch") }
+    static var pairingShortcutsGuideTestWatchArmed: String { string("pairing.shortcuts.guide.test.watch.armed") }
+    static var pairingShortcutsGuideTestResultStarted: String { string("pairing.shortcuts.guide.test.result.started") }
+    static var pairingShortcutsGuideTestResultConfirm: String { string("pairing.shortcuts.guide.test.result.confirm") }
+    static var pairingShortcutsGuideTestResultNoLocation: String {
+        string("pairing.shortcuts.guide.test.result.no_location")
+    }
+    static var pairingShortcutsGuideTestResultNoVehicle: String {
+        string("pairing.shortcuts.guide.test.result.no_vehicle")
+    }
+    static var pairingShortcutsGuideTestResultIdle: String { string("pairing.shortcuts.guide.test.result.idle") }
+    static var pairingShortcutsGuideChecklistTitle: String { string("pairing.shortcuts.guide.checklist.title") }
+    static var pairingShortcutsGuideChecklistIntro: String { string("pairing.shortcuts.guide.checklist.intro") }
+    static var pairingShortcutsGuideChecklistPersonalAutomation: String {
+        string("pairing.shortcuts.guide.checklist.personal_automation")
+    }
+    static var pairingShortcutsGuideChecklistAskBeforeRunning: String {
+        string("pairing.shortcuts.guide.checklist.ask_before_running")
+    }
+    static var pairingShortcutsGuideChecklistRunShortcut: String {
+        string("pairing.shortcuts.guide.checklist.run_shortcut")
+    }
+    static var pairingShortcutsGuideChecklistSecondVehicle: String {
+        string("pairing.shortcuts.guide.checklist.second_vehicle")
+    }
+    static var pairingShortcutsGuideChecklistLocationAlways: String {
+        string("pairing.shortcuts.guide.checklist.location_always")
+    }
+    static var pairingShortcutsGuideChecklistSilentStart: String {
+        string("pairing.shortcuts.guide.checklist.silent_start")
+    }
+    static var pairingShortcutsGuideChecklistCarPlayWireless: String {
+        string("pairing.shortcuts.guide.checklist.carplay_wireless")
+    }
+    static var pairingShortcutsGuideChecklistFocus: String { string("pairing.shortcuts.guide.checklist.focus") }
+    static var pairingShortcutsGuideChecklistReturnLink: String {
+        string("pairing.shortcuts.guide.checklist.return_link")
+    }
     static var toastShortcutsGuideFinished: String { string("toast.shortcuts.guide.finished") }
+    static var toastShortcutsAutomationReached: String { string("toast.shortcuts.automation.reached") }
     static var settingsShortcutsAutomationGuide: String { string("settings.shortcuts.automation_guide") }
     static var shortcutStartTitle: String { string("shortcut.start.title") }
     static var shortcutStopTitle: String { string("shortcut.stop.title") }
