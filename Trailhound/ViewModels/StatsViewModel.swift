@@ -54,7 +54,7 @@ struct DailyFuelCost: Identifiable, Sendable {
     let day: Date
     /// Catalog avg cost for the day.
     let cost: Double
-    /// VSP/Willans estimated cost for the day.
+    /// GPS-adjusted estimated cost for the day.
     let dynamicCost: Double
 
     init(id: Date, day: Date, cost: Double, dynamicCost: Double = 0) {

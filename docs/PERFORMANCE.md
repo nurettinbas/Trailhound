@@ -287,8 +287,10 @@ write path as daily rollups. They are **derived**, not a second source of truth:
 
 - **Delta hook.** `TripRollupDelta` also runs `PremiumDerivedDelta` on finalize, merge, delete, and
   category/vehicle edits. GPS points are never faulted on that path. Live unlocks notify; a one-time
-  `achievementRebuiltVersion` replay walks existing completed trips with `notify: false` so historical
-  medals open without inbox or overlay (and without wiping frequent-route aggregates).
+  `achievementRebuiltVersion` (currently 2) replay walks existing completed trips with `notify: false` so historical
+  medals — including trip/hours/dawn/weekend/fleet families added after the first replay — open without inbox or overlay
+  (and without wiping frequent-route aggregates). Stats also backfills those families from completed trips when the
+  badges card loads, using first-trip progress as a fallback so a 50-trip medal cannot stay locked after 50 trips.
 - **Year recap.** `YearRecapSnapshotLoader` reads that year's `TripDailyRollup` rows plus trip
   *endpoint* fields (locality, start/end place names and coordinates, category). GPS `points`
   are never faulted and `invalidatePointCaches` is not called. JSON cache in Application Support
@@ -297,7 +299,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
   is not rebuilt every frame (Low Power 12 fps). Stats badges compact strip uses `achievementIdleClock`
   (`Task.sleep` at 12 fps) because iOS pauses `TimelineView` and often `withAnimation` inside a `List`.
-  Gallery overlay may use `withAnimation` after the morph. Tab switches use `TrailhoundMotion.tabSwitch`.
+  Gallery overlay uses the same `achievementIdleClock` after the morph (not `withAnimation` 0→1, which parks the 100 km car at opacity 0). Tab switches use `TrailhoundMotion.tabSwitch`.
   Do not put `animation = nil` on `TabView` — that pauses `TimelineView.animation` (recap / onboarding)
   and used to freeze the recording road. List-hosted clocks (recording road, Start hound, steering-wheel
   badge, stop-credits road) use `TrailhoundDisplayLinkTicker`, not `TimelineView`. Recap / onboarding
@@ -351,7 +353,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Frozen overlay circles (`GlassToolbarSampling.frozenControl` / `GlassNavCircleIcon`, 44pt) stay on chrome that sits **on** the map or story Canvas (Stats expand collapse, Year recap Share/Close). Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Do not add a custom `glassEffect` over MapKit. Compact `.frozen` 36pt is unused on these screens.
 - Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
-- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip idle is `achievementIdleClock` (12 fps `Task.sleep`); gallery idle may use `withAnimation` after expand. Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle.
+- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car loops on that clock (left→right fade); a parked `withAnimation` 0→1 must not leave the disc empty.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist

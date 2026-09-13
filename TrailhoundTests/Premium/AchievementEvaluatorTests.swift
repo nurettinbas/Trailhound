@@ -9,6 +9,7 @@ final class AchievementEvaluatorTests: XCTestCase {
         AppNotificationStore.shared.reload()
         AppNotificationStore.shared.clearAll()
         UserDefaults.standard.set(0, forKey: AchievementEvaluator.catalogSeedKey)
+        UserDefaults.standard.set(0, forKey: AchievementEvaluator.celebrationReplayKey)
     }
     func testBusinessLegacyAndUUIDCountTowardTen() throws {
         let container = try ModelContainerFactory.makeInMemory()
@@ -266,6 +267,36 @@ final class AchievementEvaluatorTests: XCTestCase {
         XCTAssertTrue(distance?.isUnlocked ?? false)
     }
 
+    func testCelebrationReplayQueuesSeenUnlocksOnceWithoutInbox() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let ended = Date().addingTimeInterval(-86_400)
+        let trip = Trip(
+            startedAt: ended.addingTimeInterval(-1_800),
+            endedAt: ended,
+            distanceMeters: 120_000
+        )
+        context.insert(trip)
+        try context.save()
+        AchievementEvaluator.rebuild(in: context)
+        XCTAssertFalse(
+            AchievementEvaluator.displays(in: context).first { $0.id == .firstTrip }?.needsCelebration ?? true
+        )
+
+        XCTAssertTrue(AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: context))
+        let after = AchievementEvaluator.displays(in: context)
+        XCTAssertTrue(after.first { $0.id == .firstTrip }?.needsCelebration ?? false)
+        XCTAssertTrue(after.first { $0.id == .distance100 }?.needsCelebration ?? false)
+        XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
+
+        XCTAssertFalse(AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: context))
+        AchievementEvaluator.markSeen([.firstTrip, .distance100], in: context)
+        try context.save()
+        XCTAssertFalse(
+            AchievementEvaluator.displays(in: context).first { $0.id == .firstTrip }?.needsCelebration ?? true
+        )
+    }
+
     func testMaintenanceAchievementReplayBackfillsExistingTripsSilently() async throws {
         let container = try ModelContainerFactory.makeInMemory()
         let context = container.mainContext
@@ -313,7 +344,7 @@ final class AchievementEvaluatorTests: XCTestCase {
         try context.save()
         XCTAssertEqual(UserDefaults.standard.integer(forKey: AchievementEvaluator.catalogSeedKey), 0)
         _ = AchievementEvaluator.displays(in: context)
-        XCTAssertEqual(UserDefaults.standard.integer(forKey: AchievementEvaluator.catalogSeedKey), 2)
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: AchievementEvaluator.catalogSeedKey), AchievementEvaluator.catalogSeedVersion)
         XCTAssertEqual(
             AchievementEvaluator.displays(in: context).first { $0.id == .trips50 }?.currentValue ?? 0,
             1,
@@ -349,5 +380,101 @@ final class AchievementEvaluatorTests: XCTestCase {
         XCTAssertEqual(displays.first { $0.id == .weekend10 }?.currentValue ?? 0, 1, accuracy: 0.1)
         XCTAssertEqual(displays.first { $0.id == .trips50 }?.currentValue ?? 0, 1, accuracy: 0.1)
         XCTAssertEqual(displays.first { $0.id == .hours24 }?.currentValue ?? 0, 1, accuracy: 0.05)
+    }
+
+    func testFiftyExistingTripsUnlockOnDisplays() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        insertCompletedTrips(count: 50, in: context)
+        try context.save()
+
+        let displays = AchievementEvaluator.displays(in: context)
+        let trips50 = displays.first { $0.id == .trips50 }
+        XCTAssertEqual(trips50?.currentValue ?? 0, 50, accuracy: 0.1)
+        XCTAssertNotNil(trips50?.unlockedAt)
+        XCTAssertFalse(trips50?.needsCelebration ?? true)
+        XCTAssertEqual(
+            displays.first { $0.id == .firstTrip }?.currentValue ?? 0,
+            50,
+            accuracy: 0.1
+        )
+        XCTAssertNotNil(displays.first { $0.id == .firstTrip }?.unlockedAt)
+        XCTAssertNotNil(displays.first { $0.id == .hours24 }?.unlockedAt)
+    }
+
+    func testFirstTripProgressFillsTrips50AfterSeedAlreadyStamped() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        UserDefaults.standard.set(
+            AchievementEvaluator.catalogSeedVersion,
+            forKey: AchievementEvaluator.catalogSeedKey
+        )
+        let first = AchievementProgress(
+            achievementID: AchievementID.firstTrip.rawValue,
+            currentValue: 50
+        )
+        first.unlockedAt = Date().addingTimeInterval(-86_400)
+        first.seenAt = first.unlockedAt
+        context.insert(first)
+        try context.save()
+
+        let badge = AchievementEvaluator.displays(in: context).first { $0.id == .trips50 }
+        XCTAssertEqual(badge?.currentValue ?? 0, 50, accuracy: 0.1)
+        XCTAssertNotNil(badge?.unlockedAt)
+        XCTAssertFalse(badge?.needsCelebration ?? true)
+    }
+
+    func testSequentialApplyUnlocksTrips50OnTheFiftiethTrip() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        AchievementEvaluator.markCatalogSeeded()
+        let trips = insertCompletedTrips(count: 50, in: context)
+        for (index, trip) in trips.enumerated() {
+            AchievementEvaluator.apply(
+                trip: trip,
+                sign: 1,
+                localities: [],
+                in: context,
+                notify: false
+            )
+            let value = AchievementEvaluator.displays(in: context)
+                .first { $0.id == .trips50 }?.currentValue ?? 0
+            XCTAssertEqual(value, Double(index + 1), accuracy: 0.1)
+        }
+        let badge = AchievementEvaluator.displays(in: context).first { $0.id == .trips50 }
+        XCTAssertEqual(badge?.currentValue ?? 0, 50, accuracy: 0.1)
+        XCTAssertNotNil(badge?.unlockedAt)
+    }
+
+    func testRebuildCountsEachHistoricalTripOnce() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        insertCompletedTrips(count: 50, in: context)
+        try context.save()
+
+        AchievementEvaluator.rebuild(in: context)
+
+        let displays = AchievementEvaluator.displays(in: context)
+        XCTAssertEqual(displays.first { $0.id == .trips50 }?.currentValue ?? 0, 50, accuracy: 0.1)
+        XCTAssertNotNil(displays.first { $0.id == .trips50 }?.unlockedAt)
+        XCTAssertEqual(displays.first { $0.id == .firstTrip }?.currentValue ?? 0, 50, accuracy: 0.1)
+        XCTAssertEqual(displays.first { $0.id == .hours24 }?.currentValue ?? 0, 25, accuracy: 0.1)
+        XCTAssertNotNil(displays.first { $0.id == .hours24 }?.unlockedAt)
+        XCTAssertFalse(displays.first { $0.id == .trips50 }?.needsCelebration ?? true)
+    }
+
+    @discardableResult
+    private func insertCompletedTrips(count: Int, in context: ModelContext) -> [Trip] {
+        let origin = Date().addingTimeInterval(-86_400 * 80)
+        return (0..<count).map { index in
+            let start = origin.addingTimeInterval(Double(index) * 3_600)
+            let trip = Trip(
+                startedAt: start,
+                endedAt: start.addingTimeInterval(1_800),
+                distanceMeters: 8_000
+            )
+            context.insert(trip)
+            return trip
+        }
     }
 }

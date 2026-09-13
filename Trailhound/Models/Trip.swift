@@ -21,7 +21,7 @@ final class Trip {
     var fuelConsumptionPer100: Double?
     /// Snapshot of unit price (per liter or per kWh) used for this trip's fuel estimate. `nil` on older trips.
     var fuelUnitPrice: Double?
-    /// Trip-specific fuel cost from speed / stop / accel (VSP + Willans). `nil` = not computed yet; `0` = nothing to report.
+    /// Trip-specific fuel cost from GPS speed / stop / accel relative to catalog `C₀`. `nil` = not computed yet; `0` = nothing to report.
     var dynamicFuelCost: Double?
     var isRouteMatched: Bool
     var matchedDistanceMeters: Double?

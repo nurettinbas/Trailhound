@@ -327,6 +327,29 @@ final class FuelCostCalculatorTests: XCTestCase {
         XCTAssertEqual(trip.estimatedFuelCost ?? 0, 357.5, accuracy: 0.1)
     }
 
+    func testResolvedConsumptionPrefersTripThenVehicleThenSettings() {
+        defaults.set(10.0, forKey: "fuelLitersPer100km")
+        let vehicle = VehicleProfile(name: "Car", fuelType: .petrol, consumption: 8)
+        XCTAssertEqual(
+            FuelCostCalculator.resolvedConsumption(tripConsumption: 6, vehicle: vehicle),
+            6,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            FuelCostCalculator.resolvedConsumption(vehicle: vehicle),
+            8,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(FuelCostCalculator.resolvedConsumption(), 10, accuracy: 0.01)
+    }
+
+    func testResolvedUnitPriceElectricFallsBackWithoutVehicle() {
+        defaults.set(9.25, forKey: "evChargePricePerKWh")
+        defaults.set(65.0, forKey: "fuelPricePerLiter")
+        let price = FuelCostCalculator.resolvedUnitPrice(fuelType: .electric)
+        XCTAssertEqual(price, 9.25, accuracy: 0.01)
+    }
+
     func testResolvedCurrencyCodeDefaultsToTRY() {
         XCTAssertEqual(FuelCostCalculator.resolvedCurrencyCode(defaults: defaults), "TRY")
     }

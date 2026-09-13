@@ -238,7 +238,8 @@ enum TripMergeCore {
             for: merged,
             places: places,
             privacyRadius: privacyRadius,
-            fuelType: vehicle?.fuelType ?? .petrol
+            fuelType: vehicle?.fuelType ?? .petrol,
+            vehicle: vehicle
         )
         TripRollupDelta.add(merged, in: context)
     }

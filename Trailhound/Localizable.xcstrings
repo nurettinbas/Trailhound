@@ -2890,13 +2890,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estimated looks at this trip’s speeds, stops, and how hard you accelerated — not just distance times your average. Idle time counts too. It’s an estimate, not the pump."
+            "value": "Estimated starts from your vehicle average, then adjusts for this trip’s speeds, acceleration, and GPS-supported traffic idle. Longer queues still count even when a Stop pin is on the map. Weakly supported GPS gaps are discounted. It is an estimate — not a pump reading. Grade, weather, and whether the engine was on are unknown."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tahmini, sadece mesafe × ortalama değil; bu yolculuktaki hız, duruş ve hızlanmaya bakar. Rölanti de dahildir. Pompa değil, tahmindir."
+            "value": "Tahmini, araç ortalamanızı taban alır; bu yolculuğun hızı, hızlanması ve GPS ile desteklenen trafik rölantisine göre düzeltir. Haritadaki Stop pini motorun kapalı olduğu anlamına gelmez; uzun kuyruklar hesaba girer. Kanıtı zayıf GPS boşlukları azaltılır. Pompa ölçümü değildir. Eğim, hava ve motorun açık olup olmadığı bilinmez."
           }
         }
       }

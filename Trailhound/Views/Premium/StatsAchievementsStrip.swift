@@ -422,6 +422,7 @@ struct AchievementGalleryView: View {
             .padding(.bottom, bottomInset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .achievementIdleClock(enabled: playsIdleClock)
     }
 
     private var columns: [GridItem] {

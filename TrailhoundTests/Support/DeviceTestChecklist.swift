@@ -63,6 +63,7 @@ enum DeviceTestChecklist {
         "Vehicle photo: Change + existing framing Apply/Save path still works",
         "Trip detail: Travel time (moving, excluding stops) sits beside Duration; ? explains the difference",
         "Trip detail: cards pack left-to-right with no empty mid-grid slots; Avg fuel calculate ? explains catalog cost; preview is Avg fuel calculation; Avg fuel and Est. fuel both show cost · volume; Est. ? opens full explanation",
+        "Est. fuel: short city stop-go sits above Avg; a steady highway / 70–90 km/h cruise sits at or below Avg; a 20+ min parked gap does not explode Est. fuel",
         "Trip detail / Stats: Cruise + Common ? explain moving average vs pace band; Median + P90 when route loaded",
         "Stats summary: period % chips (green/red/frost plates + white type) match New capsule, not plain tinted text",
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",

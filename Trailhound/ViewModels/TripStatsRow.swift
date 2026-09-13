@@ -32,7 +32,7 @@ protocol TripStatsAggregable {
     var endPlaceName: String? { get }
     var journalID: UUID? { get }
     var resolvedFuelCost: Double { get }
-    /// Trip-specific VSP/Willans cost. 0 when unknown or not yet computed.
+    /// Trip-specific GPS-adjusted cost. 0 when unknown or not yet computed.
     var resolvedDynamicFuelCost: Double { get }
     /// `nil` when the split is unknown, in which case the trip is left out of the ratio rather
     /// than counted as daytime.

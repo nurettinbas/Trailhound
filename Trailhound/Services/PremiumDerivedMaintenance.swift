@@ -109,8 +109,10 @@ enum PremiumDerivedMaintenance {
     private static let rebuildVersion = 1
     /// Existing installs already stamped `rebuiltVersion` 1 while achievements only
     /// counted trips finished after the feature shipped. Replay history once, silently.
+    /// Version 2 replays again so trip/hours/dawn/weekend/fleet families added later
+    /// pick up the same historical trips (the v1 stamp skipped them).
     private static let achievementRebuildVersionKey = "trailhound.premium.achievementRebuiltVersion"
-    private static let achievementRebuildVersion = 1
+    private static let achievementRebuildVersion = 2
 
     static func rebuildIfNeeded(container: ModelContainer) async {
         let defaults = UserDefaults.standard
@@ -167,6 +169,7 @@ actor PremiumDerivedRebuilder {
     }
 
     private func replayTrips(includeRoutes: Bool) async {
+        AchievementEvaluator.markCatalogSeeded()
         let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
         let privacyRadius = UserDefaults(suiteName: RecordingControlBridge.appGroupSuiteName)?
             .double(forKey: "privacyRadiusMeters") ?? 150

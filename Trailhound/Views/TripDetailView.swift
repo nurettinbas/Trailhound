@@ -351,6 +351,9 @@ struct TripDetailView: View {
                 await loadDisplayPathAndReveal()
             }
         }
+        .onStoreSave {
+            refreshTripDetailViewModel()
+        }
         .onDisappear {
             logTripDetailDiagnostics(context: "disappear")
             if routeRevealProgress >= 0.95 {
@@ -394,6 +397,7 @@ struct TripDetailView: View {
         await Task.yield()
         guard !Task.isCancelled else { return }
         recordedPointCount = trip.points.count
+        refreshPersistedFuelEstimate()
 
         let plan = TripDetailRevealPolicy.animationPlan(
             pointCount: resolvedViewModel.displayPointCount,
@@ -812,6 +816,12 @@ struct TripDetailView: View {
     private func dismissEditKeyboard() {
         keyboardDismissSignal += 1
         KeyboardDismiss.dismiss()
+    }
+
+    private func refreshPersistedFuelEstimate() {
+        guard TripDerivedMetrics.refreshPersistedFuel(for: trip, in: modelContext) else { return }
+        try? modelContext.save()
+        refreshTripDetailViewModel()
     }
 
     private func refreshTripDetailViewModel() {

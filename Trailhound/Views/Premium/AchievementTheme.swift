@@ -391,6 +391,11 @@ enum AchievementMedalIdle {
         sin(Double(loop) * .pi)
     }
 
+    /// `withAnimation` 0→1 `repeatForever` often parks at 1 (opacity 0). Rest at mid-disc.
+    static func longhaulDrivePhase(loop: CGFloat, isParked: Bool) -> CGFloat {
+        isParked ? 0.5 : loop
+    }
+
     /// 0...1 looping (not ping-pong) for globe / longhaul.
     static func loop(at time: TimeInterval, duration: TimeInterval) -> CGFloat {
         guard duration > 0, time.isFinite else { return 0 }
@@ -568,9 +573,10 @@ struct AchievementFamilyIdleEffect: ViewModifier {
                 perspective: 0.55
             )
         case .longhaul:
+            let drive = AchievementMedalIdle.longhaulDrivePhase(loop: loop, isParked: isLonghaulParked)
             content
-                .offset(x: isActive ? AchievementMedalIdle.longhaulTravelX(loop: loop, size: size) : 0)
-                .opacity(isActive ? AchievementMedalIdle.longhaulTravelOpacity(loop: loop) : 1)
+                .offset(x: isActive ? AchievementMedalIdle.longhaulTravelX(loop: drive, size: size) : 0)
+                .opacity(isActive ? AchievementMedalIdle.longhaulTravelOpacity(loop: drive) : 1)
         case .dawn:
             content
                 .offset(y: isActive ? (1 - p) * size * 0.18 : 0)
@@ -606,6 +612,11 @@ struct AchievementFamilyIdleEffect: ViewModifier {
             return AchievementMedalIdle.loop(at: idleTime, duration: AchievementMedalIdle.period(for: family))
         }
         return spin
+    }
+
+    /// One-shot 0→1 animations park at the end. Time-driven idle never parks.
+    private var isLonghaulParked: Bool {
+        isActive && idleTime == nil && spin >= 0.999
     }
 
     private func start() {

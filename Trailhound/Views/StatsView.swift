@@ -623,6 +623,10 @@ struct StatsView: View {
             await MainActor.run {
                 forecast = builtForecast
                 recapSnapshot = builtRecap
+                _ = AchievementEvaluator.displays(in: modelContext)
+                if !UITestSupport.isEnabled {
+                    _ = AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: modelContext)
+                }
                 achievements = AchievementEvaluator.displays(in: modelContext)
                 routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
                 let pending = achievements.filter(\.needsCelebration)

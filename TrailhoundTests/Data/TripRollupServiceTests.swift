@@ -304,4 +304,44 @@ final class TripRollupServiceTests: XCTestCase {
         let rollup = try XCTUnwrap(try rollups().first)
         XCTAssertEqual(rollup.dynamicFuelCost, 175, accuracy: 0.1)
     }
+
+    func testRebuildIfNeededSkipsWhenFuelRefreshIncomplete() async {
+        let rollupKey = "trailhound.rollup.rebuiltVersion"
+        let fuelKey = TripDerivedBackfillService.dynamicFuelVersionKey
+        let previousRollup = UserDefaults.standard.integer(forKey: rollupKey)
+        let previousFuel = UserDefaults.standard.integer(forKey: fuelKey)
+        UserDefaults.standard.set(10, forKey: rollupKey)
+        UserDefaults.standard.set(0, forKey: fuelKey)
+        defer {
+            UserDefaults.standard.set(previousRollup, forKey: rollupKey)
+            UserDefaults.standard.set(previousFuel, forKey: fuelKey)
+        }
+
+        await TripRollupService.rebuildIfNeeded(container: container)
+
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: rollupKey), 10)
+        XCTAssertEqual(try rollups().count, 0)
+    }
+
+    func testRebuildIfNeededWritesVersionAfterFuelRefreshCompletes() async throws {
+        let rollupKey = "trailhound.rollup.rebuiltVersion"
+        let fuelKey = TripDerivedBackfillService.dynamicFuelVersionKey
+        let previousRollup = UserDefaults.standard.integer(forKey: rollupKey)
+        let previousFuel = UserDefaults.standard.integer(forKey: fuelKey)
+        UserDefaults.standard.set(10, forKey: rollupKey)
+        UserDefaults.standard.set(TripDerivedBackfillService.dynamicFuelVersion, forKey: fuelKey)
+        defer {
+            UserDefaults.standard.set(previousRollup, forKey: rollupKey)
+            UserDefaults.standard.set(previousFuel, forKey: fuelKey)
+        }
+
+        _ = insertTrip(startedAt: Date(), dynamicFuelCost: 42)
+        try context.save()
+
+        await TripRollupService.rebuildIfNeeded(container: container)
+
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: rollupKey), 13)
+        XCTAssertEqual(try rollups().count, 1)
+        XCTAssertEqual(try XCTUnwrap(try rollups().first).dynamicFuelCost, 42, accuracy: 0.1)
+    }
 }

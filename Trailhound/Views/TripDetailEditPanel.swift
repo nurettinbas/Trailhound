@@ -1132,7 +1132,8 @@ struct TripDetailEditPanel: View {
             for: trip,
             places: places,
             privacyRadius: settings.privacyRadiusMeters,
-            fuelType: vehicle?.fuelType ?? .petrol
+            fuelType: vehicle?.fuelType ?? .petrol,
+            vehicle: vehicle
         )
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
         if let journal = trip.journal {

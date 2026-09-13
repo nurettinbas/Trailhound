@@ -23,13 +23,15 @@ enum FuelCostCalculator {
     /// Resolved unit price (per liter or per kWh).
     static func resolvedUnitPrice(
         tripUnitPrice: Double? = nil,
-        vehicle: VehicleProfile? = nil
+        vehicle: VehicleProfile? = nil,
+        fuelType: VehicleFuelType? = nil
     ) -> Double {
         if let tripUnitPrice, tripUnitPrice > 0 {
             return tripUnitPrice
         }
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
-        if vehicle?.fuelType == .electric {
+        let resolvedType = vehicle?.fuelType ?? fuelType ?? .petrol
+        if resolvedType == .electric {
             if let vehiclePrice = vehicle?.chargePricePerKWh, vehiclePrice > 0 {
                 return vehiclePrice
             }
@@ -44,13 +46,18 @@ enum FuelCostCalculator {
         distanceMeters: Double,
         vehicle: VehicleProfile? = nil,
         consumptionPer100: Double? = nil,
-        unitPrice: Double? = nil
+        unitPrice: Double? = nil,
+        fuelType: VehicleFuelType? = nil
     ) -> Double {
         let kilometers = distanceMeters / 1000
         guard kilometers > 0 else { return 0 }
 
         let consumption = resolvedConsumption(tripConsumption: consumptionPer100, vehicle: vehicle)
-        let price = resolvedUnitPrice(tripUnitPrice: unitPrice, vehicle: vehicle)
+        let price = resolvedUnitPrice(
+            tripUnitPrice: unitPrice,
+            vehicle: vehicle,
+            fuelType: fuelType ?? vehicle?.fuelType
+        )
         let volume = kilometers * consumption / 100
         return volume * price
     }
@@ -81,7 +88,8 @@ enum FuelCostCalculator {
         )
         let price = resolvedUnitPrice(
             tripUnitPrice: (unitPrice ?? 0) > 0 ? unitPrice : trip.fuelUnitPrice,
-            vehicle: vehicle
+            vehicle: vehicle,
+            fuelType: vehicle?.fuelType
         )
         trip.fuelConsumptionPer100 = consumption
         trip.fuelUnitPrice = price

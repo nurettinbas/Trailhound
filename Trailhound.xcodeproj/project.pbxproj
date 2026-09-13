@@ -146,6 +146,8 @@
 		A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */; };
 		A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */; };
 		A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */; };
+		A1TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */; };
+		A1POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */; };
 		A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */; };
 		A1KEYBOARDGUIDE00000001 /* KeyboardGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2KEYBOARDGUIDE00000001 /* KeyboardGuide.swift */; };
 		A1TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */; };
@@ -553,6 +555,8 @@
 		A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedSummary.swift; sourceTree = "<group>"; };
 		A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedProfile.swift; sourceTree = "<group>"; };
 		A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelEstimate.swift; sourceTree = "<group>"; };
+		A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelMotionTimeline.swift; sourceTree = "<group>"; };
+		A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowertrainFuelProfile.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailKeyboardLayout.swift; sourceTree = "<group>"; };
 		A2KEYBOARDGUIDE00000001 /* KeyboardGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardGuide.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailEditPanel.swift; sourceTree = "<group>"; };
@@ -1123,6 +1127,8 @@
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
 				A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */,
 				A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */,
+				A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */,
+				A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */,
 				A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */,
 				A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */,
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
@@ -1625,6 +1631,8 @@
 				A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */,
 				A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */,
 				A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */,
+				A1TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift in Sources */,
+				A1POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift in Sources */,
 				A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */,
 				A1KEYBOARDGUIDE00000001 /* KeyboardGuide.swift in Sources */,
 				A1TRIPDETAILEDITPANEL001 /* TripDetailEditPanel.swift in Sources */,

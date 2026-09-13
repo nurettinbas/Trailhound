@@ -147,13 +147,20 @@ enum TripRollupService {
     /// Version 7 refreshes after stop time uses implied speed (GPS wander is still a stop).
     /// Version 8 fills most-common speed totals added in schema V17.
     /// Version 9 fills dynamic (VSP/Willans) fuel totals added in schema V18.
-    private static let rebuildVersion = 9
+    /// Version 10 refreshes estimated fuel after the C₀-relative GPS model.
+    /// Version 11 refreshes short-city idle after evidence-weighted stop handling.
+    /// Version 12 rebuilds after fuel formula v4 (v11 may already have been written).
+    /// Version 13 rebuilds after Stop-pin idle exclusion was removed (formula v5).
+    private static let rebuildVersion = 13
 
     /// Builds the table on the first launch that has it, and after any change to how rollups are
     /// derived. Cheap no-op afterwards.
     static func rebuildIfNeeded(container: ModelContainer) async {
         let defaults = UserDefaults.standard
         guard defaults.integer(forKey: rebuildVersionKey) < rebuildVersion else { return }
+        // Fuel refresh writes `dynamicFuelCost` first. Persisting a new rollup version while
+        // that walk is incomplete would freeze a half-updated Stats table.
+        guard TripDerivedBackfillService.hasFinishedDynamicFuelRefresh() else { return }
         await rebuildAll(container: container)
         defaults.set(rebuildVersion, forKey: rebuildVersionKey)
     }
