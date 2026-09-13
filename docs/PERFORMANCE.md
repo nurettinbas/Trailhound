@@ -282,7 +282,9 @@ write path as daily rollups. They are **derived**, not a second source of truth:
 `VehicleExpense` for cash costs) still wins, and a rebuild version bump regenerates the tables.
 
 - **Delta hook.** `TripRollupDelta` also runs `PremiumDerivedDelta` on finalize, merge, delete, and
-  category/vehicle edits. GPS points are never faulted on that path.
+  category/vehicle edits. GPS points are never faulted on that path. Live unlocks notify; a one-time
+  `achievementRebuiltVersion` replay walks existing completed trips with `notify: false` so historical
+  medals open without inbox or overlay (and without wiping frequent-route aggregates).
 - **Year recap.** `YearRecapSnapshotLoader` reads that year's `TripDailyRollup` rows plus trip
   *endpoint* fields (locality, start/end place names and coordinates, category). GPS `points`
   are never faulted and `invalidatePointCaches` is not called. JSON cache in Application Support

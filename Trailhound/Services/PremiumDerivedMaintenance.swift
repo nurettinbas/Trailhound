@@ -63,7 +63,8 @@ enum PremiumDerivedDelta {
         trip: Trip,
         snapshot: PremiumTripSnapshot,
         sign: Double,
-        in context: ModelContext
+        in context: ModelContext,
+        notify: Bool = true
     ) {
         guard canPersist(in: context) else { return }
         guard snapshot.isCompleted || trip.endedAt != nil else { return }
@@ -78,7 +79,8 @@ enum PremiumDerivedDelta {
             trip: trip,
             sign: sign,
             localities: snapshot.localities,
-            in: context
+            in: context,
+            notify: notify
         )
         YearRecapCache.invalidate(yearContaining: trip.startedAt)
     }
@@ -105,16 +107,30 @@ enum PremiumDerivedDelta {
 enum PremiumDerivedMaintenance {
     private static let rebuildVersionKey = "trailhound.premium.rebuiltVersion"
     private static let rebuildVersion = 1
+    /// Existing installs already stamped `rebuiltVersion` 1 while achievements only
+    /// counted trips finished after the feature shipped. Replay history once, silently.
+    private static let achievementRebuildVersionKey = "trailhound.premium.achievementRebuiltVersion"
+    private static let achievementRebuildVersion = 1
 
     static func rebuildIfNeeded(container: ModelContainer) async {
         let defaults = UserDefaults.standard
-        guard defaults.integer(forKey: rebuildVersionKey) < rebuildVersion else { return }
-        await rebuildAll(container: container)
-        defaults.set(rebuildVersion, forKey: rebuildVersionKey)
+        if defaults.integer(forKey: rebuildVersionKey) < rebuildVersion {
+            await rebuildAll(container: container)
+            defaults.set(rebuildVersion, forKey: rebuildVersionKey)
+            defaults.set(achievementRebuildVersion, forKey: achievementRebuildVersionKey)
+            return
+        }
+        guard defaults.integer(forKey: achievementRebuildVersionKey) < achievementRebuildVersion else { return }
+        await rebuildAchievements(container: container)
+        defaults.set(achievementRebuildVersion, forKey: achievementRebuildVersionKey)
     }
 
     static func rebuildAll(container: ModelContainer) async {
         await PremiumDerivedRebuilder(modelContainer: container).run()
+    }
+
+    static func rebuildAchievements(container: ModelContainer) async {
+        await PremiumDerivedRebuilder(modelContainer: container).runAchievements()
     }
 }
 
@@ -123,17 +139,34 @@ actor PremiumDerivedRebuilder {
     private static let batchSize = 200
 
     func run() async {
+        clearRoutes()
+        clearAchievements()
+        try? modelContext.save()
+        await replayTrips(includeRoutes: true)
+    }
+
+    func runAchievements() async {
+        clearAchievements()
+        try? modelContext.save()
+        await replayTrips(includeRoutes: false)
+    }
+
+    private func clearRoutes() {
         for row in (try? modelContext.fetch(FetchDescriptor<FrequentRouteAggregate>())) ?? [] {
             modelContext.delete(row)
         }
+    }
+
+    private func clearAchievements() {
         for row in (try? modelContext.fetch(FetchDescriptor<AchievementProgress>())) ?? [] {
             modelContext.delete(row)
         }
         for row in (try? modelContext.fetch(FetchDescriptor<VisitedLocality>())) ?? [] {
             modelContext.delete(row)
         }
-        try? modelContext.save()
+    }
 
+    private func replayTrips(includeRoutes: Bool) async {
         let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
         let privacyRadius = UserDefaults(suiteName: RecordingControlBridge.appGroupSuiteName)?
             .double(forKey: "privacyRadiusMeters") ?? 150
@@ -151,13 +184,29 @@ actor PremiumDerivedRebuilder {
             guard !batch.isEmpty else { break }
 
             for trip in batch {
-                let snapshot = PremiumDerivedDelta.snapshot(
-                    of: trip,
-                    places: places,
-                    privacyRadius: radius
-                )
-                PremiumDerivedDelta.apply(trip: trip, snapshot: snapshot, sign: 1, in: modelContext)
-                trip.invalidatePointCaches()
+                if includeRoutes {
+                    let snapshot = PremiumDerivedDelta.snapshot(
+                        of: trip,
+                        places: places,
+                        privacyRadius: radius
+                    )
+                    PremiumDerivedDelta.apply(
+                        trip: trip,
+                        snapshot: snapshot,
+                        sign: 1,
+                        in: modelContext,
+                        notify: false
+                    )
+                    trip.invalidatePointCaches()
+                } else {
+                    AchievementEvaluator.apply(
+                        trip: trip,
+                        sign: 1,
+                        localities: TripLocalityResolver.localities(on: trip),
+                        in: modelContext,
+                        notify: false
+                    )
+                }
             }
             try? modelContext.save()
             offset += batch.count

@@ -178,6 +178,33 @@ final class AchievementEvaluatorTests: XCTestCase {
         XCTAssertTrue(newly.contains(.firstTrip))
         XCTAssertTrue(newly.contains(.distance100))
         XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
+        let displays = AchievementEvaluator.displays(in: context)
+        XCTAssertFalse(displays.first { $0.id == .firstTrip }?.needsCelebration ?? true)
+        XCTAssertFalse(displays.first { $0.id == .distance100 }?.needsCelebration ?? true)
+    }
+
+    func testLiveApplyLeavesCelebrationPendingWithoutInboxInUnitTests() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-600),
+            endedAt: Date(),
+            distanceMeters: 120_000
+        )
+        context.insert(trip)
+        let newly = AchievementEvaluator.apply(
+            trip: trip,
+            sign: 1,
+            localities: [],
+            in: context,
+            notify: true
+        )
+        XCTAssertTrue(newly.contains(.firstTrip))
+        XCTAssertTrue(newly.contains(.distance100))
+        XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
+        let displays = AchievementEvaluator.displays(in: context)
+        XCTAssertTrue(displays.first { $0.id == .firstTrip }?.needsCelebration ?? false)
+        XCTAssertTrue(displays.first { $0.id == .distance100 }?.needsCelebration ?? false)
     }
 
     func testNotifyAchievementsUnlockedRecordsOneInboxRowPerBadge() {
@@ -201,5 +228,62 @@ final class AchievementEvaluatorTests: XCTestCase {
         AchievementEvaluator.rebuild(in: context)
         XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
         XCTAssertNotNil(AchievementEvaluator.displays(in: context).first { $0.id == .firstTrip }?.unlockedAt)
+        XCTAssertFalse(AchievementEvaluator.displays(in: context).first { $0.id == .firstTrip }?.needsCelebration ?? true)
+    }
+
+    func testRebuildUnlocksHistoricalTripsWithoutCelebrationOrInbox() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let firstEnded = Date().addingTimeInterval(-86_400 * 40)
+        let laterEnded = Date().addingTimeInterval(-86_400 * 10)
+        let first = Trip(
+            startedAt: firstEnded.addingTimeInterval(-1_800),
+            endedAt: firstEnded,
+            distanceMeters: 8_000
+        )
+        let later = Trip(
+            startedAt: laterEnded.addingTimeInterval(-3_600),
+            endedAt: laterEnded,
+            distanceMeters: 110_000
+        )
+        context.insert(first)
+        context.insert(later)
+        try context.save()
+
+        AchievementEvaluator.rebuild(in: context)
+
+        XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
+        let displays = AchievementEvaluator.displays(in: context)
+        let firstTrip = displays.first { $0.id == .firstTrip }
+        let distance = displays.first { $0.id == .distance100 }
+        XCTAssertEqual(firstTrip?.unlockedAt, firstEnded)
+        XCTAssertEqual(distance?.unlockedAt, laterEnded)
+        XCTAssertEqual(distance?.currentValue ?? 0, 118_000, accuracy: 1)
+        XCTAssertFalse(firstTrip?.needsCelebration ?? true)
+        XCTAssertFalse(distance?.needsCelebration ?? true)
+        XCTAssertTrue(firstTrip?.isUnlocked ?? false)
+        XCTAssertTrue(distance?.isUnlocked ?? false)
+    }
+
+    func testMaintenanceAchievementReplayBackfillsExistingTripsSilently() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let ended = Date().addingTimeInterval(-86_400 * 20)
+        let trip = Trip(
+            startedAt: ended.addingTimeInterval(-2_000),
+            endedAt: ended,
+            distanceMeters: 250_000
+        )
+        context.insert(trip)
+        try context.save()
+
+        await PremiumDerivedMaintenance.rebuildAchievements(container: container)
+
+        XCTAssertTrue(AppNotificationStore.shared.items.isEmpty)
+        let displays = AchievementEvaluator.displays(in: context)
+        XCTAssertEqual(displays.first { $0.id == .firstTrip }?.unlockedAt, ended)
+        XCTAssertEqual(displays.first { $0.id == .distance100 }?.unlockedAt, ended)
+        XCTAssertFalse(displays.first { $0.id == .firstTrip }?.needsCelebration ?? true)
+        XCTAssertFalse(displays.first { $0.id == .distance100 }?.needsCelebration ?? true)
     }
 }

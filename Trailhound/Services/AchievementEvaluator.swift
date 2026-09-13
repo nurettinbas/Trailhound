@@ -11,24 +11,26 @@ enum AchievementEvaluator {
         notify: Bool = true
     ) -> [AchievementID] {
         guard trip.endedAt != nil else { return [] }
+        let eventDate = trip.endedAt ?? trip.startedAt
+        let silent = !notify
         var newly: [AchievementID] = []
         func collect(_ id: AchievementID, unlocked: Bool) {
             if unlocked { newly.append(id) }
         }
-        collect(.firstTrip, unlocked: bump(.firstTrip, by: sign, in: context))
-        collect(.distance100, unlocked: bump(.distance100, by: sign * trip.distanceMeters, in: context))
-        collect(.distance1000, unlocked: bump(.distance1000, by: sign * trip.distanceMeters, in: context))
-        collect(.distance10000, unlocked: bump(.distance10000, by: sign * trip.distanceMeters, in: context))
-        collect(.distance100000, unlocked: bump(.distance100000, by: sign * trip.distanceMeters, in: context))
+        collect(.firstTrip, unlocked: bump(.firstTrip, by: sign, at: eventDate, silent: silent, in: context))
+        collect(.distance100, unlocked: bump(.distance100, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
+        collect(.distance1000, unlocked: bump(.distance1000, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
+        collect(.distance10000, unlocked: bump(.distance10000, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
+        collect(.distance100000, unlocked: bump(.distance100000, by: sign * trip.distanceMeters, at: eventDate, silent: silent, in: context))
         seedDistance100000(in: context)
         if trip.categoryID == BuiltInCategory.businessID.uuidString {
-            collect(.business10, unlocked: bump(.business10, by: sign, in: context))
-            collect(.business50, unlocked: bump(.business50, by: sign, in: context))
+            collect(.business10, unlocked: bump(.business10, by: sign, at: eventDate, silent: silent, in: context))
+            collect(.business50, unlocked: bump(.business50, by: sign, at: eventDate, silent: silent, in: context))
         }
-        collect(.nightOwl, unlocked: bump(.nightOwl, by: sign * (trip.nightDistanceMeters ?? 0), in: context))
-        newly.append(contentsOf: applyLocalities(localities, sign: sign, in: context))
-        newly.append(contentsOf: refreshStreak(in: context))
-        newly.append(contentsOf: refreshRouteRegular(in: context))
+        collect(.nightOwl, unlocked: bump(.nightOwl, by: sign * (trip.nightDistanceMeters ?? 0), at: eventDate, silent: silent, in: context))
+        newly.append(contentsOf: applyLocalities(localities, sign: sign, at: eventDate, silent: silent, in: context))
+        newly.append(contentsOf: refreshStreak(at: eventDate, silent: silent, in: context))
+        newly.append(contentsOf: refreshRouteRegular(at: eventDate, silent: silent, in: context))
         if notify, sign > 0, !newly.isEmpty, !UITestSupport.isUnitTesting {
             let ids = newly
             Task { @MainActor in
@@ -81,7 +83,11 @@ enum AchievementEvaluator {
             context.delete(row)
         }
 
-        let trips = ((try? context.fetch(FetchDescriptor<Trip>())) ?? []).filter { $0.endedAt != nil }
+        let descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.endedAt != nil },
+            sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+        )
+        let trips = (try? context.fetch(descriptor)) ?? []
         for trip in trips {
             apply(
                 trip: trip,
@@ -126,20 +132,27 @@ enum AchievementEvaluator {
     }
 
     @discardableResult
-    private static func bump(_ id: AchievementID, by delta: Double, in context: ModelContext) -> Bool {
+    private static func bump(
+        _ id: AchievementID,
+        by delta: Double,
+        at eventDate: Date,
+        silent: Bool,
+        in context: ModelContext
+    ) -> Bool {
         guard delta != 0 else { return false }
         let row = progress(for: id, in: context)
         row.currentValue = max(0, row.currentValue + delta)
-        if row.unlockedAt == nil, row.currentValue + 0.000_1 >= id.threshold {
-            row.unlockedAt = Date()
-            YearRecapCache.invalidate(yearContaining: row.unlockedAt ?? Date())
-            return true
-        }
-        return false
+        return unlockIfNeeded(row, id: id, at: eventDate, silent: silent)
     }
 
     @discardableResult
-    private static func applyLocalities(_ localities: [String], sign: Double, in context: ModelContext) -> [AchievementID] {
+    private static func applyLocalities(
+        _ localities: [String],
+        sign: Double,
+        at eventDate: Date,
+        silent: Bool,
+        in context: ModelContext
+    ) -> [AchievementID] {
         guard sign != 0 else { return [] }
         for name in Set(localities) {
             let existing = locality(named: name, in: context)
@@ -158,28 +171,28 @@ enum AchievementEvaluator {
         }
         let count = Double(((try? context.fetch(FetchDescriptor<VisitedLocality>())) ?? []).count)
         var newly: [AchievementID] = []
-        if setValue(.cities10, count, in: context) { newly.append(.cities10) }
-        if setValue(.cities25, count, in: context) { newly.append(.cities25) }
+        if setValue(.cities10, count, at: eventDate, silent: silent, in: context) { newly.append(.cities10) }
+        if setValue(.cities25, count, at: eventDate, silent: silent, in: context) { newly.append(.cities25) }
         return newly
     }
 
     @discardableResult
-    private static func refreshStreak(in context: ModelContext) -> [AchievementID] {
+    private static func refreshStreak(at eventDate: Date, silent: Bool, in context: ModelContext) -> [AchievementID] {
         let streak = currentStreakDays(in: context)
         var newly: [AchievementID] = []
-        if setValue(.streak7, Double(streak), in: context) { newly.append(.streak7) }
-        if setValue(.streak30, Double(streak), in: context) { newly.append(.streak30) }
+        if setValue(.streak7, Double(streak), at: eventDate, silent: silent, in: context) { newly.append(.streak7) }
+        if setValue(.streak30, Double(streak), at: eventDate, silent: silent, in: context) { newly.append(.streak30) }
         return newly
     }
 
     @discardableResult
-    private static func refreshRouteRegular(in context: ModelContext) -> [AchievementID] {
+    private static func refreshRouteRegular(at eventDate: Date, silent: Bool, in context: ModelContext) -> [AchievementID] {
         var descriptor = FetchDescriptor<FrequentRouteAggregate>(
             sortBy: [SortDescriptor(\.count, order: .reverse)]
         )
         descriptor.fetchLimit = 1
         let best = (try? context.fetch(descriptor))?.first?.count ?? 0
-        if setValue(.routesRegular, Double(best), in: context) {
+        if setValue(.routesRegular, Double(best), at: eventDate, silent: silent, in: context) {
             return [.routesRegular]
         }
         return []
@@ -210,15 +223,32 @@ enum AchievementEvaluator {
     }
 
     @discardableResult
-    private static func setValue(_ id: AchievementID, _ value: Double, in context: ModelContext) -> Bool {
+    private static func setValue(
+        _ id: AchievementID,
+        _ value: Double,
+        at eventDate: Date,
+        silent: Bool,
+        in context: ModelContext
+    ) -> Bool {
         let row = progress(for: id, in: context)
         row.currentValue = max(0, value)
-        if row.unlockedAt == nil, row.currentValue + 0.000_1 >= id.threshold {
-            row.unlockedAt = Date()
-            YearRecapCache.invalidate(yearContaining: row.unlockedAt ?? Date())
-            return true
+        return unlockIfNeeded(row, id: id, at: eventDate, silent: silent)
+    }
+
+    @discardableResult
+    private static func unlockIfNeeded(
+        _ row: AchievementProgress,
+        id: AchievementID,
+        at eventDate: Date,
+        silent: Bool
+    ) -> Bool {
+        guard row.unlockedAt == nil, row.currentValue + 0.000_1 >= id.threshold else { return false }
+        row.unlockedAt = eventDate
+        if silent {
+            row.seenAt = eventDate
         }
-        return false
+        YearRecapCache.invalidate(yearContaining: eventDate)
+        return true
     }
 
     private static func progress(for id: AchievementID, in context: ModelContext) -> AchievementProgress {

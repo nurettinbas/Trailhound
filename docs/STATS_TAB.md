@@ -30,7 +30,7 @@ Inserted **after** the by-category chart pager (and before year awards). Same `.
 
 Premium loaders (`MonthCostForecastLoader`, `YearRecapSnapshotLoader`, achievement/route aggregates) run after the first snapshot path, not as an extra fetch on tab open for the comparison snapshot.
 
-Deep links `trailhound://stats/goal|forecast|recap|routes|achievements` open this tab and the matching expand/cover. A badge unlock writes an inbox row and a local banner (skipped if Stats is already selected — the overlay is enough). In January, a local notification plus inbox row opens last year’s recap when that year has trips and `recap.seen.{year}` is unset (1 Jan 09:00, with catch-up if the app opens later in January). Watching the story or December–January autoplay marks it seen so the push does not repeat.
+Deep links `trailhound://stats/goal|forecast|recap|routes|achievements` open this tab and the matching expand/cover. A badge unlock writes an inbox row and a local banner (skipped if Stats is already selected — the overlay is enough). Medals already earned from trips that existed before badges shipped are replayed once on launch: they show as unlocked, without inbox, banner, or overlay. In January, a local notification plus inbox row opens last year’s recap when that year has trips and `recap.seen.{year}` is unset (1 Jan 09:00, with catch-up if the app opens later in January). Watching the story or December–January autoplay marks it seen so the push does not repeat.
 
 See [PERFORMANCE.md](PERFORMANCE.md) Premium derived caches (schema V21).
 
