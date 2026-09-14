@@ -62,12 +62,9 @@ struct GlassDisclosureChevron: View {
 /// How a nav-bar control draws its chrome.
 ///
 /// - `system`: iOS 26 shared toolbar platter (Material bar item on iOS 18). Use
-///   on form/list screens and Trip/Travel detail nav items (same metrics as
-///   the Trips cluster).
+///   on form/list screens and Trip/Travel detail nav items.
 /// - `frozen`: 36pt solid circle. Compact map chip if needed.
-/// - `frozenControl`: 44pt solid circle. Overlay toolbar — Year recap story
-///   Share/Close and Stats expand collapse (Badges, Frequent routes, month
-///   forecast) where there is no system platter but the hit size should match it.
+/// - `frozenControl`: 44pt solid circle if Reduce Transparency / frozen sampling is required.
 enum GlassToolbarSampling {
     case system
     case frozen
@@ -148,14 +145,33 @@ struct GlassToolbarCluster<Content: View>: View {
     }
 }
 
-/// Overlay toolbar circle (44pt). Nav bars should use `GlassToolbarSymbol` with
-/// `.system` instead of this type.
+/// Overlay toolbar circle (44pt). Year recap Share/Close, Stats collapse.
+/// Liquid Glass — not the opaque frozen plate.
 struct GlassNavCircleIcon: View {
     let systemName: String
     var isLoading: Bool = false
+    var frozen: Bool = false
 
     var body: some View {
-        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading, sampling: .frozenControl)
+        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading)
+            .glassCircleChrome(frozen: frozen)
+            .contentShape(Circle())
+    }
+}
+
+/// Collapse / exit-fullscreen: 44pt Liquid Glass circle (not a naked glyph).
+struct GlassToolbarCollapseButton: View {
+    var accessibilityIdentifier: String
+    var frozen: Bool = false
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassNavCircleIcon(systemName: "arrow.down.right.and.arrow.up.left", frozen: frozen)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.mapExitFullscreen)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }
 

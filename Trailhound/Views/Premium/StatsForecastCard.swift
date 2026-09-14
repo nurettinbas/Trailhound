@@ -388,14 +388,10 @@ struct StatsForecastDetailSheet: View {
                     .font(.headline)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: onClose) {
-                    GlassNavCircleIcon(systemName: "arrow.down.right.and.arrow.up.left")
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.mapExitFullscreen)
-                .accessibilityIdentifier("stats.premium.forecast.expanded.close")
+                GlassToolbarCollapseButton(
+                    accessibilityIdentifier: "stats.premium.forecast.expanded.close",
+                    action: onClose
+                )
             }
             .padding(.leading, 16)
             .padding(.trailing, 12)

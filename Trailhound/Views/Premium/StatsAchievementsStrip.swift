@@ -154,11 +154,15 @@ struct AchievementMedalMark: View {
         .rotationEffect(.degrees(motionRotation))
         .offset(y: motionOffsetY)
         .accessibilityHidden(true)
+        .achievementIdleClockPose(drivenByClock: idleTime != nil)
         .onAppear(perform: startFamilyMotion)
         .onChange(of: item.isUnlocked) { _, _ in
             startFamilyMotion()
         }
-        .onChange(of: idleTime) { _, _ in
+        .onChange(of: playsMotion) { _, _ in
+            startFamilyMotion()
+        }
+        .onChange(of: idleTime != nil) { _, _ in
             startFamilyMotion()
         }
     }
@@ -387,14 +391,10 @@ struct AchievementGalleryView: View {
                     .font(.headline)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: onClose) {
-                    GlassNavCircleIcon(systemName: "arrow.down.right.and.arrow.up.left")
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.mapExitFullscreen)
-                .accessibilityIdentifier("stats.achievement.expanded.close")
+                GlassToolbarCollapseButton(
+                    accessibilityIdentifier: "stats.achievement.expanded.close",
+                    action: onClose
+                )
             }
             .padding(.leading, 16)
             .padding(.trailing, 12)
@@ -440,6 +440,9 @@ struct AchievementGalleryCard: View {
     var playsMotion: Bool = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+    @State private var sharePreview: UIImage?
 
     var body: some View {
         VStack(spacing: 5) {
@@ -478,6 +481,22 @@ struct AchievementGalleryCard: View {
         .frame(maxWidth: .infinity, minHeight: cardMinHeight, maxHeight: cardMaxHeight, alignment: .top)
         .glassCard(cornerRadius: AchievementGalleryTokens.cardRadius, contentInset: 0, allowsNative: false)
         .accessibilityIdentifier("stats.achievement.card.\(item.id.rawValue)")
+        .task(id: shareRenderKey) {
+            guard item.isUnlocked else { return }
+            if !UITestSupport.isEnabled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { return }
+            }
+            sharePreview = AchievementShareRenderer.image(
+                for: item,
+                palette: shellPalette,
+                scheme: colorScheme
+            )
+        }
+    }
+
+    private var shareRenderKey: String {
+        "\(item.id.rawValue)-\(shellPalette.rawValue)-\(colorScheme == .dark ? "d" : "l")"
     }
 
     private var statusText: String {
@@ -507,20 +526,36 @@ struct AchievementGalleryCard: View {
     @ViewBuilder
     private var shareSlot: some View {
         if item.isUnlocked {
-            ShareLink(item: L10n.string(item.id.titleKey)) {
-                Label(L10n.string("action.share"), systemImage: "square.and.arrow.up")
-                    .font(.caption.weight(.medium))
-                    .glassSecondaryInk()
-                    .frame(maxWidth: .infinity, minHeight: AchievementGalleryTokens.shareSlotHeight)
-                    .contentShape(Rectangle())
+            ShareLink(
+                item: AchievementSharePayload(display: item, palette: shellPalette, scheme: colorScheme),
+                preview: SharePreview(
+                    AchievementShareRenderer.caption(for: item),
+                    image: sharePreviewImage
+                )
+            ) {
+                HStack(spacing: 6) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text(L10n.share)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .trailhoundCompactProminentButton()
             }
             .buttonStyle(AchievementShareButtonStyle())
+            .frame(maxWidth: .infinity, minHeight: AchievementGalleryTokens.shareSlotHeight)
             .accessibilityIdentifier("stats.achievement.share.\(item.id.rawValue)")
         } else {
             Color.clear
                 .frame(maxWidth: .infinity, minHeight: AchievementGalleryTokens.shareSlotHeight)
                 .accessibilityHidden(true)
         }
+    }
+
+    private var sharePreviewImage: Image {
+        if let sharePreview, sharePreview.size.width > 2 {
+            return Image(uiImage: sharePreview)
+        }
+        return Image(systemName: item.id.systemImage)
     }
 }
 

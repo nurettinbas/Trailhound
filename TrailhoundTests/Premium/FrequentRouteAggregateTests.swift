@@ -120,6 +120,66 @@ final class FrequentRouteOverlayBudgetTests: XCTestCase {
         XCTAssertEqual(top.first?.count, 60)
         XCTAssertEqual(top.last?.count, 21)
     }
+
+    func testHabitCorridorsKeepRepeatedNeighborhoodRoutesOnly() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        func insert(key: String, count: Int, start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) {
+            let row = FrequentRouteAggregate(pairKey: key, startKey: key, endKey: key)
+            row.count = count
+            row.startLatitude = start.latitude
+            row.startLongitude = start.longitude
+            row.endLatitude = end.latitude
+            row.endLongitude = end.longitude
+            context.insert(row)
+        }
+        insert(
+            key: "home→work",
+            count: 40,
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.080, longitude: 29.010)
+        )
+        insert(
+            key: "home→gym",
+            count: 12,
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.050, longitude: 28.995)
+        )
+        insert(
+            key: "mall→cafe",
+            count: 4,
+            start: CLLocationCoordinate2D(latitude: 41.040, longitude: 29.000),
+            end: CLLocationCoordinate2D(latitude: 41.055, longitude: 29.020)
+        )
+        insert(
+            key: "once→around",
+            count: 1,
+            start: CLLocationCoordinate2D(latitude: 41.010, longitude: 28.980),
+            end: CLLocationCoordinate2D(latitude: 41.020, longitude: 28.990)
+        )
+        insert(
+            key: "izmir→cesme",
+            count: 18,
+            start: CLLocationCoordinate2D(latitude: 38.423, longitude: 27.143),
+            end: CLLocationCoordinate2D(latitude: 38.324, longitude: 26.303)
+        )
+        try context.save()
+        let all = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
+        let habits = FrequentRouteOverlayBudget.habitCorridors(all)
+        XCTAssertEqual(habits.map(\.pairKey), ["home→work", "home→gym", "mall→cafe"])
+        XCTAssertFalse(habits.contains { $0.pairKey == "once→around" })
+        XCTAssertFalse(habits.contains { $0.pairKey == "izmir→cesme" })
+    }
+
+    func testRoadPathDecimateKeepsEnds() {
+        let coords = (0..<200).map { index in
+            CLLocationCoordinate2D(latitude: 38.4 + Double(index) * 0.001, longitude: 27.1)
+        }
+        let slim = FrequentRouteRoadPathCache.decimate(coords, maxCount: 20)
+        XCTAssertEqual(slim.count, 20)
+        XCTAssertEqual(slim.first?.latitude ?? 0, coords.first?.latitude ?? 1, accuracy: 0.0001)
+        XCTAssertEqual(slim.last?.latitude ?? 0, coords.last?.latitude ?? 1, accuracy: 0.0001)
+    }
 }
 
 @MainActor
@@ -181,5 +241,167 @@ final class FrequentRouteMergeDeltaTests: XCTestCase {
         XCTAssertLessThan(focused.size.height, regional.size.height * 0.45)
         XCTAssertFalse(focused.isNull)
         XCTAssertFalse(focused.isEmpty)
+    }
+
+    func testMapCameraStaysCloseToTheCorridor() {
+        let start = CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978)
+        let end = CLLocationCoordinate2D(latitude: 41.036, longitude: 29.000)
+        let focused = FrequentRoutesMapCamera.visibleRect(start: start, end: end)
+        var corridor = MKMapRect.null
+        for coordinate in [start, end] {
+            let point = MKMapPoint(coordinate)
+            corridor = corridor.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        XCTAssertLessThan(focused.size.width, corridor.size.width * 2.6 + 10_000)
+        XCTAssertLessThan(focused.size.height, corridor.size.height * 2.6 + 10_000)
+        XCTAssertEqual(
+            FrequentRoutesMapCamera.edgePadding(for: CGSize(width: 320, height: 180)).bottom,
+            FrequentRoutesMapCamera.edgePadding.bottom,
+            accuracy: 0.1
+        )
+        XCTAssertEqual(
+            FrequentRoutesMapCamera.edgePadding(for: CGSize(width: 390, height: 844)).bottom,
+            FrequentRoutesMapCamera.edgePadding.bottom,
+            accuracy: 0.1
+        )
+    }
+}
+
+@MainActor
+final class FrequentRouteClusteringTests: XCTestCase {
+    func testNearbyEndpointsWithDifferentNamesMerge() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let first = makeTrip(
+            startName: "Foo Cad.",
+            endName: "Bar Sk.",
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.036, longitude: 29.000)
+        )
+        let second = makeTrip(
+            startName: "Foo Caddesi",
+            endName: "Bar Sokak",
+            start: CLLocationCoordinate2D(latitude: 41.009, longitude: 28.979),
+            end: CLLocationCoordinate2D(latitude: 41.037, longitude: 29.001),
+            startedAt: Date().addingTimeInterval(-900)
+        )
+        context.insert(first)
+        context.insert(second)
+        TripRollupService.add(first, in: context)
+        TripRollupService.add(second, in: context)
+        try context.save()
+
+        let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.count, 2)
+    }
+
+    func testReverseDirectionMergesIntoOneCorridor() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let outbound = makeTrip(
+            startName: "Ev",
+            endName: "Ofis",
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.080, longitude: 29.010)
+        )
+        let inbound = makeTrip(
+            startName: "Ofis",
+            endName: "Ev",
+            start: CLLocationCoordinate2D(latitude: 41.080, longitude: 29.010),
+            end: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            startedAt: Date().addingTimeInterval(-900)
+        )
+        context.insert(outbound)
+        context.insert(inbound)
+        TripRollupService.add(outbound, in: context)
+        TripRollupService.add(inbound, in: context)
+        try context.save()
+
+        let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.count, 2)
+    }
+
+    func testDistantSameNamesStaySplit() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let istanbul = makeTrip(
+            startName: "Ev",
+            endName: "Ofis",
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.080, longitude: 29.010)
+        )
+        let izmir = makeTrip(
+            startName: "Ev",
+            endName: "Ofis",
+            start: CLLocationCoordinate2D(latitude: 38.423, longitude: 27.143),
+            end: CLLocationCoordinate2D(latitude: 38.462, longitude: 27.218),
+            startedAt: Date().addingTimeInterval(-900)
+        )
+        context.insert(istanbul)
+        context.insert(izmir)
+        TripRollupService.add(istanbul, in: context)
+        TripRollupService.add(izmir, in: context)
+        try context.save()
+
+        let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
+        XCTAssertEqual(rows.count, 2)
+    }
+
+    func testRouteRebuildMergesHistoryWithoutTouchingAchievements() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let first = makeTrip(
+            startName: "Eski Etiket",
+            endName: "Ofis A",
+            start: CLLocationCoordinate2D(latitude: 41.008, longitude: 28.978),
+            end: CLLocationCoordinate2D(latitude: 41.036, longitude: 29.000)
+        )
+        let second = makeTrip(
+            startName: "Yeni Etiket",
+            endName: "Ofis B",
+            start: CLLocationCoordinate2D(latitude: 41.009, longitude: 28.979),
+            end: CLLocationCoordinate2D(latitude: 41.037, longitude: 29.001),
+            startedAt: Date().addingTimeInterval(-900)
+        )
+        context.insert(first)
+        context.insert(second)
+        try context.save()
+
+        let existing = AchievementProgress(achievementID: AchievementID.firstTrip.rawValue, currentValue: 1)
+        existing.unlockedAt = first.endedAt
+        context.insert(existing)
+        try context.save()
+
+        await PremiumDerivedMaintenance.rebuildRoutes(container: container)
+
+        let rows = try context.fetch(FetchDescriptor<FrequentRouteAggregate>())
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.count, 2)
+        let progress = try context.fetch(FetchDescriptor<AchievementProgress>())
+        XCTAssertEqual(progress.count, 1)
+        XCTAssertEqual(progress.first?.currentValue, 1)
+    }
+
+    private func makeTrip(
+        startName: String,
+        endName: String,
+        start: CLLocationCoordinate2D,
+        end: CLLocationCoordinate2D,
+        startedAt: Date = Date().addingTimeInterval(-1_800)
+    ) -> Trip {
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(1_200),
+            distanceMeters: 8_000,
+            startPlaceName: startName,
+            endPlaceName: endName
+        )
+        trip.startLatitude = start.latitude
+        trip.startLongitude = start.longitude
+        trip.endLatitude = end.latitude
+        trip.endLongitude = end.longitude
+        return trip
     }
 }

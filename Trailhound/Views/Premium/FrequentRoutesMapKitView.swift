@@ -2,75 +2,92 @@ import MapKit
 import SwiftUI
 
 enum FrequentRoutesMapCamera {
-    /// Fits one corridor (start, end, arc control) with modest padding — not a regional overview.
     static func visibleRect(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D) -> MKMapRect {
-        let control = FrequentRouteAggregateService.arcControlPoint(start: start, end: end)
+        visibleRect(coordinates: [start, end])
+    }
+
+    static func visibleRect(coordinates: [CLLocationCoordinate2D]) -> MKMapRect {
         var rect = MKMapRect.null
-        for coordinate in [start, end, control] {
+        for coordinate in coordinates where CLLocationCoordinate2DIsValid(coordinate) {
             let point = MKMapPoint(coordinate)
             rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
         }
-        let latitude = (start.latitude + end.latitude) / 2
+        guard !rect.isNull, !rect.isEmpty else { return .null }
+        let latitude = coordinates.first?.latitude ?? 0
         let metersPerPoint = MKMetersPerMapPointAtLatitude(latitude)
-        let minPad = 900 / max(metersPerPoint, 0.001)
-        let padX = max(rect.size.width * 0.42, minPad)
-        let padY = max(rect.size.height * 0.42, minPad)
+        let minPad = 520 / max(metersPerPoint, 0.001)
+        let padX = max(rect.size.width * 0.28, minPad)
+        let padY = max(rect.size.height * 0.28, minPad)
         return rect.insetBy(dx: -padX, dy: -padY)
     }
 
-    static let edgePadding = UIEdgeInsets(top: 56, left: 28, bottom: 160, right: 28)
-}
+    static func visibleRect(
+        covering aggregates: [FrequentRouteAggregate],
+        paths: [String: [CLLocationCoordinate2D]] = [:]
+    ) -> MKMapRect {
+        var coords: [CLLocationCoordinate2D] = []
+        for aggregate in aggregates where aggregate.hasValidCoordinates {
+            if let path = paths[aggregate.pairKey], path.count >= 2 {
+                coords.append(contentsOf: path)
+            } else {
+                coords.append(aggregate.startCoordinate)
+                coords.append(aggregate.endCoordinate)
+            }
+        }
+        let fitted = visibleRect(coordinates: coords)
+        guard let featured = aggregates.first(where: \.hasValidCoordinates) else { return fitted }
+        if spanMeters(fitted) > FrequentRouteOverlayBudget.maxCameraSpanMeters {
+            if let path = paths[featured.pairKey], path.count >= 2 {
+                return visibleRect(coordinates: path)
+            }
+            return visibleRect(start: featured.startCoordinate, end: featured.endCoordinate)
+        }
+        return fitted
+    }
 
-final class FrequentRouteArcOverlay: NSObject, MKOverlay {
-    let start: CLLocationCoordinate2D
-    let end: CLLocationCoordinate2D
-    let count: Int
-    let isBusiness: Bool
-    let pairKey: String
-    let boundingMapRect: MKMapRect
-    let coordinate: CLLocationCoordinate2D
+    static func spanMeters(_ rect: MKMapRect) -> CLLocationDistance {
+        guard !rect.isNull else { return 0 }
+        let a = MKMapPoint(x: rect.minX, y: rect.minY)
+        let b = MKMapPoint(x: rect.maxX, y: rect.maxY)
+        return a.distance(to: b)
+    }
 
-    init(aggregate: FrequentRouteAggregate) {
-        start = aggregate.startCoordinate
-        end = aggregate.endCoordinate
-        count = aggregate.count
-        isBusiness = aggregate.isBusinessHeavy
-        pairKey = aggregate.pairKey
-        let startItem = MKMapPoint(start)
-        let endItem = MKMapPoint(end)
-        boundingMapRect = MKMapRect(
-            x: min(startItem.x, endItem.x),
-            y: min(startItem.y, endItem.y),
-            width: max(abs(startItem.x - endItem.x), 1),
-            height: max(abs(startItem.y - endItem.y), 1)
-        ).insetBy(dx: -80_000, dy: -80_000)
-        coordinate = CLLocationCoordinate2D(
-            latitude: (start.latitude + end.latitude) / 2,
-            longitude: (start.longitude + end.longitude) / 2
-        )
-        super.init()
+    static let edgePadding = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+
+    /// Stable insets so the corridor does not slide when the host grows card → full screen.
+    static func edgePadding(for size: CGSize) -> UIEdgeInsets {
+        _ = size
+        return edgePadding
     }
 }
 
-final class FrequentRouteArcRenderer: MKOverlayRenderer {
-    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
-        guard let overlay = overlay as? FrequentRouteArcOverlay else { return }
-        let start = point(for: MKMapPoint(overlay.start))
-        let end = point(for: MKMapPoint(overlay.end))
-        let controlCoord = FrequentRouteAggregateService.arcControlPoint(start: overlay.start, end: overlay.end)
-        let control = point(for: MKMapPoint(controlCoord))
-        let path = CGMutablePath()
-        path.move(to: start)
-        path.addQuadCurve(to: end, control: control)
-        let weight = CGFloat(1.5 + log2(Double(max(overlay.count, 1))))
-        context.setLineWidth(weight * 1.8 / zoomScale)
-        context.setLineCap(.round)
-        let color = overlay.isBusiness
-            ? UIColor(red: 0.61, green: 0.50, blue: 0.91, alpha: 0.85)
-            : UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: 0.85)
-        context.setStrokeColor(color.cgColor)
-        context.addPath(path)
-        context.strokePath()
+final class FrequentRoutesMapViewHost: MKMapView {
+    var onLayout: ((MKMapView) -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?(self)
+    }
+}
+
+final class FrequentRoutePolyline: MKPolyline {
+    var count: Int = 1
+    var isBusiness: Bool = false
+    var pairKey: String = ""
+    var emphasis: CGFloat = 1
+
+    static func make(
+        coordinates: [CLLocationCoordinate2D],
+        aggregate: FrequentRouteAggregate,
+        emphasis: CGFloat
+    ) -> FrequentRoutePolyline {
+        var coords = coordinates
+        let line = FrequentRoutePolyline(coordinates: &coords, count: coords.count)
+        line.count = aggregate.count
+        line.isBusiness = aggregate.isBusinessHeavy
+        line.pairKey = aggregate.pairKey
+        line.emphasis = min(1, max(0.28, emphasis))
+        return line
     }
 }
 
@@ -139,12 +156,15 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
         Coordinator(onSelect: onSelect)
     }
 
-    func makeUIView(context: Context) -> MKMapView {
-        let map = MKMapView(frame: .zero)
+    func makeUIView(context: Context) -> FrequentRoutesMapViewHost {
+        let map = FrequentRoutesMapViewHost(frame: .zero)
         map.delegate = context.coordinator
         map.pointOfInterestFilter = .excludingAll
         map.showsCompass = false
         map.showsScale = false
+        map.onLayout = { [weak coordinator = context.coordinator] host in
+            coordinator?.handleLayout(host)
+        }
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.didTapMap(_:)))
         tap.delegate = context.coordinator
         map.addGestureRecognizer(tap)
@@ -152,11 +172,12 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
         return map
     }
 
-    func updateUIView(_ map: MKMapView, context: Context) {
+    func updateUIView(_ map: FrequentRoutesMapViewHost, context: Context) {
         context.coordinator.onSelect = onSelect
         applyStyle(map)
-        let top = FrequentRouteOverlayBudget.topAggregates(aggregates)
-        context.coordinator.replaceOverlays(on: map, aggregates: top)
+        let habits = FrequentRouteOverlayBudget.habitCorridors(aggregates)
+        context.coordinator.replaceOverlays(on: map, aggregates: habits)
+        context.coordinator.handleLayout(map)
     }
 
     private func applyStyle(_ map: MKMapView) {
@@ -173,12 +194,36 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var onSelect: ((FrequentRouteAggregate) -> Void)?
-        private var overlaysInstalled = false
         private var lastKeys: [String] = []
         private var byKey: [String: FrequentRouteAggregate] = [:]
+        private var pathByKey: [String: [CLLocationCoordinate2D]] = [:]
+        private var displayed: [FrequentRouteAggregate] = []
+        private var selected: FrequentRouteAggregate?
+        private var lastLayoutSize: CGSize = .zero
+        private var pathLoadGeneration = 0
 
         init(onSelect: ((FrequentRouteAggregate) -> Void)?) {
             self.onSelect = onSelect
+        }
+
+        func handleLayout(_ map: MKMapView) {
+            let size = map.bounds.size
+            guard size.width >= 64, size.height >= 64 else { return }
+            let changed = abs(size.width - lastLayoutSize.width) > 0.5
+                || abs(size.height - lastLayoutSize.height) > 0.5
+            lastLayoutSize = size
+            guard changed else { return }
+            pinCamera(on: map, animated: false)
+        }
+
+        /// Camera is for the full-screen map. The overlay scales that view into the card;
+        /// resizing the MKMapView would pan tiles upward.
+        private func pinCamera(on map: MKMapView, animated: Bool) {
+            if let selected {
+                focus(map, on: selected, animated: animated)
+            } else {
+                focusHabits(on: map, animated: animated)
+            }
         }
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -191,19 +236,17 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             let coordinate = map.convert(point, toCoordinateFrom: map)
             let tap = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
             var best: (FrequentRouteAggregate, CLLocationDistance)?
-            for aggregate in byKey.values where aggregate.hasValidCoordinates {
-                let samples = FrequentRouteAggregateService.bezierSamples(
-                    start: aggregate.startCoordinate,
-                    end: aggregate.endCoordinate
-                )
+            for (key, aggregate) in byKey where aggregate.hasValidCoordinates {
+                let samples = pathByKey[key] ?? [aggregate.startCoordinate, aggregate.endCoordinate]
                 let nearest = samples.map {
                     tap.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude))
                 }.min() ?? .greatestFiniteMagnitude
-                if nearest < 18_000, nearest < (best?.1 ?? .greatestFiniteMagnitude) {
+                if nearest < 500, nearest < (best?.1 ?? .greatestFiniteMagnitude) {
                     best = (aggregate, nearest)
                 }
             }
             if let best {
+                selected = best.0
                 onSelect?(best.0)
                 focus(map, on: best.0, animated: true)
             }
@@ -213,22 +256,28 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             let keys = aggregates.map(\.pairKey)
             guard keys != lastKeys else { return }
             lastKeys = keys
+            displayed = aggregates
             byKey = Dictionary(uniqueKeysWithValues: aggregates.map { ($0.pairKey, $0) })
+            pathByKey = [:]
+            selected = nil
             map.removeOverlays(map.overlays)
-            var samples: [CLLocationCoordinate2D] = []
-            samples.reserveCapacity(aggregates.count * FrequentRouteOverlayBudget.heatmapSamplesPerArc)
-            for aggregate in aggregates where aggregate.hasValidCoordinates {
-                map.addOverlay(FrequentRouteArcOverlay(aggregate: aggregate), level: .aboveRoads)
-                samples.append(contentsOf: FrequentRouteAggregateService.bezierSamples(
-                    start: aggregate.startCoordinate,
-                    end: aggregate.endCoordinate
-                ))
-            }
-            if !samples.isEmpty {
-                map.addOverlay(FrequentRoutesHeatmapOverlay(samples: samples), level: .aboveLabels)
-            }
-            if let first = aggregates.first(where: \.hasValidCoordinates) {
-                focus(map, on: first, animated: false)
+            focusHabits(on: map, animated: false)
+            pathLoadGeneration += 1
+            let generation = pathLoadGeneration
+            let snapshot = aggregates
+            Task { @MainActor [weak self, weak map] in
+                guard let self, let map, generation == self.pathLoadGeneration else { return }
+                var paths: [String: [CLLocationCoordinate2D]] = [:]
+                for aggregate in snapshot where aggregate.hasValidCoordinates {
+                    paths[aggregate.pairKey] = await FrequentRouteRoadPathCache.shared.path(
+                        pairKey: aggregate.pairKey,
+                        start: aggregate.startCoordinate,
+                        end: aggregate.endCoordinate
+                    )
+                }
+                guard generation == self.pathLoadGeneration else { return }
+                self.pathByKey = paths
+                self.installRoadOverlays(on: map)
             }
         }
 
@@ -236,17 +285,59 @@ struct FrequentRoutesMapKitView: UIViewRepresentable {
             if overlay is FrequentRoutesHeatmapOverlay {
                 return FrequentRoutesHeatmapRenderer(overlay: overlay)
             }
-            return FrequentRouteArcRenderer(overlay: overlay)
+            guard let line = overlay as? FrequentRoutePolyline else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+            let renderer = MKPolylineRenderer(polyline: line)
+            renderer.lineCap = .round
+            renderer.lineJoin = .round
+            renderer.lineWidth = 3.2 + 5.0 * line.emphasis
+            let alpha = 0.42 + 0.50 * line.emphasis
+            renderer.strokeColor = line.isBusiness
+                ? UIColor(red: 0.61, green: 0.50, blue: 0.91, alpha: alpha)
+                : UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: alpha)
+            return renderer
+        }
+
+        private func installRoadOverlays(on map: MKMapView) {
+            map.removeOverlays(map.overlays)
+            var samples: [CLLocationCoordinate2D] = []
+            let heroCount = max(displayed.first?.count ?? 1, 1)
+            for aggregate in displayed where aggregate.hasValidCoordinates {
+                let coords = pathByKey[aggregate.pairKey] ?? [aggregate.startCoordinate, aggregate.endCoordinate]
+                guard coords.count >= 2 else { continue }
+                let emphasis = CGFloat(aggregate.count) / CGFloat(heroCount)
+                map.addOverlay(
+                    FrequentRoutePolyline.make(coordinates: coords, aggregate: aggregate, emphasis: emphasis),
+                    level: .aboveRoads
+                )
+                samples.append(contentsOf: FrequentRouteRoadPathCache.heatmapSamples(
+                    coords,
+                    count: FrequentRouteOverlayBudget.heatmapSamplesPerArc
+                ))
+            }
+            if !samples.isEmpty {
+                map.addOverlay(FrequentRoutesHeatmapOverlay(samples: samples), level: .aboveLabels)
+            }
+            // Keep the first camera. Reframing when roads arrive would pan during the expand.
+        }
+
+        private func focusHabits(on map: MKMapView, animated: Bool) {
+            let rect = FrequentRoutesMapCamera.visibleRect(covering: displayed, paths: pathByKey)
+            guard !rect.isNull, !rect.isEmpty else { return }
+            map.setVisibleMapRect(
+                rect,
+                edgePadding: FrequentRoutesMapCamera.edgePadding(for: map.bounds.size),
+                animated: animated
+            )
         }
 
         private func focus(_ map: MKMapView, on aggregate: FrequentRouteAggregate, animated: Bool) {
             guard aggregate.hasValidCoordinates else { return }
+            let coords = pathByKey[aggregate.pairKey] ?? [aggregate.startCoordinate, aggregate.endCoordinate]
             map.setVisibleMapRect(
-                FrequentRoutesMapCamera.visibleRect(
-                    start: aggregate.startCoordinate,
-                    end: aggregate.endCoordinate
-                ),
-                edgePadding: FrequentRoutesMapCamera.edgePadding,
+                FrequentRoutesMapCamera.visibleRect(coordinates: coords),
+                edgePadding: FrequentRoutesMapCamera.edgePadding(for: map.bounds.size),
                 animated: animated
             )
         }
@@ -275,21 +366,22 @@ final class FrequentRoutesSnapshotCache {
         isBusiness: Bool,
         size: CGSize = CGSize(width: 280, height: 160)
     ) async -> UIImage? {
-        await Self.render(
-            arcs: [
-                SnapshotArc(start: start, end: end, isBusiness: isBusiness, count: count)
-            ],
-            size: size
+        let path = await FrequentRouteRoadPathCache.shared.path(
+            pairKey: "snapshot",
+            start: start,
+            end: end
         )
+        return await Self.render(path: path, count: count, isBusiness: isBusiness, size: size)
     }
 
     func snapshot(
         for aggregates: [FrequentRouteAggregate],
         size: CGSize = CGSize(width: 320, height: 140)
     ) async -> UIImage? {
-        let top = FrequentRouteOverlayBudget.topAggregates(aggregates).filter(\.hasValidCoordinates)
-        guard !top.isEmpty else { return nil }
-        let key = top.prefix(8).map { "\($0.pairKey):\($0.count)" }.joined(separator: "|")
+        let featured = FrequentRouteOverlayBudget.habitCorridors(aggregates).first
+            ?? FrequentRouteOverlayBudget.topAggregates(aggregates).first(where: \.hasValidCoordinates)
+        guard let featured else { return nil }
+        let key = "road:\(featured.pairKey):\(featured.count)"
         if let cached = memory[key] { return cached }
         if let existing = inFlight[key] { return await existing.value }
         let diskURL = cacheDirectory.appendingPathComponent("\(Self.stableName(for: key)).jpg")
@@ -297,9 +389,18 @@ final class FrequentRoutesSnapshotCache {
             memory[key] = image
             return image
         }
-        let copies = top.prefix(8).map { SnapshotArc(from: $0) }
+        let path = await FrequentRouteRoadPathCache.shared.path(
+            pairKey: featured.pairKey,
+            start: featured.startCoordinate,
+            end: featured.endCoordinate
+        )
+        let copies = SnapshotStroke(
+            path: path,
+            isBusiness: featured.isBusinessHeavy,
+            count: featured.count
+        )
         let task = Task<UIImage?, Never> {
-            await Self.render(arcs: copies, size: size)
+            await Self.render(path: copies.path, count: copies.count, isBusiness: copies.isBusiness, size: size)
         }
         inFlight[key] = task
         let image = await task.value
@@ -325,35 +426,24 @@ final class FrequentRoutesSnapshotCache {
         return String(hash, radix: 16)
     }
 
-    private struct SnapshotArc {
-        let start: CLLocationCoordinate2D
-        let end: CLLocationCoordinate2D
+    private struct SnapshotStroke {
+        let path: [CLLocationCoordinate2D]
         let isBusiness: Bool
         let count: Int
-
-        init(start: CLLocationCoordinate2D, end: CLLocationCoordinate2D, isBusiness: Bool, count: Int) {
-            self.start = start
-            self.end = end
-            self.isBusiness = isBusiness
-            self.count = count
-        }
-
-        init(from aggregate: FrequentRouteAggregate) {
-            start = aggregate.startCoordinate
-            end = aggregate.endCoordinate
-            isBusiness = aggregate.isBusinessHeavy
-            count = aggregate.count
-        }
     }
 
-    private static func render(arcs: [SnapshotArc], size: CGSize) async -> UIImage? {
-        let coordinates = arcs.flatMap { [$0.start, $0.end] }
-        guard coordinates.count >= 2 else { return nil }
+    private static func render(
+        path: [CLLocationCoordinate2D],
+        count: Int,
+        isBusiness: Bool,
+        size: CGSize
+    ) async -> UIImage? {
+        guard path.count >= 2 else { return nil }
         let options = MKMapSnapshotter.Options()
         options.size = size
         options.mapType = .standard
         options.pointOfInterestFilter = .excludingAll
-        options.mapRect = FrequentRoutesMapCamera.visibleRect(start: arcs[0].start, end: arcs[0].end)
+        options.mapRect = FrequentRoutesMapCamera.visibleRect(coordinates: path)
         let snapshot: MKMapSnapshotter.Snapshot
         do {
             snapshot = try await MKMapSnapshotter(options: options).start()
@@ -365,23 +455,20 @@ final class FrequentRoutesSnapshotCache {
             snapshot.image.draw(in: CGRect(origin: .zero, size: size))
             let cg = ctx.cgContext
             cg.setLineCap(.round)
-            for arc in arcs {
-                let start = snapshot.point(for: arc.start)
-                let end = snapshot.point(for: arc.end)
-                let controlCoord = FrequentRouteAggregateService.arcControlPoint(start: arc.start, end: arc.end)
-                let control = snapshot.point(for: controlCoord)
-                let path = CGMutablePath()
-                path.move(to: start)
-                path.addQuadCurve(to: end, control: control)
-                cg.addPath(path)
-                let alpha: CGFloat = 0.45 + min(0.4, CGFloat(log2(Double(max(arc.count, 1)))) * 0.08)
-                let color = arc.isBusiness
-                    ? UIColor(red: 0.61, green: 0.50, blue: 0.91, alpha: alpha)
-                    : UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: alpha)
-                cg.setStrokeColor(color.cgColor)
-                cg.setLineWidth(2.4 + CGFloat(log2(Double(max(arc.count, 1)))))
-                cg.strokePath()
+            cg.setLineJoin(.round)
+            let line = CGMutablePath()
+            line.move(to: snapshot.point(for: path[0]))
+            for coordinate in path.dropFirst() {
+                line.addLine(to: snapshot.point(for: coordinate))
             }
+            cg.addPath(line)
+            let alpha: CGFloat = 0.55 + min(0.35, CGFloat(log2(Double(max(count, 1)))) * 0.08)
+            let color = isBusiness
+                ? UIColor(red: 0.61, green: 0.50, blue: 0.91, alpha: alpha)
+                : UIColor(red: 0.23, green: 0.56, blue: 0.85, alpha: alpha)
+            cg.setStrokeColor(color.cgColor)
+            cg.setLineWidth(2.6 + CGFloat(log2(Double(max(count, 1)))))
+            cg.strokePath()
         }
     }
 }

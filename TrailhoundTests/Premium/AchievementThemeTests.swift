@@ -93,18 +93,16 @@ final class AchievementThemeTests: XCTestCase {
         XCTAssertEqual(AchievementID.hours24.systemImage, "hourglass")
         XCTAssertEqual(AchievementID.hours100.systemImage, "hourglass.bottomhalf.filled")
         XCTAssertEqual(AchievementID.longhaul1.systemImage, "car.side.fill")
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 0), 0, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 0.5), 1, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 1), 0, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulDrivePhase(loop: 1, isParked: true), 0.5, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelX(loop: 0.5, size: 100), 0, accuracy: 0.01)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelOpacity(loop: 0.5), 1, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulDrivePhase(loop: 0.35, isParked: false), 0.35, accuracy: 0.001)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelX(loop: 0, size: 100), -24, accuracy: 0.01)
-        XCTAssertEqual(AchievementMedalIdle.longhaulTravelX(loop: 1, size: 100), 24, accuracy: 0.01)
+        XCTAssertEqual(AchievementMedalIdle.longhaulCruiseX(phase: 0.5, size: 100), 0, accuracy: 0.01)
+        XCTAssertEqual(AchievementMedalIdle.longhaulHillY(phase: 0, size: 100), 0, accuracy: 0.01)
+        XCTAssertEqual(AchievementMedalIdle.longhaulHillY(phase: 1, size: 100), 0, accuracy: 0.01)
+        XCTAssertLessThan(AchievementMedalIdle.longhaulHillY(phase: 0.5, size: 100), -10)
+        XCTAssertEqual(AchievementMedalIdle.longhaulNosePitch(phase: 0.5), 0, accuracy: 0.01)
+        XCTAssertLessThan(AchievementMedalIdle.longhaulNosePitch(phase: 0), -10)
+        XCTAssertGreaterThan(AchievementMedalIdle.longhaulNosePitch(phase: 1), 10)
         XCTAssertFalse(AchievementMedalIdle.discTilts(.longhaul))
         XCTAssertTrue(AchievementMedalIdle.glyphOverflows(.longhaul))
-        XCTAssertEqual(AchievementMedalIdle.period(for: .longhaul), 3.0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.period(for: .longhaul), 2.5, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.loop(at: 0.5, duration: 1), 0.5, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.loop(at: 1.5, duration: 1), 0.5, accuracy: 0.001)
     }
@@ -250,6 +248,7 @@ final class AchievementThemeTests: XCTestCase {
         XCTAssertEqual(AchievementMedalIdle.pingPong(at: 0, duration: 1), 0, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.pingPong(at: 1, duration: 1), 1, accuracy: 0.001)
         XCTAssertEqual(AchievementMedalIdle.pingPong(at: 2, duration: 1), 0, accuracy: 0.001)
+        XCTAssertEqual(AchievementMedalIdle.compactClockFPS, 12)
         XCTAssertEqual(AchievementMedalIdle.compactClockInterval, 1.0 / 12.0, accuracy: 0.0001)
     }
 
@@ -306,6 +305,7 @@ final class AchievementThemeTests: XCTestCase {
         XCTAssertLessThan(AchievementGalleryTokens.cardHeight, 220)
         XCTAssertLessThanOrEqual(AchievementGalleryTokens.bodySlotHeight, 32)
         XCTAssertLessThanOrEqual(AchievementGalleryTokens.medalSize, 48)
+        XCTAssertEqual(AchievementGalleryTokens.shareSlotHeight, 44)
     }
 
     func testGalleryExpandGrowsFromSourceFrame() {

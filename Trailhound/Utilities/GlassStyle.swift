@@ -17,7 +17,7 @@ enum GlassTokens {
 
     /// Compact frozen circle on a live map (Stats overlay collapse).
     static let toolbarFrozenCircleSide: CGFloat = 36
-    /// Overlay toolbar circle (Year recap story Share/Close, Stats expand collapse).
+    /// Overlay toolbar circle (Year recap story Share/Close).
     /// Matches camera overlay hit size (`GlassToolbarControlBackground` 44pt).
     static let toolbarControlCircleSide: CGFloat = 44
 
@@ -501,6 +501,36 @@ struct GlassChromeModifier: ViewModifier {
                     GlassSurface(cornerRadius: cornerRadius, density: .chrome, frozen: frozen)
                 }
                 .clipShape(shape)
+        }
+    }
+}
+
+/// 44pt Liquid Glass circle for overlay toolbar glyphs (Stats expand collapse).
+struct GlassCircleChromeModifier: ViewModifier {
+    var side: CGFloat = GlassTokens.toolbarControlCircleSide
+    var frozen: Bool = false
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        let shaped = content
+            .frame(width: side, height: side)
+        // Same circle as the system toolbar item (Trip/Travel back): native
+        // Liquid Glass in Light *and* Dark. Do not use GlassEngineResolver here —
+        // Dark would pick Material and paint an opaque plate over the map.
+        if reduceTransparency || frozen {
+            shaped
+                .background {
+                    GlassToolbarControlBackground(shape: Circle(), frozen: true)
+                }
+        } else if #available(iOS 26.0, *) {
+            shaped
+                .glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            shaped
+                .background {
+                    GlassToolbarControlBackground(shape: Circle(), frozen: false)
+                }
         }
     }
 }
@@ -1010,6 +1040,14 @@ extension View {
 
     func glassChrome(cornerRadius: CGFloat = GlassTokens.chipRadius, frozen: Bool = false) -> some View {
         modifier(GlassChromeModifier(cornerRadius: cornerRadius, frozen: frozen))
+    }
+
+    /// 44pt Liquid Glass circle — overlay collapse (Badges, Frequent routes, month forecast).
+    func glassCircleChrome(
+        side: CGFloat = GlassTokens.toolbarControlCircleSide,
+        frozen: Bool = false
+    ) -> some View {
+        modifier(GlassCircleChromeModifier(side: side, frozen: frozen))
     }
 
     /// Nested frost inside a glass card. Selected = chip chrome; unselected = nested tint fill.

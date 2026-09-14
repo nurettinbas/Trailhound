@@ -96,6 +96,7 @@ Optional smoke:
 ## Premium Stats (V21)
 
 - [ ] **Year recap** — Stats hub + Play story; badges strip; frequent-routes map; month cost forecast (pump fuel on its own line)
+- [ ] **Badge share** — unlocked gallery chip is a compact palette-tint Share control; the sheet gets a 9:16 medal poster (icon + glass card + Trailhound mark), not title text
 - [ ] **Widgets** — goal ring, last trip, cost summary; Last Trip route preview toggle under Settings → Privacy
 - [ ] **Schema upgrade** — existing journal + smart-category data survive; locality/caches backfill without store reset
 

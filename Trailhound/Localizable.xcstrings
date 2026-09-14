@@ -11141,31 +11141,31 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "المس قوسًا لعرض المسار."
+            "value": "مساراتك المتكررة. المس مسارًا آخر للتركيز عليه."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tippe einen Bogen an, um die Strecke zu sehen."
+            "value": "Deine wiederholten Strecken. Tippe eine andere an, um sie zu fokussieren."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap an arc to see that corridor."
+            "value": "Your repeated corridors. Tap another to focus."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tocca un arco per vedere il percorso."
+            "value": "I tragitti che ripeti. Tocca un altro per metterlo a fuoco."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bir yaya dokun, rota ayrıntısını gör."
+            "value": "Tekrar ettiğin güzergâhlar. Başkasına dokun, onu öne al."
           }
         }
       }

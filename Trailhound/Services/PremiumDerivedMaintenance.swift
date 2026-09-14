@@ -113,6 +113,10 @@ enum PremiumDerivedMaintenance {
     /// pick up the same historical trips (the v1 stamp skipped them).
     private static let achievementRebuildVersionKey = "trailhound.premium.achievementRebuiltVersion"
     private static let achievementRebuildVersion = 2
+    /// Version 2 rebuilds corridors with geo-cell + undirected pairing so old reverse-geocode
+    /// name drift no longer fragments the same commute (v1 name keys skipped that merge).
+    private static let routeRebuildVersionKey = "trailhound.premium.routeRebuiltVersion"
+    private static let routeRebuildVersion = 2
 
     static func rebuildIfNeeded(container: ModelContainer) async {
         let defaults = UserDefaults.standard
@@ -120,7 +124,12 @@ enum PremiumDerivedMaintenance {
             await rebuildAll(container: container)
             defaults.set(rebuildVersion, forKey: rebuildVersionKey)
             defaults.set(achievementRebuildVersion, forKey: achievementRebuildVersionKey)
+            defaults.set(routeRebuildVersion, forKey: routeRebuildVersionKey)
             return
+        }
+        if defaults.integer(forKey: routeRebuildVersionKey) < routeRebuildVersion {
+            await rebuildRoutes(container: container)
+            defaults.set(routeRebuildVersion, forKey: routeRebuildVersionKey)
         }
         guard defaults.integer(forKey: achievementRebuildVersionKey) < achievementRebuildVersion else { return }
         await rebuildAchievements(container: container)
@@ -129,6 +138,10 @@ enum PremiumDerivedMaintenance {
 
     static func rebuildAll(container: ModelContainer) async {
         await PremiumDerivedRebuilder(modelContainer: container).run()
+    }
+
+    static func rebuildRoutes(container: ModelContainer) async {
+        await PremiumDerivedRebuilder(modelContainer: container).runRoutes()
     }
 
     static func rebuildAchievements(container: ModelContainer) async {
@@ -145,6 +158,12 @@ actor PremiumDerivedRebuilder {
         clearAchievements()
         try? modelContext.save()
         await replayTrips(includeRoutes: true)
+    }
+
+    func runRoutes() async {
+        clearRoutes()
+        try? modelContext.save()
+        await replayRouteAggregates()
     }
 
     func runAchievements() async {
@@ -209,6 +228,41 @@ actor PremiumDerivedRebuilder {
                         in: modelContext,
                         notify: false
                     )
+                }
+            }
+            try? modelContext.save()
+            offset += batch.count
+            await Task.yield()
+        }
+
+        YearRecapCache.invalidateAll()
+    }
+
+    /// Routes only — must not re-apply achievements (those stay on their own replay).
+    private func replayRouteAggregates() async {
+        let places = (try? modelContext.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let privacyRadius = UserDefaults(suiteName: RecordingControlBridge.appGroupSuiteName)?
+            .double(forKey: "privacyRadiusMeters") ?? 150
+        let radius = privacyRadius > 0 ? privacyRadius : 500
+
+        var offset = 0
+        while !Task.isCancelled {
+            var descriptor = FetchDescriptor<Trip>(
+                predicate: #Predicate { $0.endedAt != nil },
+                sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+            )
+            descriptor.fetchOffset = offset
+            descriptor.fetchLimit = Self.batchSize
+            let batch = (try? modelContext.fetch(descriptor)) ?? []
+            guard !batch.isEmpty else { break }
+
+            for trip in batch {
+                if let snapshot = FrequentRouteAggregateService.snapshot(
+                    of: trip,
+                    places: places,
+                    privacyRadius: radius
+                ) {
+                    FrequentRouteAggregateService.add(snapshot, in: modelContext)
                 }
             }
             try? modelContext.save()

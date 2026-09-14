@@ -24,13 +24,69 @@ struct FrequentRouteSnapshot: Equatable, Sendable {
 
 enum FrequentRouteOverlayBudget {
     static let maxArcs = 40
+    /// Portrait of habit — repeated corridors in the same metro as the top run.
+    static let maxHabitArcs = 8
+    static let minimumHabitCount = 2
     static let heatmapSamplesPerArc = 8
+    static let metroMeters: CLLocationDistance = 45_000
+    static let maxCameraSpanMeters: CLLocationDistance = 70_000
 
     static func topAggregates(_ aggregates: [FrequentRouteAggregate]) -> [FrequentRouteAggregate] {
-        Array(aggregates.sorted { lhs, rhs in
+        Array(ranked(aggregates).prefix(maxArcs))
+    }
+
+    /// Repeated corridors in the same city as the featured run. Count ≥ 2; one-off and far-away trips stay off.
+    static func habitCorridors(_ aggregates: [FrequentRouteAggregate]) -> [FrequentRouteAggregate] {
+        let ranked = ranked(aggregates).filter { $0.hasValidCoordinates && $0.count >= minimumHabitCount }
+        guard let featured = ranked.first else { return [] }
+        let reach = metroRadius(for: featured)
+        var picked: [FrequentRouteAggregate] = [featured]
+        for row in ranked.dropFirst() {
+            guard picked.count < maxHabitArcs else { break }
+            guard sharesMetro(row, with: featured, meters: reach) else { continue }
+            picked.append(row)
+        }
+        return picked
+    }
+
+    private static func ranked(_ aggregates: [FrequentRouteAggregate]) -> [FrequentRouteAggregate] {
+        aggregates.sorted { lhs, rhs in
             if lhs.count != rhs.count { return lhs.count > rhs.count }
             return lhs.pairKey < rhs.pairKey
-        }.prefix(maxArcs))
+        }
+    }
+
+    private static func metroRadius(for featured: FrequentRouteAggregate) -> CLLocationDistance {
+        let start = CLLocation(latitude: featured.startLatitude, longitude: featured.startLongitude)
+        let end = CLLocation(latitude: featured.endLatitude, longitude: featured.endLongitude)
+        return max(metroMeters, start.distance(from: end) * 0.55)
+    }
+
+    private static func sharesMetro(
+        _ row: FrequentRouteAggregate,
+        with featured: FrequentRouteAggregate,
+        meters: CLLocationDistance
+    ) -> Bool {
+        let featuredPoints = [
+            midpoint(featured),
+            CLLocation(latitude: featured.startLatitude, longitude: featured.startLongitude),
+            CLLocation(latitude: featured.endLatitude, longitude: featured.endLongitude)
+        ]
+        let rowPoints = [
+            midpoint(row),
+            CLLocation(latitude: row.startLatitude, longitude: row.startLongitude),
+            CLLocation(latitude: row.endLatitude, longitude: row.endLongitude)
+        ]
+        return rowPoints.contains { point in
+            featuredPoints.contains { $0.distance(from: point) <= meters }
+        }
+    }
+
+    private static func midpoint(_ row: FrequentRouteAggregate) -> CLLocation {
+        CLLocation(
+            latitude: (row.startLatitude + row.endLatitude) / 2,
+            longitude: (row.startLongitude + row.endLongitude) / 2
+        )
     }
 }
 
@@ -82,7 +138,7 @@ enum FrequentRouteAggregateService {
             privacyRadius: privacyRadius
         )
         return FrequentRouteSnapshot(
-            pairKey: "\(startKey)→\(endKey)",
+            pairKey: canonicalPairKey(startKey: startKey, endKey: endKey),
             startKey: startKey,
             endKey: endKey,
             startDisplay: startDisplay,
@@ -205,19 +261,46 @@ enum FrequentRouteAggregateService {
         }
     }
 
-    /// Privacy-zone endpoints cluster on the saved place identity, not the raw GPS cell.
-    private static func clusterKey(
+    /// A→B and B→A are the same corridor for the map card.
+    static func canonicalPairKey(startKey: String, endKey: String) -> String {
+        startKey <= endKey ? "\(startKey)→\(endKey)" : "\(endKey)→\(startKey)"
+    }
+
+    /// ~450 m at the equator — parking jitter merges, separate neighborhoods do not.
+    static let geoCellDegrees = 0.004
+
+    static func geoCellKey(_ coordinate: CLLocationCoordinate2D) -> String {
+        let cell = geoCellDegrees
+        let latCell = Int((coordinate.latitude / cell).rounded())
+        let lonCell = Int((coordinate.longitude / cell).rounded())
+        return "geo:\(latCell),\(lonCell)"
+    }
+
+    /// Saved-place identity first, then a geo cell. Reverse-geocode name drift must not
+    /// split a commute that old trips already recorded under a different street label.
+    static func clusterKey(
         placeName: String?,
         address: String?,
         coordinate: CLLocationCoordinate2D?,
         places: [SavedPlace],
         privacyRadius: Double
     ) -> String {
-        if let place = TripLocalityResolver.privacyPlace(
-            for: coordinate,
+        if let coordinate, isUsable(coordinate),
+           let place = PlaceMatchingService.matchingPlace(
+            at: coordinate,
             places: places,
             privacyRadius: privacyRadius
-        ) {
+           ) {
+            return "place:\(place.id.uuidString)"
+        }
+        if let coordinate, isUsable(coordinate) {
+            return geoCellKey(coordinate)
+        }
+        let trimmedName = placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedName.isEmpty,
+           let place = places.first(where: {
+               $0.name.compare(trimmedName, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+           }) {
             return "place:\(place.id.uuidString)"
         }
         return FrequentRoutesService.routeKey(
@@ -225,5 +308,10 @@ enum FrequentRouteAggregateService {
             address: address,
             coordinate: coordinate
         )
+    }
+
+    private static func isUsable(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        CLLocationCoordinate2DIsValid(coordinate)
+            && (abs(coordinate.latitude) > 0.0001 || abs(coordinate.longitude) > 0.0001)
     }
 }

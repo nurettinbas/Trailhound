@@ -295,6 +295,7 @@
 		A1ACHIEVEMODEL0000001 /* AchievementProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEMODEL0000001 /* AchievementProgress.swift */; };
 		A1VISITLOCALMODEL0001 /* VisitedLocality.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VISITLOCALMODEL0001 /* VisitedLocality.swift */; };
 		A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */; };
+		A1FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift */; };
 		A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVECAT000000001 /* AchievementCatalog.swift */; };
 		A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */; };
 		A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */; };
@@ -308,6 +309,7 @@
 		A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */; };
 		A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */; };
 		A1RECAPSHARERENDER001 /* RecapShareRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */; };
+		A1ACHIEVESHARERENDER01 /* AchievementShareRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVESHARERENDER01 /* AchievementShareRenderer.swift */; };
 		A1YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */; };
 		A1PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */; };
 		A1TRIPLOCALITYRES0001 /* TripLocalityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */; };
@@ -346,6 +348,7 @@
 		A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */; };
 		A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */; };
 		A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+		A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */; };
 		A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */; };
 		A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */; };
 		A1RECSTOPPOLICY00000001 /* RecordingConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */; };
@@ -353,6 +356,9 @@
 		A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDIAG000000000001 /* RecordingDiagnostics.swift */; };
 		A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */; };
 		A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */; };
+		A1LAPUBPOLICY0000001 /* LiveActivityDashboardPublishPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAPUBPOLICY0000001 /* LiveActivityDashboardPublishPolicy.swift */; };
+		A1LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift */; };
+		A1LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
 		A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTPRESENTER000001 /* ToastPresenter.swift */; };
 		A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */; };
@@ -677,6 +683,7 @@
 		A2ACHIEVEMODEL0000001 /* AchievementProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementProgress.swift; sourceTree = "<group>"; };
 		A2VISITLOCALMODEL0001 /* VisitedLocality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitedLocality.swift; sourceTree = "<group>"; };
 		A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRouteAggregateService.swift; sourceTree = "<group>"; };
+		A2FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRouteRoadPathCache.swift; sourceTree = "<group>"; };
 		A2ACHIEVECAT000000001 /* AchievementCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementCatalog.swift; sourceTree = "<group>"; };
 		A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEvaluator.swift; sourceTree = "<group>"; };
 		A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumDerivedMaintenance.swift; sourceTree = "<group>"; };
@@ -699,6 +706,7 @@
 		A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapScenes.swift; sourceTree = "<group>"; };
 		A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapStoryView.swift; sourceTree = "<group>"; };
 		A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/RecapShareRenderer.swift; sourceTree = "<group>"; };
+		A2ACHIEVESHARERENDER01 /* AchievementShareRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/AchievementShareRenderer.swift; sourceTree = "<group>"; };
 		A2VCAREENUMS000000001 /* VehicleCareEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareEnums.swift; sourceTree = "<group>"; };
 		A2VSCHEDULE0000000001 /* VehicleSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleSchedule.swift; sourceTree = "<group>"; };
 		A2VEXPENSE00000000001 /* VehicleExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpense.swift; sourceTree = "<group>"; };
@@ -728,6 +736,7 @@
 		A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/YearRecapSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementEvaluatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementThemeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementShareRendererTests.swift; sourceTree = SOURCE_ROOT; };
 		A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/MonthCostForecastTests.swift; sourceTree = SOURCE_ROOT; };
 		A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/FrequentRouteAggregateTests.swift; sourceTree = SOURCE_ROOT; };
 		A2RECSTOPPOLICY00000001 /* RecordingConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingConfiguration.swift; sourceTree = "<group>"; };
@@ -735,6 +744,9 @@
 		A2RECDIAG000000000001 /* RecordingDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDiagnostics.swift; sourceTree = "<group>"; };
 		A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSyncCoordinator.swift; sourceTree = "<group>"; };
 		A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDisplaySampler.swift; sourceTree = "<group>"; };
+		A2LAPUBPOLICY0000001 /* LiveActivityDashboardPublishPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDashboardPublishPolicy.swift; sourceTree = "<group>"; };
+		A2LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDashboardOcclusionMonitor.swift; sourceTree = "<group>"; };
+		A2LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/LiveActivityDashboardPublishPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
 		A2TOASTPRESENTER000001 /* ToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastPresenter.swift; sourceTree = "<group>"; };
 		A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteConfirmPresenter.swift; sourceTree = "<group>"; };
@@ -949,6 +961,7 @@
 				983DA16F5A6E442FAAD35B73 /* ExportService.swift */,
 				A2FREQROUTES00000000001 /* FrequentRoutesService.swift */,
 				A2FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift */,
+				A2FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift */,
 				A2ACHIEVECAT000000001 /* AchievementCatalog.swift */,
 				A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */,
 				A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */,
@@ -966,6 +979,7 @@
 				A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */,
 				A2VCARESUMMARY000001 /* VehicleCareSummaryStore.swift */,
 				7E7218250D954707A753EAFC /* RecordingLiveActivityService.swift */,
+				A2LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift */,
 				A2REC0BSERVER00000000001 /* RecordingRequestObserver.swift */,
 				A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */,
 				A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */,
@@ -992,6 +1006,7 @@
 				A2RECDIAG000000000001 /* RecordingDiagnostics.swift */,
 				A2RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift */,
 				A2RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift */,
+				A2LAPUBPOLICY0000001 /* LiveActivityDashboardPublishPolicy.swift */,
 			);
 			path = Recording;
 			sourceTree = "<group>";
@@ -1081,6 +1096,7 @@
 				A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */,
 				A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */,
 				A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */,
+				A2ACHIEVESHARERENDER01 /* AchievementShareRenderer.swift */,
 				89C5F75B18D74EB4B35E48C0 /* PlacePickerView.swift */,
 				1F8346A303B84C5089017287 /* AppLockView.swift */,
 				88030C70371F439DA73D2869 /* TripFilterChips.swift */,
@@ -1272,6 +1288,7 @@
 				B2878D4011C1470B91BA6D0E /* RecordingAccessibilityTests.swift */,
 				98AA9605158D490391F95D65 /* RecordingAndTripStoreTests.swift */,
 				0DB09061DF42424B8EF7A1DB /* RecordingDisplaySamplerTests.swift */,
+				A2LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift */,
 				48F209DE7E0C4780BBAA1392 /* RecordingMovementPolicyTests.swift */,
 				48511A60137842C0BC0C49B6 /* RecordingSpeedTrustTests.swift */,
 				BEC356244F6B41D8B9DD98B1 /* RoadVehicleMarkLayoutTests.swift */,
@@ -1326,6 +1343,7 @@
 				A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */,
 				A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */,
 				A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */,
+				A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */,
 				A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */,
 				A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */,
 				20290C43221C4C39A401E998 /* TripDetailPathPerformanceTests.swift */,
@@ -1526,6 +1544,7 @@
 				A24DB85C65D24C7986E9924A /* RecordingAccessibilityTests.swift in Sources */,
 				C5FE26FD45004DEF8D67DC7E /* RecordingAndTripStoreTests.swift in Sources */,
 				4CFF31123CF5437CAFA28FCE /* RecordingDisplaySamplerTests.swift in Sources */,
+				A1LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift in Sources */,
 				E90AA22ADB1445C1B9C12CCC /* RecordingMovementPolicyTests.swift in Sources */,
 				A3F8A264798F43B1ABE56C07 /* RecordingSpeedTrustTests.swift in Sources */,
 				AF9C28D1FC8348619788A951 /* RoadVehicleMarkLayoutTests.swift in Sources */,
@@ -1580,6 +1599,7 @@
 				A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */,
 				A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */,
 				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */,
+				A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */,
 				A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */,
 				A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */,
 				56C8F9DC4D854B889105D381 /* TripDetailPathPerformanceTests.swift in Sources */,
@@ -1752,6 +1772,7 @@
 				A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */,
 				A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */,
 				A1RECAPSHARERENDER001 /* RecapShareRenderer.swift in Sources */,
+				A1ACHIEVESHARERENDER01 /* AchievementShareRenderer.swift in Sources */,
 				A1MONTHFORECASTLOAD01 /* MonthCostForecastLoader.swift in Sources */,
 				A1MONTHFORECAST000001 /* MonthCostForecast.swift in Sources */,
 				A1LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift in Sources */,
@@ -1759,6 +1780,7 @@
 				A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */,
 				A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */,
 				A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */,
+				A1FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift in Sources */,
 				A1VISITLOCALMODEL0001 /* VisitedLocality.swift in Sources */,
 				A1ACHIEVEMODEL0000001 /* AchievementProgress.swift in Sources */,
 				A1FREQAGGMODEL0000001 /* FrequentRouteAggregate.swift in Sources */,
@@ -1767,6 +1789,8 @@
 				A1RECDIAG000000000001 /* RecordingDiagnostics.swift in Sources */,
 				A1RECSYNCCOORD00000001 /* RecordingSyncCoordinator.swift in Sources */,
 				A1RECDISPSAMPLE000001 /* RecordingDisplaySampler.swift in Sources */,
+				A1LAPUBPOLICY0000001 /* LiveActivityDashboardPublishPolicy.swift in Sources */,
+				A1LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
 				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
 				A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */,

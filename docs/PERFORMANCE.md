@@ -298,7 +298,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   Story pages are built before the cover appears; the snapshot is frozen at open; there is no fetch
   on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
   is not rebuilt every frame (Low Power 12 fps). Stats badges compact strip uses `achievementIdleClock`
-  (`Task.sleep` at 12 fps) because iOS pauses `TimelineView` and often `withAnimation` inside a `List`.
+  (`CADisplayLink` at 12 fps, same host as the recording road) because iOS pauses `TimelineView` and `.task` sleep inside a `List`, which froze medals on a stale tick.
   Gallery overlay uses the same `achievementIdleClock` after the morph (not `withAnimation` 0→1, which parks the 100 km car at opacity 0). Tab switches use `TrailhoundMotion.tabSwitch`.
   Do not put `animation = nil` on `TabView` — that pauses `TimelineView.animation` (recap / onboarding)
   and used to freeze the recording road. List-hosted clocks (recording road, Start hound, steering-wheel
@@ -308,14 +308,19 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,
   background, and UI tests). Page changes use
   `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
-  atmosphere layer). Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is frozen 44pt circles (`GlassToolbarSampling.frozenControl` — Close + Share under the
-  segment bars), not live Material.
+  atmosphere layer).   Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is 44pt Liquid Glass circles (`GlassNavCircleIcon` / `.glassCircleChrome()` — Close + Share under the
+  segment bars), native `glassEffect` in Light and Dark.
   Share PNG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
   The last page keeps the same clock; when the segment fills, the cover dismisses.
-- **Frequent-route map.** Overlay budget is **40 arcs**. Heatmap samples come from quadratic bezier
-  control points (≤8 per corridor), never from a GPS polyline. Rendering uses `MKMapView` overlay
-  renderers with `canDraw` / zoom fade — not thousands of SwiftUI `MapPolyline` views. The Stats
-  mini-preview and expanded camera frame the **featured corridor**, not every overlay’s bounding box.
+- **Frequent-route map.** Stored cap is **40** pairs; the map draws at most **8 habit corridors**
+  (count ≥ 2, same metro as the top run). Strokes are **driving polylines** from `MKDirections`,
+  cached on disk — not quadratic bezier arcs and never a GPS `points` walk. Heatmap samples follow
+  those road paths (≤8 per corridor). Rendering uses `MKPolylineRenderer`. The Stats mini-preview
+  frames the featured corridor; the expanded camera fits the visible habit set (clamped to 70 km).
+  Expand scales that full-screen map into the card clip — the MKMapView stays screen-sized so MapKit
+  does not pan. Edge insets stay 16 pt. A `routeRebuiltVersion` (currently 2) rebuilds
+  aggregates with geo-cell + undirected pairing so old street-label drift does not fragment a commute
+  (achievements stay on their own replay).
 - **Widgets.** Goal ring, last trip, and cost summary read App Group `UserDefaults` plus optional
   `LastTrip.jpg` (kept under 100 KB). The widget extension does not open SwiftData.
   `PremiumWidgetBridge.reloadPremiumWidgetTimelines` runs on stop / finalize / expense / Stats
@@ -350,10 +355,10 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Recording hero stays on the custom Material recipe so the road clock does not resample Liquid Glass every frame. End-credits in the trip list use the opaque `listSurface`, not a second live Material.
 - Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
 - Form/list, Trip/Travel detail, and Vehicles detail **nav-bar** buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`. Custom back keeps the system chevron hidden; `NavigationInteractivePopEnabler` re-enables the edge-swipe pop (including over MapKit). Vehicles passes `disabled` while the embedded editor has unsaved edits so swipe cannot discard silently.
-- Frozen overlay circles (`GlassToolbarSampling.frozenControl` / `GlassNavCircleIcon`, 44pt) stay on chrome that sits **on** the map or story Canvas (Stats expand collapse, Year recap Share/Close). Light uses an opaque white + palette frost (`toolbarLightFill`), not the mid-family solid panel. Do not add a custom `glassEffect` over MapKit. Compact `.frozen` 36pt is unused on these screens.
+- Stats expand collapse and Year recap Share/Close are 44pt Liquid Glass circles (`.glassCircleChrome()` / `GlassNavCircleIcon` / `GlassToolbarCollapseButton`) — native `glassEffect(.regular.interactive())` in `Circle()` in Light and Dark (same as the system toolbar back circle). Do not route this through `GlassEngineResolver` in Dark (that paints an opaque Material plate). Compact `.frozen` 36pt is unused on these screens.
 - Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
-- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car loops on that clock (left→right fade); a parked `withAnimation` 0→1 must not leave the disc empty.
+- The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `CADisplayLink`, not `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car hill-cruises on that clock (offset + nose pitch, opacity stays 1). Badge share rasters a 9:16 poster (`AchievementShareRenderer`) after the gallery settles (or on export); do not call `ImageRenderer` from the idle-clock `body`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist

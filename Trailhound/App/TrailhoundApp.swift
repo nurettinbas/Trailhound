@@ -66,6 +66,7 @@ final class AppRuntime {
 
         tripRecordingService.configure(modelContext: container.mainContext)
         wireRecordingRequestHandlers()
+        wireLiveActivityDashboardOcclusionMonitor()
         reconcileRecordingStateAfterLaunch(context: container.mainContext)
     }
 
@@ -185,6 +186,16 @@ final class AppRuntime {
         }
         DevLog.shared.log(.lifecycle, "suspendIdleMonitoringIfNeeded: stopping idle services")
         tripRecordingService.stopIdleServices()
+    }
+
+    private func wireLiveActivityDashboardOcclusionMonitor() {
+        guard !UITestSupport.isEnabled else { return }
+        LiveActivityDashboardOcclusionMonitor.shared.start { [weak self] occluded in
+            RecordingLiveActivityService.setDashboardOccluded(occluded)
+            if !occluded {
+                self?.tripRecordingService.syncExternalState(force: true)
+            }
+        }
     }
 
     private func wireRecordingRequestHandlers() {

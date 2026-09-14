@@ -880,43 +880,64 @@ private struct LiveActivitySmallFamilyBanner: View {
 
     var body: some View {
         GeometryReader { geo in
+            let size = geo.size
             Group {
-                if geo.size.width >= 300 {
+                if size.width >= 300 {
                     LiveActivityLockScreenBanner(state: state)
+                } else if size.width >= 8, size.height >= 8 {
+                    LiveActivityCarPlayDashboardTile(state: state, tileSize: size)
                 } else {
-                    carPlayColumns(tileSize: geo.size)
+                    LiveActivityCarPlayChrome.fill
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: size.width, height: size.height)
         }
+        .transaction { $0.animation = nil }
     }
+}
 
-    private func carPlayColumns(tileSize: CGSize) -> some View {
+/// Opaque fill so CarPlay replaces the previous snapshot instead of stacking it.
+/// Phone/Siri hide this tile; when it returns, translucent frames ghost Duration / Distance / Speed.
+private enum LiveActivityCarPlayChrome {
+    static let fill = Color(red: 0.165, green: 0.286, blue: 0.455)
+}
+
+private struct LiveActivityCarPlayDashboardTile: View {
+    let state: TripRecordingAttributes.ContentState
+    let tileSize: CGSize
+
+    var body: some View {
         let metrics = liveActivityMetricValues(state)
         let valueFontSize = LiveActivityMetricTypeScale.valueSize(
             for: [metrics.duration, metrics.distance, metrics.speed],
             compact: true
         )
-        // Same visual size as the old equal-column GeometryReader: min(¼ inner width, inner height).
-        let innerWidth = max(1, tileSize.width - 16)
-        let innerHeight = max(1, tileSize.height - 12)
-        let iconSide = max(28, min(innerHeight, (innerWidth - 12) / 4))
+        // Height-only icon so column widths stay stable if CarPlay reports a slightly
+        // different width after Phone UI restores the dashboard.
+        let iconSide = min(40, max(28, tileSize.height - 12))
 
-        return HStack(alignment: .center, spacing: 4) {
-            LiveActivityCarIcon(
-                side: iconSide,
-                photoRevision: state.vehiclePhotoRevision,
-                symbolTint: WidgetPalette.tint(for: .light)
-            )
-            .frame(width: iconSide, height: iconSide)
-            .accessibilityHidden(true)
+        ZStack {
+            LiveActivityCarPlayChrome.fill
+            HStack(alignment: .center, spacing: 4) {
+                LiveActivityCarIcon(
+                    side: iconSide,
+                    photoRevision: state.vehiclePhotoRevision,
+                    symbolTint: WidgetPalette.tint(for: .light)
+                )
+                .frame(width: iconSide, height: iconSide)
+                .accessibilityHidden(true)
 
-            metricColumn(value: metrics.duration, label: WidgetL10n.duration, valueFontSize: valueFontSize)
-            metricColumn(value: metrics.distance, label: WidgetL10n.distance, valueFontSize: valueFontSize)
-            metricColumn(value: metrics.speed, label: WidgetL10n.speed, valueFontSize: valueFontSize)
+                metricColumn(value: metrics.duration, label: WidgetL10n.duration, valueFontSize: valueFontSize)
+                metricColumn(value: metrics.distance, label: WidgetL10n.distance, valueFontSize: valueFontSize)
+                metricColumn(value: metrics.speed, label: WidgetL10n.speed, valueFontSize: valueFontSize)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .environment(\.colorScheme, .dark)
+        .frame(width: tileSize.width, height: tileSize.height)
+        .clipped()
+        .compositingGroup()
     }
 
     private func metricColumn(value: String, label: String, valueFontSize: CGFloat) -> some View {
@@ -926,7 +947,9 @@ private struct LiveActivitySmallFamilyBanner: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .allowsTightening(true)
+                .minimumScaleFactor(0.7)
                 .multilineTextAlignment(.center)
+                .contentTransition(.identity)
                 .frame(maxWidth: .infinity)
             Text(value)
                 .font(.system(size: valueFontSize, weight: .semibold, design: .rounded))
@@ -935,6 +958,7 @@ private struct LiveActivitySmallFamilyBanner: View {
                 .lineLimit(1)
                 .allowsTightening(true)
                 .multilineTextAlignment(.center)
+                .contentTransition(.identity)
                 .frame(maxWidth: .infinity)
         }
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -955,15 +979,19 @@ private struct LiveActivityBannerRoot: View {
             switch activityFamily {
             case .small:
                 LiveActivitySmallFamilyBanner(state: state)
+                    .activityBackgroundTint(LiveActivityCarPlayChrome.fill)
             case .medium:
                 LiveActivityLockScreenBanner(state: state)
+                    .activityBackgroundTint(lockScreenActivityTint)
             @unknown default:
                 LiveActivityLockScreenBanner(state: state)
+                    .activityBackgroundTint(lockScreenActivityTint)
             }
         }
-        .activityBackgroundTint(
-            (state.isPaused ? WidgetPalette.paused : WidgetPalette.tint(for: .light)).opacity(0.18)
-        )
+    }
+
+    private var lockScreenActivityTint: Color {
+        (state.isPaused ? WidgetPalette.paused : WidgetPalette.tint(for: .light)).opacity(0.18)
     }
 }
 

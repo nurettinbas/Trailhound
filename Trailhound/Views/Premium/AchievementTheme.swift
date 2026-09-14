@@ -2,14 +2,14 @@ import SwiftUI
 
 enum AchievementGalleryTokens {
     static let cardRadius: CGFloat = 16
-    static let cardHeight: CGFloat = 196
-    static let accessibilityMinHeight: CGFloat = 220
+    static let cardHeight: CGFloat = 212
+    static let accessibilityMinHeight: CGFloat = 236
     static let medalSize: CGFloat = 48
     static let expandedMedalSize: CGFloat = 128
     static let compactMedalSize: CGFloat = 44
     /// Unlock overlay dwell before the next unseen badge.
     static let unlockDwell: TimeInterval = 3
-    static let shareSlotHeight: CGFloat = 28
+    static let shareSlotHeight: CGFloat = 44
     static let titleSlotHeight: CGFloat = 28
     static let bodySlotHeight: CGFloat = 32
     static let statusSlotHeight: CGFloat = 14
@@ -326,8 +326,9 @@ enum AchievementMedalIdle {
     static var pathTravelDuration: TimeInterval { AchievementDistancePathMotion.convoy.duration }
     static let nightBobDuration: TimeInterval = 1.8
     static let nightSparkleDuration: TimeInterval = 0.55
-    /// Optional fallback clock. Do not wrap Stats List idle in `TimelineView` (iOS pauses it).
-    static let compactClockInterval: TimeInterval = 1.0 / 12.0
+    /// List-safe idle rate. `CADisplayLink` (not `Task.sleep` / `TimelineView`) drives this.
+    static let compactClockFPS: Int = 12
+    static var compactClockInterval: TimeInterval { 1.0 / TimeInterval(compactClockFPS) }
 
     /// One-way drift of the moon and stars. Disc stays put.
     static func nightBobAmplitude(for size: CGFloat) -> CGFloat {
@@ -356,7 +357,7 @@ enum AchievementMedalIdle {
         case .routes: 2.0
         case .trips: 2.1
         case .hours: 2.7
-        case .longhaul: 3.0
+        case .longhaul: 2.5
         case .dawn: 2.2
         case .weekend: 2.4
         case .fleet: 1.8
@@ -379,24 +380,25 @@ enum AchievementMedalIdle {
         Double(phase) * 180
     }
 
-    /// One-way drive across the disc (not fleet ping-pong). Loop 0...1 is left → right.
-    static let longhaulTravel: CGFloat = 0.48
+    /// Hill cruise on the disc (ping-pong). The car stays fully visible — never a rim fade.
+    static let longhaulHill: CGFloat = 0.16
+    static let longhaulCruise: CGFloat = 0.10
+    static let longhaulPitchDegrees: Double = 14
 
-    static func longhaulTravelX(loop: CGFloat, size: CGFloat) -> CGFloat {
-        (loop - 0.5) * size * longhaulTravel
+    static func longhaulCruiseX(phase: CGFloat, size: CGFloat) -> CGFloat {
+        (phase - 0.5) * size * longhaulCruise
     }
 
-    /// Fade at the rims so the reset is a new trip, not a reverse.
-    static func longhaulTravelOpacity(loop: CGFloat) -> Double {
-        sin(Double(loop) * .pi)
+    static func longhaulHillY(phase: CGFloat, size: CGFloat) -> CGFloat {
+        CGFloat(-sin(Double(phase) * .pi)) * size * longhaulHill
     }
 
-    /// `withAnimation` 0→1 `repeatForever` often parks at 1 (opacity 0). Rest at mid-disc.
-    static func longhaulDrivePhase(loop: CGFloat, isParked: Bool) -> CGFloat {
-        isParked ? 0.5 : loop
+    /// Side-view nose follows the slope: up on the climb, down on the descent.
+    static func longhaulNosePitch(phase: CGFloat) -> Double {
+        -cos(Double(phase) * .pi) * longhaulPitchDegrees
     }
 
-    /// 0...1 looping (not ping-pong) for globe / longhaul.
+    /// 0...1 looping (not ping-pong) for globe.
     static func loop(at time: TimeInterval, duration: TimeInterval) -> CGFloat {
         guard duration > 0, time.isFinite else { return 0 }
         let t = time.truncatingRemainder(dividingBy: duration)
@@ -423,9 +425,8 @@ extension EnvironmentValues {
     }
 }
 
-/// Optional 12 fps idle `t` via `Task.sleep` (not `TimelineView` — iOS pauses that inside a `List`).
-/// Recap story still publishes `achievementIdleTime` from `TimelineView`. Gallery overlay may
-/// fall back to `withAnimation` when no parent clock is published.
+/// Idle `t` via `CADisplayLink` (same host as the recording road). `TimelineView` and
+/// `.task` + `Task.sleep` both pause inside a `List`, which froze medals on a stale tick.
 private struct AchievementIdleClockModifier: ViewModifier {
     var isEnabled: Bool
     @Environment(\.scenePhase) private var scenePhase
@@ -433,33 +434,42 @@ private struct AchievementIdleClockModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .environment(\.achievementIdleTime, publishesClock ? tick : nil)
-            .task(id: publishesClock) {
-                guard publishesClock else {
-                    tick = nil
-                    return
-                }
-                tick = Date.timeIntervalSinceReferenceDate
-                while !Task.isCancelled {
-                    do {
-                        try await Task.sleep(for: .seconds(AchievementMedalIdle.compactClockInterval))
-                    } catch {
-                        break
-                    }
-                    guard !Task.isCancelled else { break }
-                    tick = Date.timeIntervalSinceReferenceDate
-                }
+            .environment(\.achievementIdleTime, publishesClock ? (tick ?? Date.timeIntervalSinceReferenceDate) : nil)
+            .overlay(alignment: .topLeading) {
+                TrailhoundDisplayLinkTicker(
+                    isRunning: publishesClock,
+                    framesPerSecond: framesPerSecond
+                ) { tick = $0 }
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            .onChange(of: publishesClock) { _, on in
+                tick = on ? Date.timeIntervalSinceReferenceDate : nil
             }
     }
 
     private var publishesClock: Bool {
-        isEnabled && scenePhase == .active
+        isEnabled && scenePhase == .active && !UITestSupport.isEnabled
+    }
+
+    private var framesPerSecond: Int {
+        ProcessInfo.processInfo.isLowPowerModeEnabled ? 8 : AchievementMedalIdle.compactClockFPS
     }
 }
 
 extension View {
     func achievementIdleClock(enabled: Bool) -> some View {
         modifier(AchievementIdleClockModifier(isEnabled: enabled))
+    }
+
+    /// List / theme transactions must not interpolate clock-driven pose (looks stuck).
+    func achievementIdleClockPose(drivenByClock: Bool) -> some View {
+        transaction { transaction in
+            if drivenByClock {
+                transaction.animation = nil
+            }
+        }
     }
 }
 
@@ -479,11 +489,12 @@ struct AchievementFlagWaveEffect: ViewModifier {
             )
             .rotationEffect(.degrees(flapDegrees), anchor: .leading)
             .scaleEffect(x: foldScale, y: 1, anchor: .leading)
+            .achievementIdleClockPose(drivenByClock: idleTime != nil)
             .onAppear(perform: start)
             .onChange(of: isActive) { _, _ in
                 start()
             }
-            .onChange(of: idleTime) { _, _ in
+            .onChange(of: idleTime != nil) { _, _ in
                 start()
             }
     }
@@ -538,9 +549,10 @@ struct AchievementFamilyIdleEffect: ViewModifier {
 
     func body(content: Content) -> some View {
         idleContent(content)
+            .achievementIdleClockPose(drivenByClock: idleTime != nil)
             .onAppear(perform: start)
             .onChange(of: isActive) { _, _ in start() }
-            .onChange(of: idleTime) { _, _ in start() }
+            .onChange(of: idleTime != nil) { _, _ in start() }
     }
 
     @ViewBuilder
@@ -573,10 +585,12 @@ struct AchievementFamilyIdleEffect: ViewModifier {
                 perspective: 0.55
             )
         case .longhaul:
-            let drive = AchievementMedalIdle.longhaulDrivePhase(loop: loop, isParked: isLonghaulParked)
             content
-                .offset(x: isActive ? AchievementMedalIdle.longhaulTravelX(loop: drive, size: size) : 0)
-                .opacity(isActive ? AchievementMedalIdle.longhaulTravelOpacity(loop: drive) : 1)
+                .offset(
+                    x: isActive ? AchievementMedalIdle.longhaulCruiseX(phase: p, size: size) : 0,
+                    y: isActive ? AchievementMedalIdle.longhaulHillY(phase: p, size: size) : 0
+                )
+                .rotationEffect(.degrees(isActive ? AchievementMedalIdle.longhaulNosePitch(phase: p) : 0))
         case .dawn:
             content
                 .offset(y: isActive ? (1 - p) * size * 0.18 : 0)
@@ -614,11 +628,6 @@ struct AchievementFamilyIdleEffect: ViewModifier {
         return spin
     }
 
-    /// One-shot 0→1 animations park at the end. Time-driven idle never parks.
-    private var isLonghaulParked: Bool {
-        isActive && idleTime == nil && spin >= 0.999
-    }
-
     private func start() {
         guard isActive, idleTime == nil else {
             ping = false
@@ -629,7 +638,7 @@ struct AchievementFamilyIdleEffect: ViewModifier {
         spin = 0
         let duration = AchievementMedalIdle.period(for: family)
         switch family {
-        case .longhaul, .countries:
+        case .countries:
             withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
                 spin = 1
             }
@@ -736,10 +745,46 @@ enum AchievementDistancePath {
         let inset = min(size.width, size.height) * 0.22
         return CGRect(x: inset, y: inset, width: size.width - inset * 2, height: size.height - inset * 2)
     }
+
+    /// Logical `side` only — never live `Canvas` size. A List insert that grows
+    /// the bitmap would otherwise vibrate the two nodes.
+    static func draw(
+        in context: GraphicsContext,
+        side: CGFloat,
+        progress: CGFloat,
+        ink: Color,
+        motion: AchievementDistancePathMotion
+    ) {
+        let canvasSize = CGSize(width: side, height: side)
+        let line = max(1.5, side * 0.08)
+        context.stroke(
+            curve(in: canvasSize),
+            with: .color(ink),
+            style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round)
+        )
+        let phase = min(1, max(0, progress))
+        let radius = max(2.1, side * 0.09)
+        let ringWidth = max(1.2, line * 0.85)
+        for index in 0..<2 {
+            let point = point(
+                at: motion.nodeProgress(phase: phase, index: index),
+                in: canvasSize
+            )
+            var ring = Path()
+            ring.addEllipse(in: CGRect(
+                x: point.x - radius,
+                y: point.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
+            context.stroke(ring, with: .color(ink), style: StrokeStyle(lineWidth: ringWidth))
+        }
+    }
 }
 
-/// Start and end nodes travel the S. Path sampling is an
-/// `AnimatableModifier` — View-level `Animatable` is a Swift 6 isolation error.
+/// Start and end nodes travel the S. Clock-driven poses snap (List insert must
+/// not interpolate 0 → wall-clock phase — that vibrates 100 / 1,000 km).
+/// Unlock overlay waits a beat for a parent clock, then uses `Animatable`.
 struct AchievementDistancePathGlyph: View {
     var size: CGFloat
     var isActive: Bool
@@ -747,18 +792,51 @@ struct AchievementDistancePathGlyph: View {
     var motion: AchievementDistancePathMotion = .rendezvous
     @Environment(\.achievementIdleTime) private var idleTime
     @State private var progress: CGFloat = 0
+    @State private var allowFallbackAnimation = false
 
     var body: some View {
-        Color.clear
-            .modifier(AchievementDistancePathDraw(progress: displayedProgress, ink: ink, motion: motion))
-            .frame(width: size, height: size)
-            .onAppear(perform: start)
-            .onChange(of: isActive) { _, _ in
-                start()
+        Group {
+            if usesClock || !allowFallbackAnimation {
+                AchievementDistancePathCanvas(
+                    side: size,
+                    progress: displayedProgress,
+                    ink: ink,
+                    motion: motion
+                )
+            } else {
+                Color.clear
+                    .modifier(
+                        AchievementDistancePathAnimatedDraw(
+                            progress: progress,
+                            side: size,
+                            ink: ink,
+                            motion: motion
+                        )
+                    )
             }
-            .onChange(of: idleTime) { _, _ in
-                start()
+        }
+        .frame(width: size, height: size)
+        .achievementIdleClockPose(drivenByClock: usesClock)
+        .task(id: fallbackTaskID) {
+            allowFallbackAnimation = false
+            progress = 0
+            guard isActive, idleTime == nil else { return }
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled, isActive, idleTime == nil else { return }
+            allowFallbackAnimation = true
+            withAnimation(
+                .easeInOut(duration: motion.duration)
+                .repeatForever(autoreverses: true)
+            ) {
+                progress = 1
             }
+        }
+    }
+
+    private var usesClock: Bool { idleTime != nil }
+
+    private var fallbackTaskID: String {
+        "\(isActive)-\(usesClock)-\(motion.duration)"
     }
 
     private var displayedProgress: CGFloat {
@@ -768,24 +846,33 @@ struct AchievementDistancePathGlyph: View {
         }
         return progress
     }
+}
 
-    private func start() {
-        guard isActive, idleTime == nil else {
-            progress = 0
-            return
-        }
-        progress = 0
-        withAnimation(
-            .easeInOut(duration: motion.duration)
-            .repeatForever(autoreverses: true)
-        ) {
-            progress = 1
+private struct AchievementDistancePathCanvas: View {
+    var side: CGFloat
+    var progress: CGFloat
+    var ink: Color
+    var motion: AchievementDistancePathMotion
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            guard canvasSize.width > 1, canvasSize.height > 1, side > 1 else { return }
+            let scale = min(canvasSize.width, canvasSize.height) / side
+            context.scaleBy(x: scale, y: scale)
+            AchievementDistancePath.draw(
+                in: context,
+                side: side,
+                progress: progress,
+                ink: ink,
+                motion: motion
+            )
         }
     }
 }
 
-private struct AchievementDistancePathDraw: ViewModifier, Animatable {
+private struct AchievementDistancePathAnimatedDraw: ViewModifier, Animatable {
     var progress: CGFloat
+    var side: CGFloat
     var ink: Color
     var motion: AchievementDistancePathMotion
 
@@ -795,31 +882,12 @@ private struct AchievementDistancePathDraw: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
-        Canvas { context, canvasSize in
-            let line = max(1.5, canvasSize.width * 0.08)
-            context.stroke(
-                AchievementDistancePath.curve(in: canvasSize),
-                with: .color(ink),
-                style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round)
-            )
-            let phase = min(1, max(0, progress))
-            let radius = max(2.1, canvasSize.width * 0.09)
-            let ringWidth = max(1.2, line * 0.85)
-            for index in 0..<2 {
-                let point = AchievementDistancePath.point(
-                    at: motion.nodeProgress(phase: phase, index: index),
-                    in: canvasSize
-                )
-                var ring = Path()
-                ring.addEllipse(in: CGRect(
-                    x: point.x - radius,
-                    y: point.y - radius,
-                    width: radius * 2,
-                    height: radius * 2
-                ))
-                context.stroke(ring, with: .color(ink), style: StrokeStyle(lineWidth: ringWidth))
-            }
-        }
+        AchievementDistancePathCanvas(
+            side: side,
+            progress: progress,
+            ink: ink,
+            motion: motion
+        )
     }
 }
 
@@ -847,11 +915,12 @@ struct AchievementNightSkyGlyph: View {
         }
         .frame(width: size, height: size)
         .offset(y: bobOffset)
+        .achievementIdleClockPose(drivenByClock: idleTime != nil)
         .onAppear(perform: start)
         .onChange(of: isActive) { _, _ in
             start()
         }
-        .onChange(of: idleTime) { _, _ in
+        .onChange(of: idleTime != nil) { _, _ in
             start()
         }
     }

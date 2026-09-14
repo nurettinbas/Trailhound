@@ -8,7 +8,7 @@ enum RecordingLiveActivityService {
     private static let logCategory: DevLogCategory = .widget
     private static var lastUpdateAt: Date?
     private static var lastPublishedIsPaused: Bool?
-    private static let minimumUpdateInterval: TimeInterval = 3
+    private static var dashboardOccluded = false
     private static var operationChain: Task<Void, Never>?
 
     /// Snapshot for deferred recreate when `Activity.request` is blocked in background.
@@ -187,6 +187,21 @@ enum RecordingLiveActivityService {
         }
     }
 
+    /// CarPlay Phone UI is covering the dashboard tile — skip snapshot pushes until it returns.
+    static func setDashboardOccluded(_ occluded: Bool) {
+        let wasOccluded = dashboardOccluded
+        dashboardOccluded = occluded
+        if wasOccluded != occluded {
+            DevLog.shared.log(
+                logCategory,
+                occluded ? "Live Activity CarPlay dashboard occluded" : "Live Activity CarPlay dashboard revealed"
+            )
+        }
+        if wasOccluded, !occluded {
+            lastUpdateAt = nil
+        }
+    }
+
     static func update(
         elapsed: TimeInterval,
         distanceMeters: Double,
@@ -199,12 +214,13 @@ enum RecordingLiveActivityService {
     ) {
         let pauseStateChanged = lastPublishedIsPaused != isPaused
         let now = Date()
-        if !force,
-           !pauseStateChanged,
-           let lastUpdateAt,
-           now.timeIntervalSince(lastUpdateAt) < minimumUpdateInterval {
-            return
-        }
+        let secondsSinceLastUpdate = lastUpdateAt.map { now.timeIntervalSince($0) }
+        guard LiveActivityDashboardPublishPolicy.shouldPublish(
+            dashboardOccluded: dashboardOccluded,
+            force: force,
+            pauseStateChanged: pauseStateChanged,
+            secondsSinceLastUpdate: secondsSinceLastUpdate
+        ) else { return }
         lastUpdateAt = now
         lastPublishedIsPaused = isPaused
 

@@ -240,13 +240,13 @@ struct YearRecapStoryView: View {
                         item: shareItem,
                         preview: SharePreview("Trailhound", image: Image(uiImage: shareItem.image))
                     ) {
-                        GlassToolbarSymbol(systemName: "square.and.arrow.up", sampling: .frozenControl)
+                        GlassNavCircleIcon(systemName: "square.and.arrow.up")
                     }
                     .buttonStyle(.plain)
                     .disabled(shareItem.image.size.width < 2)
                     .accessibilityIdentifier("stats.premium.recap.share")
                     Button(action: close) {
-                        GlassToolbarSymbol(systemName: "xmark", sampling: .frozenControl)
+                        GlassNavCircleIcon(systemName: "xmark")
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("stats.premium.recap.close")
