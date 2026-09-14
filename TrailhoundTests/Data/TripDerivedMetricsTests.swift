@@ -567,14 +567,27 @@ final class TripDerivedMetricsTests: XCTestCase {
 
         TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .diesel, vehicle: vehicle)
 
+        XCTAssertEqual(trip.fuelTypeSnapshot, .petrol)
         let petrol = TripFuelEstimate.compute(
             points: trip.sortedPoints,
             distanceMeters: trip.distanceMeters,
             consumptionPer100: 6,
             unitPrice: FuelCostCalculator.resolvedUnitPrice(vehicle: vehicle, fuelType: .petrol),
-            fuelType: .petrol
+            fuelType: .petrol,
+            durationSeconds: trip.duration,
+            thermal: TripDerivedMetrics.thermalInput(for: trip)
+        )
+        let diesel = TripFuelEstimate.compute(
+            points: trip.sortedPoints,
+            distanceMeters: trip.distanceMeters,
+            consumptionPer100: 6,
+            unitPrice: FuelCostCalculator.resolvedUnitPrice(vehicle: vehicle, fuelType: .diesel),
+            fuelType: .diesel,
+            durationSeconds: trip.duration,
+            thermal: TripDerivedMetrics.thermalInput(for: trip)
         )
         XCTAssertEqual(trip.dynamicFuelCost ?? 0, petrol.dynamicCost, accuracy: 0.01)
+        XCTAssertNotEqual(petrol.dynamicCost, diesel.dynamicCost, accuracy: 0.01)
     }
 
     func testRecomputeFuelElectricUsesChargePriceNotPetrolLiter() {
