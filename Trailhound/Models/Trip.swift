@@ -21,8 +21,24 @@ final class Trip {
     var fuelConsumptionPer100: Double?
     /// Snapshot of unit price (per liter or per kWh) used for this trip's fuel estimate. `nil` on older trips.
     var fuelUnitPrice: Double?
-    /// Trip-specific fuel cost from speed / stop / accel (VSP + Willans). `nil` = not computed yet; `0` = nothing to report.
+    /// Trip-specific fuel cost from GPS. `nil` = not computed yet; `0` = nothing to report.
     var dynamicFuelCost: Double?
+    /// Powertrain used for the GPS estimate. Survives a deleted vehicle.
+    var fuelTypeSnapshotRaw: String?
+    /// User-entered L/100 (or kWh/100) for this trip. `nil` = not measured.
+    var measuredFuelConsumptionPer100: Double?
+    /// `FuelMeasurementSource` raw value.
+    var fuelMeasurementSourceRaw: String?
+    var dynamicFuelModelVersion: Int?
+    var dynamicFuelVolume: Double?
+    var dynamicFuelRatePer100: Double?
+    var fuelEfficiencyScore: Double?
+    var fuelEstimateConfidence: Double?
+    var fuelSpeedDeltaVolume: Double?
+    var fuelIdleVolume: Double?
+    var fuelTransientVolume: Double?
+    var fuelColdStartVolume: Double?
+    var fuelTrafficScore: Double?
     var isRouteMatched: Bool
     var matchedDistanceMeters: Double?
     var startPlaceName: String?
@@ -45,6 +61,11 @@ final class Trip {
     var stopDurationSeconds: Double?
     /// Driving-pace mode from `TripSpeedProfile`. `nil` = not computed; `0` = nothing to report.
     var mostCommonSpeedKmh: Double?
+    /// City-level reverse-geocode locality. Nil inside a privacy zone or when not yet geocoded.
+    var startLocality: String?
+    var endLocality: String?
+    var startCountryCode: String?
+    var endCountryCode: String?
     /// Pending smart-category suggestion (`UserCategory` id). `nil` = none / already decided.
     var pendingSuggestedCategoryID: String?
     /// `TripCategorySuggestionReason` raw value for the pending suggestion.
@@ -87,6 +108,10 @@ final class Trip {
         matchedDistanceMeters: Double? = nil,
         startPlaceName: String? = nil,
         endPlaceName: String? = nil,
+        startLocality: String? = nil,
+        endLocality: String? = nil,
+        startCountryCode: String? = nil,
+        endCountryCode: String? = nil,
         vehicleID: UUID? = nil,
         vehicle: VehicleProfile? = nil,
         journalID: UUID? = nil,
@@ -114,6 +139,10 @@ final class Trip {
         self.matchedDistanceMeters = matchedDistanceMeters
         self.startPlaceName = startPlaceName
         self.endPlaceName = endPlaceName
+        self.startLocality = startLocality
+        self.endLocality = endLocality
+        self.startCountryCode = startCountryCode
+        self.endCountryCode = endCountryCode
         self.vehicleID = vehicleID
         self.vehicle = vehicle
         self.journalID = journalID
@@ -185,6 +214,20 @@ final class Trip {
     var duration: TimeInterval? {
         guard let endedAt else { return nil }
         return endedAt.timeIntervalSince(startedAt)
+    }
+
+    var fuelTypeSnapshot: VehicleFuelType? {
+        get { fuelTypeSnapshotRaw.flatMap(VehicleFuelType.init(rawValue:)) }
+        set { fuelTypeSnapshotRaw = newValue?.rawValue }
+    }
+
+    var fuelMeasurementSource: FuelMeasurementSource? {
+        get { fuelMeasurementSourceRaw.flatMap(FuelMeasurementSource.init(rawValue:)) }
+        set { fuelMeasurementSourceRaw = newValue?.rawValue }
+    }
+
+    var fuelUnitKey: String {
+        (fuelTypeSnapshot ?? vehicle?.fuelType) == .electric ? "electric" : "liquid"
     }
 
     var sortedPoints: [TripPoint] {

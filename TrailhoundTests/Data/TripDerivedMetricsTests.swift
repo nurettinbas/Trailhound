@@ -38,6 +38,7 @@ final class TripDerivedMetricsMigrationTests: XCTestCase {
                 UserCategory.self,
                 MatchedRoutePoint.self,
                 VehicleProfile.self,
+                VehicleFuelCalibration.self,
             ]),
             configurations: ModelConfiguration(url: storeURL)
         )
@@ -233,6 +234,113 @@ final class TripDerivedMetricsMigrationTests: XCTestCase {
         XCTAssertTrue(SearchFolding.fold(try XCTUnwrap(updated.searchIndex)).contains(SearchFolding.fold("Ev")))
         XCTAssertTrue(TripListViewModel.matchesSearch(updated, searchText: "ev"))
     }
+
+    func testRefreshDynamicFuelVersionRewritesAllCompletedTrips() async throws {
+        let fuelKey = TripDerivedBackfillService.dynamicFuelVersionKey
+        let previous = UserDefaults.standard.integer(forKey: fuelKey)
+        UserDefaults.standard.set(1, forKey: fuelKey)
+        defer { UserDefaults.standard.set(previous, forKey: fuelKey) }
+
+        let container = try makeDiskContainer()
+        let startedAt = Date().addingTimeInterval(-86_400)
+        let tripID = seedLegacyTrip(in: container.mainContext, startedAt: startedAt)
+        let trip = try XCTUnwrap(
+            try container.mainContext.fetch(FetchDescriptor<Trip>()).first { $0.id == tripID }
+        )
+        trip.estimatedFuelCost = 243.75
+        trip.fuelConsumptionPer100 = 7.5
+        trip.fuelUnitPrice = 65
+        trip.dynamicFuelCost = 9_999
+        trip.nightDistanceMeters = 0
+        trip.trackedDistanceMeters = 4_200
+        trip.stopDurationSeconds = 0
+        try container.mainContext.save()
+
+        await TripDerivedBackfillService.backfillIfNeeded(container: container)
+
+        XCTAssertEqual(
+            UserDefaults.standard.integer(forKey: fuelKey),
+            TripDerivedBackfillService.dynamicFuelVersion
+        )
+        let updated = try XCTUnwrap(
+            try ModelContext(container).fetch(FetchDescriptor<Trip>()).first { $0.id == tripID }
+        )
+        XCTAssertEqual(updated.estimatedFuelCost ?? 0, 243.75, accuracy: 0.01)
+        XCTAssertNotEqual(updated.dynamicFuelCost ?? 0, 9_999)
+        XCTAssertGreaterThan(updated.dynamicFuelCost ?? 0, 0)
+    }
+
+    /// Version 3 was already written on devices that ran the first C₀ model. A later idle
+    /// fix must still walk every completed trip, including those past the first 25-row batch.
+    func testFuelVersionBumpRewritesEveryCompletedTripAcrossBatches() async throws {
+        let container = try makeDiskContainer()
+        let context = container.mainContext
+        let start = Date().addingTimeInterval(-86_400)
+        for index in 0..<30 {
+            seedLegacyTrip(
+                in: context,
+                startedAt: start.addingTimeInterval(Double(index) * 60),
+                pointCount: 4
+            )
+        }
+        for trip in try context.fetch(FetchDescriptor<Trip>()) {
+            trip.estimatedFuelCost = 100
+            trip.fuelConsumptionPer100 = 7.5
+            trip.fuelUnitPrice = 65
+            trip.dynamicFuelCost = 9_999
+            trip.nightDistanceMeters = 0
+            trip.trackedDistanceMeters = trip.distanceMeters
+            trip.stopDurationSeconds = 0
+        }
+        try context.save()
+
+        // Isolated keys so a parallel test cannot mark the process-wide fuel version current
+        // and skip this walk.
+        let isolatedFuelKey = "trailhound.test.dynamicFuelVersion.\(UUID().uuidString)"
+        let isolatedSpeedKey = "trailhound.test.speedProfileVersion.\(UUID().uuidString)"
+        UserDefaults.standard.set(3, forKey: isolatedFuelKey)
+        defer {
+            UserDefaults.standard.removeObject(forKey: isolatedFuelKey)
+            UserDefaults.standard.removeObject(forKey: isolatedSpeedKey)
+        }
+
+        let backfiller = TripDerivedBackfiller(modelContainer: container)
+        let finished = await backfiller.refreshDerivedKinematicsIfNeeded(
+            speedProfileVersionKey: isolatedSpeedKey,
+            speedProfileVersion: 0,
+            dynamicFuelVersionKey: isolatedFuelKey,
+            dynamicFuelVersion: 4
+        )
+        XCTAssertTrue(finished)
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: isolatedFuelKey), 4)
+
+        let updated = try ModelContext(container).fetch(FetchDescriptor<Trip>())
+        XCTAssertEqual(updated.count, 30)
+        for trip in updated {
+            XCTAssertNotEqual(trip.dynamicFuelCost ?? 0, 9_999, "trip \(trip.id)")
+            XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
+        }
+    }
+
+    /// Opening trip detail must rewrite Est. fuel even when launch backfill thinks it is done.
+    func testRefreshPersistedFuelRewritesStaleCostWhenLaunchVersionIsCurrent() throws {
+        let container = try makeDiskContainer()
+        let tripID = seedLegacyTrip(
+            in: container.mainContext,
+            startedAt: Date().addingTimeInterval(-3_600)
+        )
+        let trip = try XCTUnwrap(
+            try container.mainContext.fetch(FetchDescriptor<Trip>()).first { $0.id == tripID }
+        )
+        trip.fuelConsumptionPer100 = 7.5
+        trip.fuelUnitPrice = 65
+        trip.dynamicFuelCost = 9_999
+        try container.mainContext.save()
+
+        XCTAssertTrue(TripDerivedMetrics.refreshPersistedFuel(for: trip, in: container.mainContext))
+        XCTAssertNotEqual(trip.dynamicFuelCost ?? 0, 9_999)
+        XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
+    }
 }
 
 @MainActor
@@ -369,6 +477,57 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
     }
 
+    /// The screenshot trip had a Stop pin on a 5:50 queue. That pin must not zero idle.
+    func testRecomputeFuelKeepsCityQueueIdleWhenParkingPinExists() {
+        let startedAt = Date().addingTimeInterval(-3_600)
+        let movingSeconds = 375.0
+        let stopSeconds = 350.0
+        let distance = 3_300.0
+        let speedMps = distance / movingSeconds
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(movingSeconds + stopSeconds)
+        )
+        trip.distanceMeters = distance
+        trip.fuelConsumptionPer100 = 7
+        trip.fuelUnitPrice = 65
+        trip.estimatedFuelCost = distance / 1_000 * 7 / 100 * 65
+
+        func appendPoint(sequence: Int, offsetSeconds: TimeInterval, metersEast: Double) {
+            let metersPerDegree = 111_320.0 * cos(41.0 * .pi / 180)
+            let point = TripPoint(
+                timestamp: startedAt.addingTimeInterval(offsetSeconds),
+                latitude: 41.0,
+                longitude: 29.0 + metersEast / metersPerDegree,
+                sequence: sequence,
+                speedMps: speedMps,
+                trip: trip
+            )
+            trip.points.append(point)
+        }
+        appendPoint(sequence: 0, offsetSeconds: 0, metersEast: 0)
+        appendPoint(sequence: 1, offsetSeconds: 188, metersEast: speedMps * 188)
+        appendPoint(sequence: 2, offsetSeconds: 188 + stopSeconds, metersEast: speedMps * 188)
+        appendPoint(
+            sequence: 3,
+            offsetSeconds: movingSeconds + stopSeconds,
+            metersEast: distance
+        )
+
+        let pin = TripStop(
+            latitude: 41.0,
+            longitude: 29.0,
+            startedAt: startedAt.addingTimeInterval(188),
+            durationSeconds: stopSeconds,
+            trip: trip
+        )
+        trip.stops.append(pin)
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .petrol)
+
+        XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, trip.estimatedFuelCost ?? 0)
+    }
+
     /// Stored avg cost is the display source of truth — Settings / vehicle averages must not
     /// replace it when recompute runs again under a different fuel type.
     func testStoredAvgFuelSurvivesRecomputeAndStatsFuelCost() {
@@ -392,7 +551,58 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertGreaterThan(trip.dynamicFuelCost ?? 0, 0)
     }
 
-    func testRecomputeOnPointlessTripClearsEndpoints() {
+    func testRecomputeFuelUsesVehicleWhenTripSnapshotMissing() {
+        let trip = makeTrip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        trip.distanceMeters = 10_000
+        trip.fuelConsumptionPer100 = nil
+        trip.fuelUnitPrice = nil
+        let vehicle = VehicleProfile(
+            name: "Car",
+            fuelType: .petrol,
+            consumption: 6
+        )
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .diesel, vehicle: vehicle)
+
+        let petrol = TripFuelEstimate.compute(
+            points: trip.sortedPoints,
+            distanceMeters: trip.distanceMeters,
+            consumptionPer100: 6,
+            unitPrice: FuelCostCalculator.resolvedUnitPrice(vehicle: vehicle, fuelType: .petrol),
+            fuelType: .petrol
+        )
+        XCTAssertEqual(trip.dynamicFuelCost ?? 0, petrol.dynamicCost, accuracy: 0.01)
+    }
+
+    func testRecomputeFuelElectricUsesChargePriceNotPetrolLiter() {
+        let trip = makeTrip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        trip.distanceMeters = 10_000
+        trip.fuelConsumptionPer100 = nil
+        trip.fuelUnitPrice = nil
+        let vehicle = VehicleProfile(
+            name: "EV",
+            fuelType: .electric,
+            consumption: 18,
+            chargePricePerKWh: 8.5
+        )
+
+        TripDerivedMetrics.recomputeFuel(for: trip, fuelType: .petrol, vehicle: vehicle)
+
+        let cost = trip.dynamicFuelCost ?? 0
+        XCTAssertGreaterThan(cost, 0)
+        let impliedKWh = cost / 8.5
+        XCTAssertLessThan(impliedKWh, 10)
+        let petrolLiterMistake = cost / 65
+        XCTAssertGreaterThan(impliedKWh, petrolLiterMistake * 3)
+    }
+
+    func testRecomputeClearsStoredCoordinatesWhenPointsAreEmpty() {
         let trip = Trip(startedAt: Date(), endedAt: Date())
         trip.startLatitude = 1
         trip.endLatitude = 2

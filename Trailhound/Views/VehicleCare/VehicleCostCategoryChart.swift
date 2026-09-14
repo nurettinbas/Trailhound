@@ -44,6 +44,7 @@ struct VehicleCostCategoryChart: View {
                         AxisValueLabel {
                             Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
                                 .font(.caption2)
+                                .foregroundStyle(StatsChartTheme.axisLabelInk)
                         }
                     }
                 }
@@ -52,6 +53,7 @@ struct VehicleCostCategoryChart: View {
                 AxisMarks(position: .leading) { _ in
                     AxisValueLabel()
                         .font(.caption2)
+                        .foregroundStyle(StatsChartTheme.axisLabelInk)
                 }
             }
             .statsChartCardLayout()

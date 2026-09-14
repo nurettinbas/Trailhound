@@ -5,6 +5,10 @@ enum L10n {
         SharedL10n.text(String(describing: key), bundle: .main)
     }
 
+    static func string(_ key: String) -> String {
+        SharedL10n.text(key, bundle: .main)
+    }
+
     static var tripStartedTitle: String { string("trip.started.title") }
     static var tripStartedBody: String { string("trip.started.body") }
     static var tripEndedTitle: String { string("trip.ended.title") }
@@ -168,9 +172,45 @@ enum L10n {
     static var tripSummary: String { string("trip.summary") }
     static var estimatedFuel: String { string("label.estimated_fuel") }
     static var avgFuel: String { string("label.avg_fuel") }
+    static var avgFuelHelpTitle: String { string("label.avg_fuel.help.title") }
+    static var avgFuelHelpBody: String { string("label.avg_fuel.help.body") }
     static var dynamicFuel: String { string("label.dynamic_fuel") }
     static var dynamicFuelHelpTitle: String { string("label.dynamic_fuel.help.title") }
     static var dynamicFuelHelpBody: String { string("label.dynamic_fuel.help.body") }
+    static var statsDynamicFuelHelpBody: String { string("stats.dynamic_fuel.help.body") }
+    static var fuelEfficiency: String { string("label.fuel_efficiency") }
+    static var fuelEfficiencyHelpTitle: String { string("label.fuel_efficiency.help.title") }
+    static var fuelEfficiencyHelpBody: String { string("label.fuel_efficiency.help.body") }
+    static var fuelTraffic: String { string("label.fuel_traffic") }
+    static var fuelTrafficHelpTitle: String { string("label.fuel_traffic.help.title") }
+    static var fuelTrafficHelpBody: String { string("label.fuel_traffic.help.body") }
+    static var fuelFactorsHelpTitle: String { string("label.fuel_factors.help.title") }
+    static var fuelFactorsHelpBody: String { string("label.fuel_factors.help.body") }
+    static var measuredFuel: String { string("label.measured_fuel") }
+    static var measuredFuelHelpTitle: String { string("label.measured_fuel.help.title") }
+    static var measuredFuelHelpBody: String { string("label.measured_fuel.help.body") }
+    static var statsFuelVolume: String { string("stats.fuel_volume") }
+    static var statsFuelVolumeHelpTitle: String { string("stats.fuel_volume.help.title") }
+    static var statsFuelVolumeHelpBody: String { string("stats.fuel_volume.help.body") }
+    static var statsFuelRate: String { string("stats.fuel_rate") }
+    static var statsFuelRateHelpTitle: String { string("stats.fuel_rate.help.title") }
+    static var statsFuelRateHelpBody: String { string("stats.fuel_rate.help.body") }
+    static var statsFuelEfficiency: String { string("stats.fuel_efficiency") }
+    static var statsMixedFuelUnits: String { string("stats.fuel_mixed_units") }
+    static var statsDynamicCostPerKmHelpTitle: String { string("stats.dynamic_cost_per_km.help.title") }
+    static var statsDynamicCostPerKmHelpBody: String { string("stats.dynamic_cost_per_km.help.body") }
+    static var statsDynamicCostPerTripHelpTitle: String { string("stats.dynamic_cost_per_trip.help.title") }
+    static var statsDynamicCostPerTripHelpBody: String { string("stats.dynamic_cost_per_trip.help.body") }
+    static var fuelTrafficLow: String { string("label.fuel_traffic.low") }
+    static var fuelTrafficModerate: String { string("label.fuel_traffic.moderate") }
+    static var fuelTrafficHeavy: String { string("label.fuel_traffic.heavy") }
+    static var fuelTrafficUnknown: String { string("label.fuel_traffic.unknown") }
+    static var fuelFactorColdStart: String { string("label.fuel_factor.cold_start") }
+    static var fuelFactorIdle: String { string("label.fuel_factor.idle") }
+    static var fuelFactorAccel: String { string("label.fuel_factor.accel") }
+    static var fuelFactorHighSpeed: String { string("label.fuel_factor.high_speed") }
+    static var fuelFactorLowSpeed: String { string("label.fuel_factor.low_speed") }
+    static var fuelFactorSteady: String { string("label.fuel_factor.steady") }
     static var loggedVehicleExpensesHelpTitle: String { string("stats.compare.vehicles_help.title") }
     static var loggedVehicleExpensesHelpBody: String { string("stats.compare.vehicles_help.body") }
     static var maxSpeed: String { string("label.max_speed") }
@@ -271,11 +311,28 @@ enum L10n {
     static var settingsAutoDeleteNever: String { string("settings.privacy.auto_delete.never") }
     static var settingsPermissionsSection: String { string("settings.permissions.section") }
     static var settingsLocationPermission: String { string("settings.permissions.location") }
+    static var settingsNotificationsPermission: String { string("settings.permissions.notifications") }
     static var settingsPermissionGranted: String { string("settings.permissions.granted") }
     static var settingsPermissionRequired: String { string("settings.permissions.required") }
     static var settingsRequestLocationPermission: String { string("settings.permissions.request_location") }
+    static var settingsRequestNotificationsPermission: String { string("settings.permissions.request_notifications") }
     static var settingsOpenSystemSettings: String { string("settings.permissions.open_settings") }
     static var settingsBackgroundLocationHint: String { string("settings.permissions.background_location_hint") }
+    static var notificationsBadgeAllowed: String { string("notifications.badge.allowed") }
+    static var notificationsBadgeDenied: String { string("notifications.badge.denied") }
+    static var notificationsBadgeAsk: String { string("notifications.badge.ask") }
+
+    static func achievementTitle(_ id: AchievementID) -> String {
+        string(id.titleKey)
+    }
+
+    static func achievementsUnlockedCount(_ count: Int) -> String {
+        String(format: string("premium.achievements.unlocked_count"), count)
+    }
+
+    static func recapNotificationTitle(_ year: Int) -> String {
+        String(format: string("premium.recap.notification.title"), year)
+    }
     static var settingsBackupSection: String { string("settings.backup.section") }
     static var settingsExportJSON: String { string("settings.backup.json") }
     static var settingsExportCSV: String { string("settings.backup.csv") }
@@ -286,6 +343,8 @@ enum L10n {
     static var settingsAboutSection: String { string("settings.about.section") }
     static var settingsVersion: String { string("settings.about.version") }
     static var settingsAboutPrivacy: String { string("settings.about.privacy") }
+    static var settingsRecapPlay: String { string("settings.recap.play") }
+    static var settingsRecapHint: String { string("settings.recap.hint") }
     static var settingsReportProblem: String { string("settings.report_problem") }
     static var settingsReportProblemTitle: String { string("settings.report_problem.title") }
     static var settingsReportProblemDisclosure: String { string("settings.report_problem.disclosure") }
@@ -410,7 +469,70 @@ enum L10n {
     static func pairingShortcutsGuideStepProgress(current: Int, total: Int) -> String {
         String(format: string("pairing.shortcuts.guide.step_progress"), current, total)
     }
+    static var pairingShortcutsGuideTriggersCarPlayWirelessNote: String {
+        string("pairing.shortcuts.guide.triggers.carplay.wireless_note")
+    }
+    static var pairingShortcutsGuideVehicleTitle: String { string("pairing.shortcuts.guide.vehicle.title") }
+    static var pairingShortcutsGuideVehicleBody: String { string("pairing.shortcuts.guide.vehicle.body") }
+    static var pairingShortcutsGuideVehicleEmpty: String { string("pairing.shortcuts.guide.vehicle.empty") }
+    static var pairingShortcutsGuideVehicleAdd: String { string("pairing.shortcuts.guide.vehicle.add") }
+    static var pairingShortcutsGuideVehicleNote: String { string("pairing.shortcuts.guide.vehicle.note") }
+    static var pairingShortcutsGuideConnectStep5Bluetooth: String {
+        string("pairing.shortcuts.guide.connect.step5.bluetooth")
+    }
+    static var pairingShortcutsGuideConnectStep5CarPlay: String {
+        string("pairing.shortcuts.guide.connect.step5.carplay")
+    }
+    static var pairingShortcutsGuideConnectStep5WiFi: String {
+        string("pairing.shortcuts.guide.connect.step5.wifi")
+    }
+    static var pairingShortcutsGuideCardTest: String { string("pairing.shortcuts.guide.card.test") }
+    static var pairingShortcutsGuideCardTroubleshoot: String { string("pairing.shortcuts.guide.card.troubleshoot") }
+    static var pairingShortcutsGuideCardTested: String { string("pairing.shortcuts.guide.card.tested") }
+    static var pairingShortcutsGuideTestTitle: String { string("pairing.shortcuts.guide.test.title") }
+    static var pairingShortcutsGuideTestBody: String { string("pairing.shortcuts.guide.test.body") }
+    static var pairingShortcutsGuideTestButton: String { string("pairing.shortcuts.guide.test.button") }
+    static var pairingShortcutsGuideTestStop: String { string("pairing.shortcuts.guide.test.stop") }
+    static var pairingShortcutsGuideTestWatch: String { string("pairing.shortcuts.guide.test.watch") }
+    static var pairingShortcutsGuideTestWatchArmed: String { string("pairing.shortcuts.guide.test.watch.armed") }
+    static var pairingShortcutsGuideTestResultStarted: String { string("pairing.shortcuts.guide.test.result.started") }
+    static var pairingShortcutsGuideTestResultConfirm: String { string("pairing.shortcuts.guide.test.result.confirm") }
+    static var pairingShortcutsGuideTestResultNoLocation: String {
+        string("pairing.shortcuts.guide.test.result.no_location")
+    }
+    static var pairingShortcutsGuideTestResultNoVehicle: String {
+        string("pairing.shortcuts.guide.test.result.no_vehicle")
+    }
+    static var pairingShortcutsGuideTestResultIdle: String { string("pairing.shortcuts.guide.test.result.idle") }
+    static var pairingShortcutsGuideChecklistTitle: String { string("pairing.shortcuts.guide.checklist.title") }
+    static var pairingShortcutsGuideChecklistIntro: String { string("pairing.shortcuts.guide.checklist.intro") }
+    static var pairingShortcutsGuideChecklistPersonalAutomation: String {
+        string("pairing.shortcuts.guide.checklist.personal_automation")
+    }
+    static var pairingShortcutsGuideChecklistAskBeforeRunning: String {
+        string("pairing.shortcuts.guide.checklist.ask_before_running")
+    }
+    static var pairingShortcutsGuideChecklistRunShortcut: String {
+        string("pairing.shortcuts.guide.checklist.run_shortcut")
+    }
+    static var pairingShortcutsGuideChecklistSecondVehicle: String {
+        string("pairing.shortcuts.guide.checklist.second_vehicle")
+    }
+    static var pairingShortcutsGuideChecklistLocationAlways: String {
+        string("pairing.shortcuts.guide.checklist.location_always")
+    }
+    static var pairingShortcutsGuideChecklistSilentStart: String {
+        string("pairing.shortcuts.guide.checklist.silent_start")
+    }
+    static var pairingShortcutsGuideChecklistCarPlayWireless: String {
+        string("pairing.shortcuts.guide.checklist.carplay_wireless")
+    }
+    static var pairingShortcutsGuideChecklistFocus: String { string("pairing.shortcuts.guide.checklist.focus") }
+    static var pairingShortcutsGuideChecklistReturnLink: String {
+        string("pairing.shortcuts.guide.checklist.return_link")
+    }
     static var toastShortcutsGuideFinished: String { string("toast.shortcuts.guide.finished") }
+    static var toastShortcutsAutomationReached: String { string("toast.shortcuts.automation.reached") }
     static var settingsShortcutsAutomationGuide: String { string("settings.shortcuts.automation_guide") }
     static var shortcutStartTitle: String { string("shortcut.start.title") }
     static var shortcutStopTitle: String { string("shortcut.stop.title") }

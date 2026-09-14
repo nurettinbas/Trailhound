@@ -31,7 +31,7 @@ struct OnboardingHeroScene: View {
     var body: some View {
         Group {
             if shouldAnimateRoad {
-                TimelineView(.animation(minimumInterval: animationInterval)) { timeline in
+                TimelineView(TrailhoundIndependentClock.periodic(interval: animationInterval)) { timeline in
                     sceneDriver(
                         liveTime: timeline.date.timeIntervalSinceReferenceDate,
                         shouldAnimate: true

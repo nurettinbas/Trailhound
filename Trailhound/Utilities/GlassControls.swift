@@ -61,13 +61,25 @@ struct GlassDisclosureChevron: View {
 
 /// How a nav-bar control draws its chrome.
 ///
-/// - `system`: iOS 26 shared toolbar platter (Material bar item on iOS 18). Use on
-///   form/list screens where the bar sits on atmosphere, not a live map.
-/// - `frozen`: 36pt solid circle. Use when the bar sits on MapKit so glass does
-///   not resample the map every frame.
+/// - `system`: iOS 26 shared toolbar platter (Material bar item on iOS 18). Use
+///   on form/list screens and Trip/Travel detail nav items (same metrics as
+///   the Trips cluster).
+/// - `frozen`: 36pt solid circle. Compact map chip if needed.
+/// - `frozenControl`: 44pt solid circle. Overlay toolbar — Year recap story
+///   Share/Close and Stats expand collapse (Badges, Frequent routes, month
+///   forecast) where there is no system platter but the hit size should match it.
 enum GlassToolbarSampling {
     case system
     case frozen
+    case frozenControl
+
+    fileprivate var frozenCircleSide: CGFloat? {
+        switch self {
+        case .system: nil
+        case .frozen: GlassTokens.toolbarFrozenCircleSide
+        case .frozenControl: GlassTokens.toolbarControlCircleSide
+        }
+    }
 }
 
 /// Palette-tinted SF Symbol for the navigation bar.
@@ -81,7 +93,7 @@ struct GlassToolbarSymbol: View {
 
     var body: some View {
         glyph
-            .modifier(GlassToolbarFrozenCircle(enabled: sampling == .frozen))
+            .modifier(GlassToolbarFrozenCircle(side: sampling.frozenCircleSide))
     }
 
     @ViewBuilder
@@ -136,24 +148,24 @@ struct GlassToolbarCluster<Content: View>: View {
     }
 }
 
-/// Frozen map-chrome circle. Form screens should use `GlassToolbarSymbol` with
+/// Overlay toolbar circle (44pt). Nav bars should use `GlassToolbarSymbol` with
 /// `.system` instead of this type.
 struct GlassNavCircleIcon: View {
     let systemName: String
     var isLoading: Bool = false
 
     var body: some View {
-        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading, sampling: .frozen)
+        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading, sampling: .frozenControl)
     }
 }
 
 private struct GlassToolbarFrozenCircle: ViewModifier {
-    var enabled: Bool
+    var side: CGFloat?
 
     func body(content: Content) -> some View {
-        if enabled {
+        if let side {
             content
-                .frame(width: 36, height: 36)
+                .frame(width: side, height: side, alignment: .center)
                 .background {
                     GlassToolbarFrozenPlate(shape: Circle())
                 }

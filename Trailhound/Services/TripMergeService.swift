@@ -177,8 +177,12 @@ enum TripMergeCore {
             .apply(to: merged, candidates: copiedStops, context: context)
 
         trip.invalidatePointCaches()
+        let successor = TripFuelDependencyService.successor(of: trip, in: context)
         TripRollupDelta.remove(trip, in: context)
         context.delete(trip)
+        if let successor {
+            TripFuelDependencyService.recompute(successor, in: context)
+        }
     }
 
     static func beginMergedTrip(from completed: [Trip], into context: ModelContext) throws -> Trip {
@@ -198,6 +202,14 @@ enum TripMergeCore {
         merged.startPlaceName = first.startPlaceName
         merged.endAddress = last.endAddress
         merged.endPlaceName = last.endPlaceName
+        merged.startLocality = first.startLocality
+        merged.endLocality = last.endLocality
+        merged.startCountryCode = first.startCountryCode
+        merged.endCountryCode = last.endCountryCode
+        merged.startLatitude = first.startLatitude
+        merged.startLongitude = first.startLongitude
+        merged.endLatitude = last.endLatitude
+        merged.endLongitude = last.endLongitude
         merged.note = mergedNotes(from: completed)
         // Insert before copying points so inverse relationships resolve against a registered trip.
         context.insert(merged)
@@ -230,7 +242,8 @@ enum TripMergeCore {
             for: merged,
             places: places,
             privacyRadius: privacyRadius,
-            fuelType: vehicle?.fuelType ?? .petrol
+            fuelType: vehicle?.fuelType ?? .petrol,
+            vehicle: vehicle
         )
         TripRollupDelta.add(merged, in: context)
     }

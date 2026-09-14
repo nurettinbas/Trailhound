@@ -307,6 +307,7 @@ struct VehicleExpenseEditorView: View {
                 _ = try activeDraft.insert(for: vehicle, in: modelContext)
             }
             ToastPresenter.shared.show(.vehicleExpenseSaved)
+            TripStore.syncWidgetWeekDistance(in: modelContext)
             dismiss()
         } catch {
             AppErrorPresenter.shared.present(
@@ -321,6 +322,7 @@ struct VehicleExpenseEditorView: View {
     private func deleteExpense() {
         guard let expense else { return }
         VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
+        TripStore.syncWidgetWeekDistance(in: modelContext)
         dismiss()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
@@ -334,6 +336,7 @@ struct VehicleExpenseEditorView: View {
     private func deletePlan() {
         guard let expense else { return }
         VehicleExpenseInstallmentService.deleteGroup(of: expense, in: modelContext)
+        TripStore.syncWidgetWeekDistance(in: modelContext)
         dismiss()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)

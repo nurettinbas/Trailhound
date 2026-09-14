@@ -270,21 +270,75 @@ enum TrailhoundSchemaV20: VersionedSchema {
     }
 }
 
+/// Adds optional locality / country fields on `Trip` plus derived `FrequentRouteAggregate`,
+/// `AchievementProgress`, and `VisitedLocality` tables. Additive only.
+enum TrailhoundSchemaV21: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(21, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+            TravelJournal.self,
+            FrequentRouteAggregate.self,
+            AchievementProgress.self,
+            VisitedLocality.self,
+        ]
+    }
+}
+
+/// Adds optional GPS-fuel volume / measurement fields on `Trip`, volume totals on
+/// `TripDailyRollup`, and `VehicleFuelCalibration`. Additive only: existing trips open with
+/// `nil` fuel extras and keep `estimatedFuelCost` / GPS traces. Runtime still opens a single
+/// live schema (same as V21) so VersionedSchema checksums do not collide; SwiftData lightweight
+/// migration adds the optional columns and new table.
+enum TrailhoundSchemaV22: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(22, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+            TravelJournal.self,
+            FrequentRouteAggregate.self,
+            AchievementProgress.self,
+            VisitedLocality.self,
+            VehicleFuelCalibration.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V20); V11–V19 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V22); V11–V21 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV20.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV22.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV20]
+        [migrateV5toV22]
     }
 
-    static let migrateV5toV20 = MigrationStage.lightweight(
+    static let migrateV5toV22 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV20.self
+        toVersion: TrailhoundSchemaV22.self
     )
 }

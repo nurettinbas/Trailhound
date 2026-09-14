@@ -90,6 +90,11 @@ enum SavedPlaceKind: String, Codable, CaseIterable {
     }
 }
 
+enum FuelMeasurementSource: String, Codable, Sendable {
+    case catalogSnapshot
+    case userMeasured
+}
+
 enum VehicleFuelType: String, Codable, CaseIterable {
     case petrol
     case diesel

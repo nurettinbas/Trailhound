@@ -16,6 +16,7 @@ struct PairingTabView: View {
 
     @State private var navigationPath = NavigationPath()
     @State private var showShortcutsAutomationGuide = false
+    @State private var shortcutsGuideEntry: ShortcutsWizardEntry = .start
 
     private var sortedVehicles: [VehicleProfile] {
         vehicles.sorted { lhs, rhs in
@@ -55,9 +56,11 @@ struct PairingTabView: View {
     private var pairingList: some View {
         List {
             Section {
-                PairingShortcutsAutomationCard {
-                    showShortcutsAutomationGuide = true
-                }
+                PairingShortcutsAutomationCard(
+                    onOpenGuide: { openShortcutsGuide(.start) },
+                    onOpenTest: { openShortcutsGuide(.test) },
+                    onOpenTroubleshoot: { openShortcutsGuide(.checklist) }
+                )
                 .glassListRow()
             }
 
@@ -105,7 +108,7 @@ struct PairingTabView: View {
             .hideSharedToolbarBackgroundIfAvailable()
         }
         .sheet(isPresented: $showShortcutsAutomationGuide) {
-            PairingShortcutsAutomationGuideView()
+            PairingShortcutsAutomationGuideView(entry: shortcutsGuideEntry)
         }
     }
 
@@ -158,6 +161,11 @@ struct PairingTabView: View {
             await Task.yield()
             navigationPath.append(VehicleNavDestination.detail(vehicleID))
         }
+    }
+
+    private func openShortcutsGuide(_ entry: ShortcutsWizardEntry) {
+        shortcutsGuideEntry = entry
+        showShortcutsAutomationGuide = true
     }
 
     private func consumePendingCareDeepLink() {

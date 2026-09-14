@@ -12,13 +12,29 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Recording
 - Manual start/stop, pause/resume
-- **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). Setup guide lives under the **Pairing** tab
+- **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). The **Pairing** setup wizard remembers the trigger and vehicle, shows every Shortcuts step (including Run Shortcut), tests that Trailhound handles an external start, and includes a not-working checklist. Apple cannot let Trailhound create the automation for you. See [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md)
 - Vehicle profiles with fuel/EV cost per trip
 - **Avg fuel**: catalog cost from `distance × consumption × price`, shown as currency · litres (or kWh) like Estimated fuel. Trip detail **Avg fuel calculate** (with ?) edits consumption and unit price; the live line is **Avg fuel estimate**. Defaults from the vehicle and Settings
-- **Estimated fuel**: trip-specific cost from this drive’s speeds, stops, and acceleration (VSP + Willans), including idle time; shown next to Avg on trip detail and Stats, with a short help tip — not a pump reading
+- **Estimated fuel**: starts from this vehicle’s average (`C₀`), then adds GPS litres for this trip. Short stop-go is usually above your average; a steady highway trip is usually below. Shown as currency · litres (or kWh) · L/100 on trip detail, with driving efficiency, traffic, and factor chips; Stats totals match after backfill. A Stop pin is not engine-off. Not a pump reading.
+
+  ```
+  Avg  = km × C₀ / 100
+
+  Est litres = Avg
+             + speedDelta      // km × C₀/100 × (distance-weighted speed factor − 1)
+             + idle            // idle hours × idle L/h(C₀)
+             + transient       // acceleration energy, ≤ 35% of Avg
+             + cold start      // previous trip soak, scaled to C₀
+
+  L/100 = 100 × Est litres / km
+  cost  = Est litres × unit price
+  ```
+
+  Traffic is a label, not a multiplier. Same GPS trace at C₀=5 vs C₀=12 keeps `rate/C₀`. Engine: `TripFuelEstimate` (v6). Details: [Fuel estimation](docs/FUEL_ESTIMATION.md)
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
+- Extra Home Screen widgets: **goal ring**, **last trip** (privacy-clipped thumbnail, optional), **monthly cost forecast**. Deep links open Stats or the trip. Recording Pause/Stop stay on the original control widget (and on the last-trip medium family while a session is active)
 - **CarPlay Live Activity** (iOS 18+): while recording, the dashboard tile shows the vehicle icon plus duration, distance, and speed (same type size, shrink together when values get long; non-interactive; Lock Screen / Dynamic Island controls unchanged)
 - Optional confirmation before widget/shortcut/deep-link recording start
 - **Live follow map** (optional): Maps-style 3D/2D follow with the vehicle mark locked to screen center while following — the camera **and the blue trail** glide between GPS fixes (no 1 Hz hitch or chunky path updates) and **pull back as you speed up**; opening the map at speed keeps the curved vehicle→puck flight on the moving mark; a single blue traveled path fills in behind you at constant thickness in 2D and 3D; **Show entire route** fits start + trail north-up while the vehicle photo and heading chevron still face the direction of travel; screen stays awake while open; start/pause pins on the map; pause/resume/stop stay available; while **paused**, the map cannot pan/zoom and 2D/3D / overview tools are locked so the vehicle stays put — Resume, Stop, and close still work; road animation pauses while the map is open
@@ -48,6 +64,10 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Stats comparison** (same tab, no extra load on open): one glass-card language — 2-up goal + hero numbers, nested summary tiles with previous-period lines, polarity-aware arrows, a **Logged vehicle expenses** card (sums Pairing expenses, not trip GPS fuel; `?` explains the source) with cost/km, swipeable chart pagers, and a deferred year-in-review card. An in-progress month compares against the same days last month. Place, journal, or category chips hide expense MoM and vehicle $/km (those filters have no expense dimension); the goal ring and year awards stay unfiltered. The Stats filter card uses titled selection fields (category, vehicle, place, travel) that keep long names on one line, plus **Clear All** to return to Last 7 days. Summary tiles show a packed skeleton while the filtered snapshot loads, so the grid does not leave empty holes
 - Category filters, trip merge (select completed trips on the list; there is no split)
 - **Share card** from trip detail — privacy-clipped route snapshot plus caption (same clip as maps), drawn in the current Light/Dark palette with the matching app icon
+- **Year recap** on Stats: compact poster hub (scene fills the card, Play chip never truncates) opens a cinematic full-screen story — palette Canvas pages fill the cover with looping scenes, tap the left third of the screen (including the edge) to go back and the rest to go forward like Instagram (no Next), segment bars tuck under the Dynamic Island, Close and Share sit under them. Share exports the page you’re on (same scene and copy, 9:16), not a leftover km poster. The badges page sits medals inside the glowing orbs (sparkles on the story), copy overlays the scene, compact frozen chrome. Badges unlocked that year show as the same 3D medals as Stats. The last page wraps the year (not a slogan); its segment fills like the others, then the story closes. Hold to pause. January plays the previous year; other months are year-to-date. Corridor counts are for that year only. Estimated driving fuel and logged expenses stay on separate lines. Replay any time; December–January autoplay once. In January a local notification + inbox row opens the story when last year’s recap has trips and you have not watched it yet
+- **Badges**: cumulative km (100 silver, 1,000 gold, 10,000 teal platinum, 100,000 lavender diamond — each km medal runs a different motion on the S; the full km ladder stays in the gallery even while locked), plus business / streak / cities / night / corridor ladders and trips, hours, long haul, dawn, weekend, fleet, and countries — each family has its own color, icon, and idle. Stats strip shows unlocked medals only; expand is a plain toolbar glyph on the card, then a circled collapse once expanded; the card grows into a glass gallery with 3D round medals (unlocked first); locked badges show formatted progress (km or counts) without spoiling the next non-km tier. Newly unlocked badges celebrate on Stats (3 s each, then the next) and also land in the notifications inbox with a local banner (tap opens the gallery)
+- **Frequent-routes map** (Stats card grows like Badges into MapKit arcs + heatmap; privacy-safe home/work labels, top 40 corridors)
+- **Month cost forecast** on Stats: driving fuel estimate + this month’s installments and other expenses (logged pump fuel is a separate line, never double-counted into the hero total); the hub card grows into a full-screen poster and frost breakdown like Badges (atmosphere + glass, not a grouped list)
 - **Favorite place filter** on Trips and Stats (start or end matches a saved place); charts and summary follow the same filters independently per tab
 
 ### Vehicle care & costs
@@ -61,8 +81,8 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
 - **Travel journal** — Trips tab segment **Trips | Travels**; group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
-- In-app notifications inbox
-- Turkish & English UI (Localizable.xcstrings)
+- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap); tap opens the matching screen
+- Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
 ---
 
@@ -86,7 +106,7 @@ Trailhound uses **SwiftData**, **App Intents**, **Live Activities**, and modern 
 | Requirement | Used for |
 |-------------|----------|
 | GPS (Always / When In Use) | Route recording and background trips |
-| Notifications | Trip started/ended alerts; vehicle care due reminders |
+| Notifications | Trip started/ended alerts; vehicle care due reminders; badge unlocks; January year recap |
 | Face ID (optional) | App lock |
 | Shortcuts (system) | Auto-start/stop Personal Automations |
 
@@ -199,9 +219,11 @@ docs/                 # Battery, design system, Stats, TestFlight, privacy, supp
 - [Design system](docs/DESIGN_SYSTEM.md) — Liquid Glass, 20-color shell palette, engine rules, tokens
 - [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance) — Settings theme, palette, Home Screen icon, share cards
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards, glass budget
-- [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts
+- [Fuel estimation](docs/FUEL_ESTIMATION.md) — Avg vs estimated fuel, additive GPS litres, backfill v6 / rollup 14
+- [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts, premium recap/badges/routes/forecast
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
+- [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md) — Personal Automation wizard, honest test, checklist
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 - [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19

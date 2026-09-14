@@ -33,6 +33,9 @@ struct TripSummaryMetric: Identifiable {
         case fuel(cost: Double, detail: String?)
         /// Cost plus optional volume label (e.g. "₺142 · 2,1 L").
         case dynamicFuel(cost: Double, detail: String?)
+        case efficiency(score: Double)
+        case traffic(level: FuelTrafficLevel)
+        case measuredFuel(detail: String)
     }
 
     let id: String
@@ -73,6 +76,32 @@ struct TripSummaryMetric: Identifiable {
                 return "\(costText) · \(detail)"
             }
             return costText
+        case .efficiency(let score):
+            return "\(Int((score * eased).rounded()))"
+        case .traffic(let level):
+            return Self.trafficText(level)
+        case .measuredFuel(let detail):
+            return detail
+        }
+    }
+
+    static func trafficText(_ level: FuelTrafficLevel) -> String {
+        switch level {
+        case .low: return L10n.fuelTrafficLow
+        case .moderate: return L10n.fuelTrafficModerate
+        case .heavy: return L10n.fuelTrafficHeavy
+        case .unknown: return L10n.fuelTrafficUnknown
+        }
+    }
+
+    static func factorTitle(_ kind: FuelFactorKind) -> String {
+        switch kind {
+        case .coldStart: return L10n.fuelFactorColdStart
+        case .idleTraffic: return L10n.fuelFactorIdle
+        case .transientAcceleration: return L10n.fuelFactorAccel
+        case .highSpeed: return L10n.fuelFactorHighSpeed
+        case .lowSpeed: return L10n.fuelFactorLowSpeed
+        case .steadyEfficientSpeed: return L10n.fuelFactorSteady
         }
     }
 }
@@ -450,13 +479,25 @@ struct TripDetailViewModel {
             )
         }
         let fuel = StatsViewModel.fuelCost(for: trip)
+        let isElectric = (trip.fuelTypeSnapshot ?? trip.vehicle?.fuelType) == .electric
         if fuel > 0 {
+            let catalogRate = trip.fuelConsumptionPer100
             items.append(
                 TripSummaryMetric(
                     id: "fuel",
                     icon: "fuelpump",
                     title: L10n.avgFuel,
-                    kind: .fuel(cost: fuel, detail: fuelVolumeText(cost: fuel))
+                    kind: .fuel(
+                        cost: fuel,
+                        detail: fuelDetail(
+                            cost: fuel,
+                            volume: nil,
+                            rate: catalogRate,
+                            isElectric: isElectric
+                        )
+                    ),
+                    helpTitle: L10n.avgFuelHelpTitle,
+                    helpBody: L10n.avgFuelHelpBody
                 )
             )
         }
@@ -467,16 +508,121 @@ struct TripDetailViewModel {
                     id: "dynamicFuel",
                     icon: "flame",
                     title: L10n.dynamicFuel,
-                    kind: .dynamicFuel(cost: dynamic, detail: fuelVolumeText(cost: dynamic)),
+                    kind: .dynamicFuel(
+                        cost: dynamic,
+                        detail: fuelDetail(
+                            cost: dynamic,
+                            volume: trip.dynamicFuelVolume,
+                            rate: trip.dynamicFuelRatePer100,
+                            isElectric: isElectric
+                        )
+                    ),
                     helpTitle: L10n.dynamicFuelHelpTitle,
                     helpBody: L10n.dynamicFuelHelpBody
+                )
+            )
+        }
+        if let score = trip.fuelEfficiencyScore, (trip.dynamicFuelCost ?? 0) > 0 {
+            items.append(
+                TripSummaryMetric(
+                    id: "fuelEfficiency",
+                    icon: "leaf",
+                    title: L10n.fuelEfficiency,
+                    kind: .efficiency(score: score),
+                    helpTitle: L10n.fuelEfficiencyHelpTitle,
+                    helpBody: L10n.fuelEfficiencyHelpBody
+                )
+            )
+        }
+        if let traffic = trip.fuelTrafficScore, (trip.dynamicFuelCost ?? 0) > 0 {
+            let level: FuelTrafficLevel
+            if (trip.fuelEstimateConfidence ?? 0) < 0.5 {
+                level = .unknown
+            } else if traffic < 0.33 {
+                level = .low
+            } else if traffic <= 0.66 {
+                level = .moderate
+            } else {
+                level = .heavy
+            }
+            items.append(
+                TripSummaryMetric(
+                    id: "fuelTraffic",
+                    icon: "car.2",
+                    title: L10n.fuelTraffic,
+                    kind: .traffic(level: level),
+                    helpTitle: L10n.fuelTrafficHelpTitle,
+                    helpBody: L10n.fuelTrafficHelpBody
+                )
+            )
+        }
+        if trip.fuelMeasurementSource == .userMeasured,
+           let measured = trip.measuredFuelConsumptionPer100,
+           let measuredText = FuelCostCalculator.formatRatePer100(measured, isElectric: isElectric) {
+            items.append(
+                TripSummaryMetric(
+                    id: "measuredFuel",
+                    icon: "gauge.with.dots.needle.67percent",
+                    title: L10n.measuredFuel,
+                    kind: .measuredFuel(detail: measuredText),
+                    helpTitle: L10n.measuredFuelHelpTitle,
+                    helpBody: L10n.measuredFuelHelpBody
                 )
             )
         }
         return items
     }
 
-    /// Litres or kWh implied by cost ÷ unit price (trip snapshot → vehicle → Settings).
+    var fuelFactorKinds: [FuelFactorKind] {
+        Self.factors(for: trip)
+    }
+
+    static func factors(for trip: Trip) -> [FuelFactorKind] {
+        let base = (trip.fuelConsumptionPer100 ?? 0) * trip.distanceMeters / 100_000
+        let threshold = max(0.0001, abs(base) * 0.05)
+        var ranked: [(FuelFactorKind, Double)] = []
+        if let cold = trip.fuelColdStartVolume, cold >= threshold {
+            ranked.append((.coldStart, cold))
+        }
+        if let idle = trip.fuelIdleVolume, idle >= threshold {
+            ranked.append((.idleTraffic, idle))
+        }
+        if let transient = trip.fuelTransientVolume, transient >= threshold {
+            ranked.append((.transientAcceleration, transient))
+        }
+        if let speed = trip.fuelSpeedDeltaVolume {
+            if speed >= threshold {
+                let kind: FuelFactorKind = (trip.fuelTrafficScore ?? 0) >= 0.33
+                    ? .lowSpeed
+                    : .highSpeed
+                ranked.append((kind, speed))
+            } else if speed <= -threshold {
+                ranked.append((.steadyEfficientSpeed, -speed))
+            }
+        }
+        return Array(ranked.sorted { $0.1 > $1.1 }.prefix(4).map(\.0))
+    }
+
+    /// Litres or kWh implied by cost ÷ unit price, plus optional stored volume/rate.
+    private func fuelDetail(
+        cost: Double,
+        volume: Double?,
+        rate: Double?,
+        isElectric: Bool
+    ) -> String? {
+        var parts: [String] = []
+        if let volume, let text = FuelCostCalculator.formatVolumeAmount(volume, isElectric: isElectric) {
+            parts.append(text)
+        } else if let fallback = fuelVolumeText(cost: cost) {
+            parts.append(fallback)
+        }
+        if let rate, trip.distanceMeters >= 200,
+           let text = FuelCostCalculator.formatRatePer100(rate, isElectric: isElectric) {
+            parts.append(text)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private func fuelVolumeText(cost: Double) -> String? {
         FuelCostCalculator.formatVolume(
             cost: cost,
@@ -484,7 +630,7 @@ struct TripDetailViewModel {
                 tripUnitPrice: trip.fuelUnitPrice,
                 vehicle: trip.vehicle
             ),
-            isElectric: trip.vehicle?.fuelType == .electric
+            isElectric: (trip.fuelTypeSnapshot ?? trip.vehicle?.fuelType) == .electric
         )
     }
 

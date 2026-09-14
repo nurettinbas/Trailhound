@@ -45,6 +45,31 @@ private struct LightChromeProminentButtonStyle: ButtonStyle {
     }
 }
 
+/// Intrinsic-width tint capsule for in-card CTAs (recap Play). Same recipe in Light and Dark.
+private struct TrailhoundCompactProminentChromeModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .fixedSize(horizontal: true, vertical: false)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(shellPalette.tintColor(for: colorScheme))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
+                    }
+            }
+            .contentShape(Capsule())
+            .padding(6)
+    }
+}
+
 private struct TrailhoundGlassButtonModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -84,6 +109,11 @@ extension View {
         modifier(TrailhoundProminentButtonModifier())
     }
 
+    /// Compact tint capsule (~32 pt visual, 44 pt hit). Intrinsic width — never truncates.
+    func trailhoundCompactProminentButton() -> some View {
+        modifier(TrailhoundCompactProminentChromeModifier())
+    }
+
     func trailhoundGlassButton() -> some View {
         modifier(TrailhoundGlassButtonModifier())
     }
@@ -91,5 +121,27 @@ extension View {
     /// Solid system-red fill — never glass-prominent, never Appearance tint.
     func trailhoundDestructiveButton() -> some View {
         modifier(TrailhoundDestructiveButtonModifier())
+    }
+
+    /// Scale-press for a whole glass / Stats card. Not a second chrome recipe.
+    func trailhoundCardPress() -> some View {
+        buttonStyle(.trailhoundCardPress)
+    }
+}
+
+/// Soft 0.96 press on a tappable card. Reduce Motion keeps scale at 1.
+struct TrailhoundCardPressButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == TrailhoundCardPressButtonStyle {
+    static var trailhoundCardPress: TrailhoundCardPressButtonStyle {
+        TrailhoundCardPressButtonStyle()
     }
 }

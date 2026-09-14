@@ -237,40 +237,35 @@ struct TripDetailView: View {
                 Button {
                     dismiss()
                 } label: {
-                    GlassNavCircleIcon(systemName: "chevron.backward")
+                    GlassToolbarBackButton()
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(Text("onboarding.back"))
             }
-            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .topBarTrailing) {
                 GlassToolbarCluster {
                     Button {
                         Task { await renderShareCard() }
                     } label: {
-                        GlassNavCircleIcon(
+                        GlassToolbarSymbol(
                             systemName: "square.and.arrow.up",
                             isLoading: isRenderingShareCard
                         )
                     }
-                    .buttonStyle(.plain)
                     .disabled(isRenderingShareCard)
                     .accessibilityLabel(L10n.share)
 
                     Button {
                         toggleMapExpanded()
                     } label: {
-                        GlassNavCircleIcon(
+                        GlassToolbarSymbol(
                             systemName: isMapExpanded
                                 ? "arrow.down.right.and.arrow.up.left"
                                 : "arrow.up.left.and.arrow.down.right"
                         )
                     }
-                    .buttonStyle(.plain)
                     .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
                 }
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
         .sheet(isPresented: $showSharePreview, onDismiss: {
             if pendingSystemShare {
@@ -356,6 +351,9 @@ struct TripDetailView: View {
                 await loadDisplayPathAndReveal()
             }
         }
+        .onStoreSave {
+            refreshTripDetailViewModel()
+        }
         .onDisappear {
             logTripDetailDiagnostics(context: "disappear")
             if routeRevealProgress >= 0.95 {
@@ -399,6 +397,7 @@ struct TripDetailView: View {
         await Task.yield()
         guard !Task.isCancelled else { return }
         recordedPointCount = trip.points.count
+        refreshPersistedFuelEstimate()
 
         let plan = TripDetailRevealPolicy.animationPlan(
             pointCount: resolvedViewModel.displayPointCount,
@@ -819,6 +818,12 @@ struct TripDetailView: View {
         KeyboardDismiss.dismiss()
     }
 
+    private func refreshPersistedFuelEstimate() {
+        guard TripDerivedMetrics.refreshPersistedFuel(for: trip, in: modelContext) else { return }
+        try? modelContext.save()
+        refreshTripDetailViewModel()
+    }
+
     private func refreshTripDetailViewModel() {
         tripDetailViewModel = TripDetailViewModel(
             trip: trip,
@@ -860,18 +865,6 @@ struct TripDetailView: View {
                 .tripDetail,
                 "left detail before reveal finished — next open may flash empty until instant reveal"
             )
-        }
-    }
-}
-
-struct NavigationInteractivePopEnabler: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        UIViewController()
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        DispatchQueue.main.async {
-            uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         }
     }
 }

@@ -19,6 +19,7 @@ enum TripListPage {
     struct Filters: Equatable {
         var searchText: String = ""
         var categoryID: String?
+        
         var dateSection: TripDateSection?
         var vehicleFilter: VehicleFilter?
         /// Exact `SavedPlace.name` matched against start or end place name. `nil` means All.

@@ -113,7 +113,7 @@ struct ContentView: View {
             .background(Color.clear)
             .background(TrailhoundTabBarCompactInstaller(selectedTab: tabSelection.selectedTab))
             .modifier(TrailhoundTabSelectionTint())
-            .transaction { $0.animation = nil }
+            .animation(TrailhoundMotion.tabSwitch, value: tabSelection.selectedTab)
         }
         .modifier(TrailhoundTabBarChrome())
         .modifier(TrailhoundRootTint())

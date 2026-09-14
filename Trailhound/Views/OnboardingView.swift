@@ -191,7 +191,7 @@ struct OnboardingView: View {
                     kind: kind,
                     driveInProgress: driveInProgress,
                     beatProgress: beatProgress,
-                    isAnimating: sceneIsLive && page == stepRawValue(for: kind)
+                    isAnimating: sceneIsLive && page == stepRawValue(for: kind) && !showShortcutsAutomationGuide
                 )
                 .opacity(heroReveal)
                 .offset(y: (1 - heroReveal) * 18)
