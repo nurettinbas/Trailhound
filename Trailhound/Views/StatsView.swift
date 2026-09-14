@@ -1593,7 +1593,45 @@ struct StatsView: View {
                     : "—",
                 trend: snap.dynamicFuelCostTrend,
                 helpTitle: L10n.dynamicFuelHelpTitle,
-                helpBody: L10n.dynamicFuelHelpBody
+                helpBody: L10n.statsDynamicFuelHelpBody
+            ),
+            StatsSummaryMetricItem(
+                id: "dynamicFuelVolume",
+                title: L10n.statsFuelVolume,
+                value: snap.stats.hasMixedFuelUnits
+                    ? L10n.statsMixedFuelUnits
+                    : (FuelCostCalculator.formatVolumeAmount(
+                        snap.stats.dynamicFuelVolume,
+                        isElectric: snap.stats.fuelUnitIsElectric
+                    ) ?? "—"),
+                helpTitle: L10n.statsFuelVolumeHelpTitle,
+                helpBody: L10n.statsFuelVolumeHelpBody
+            ),
+            StatsSummaryMetricItem(
+                id: "dynamicFuelRate",
+                title: L10n.statsFuelRate,
+                value: {
+                    if snap.stats.hasMixedFuelUnits { return L10n.statsMixedFuelUnits }
+                    let km = snap.stats.dynamicFuelVolumeDistanceMeters / 1_000
+                    guard km > 0, snap.stats.dynamicFuelVolume > 0 else { return "—" }
+                    return FuelCostCalculator.formatRatePer100(
+                        100 * snap.stats.dynamicFuelVolume / km,
+                        isElectric: snap.stats.fuelUnitIsElectric
+                    ) ?? "—"
+                }(),
+                helpTitle: L10n.statsFuelRateHelpTitle,
+                helpBody: L10n.statsFuelRateHelpBody
+            ),
+            StatsSummaryMetricItem(
+                id: "fuelEfficiency",
+                title: L10n.statsFuelEfficiency,
+                value: snap.stats.hasMixedFuelUnits
+                    ? L10n.statsMixedFuelUnits
+                    : (snap.stats.fuelEfficiencyScore > 0
+                        ? "\(Int(snap.stats.fuelEfficiencyScore.rounded()))"
+                        : "—"),
+                helpTitle: L10n.fuelEfficiencyHelpTitle,
+                helpBody: L10n.fuelEfficiencyHelpBody
             ),
             StatsSummaryMetricItem(
                 id: "costPerKm",
@@ -1607,7 +1645,9 @@ struct StatsView: View {
                 title: L10n.string("stats.dynamic_cost_per_km"),
                 value: snap.stats.dynamicCostPerKm > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerKm, currencyCode: currencyCode)
-                    : "—"
+                    : "—",
+                helpTitle: L10n.statsDynamicCostPerKmHelpTitle,
+                helpBody: L10n.statsDynamicCostPerKmHelpBody
             ),
             StatsSummaryMetricItem(
                 id: "averageCostPerTrip",
@@ -1621,7 +1661,9 @@ struct StatsView: View {
                 title: L10n.string("stats.dynamic_cost_per_trip"),
                 value: snap.stats.dynamicCostPerTrip > 0
                     ? FuelCostCalculator.formatCost(snap.stats.dynamicCostPerTrip, currencyCode: currencyCode)
-                    : "—"
+                    : "—",
+                helpTitle: L10n.statsDynamicCostPerTripHelpTitle,
+                helpBody: L10n.statsDynamicCostPerTripHelpBody
             ),
             StatsSummaryMetricItem(
                 id: "nightDriving",
@@ -1651,7 +1693,8 @@ struct StatsView: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 16
+                        side: 16,
+                        sheetHeight: 320
                     )
                 }
                 Spacer(minLength: 0)
@@ -2047,7 +2090,8 @@ struct StatsView: View {
                 titleAccessory: {
                     HelpPopoverButton(
                         accessibilityLabel: L10n.dynamicFuelHelpTitle,
-                        message: L10n.dynamicFuelHelpBody
+                        message: L10n.statsDynamicFuelHelpBody,
+                        sheetHeight: 320
                     )
                 }
             ) {

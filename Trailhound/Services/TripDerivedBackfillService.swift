@@ -194,10 +194,16 @@ actor TripDerivedBackfiller {
 
     private func completedTripIDs() -> [UUID] {
         let descriptor = FetchDescriptor<Trip>(
-            predicate: #Predicate { $0.endedAt != nil },
-            sortBy: [SortDescriptor(\.startedAt, order: .forward)]
+            predicate: #Predicate { $0.endedAt != nil }
         )
-        return (try? modelContext.fetch(descriptor))?.map(\.id) ?? []
+        let trips = (try? modelContext.fetch(descriptor)) ?? []
+        return trips.sorted { lhs, rhs in
+            let left = lhs.vehicleID?.uuidString ?? ""
+            let right = rhs.vehicleID?.uuidString ?? ""
+            if left != right { return left < right }
+            if lhs.startedAt != rhs.startedAt { return lhs.startedAt < rhs.startedAt }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }.map(\.id)
     }
 
     private func trip(withID id: UUID) -> Trip? {
@@ -228,7 +234,8 @@ enum TripDerivedBackfillService {
     /// Bump when `TripFuelEstimate` changes so already-filled trips are recomputed.
     /// 4: short-city idle evidence (devices that already wrote 3 must walk again).
     /// 5: auto-detected Stop pins no longer zero traffic-queue idle.
-    static let dynamicFuelVersion = 5
+    /// 6: additive C₀-scaled litres (speed + idle + transient + cold).
+    static let dynamicFuelVersion = 6
 
     /// Coalesce overlapping calls on the same store. A process-wide flag would skip a second
     /// container (tests) or return before the first walk had written the fuel version (Stats).

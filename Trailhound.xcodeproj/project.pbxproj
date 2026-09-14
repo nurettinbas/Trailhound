@@ -146,6 +146,7 @@
 		A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */; };
 		A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */; };
 		A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */; };
+		A1FUELTRIPFEATURES00001 /* FuelTripFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FUELTRIPFEATURES00001 /* FuelTripFeatures.swift */; };
 		A1TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */; };
 		A1POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */; };
 		A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */; };
@@ -357,6 +358,9 @@
 		A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */; };
 		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
+		A1VEHFUELCALIBMODEL0001 /* VehicleFuelCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHFUELCALIBMODEL0001 /* VehicleFuelCalibration.swift */; };
+		A1TRIPFUELDEPENC000001 /* TripFuelDependencyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELDEPENC000001 /* TripFuelDependencyService.swift */; };
+		A1TRIPFUELCALIBSVC0001 /* TripFuelCalibrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPFUELCALIBSVC0001 /* TripFuelCalibrationService.swift */; };
 		A1FREQROUTES00000000001 /* FrequentRoutesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQROUTES00000000001 /* FrequentRoutesService.swift */; };
 		A1TRIPCATSUGGEST000001 /* TripCategorySuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */; };
 		A1TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */; };
@@ -555,6 +559,7 @@
 		A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedSummary.swift; sourceTree = "<group>"; };
 		A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripSpeedProfile.swift; sourceTree = "<group>"; };
 		A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelEstimate.swift; sourceTree = "<group>"; };
+		A2FUELTRIPFEATURES00001 /* FuelTripFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelTripFeatures.swift; sourceTree = "<group>"; };
 		A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelMotionTimeline.swift; sourceTree = "<group>"; };
 		A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowertrainFuelProfile.swift; sourceTree = "<group>"; };
 		A2TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailKeyboardLayout.swift; sourceTree = "<group>"; };
@@ -762,6 +767,9 @@
 		A2CATMGMT00000000000001 /* CategoryManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryManagementView.swift; sourceTree = "<group>"; };
 		A2LOCALIZABLE00000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleProfile.swift; sourceTree = "<group>"; };
+		A2VEHFUELCALIBMODEL0001 /* VehicleFuelCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFuelCalibration.swift; sourceTree = "<group>"; };
+		A2TRIPFUELDEPENC000001 /* TripFuelDependencyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelDependencyService.swift; sourceTree = "<group>"; };
+		A2TRIPFUELCALIBSVC0001 /* TripFuelCalibrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripFuelCalibrationService.swift; sourceTree = "<group>"; };
 		A2FREQROUTES00000000001 /* FrequentRoutesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentRoutesService.swift; sourceTree = "<group>"; };
 		A2TRIPCATSUGGEST000001 /* TripCategorySuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggester.swift; sourceTree = "<group>"; };
 		A2TRIPCATSUGSVC000001 /* TripCategorySuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCategorySuggestionService.swift; sourceTree = "<group>"; };
@@ -918,6 +926,7 @@
 				A2MATCHEDROUTE0000000001 /* MatchedRoutePoint.swift */,
 				A2USERCATEGORY00000000001 /* UserCategory.swift */,
 				A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */,
+				A2VEHFUELCALIBMODEL0001 /* VehicleFuelCalibration.swift */,
 				A2TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift */,
 				A2VCAREENUMS000000001 /* VehicleCareEnums.swift */,
 				A2VSCHEDULE0000000001 /* VehicleSchedule.swift */,
@@ -961,6 +970,8 @@
 				A2TRIPRECOVERY0000000001 /* TripRecoveryService.swift */,
 				A2TRAVELJOURNALTOT0001 /* TravelJournalTotals.swift */,
 				A2TRIPDERIVEDMETRICS0001 /* TripDerivedMetrics.swift */,
+				A2TRIPFUELDEPENC000001 /* TripFuelDependencyService.swift */,
+				A2TRIPFUELCALIBSVC0001 /* TripFuelCalibrationService.swift */,
 				A2TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift */,
 				A2LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift */,
 				A2TRIPROLLUPSERVICE00001 /* TripRollupService.swift */,
@@ -1127,6 +1138,7 @@
 				A2TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift */,
 				A2TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift */,
 				A2TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift */,
+				A2FUELTRIPFEATURES00001 /* FuelTripFeatures.swift */,
 				A2TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift */,
 				A2POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift */,
 				A2TRIPPLACEFILTER00001 /* TripPlaceFilter.swift */,
@@ -1631,6 +1643,7 @@
 				A1TRIPSPEEDSUMMARY0001 /* TripSpeedSummary.swift in Sources */,
 				A1TRIPSPEEDPROFILE00001 /* TripSpeedProfile.swift in Sources */,
 				A1TRIPFUELESTIMATE00001 /* TripFuelEstimate.swift in Sources */,
+				A1FUELTRIPFEATURES00001 /* FuelTripFeatures.swift in Sources */,
 				A1TRIPFUELMOTION000001 /* TripFuelMotionTimeline.swift in Sources */,
 				A1POWERTRAINFUELPROF001 /* PowertrainFuelProfile.swift in Sources */,
 				A1TRIPDETAILKEYBOARDLAY1 /* TripDetailKeyboardLayout.swift in Sources */,
@@ -1718,6 +1731,8 @@
 				A1SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift in Sources */,
 				A1TRIPRECOVERY0000000001 /* TripRecoveryService.swift in Sources */,
 				A1TRIPDERIVEDMETRICS0001 /* TripDerivedMetrics.swift in Sources */,
+				A1TRIPFUELDEPENC000001 /* TripFuelDependencyService.swift in Sources */,
+				A1TRIPFUELCALIBSVC0001 /* TripFuelCalibrationService.swift in Sources */,
 				A1TRIPDERIVEDBACKFILL001 /* TripDerivedBackfillService.swift in Sources */,
 				A1TRIPROLLUPSERVICE00001 /* TripRollupService.swift in Sources */,
 				A1TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift in Sources */,
@@ -1757,6 +1772,7 @@
 				A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */,
 				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,
+				A1VEHFUELCALIBMODEL0001 /* VehicleFuelCalibration.swift in Sources */,
 				A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */,
 				A1VSCHEDULE0000000001 /* VehicleSchedule.swift in Sources */,
 				A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */,

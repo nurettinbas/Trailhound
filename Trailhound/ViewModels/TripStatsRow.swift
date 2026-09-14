@@ -49,11 +49,25 @@ protocol TripStatsAggregable {
     /// How many real trips this value stands for. Always 1 for a `Trip`, but a row rolled up from
     /// `TripDailyRollup` represents a whole day's worth.
     var tripCount: Int { get }
+    var resolvedDynamicFuelVolume: Double { get }
+    var resolvedFuelEfficiencyScore: Double { get }
+    var resolvedFuelUnitKey: String { get }
+    var resolvedFuelIdleVolume: Double { get }
+    var resolvedFuelTransientVolume: Double { get }
+    var resolvedFuelColdStartVolume: Double { get }
+    var resolvedFuelSpeedDeltaVolume: Double { get }
 }
 
 extension TripStatsAggregable {
     var tripCount: Int { 1 }
     var journalID: UUID? { nil }
+    var resolvedDynamicFuelVolume: Double { 0 }
+    var resolvedFuelEfficiencyScore: Double { 0 }
+    var resolvedFuelUnitKey: String { "liquid" }
+    var resolvedFuelIdleVolume: Double { 0 }
+    var resolvedFuelTransientVolume: Double { 0 }
+    var resolvedFuelColdStartVolume: Double { 0 }
+    var resolvedFuelSpeedDeltaVolume: Double { 0 }
 }
 
 /// A trip flattened to plain values so aggregation can leave the main actor.
@@ -77,6 +91,13 @@ struct TripStatsRow: TripStatsAggregable, Sendable {
     let resolvedStopDurationSeconds: TimeInterval
     let resolvedMostCommonSpeedKmh: Double
     let tripCount: Int
+    let resolvedDynamicFuelVolume: Double
+    let resolvedFuelEfficiencyScore: Double
+    let resolvedFuelUnitKey: String
+    let resolvedFuelIdleVolume: Double
+    let resolvedFuelTransientVolume: Double
+    let resolvedFuelColdStartVolume: Double
+    let resolvedFuelSpeedDeltaVolume: Double
 }
 
 extension TripStatsRow {
@@ -104,7 +125,14 @@ extension TripStatsRow {
             resolvedCruiseDurationSeconds: trip.cruiseDurationSeconds ?? 0,
             resolvedStopDurationSeconds: trip.stopDurationSeconds ?? 0,
             resolvedMostCommonSpeedKmh: trip.mostCommonSpeedKmh ?? 0,
-            tripCount: 1
+            tripCount: 1,
+            resolvedDynamicFuelVolume: trip.dynamicFuelVolume ?? 0,
+            resolvedFuelEfficiencyScore: trip.fuelEfficiencyScore ?? 0,
+            resolvedFuelUnitKey: trip.fuelUnitKey,
+            resolvedFuelIdleVolume: trip.fuelIdleVolume ?? 0,
+            resolvedFuelTransientVolume: trip.fuelTransientVolume ?? 0,
+            resolvedFuelColdStartVolume: trip.fuelColdStartVolume ?? 0,
+            resolvedFuelSpeedDeltaVolume: trip.fuelSpeedDeltaVolume ?? 0
         )
     }
 
@@ -141,7 +169,16 @@ extension TripStatsRow {
             resolvedMostCommonSpeedKmh: mostCommonWeight > 0
                 ? rollup.mostCommonSpeedProduct / mostCommonWeight
                 : 0,
-            tripCount: rollup.tripCount
+            tripCount: rollup.tripCount,
+            resolvedDynamicFuelVolume: rollup.dynamicFuelVolume,
+            resolvedFuelEfficiencyScore: rollup.fuelEfficiencyWeight > 0
+                ? rollup.fuelEfficiencyProduct / rollup.fuelEfficiencyWeight
+                : 0,
+            resolvedFuelUnitKey: rollup.fuelUnitKey.isEmpty ? "liquid" : rollup.fuelUnitKey,
+            resolvedFuelIdleVolume: rollup.fuelIdleVolume,
+            resolvedFuelTransientVolume: rollup.fuelTransientVolume,
+            resolvedFuelColdStartVolume: rollup.fuelColdStartVolume,
+            resolvedFuelSpeedDeltaVolume: rollup.fuelSpeedDeltaVolume
         )
     }
 }
@@ -159,6 +196,13 @@ extension Trip: TripStatsAggregable {
     var resolvedCruiseDurationSeconds: TimeInterval { cruiseDurationSeconds ?? 0 }
     var resolvedStopDurationSeconds: TimeInterval { stopDurationSeconds ?? 0 }
     var resolvedMostCommonSpeedKmh: Double { mostCommonSpeedKmh ?? 0 }
+    var resolvedDynamicFuelVolume: Double { dynamicFuelVolume ?? 0 }
+    var resolvedFuelEfficiencyScore: Double { fuelEfficiencyScore ?? 0 }
+    var resolvedFuelUnitKey: String { fuelUnitKey }
+    var resolvedFuelIdleVolume: Double { fuelIdleVolume ?? 0 }
+    var resolvedFuelTransientVolume: Double { fuelTransientVolume ?? 0 }
+    var resolvedFuelColdStartVolume: Double { fuelColdStartVolume ?? 0 }
+    var resolvedFuelSpeedDeltaVolume: Double { fuelSpeedDeltaVolume ?? 0 }
 
     var nightDistanceShare: NightDistanceShare? {
         if let nightDistanceMeters, let trackedDistanceMeters {

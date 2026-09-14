@@ -206,6 +206,29 @@ struct StatsViewModel {
             stopDuration += trip.resolvedStopDurationSeconds
         }
 
+        var totalVolume = 0.0
+        var volumeDistance = 0.0
+        var efficiencyProduct = 0.0
+        var idleVolume = 0.0
+        var transientVolume = 0.0
+        var coldVolume = 0.0
+        var speedAbsVolume = 0.0
+        var unitKeys = Set<String>()
+        for trip in completed {
+            let volume = trip.resolvedDynamicFuelVolume
+            totalVolume += volume
+            if volume > 0 { volumeDistance += trip.distanceMeters }
+            if trip.resolvedFuelEfficiencyScore > 0, trip.distanceMeters > 0 {
+                efficiencyProduct += trip.resolvedFuelEfficiencyScore * trip.distanceMeters
+            }
+            idleVolume += trip.resolvedFuelIdleVolume
+            transientVolume += trip.resolvedFuelTransientVolume
+            coldVolume += trip.resolvedFuelColdStartVolume
+            speedAbsVolume += abs(trip.resolvedFuelSpeedDeltaVolume)
+            unitKeys.insert(trip.resolvedFuelUnitKey)
+        }
+        let mixedUnits = unitKeys.count > 1
+
         return TripStats(
             tripCount: count,
             totalDistanceMeters: totalDistance,
@@ -218,7 +241,24 @@ struct StatsViewModel {
             stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
             dynamicFuelCost: totalDynamicFuel,
-            nightDrivingRatio: nightRatio
+            nightDrivingRatio: nightRatio,
+            dynamicFuelVolume: mixedUnits ? 0 : totalVolume,
+            dynamicFuelVolumeDistanceMeters: mixedUnits ? 0 : volumeDistance,
+            fuelEfficiencyScore: mixedUnits || volumeDistance <= 0
+                ? 0
+                : efficiencyProduct / max(volumeDistance, 1),
+            hasMixedFuelUnits: mixedUnits,
+            fuelUnitIsElectric: !mixedUnits && unitKeys.contains("electric"),
+            topFuelFactors: mixedUnits ? [] : [
+                (FuelFactorKind.idleTraffic, idleVolume),
+                (.transientAcceleration, transientVolume),
+                (.coldStart, coldVolume),
+                (.highSpeed, speedAbsVolume)
+            ]
+            .filter { $0.1 > 0.01 }
+            .sorted { $0.1 > $1.1 }
+            .prefix(3)
+            .map(\.0)
         )
     }
 
@@ -1004,6 +1044,12 @@ struct TripStats: Sendable {
     let estimatedFuelCost: Double
     let dynamicFuelCost: Double
     let nightDrivingRatio: Double
+    let dynamicFuelVolume: Double
+    let dynamicFuelVolumeDistanceMeters: Double
+    let fuelEfficiencyScore: Double
+    let hasMixedFuelUnits: Bool
+    let fuelUnitIsElectric: Bool
+    let topFuelFactors: [FuelFactorKind]
 
     init(
         tripCount: Int,
@@ -1017,7 +1063,13 @@ struct TripStats: Sendable {
         stopDuration: TimeInterval = 0,
         estimatedFuelCost: Double,
         dynamicFuelCost: Double = 0,
-        nightDrivingRatio: Double = 0
+        nightDrivingRatio: Double = 0,
+        dynamicFuelVolume: Double = 0,
+        dynamicFuelVolumeDistanceMeters: Double = 0,
+        fuelEfficiencyScore: Double = 0,
+        hasMixedFuelUnits: Bool = false,
+        fuelUnitIsElectric: Bool = false,
+        topFuelFactors: [FuelFactorKind] = []
     ) {
         self.tripCount = tripCount
         self.totalDistanceMeters = totalDistanceMeters
@@ -1031,6 +1083,12 @@ struct TripStats: Sendable {
         self.estimatedFuelCost = estimatedFuelCost
         self.dynamicFuelCost = dynamicFuelCost
         self.nightDrivingRatio = nightDrivingRatio
+        self.dynamicFuelVolume = dynamicFuelVolume
+        self.dynamicFuelVolumeDistanceMeters = dynamicFuelVolumeDistanceMeters
+        self.fuelEfficiencyScore = fuelEfficiencyScore
+        self.hasMixedFuelUnits = hasMixedFuelUnits
+        self.fuelUnitIsElectric = fuelUnitIsElectric
+        self.topFuelFactors = topFuelFactors
     }
 
     var totalDistanceText: String { DateFormatters.formatDistance(totalDistanceMeters) }

@@ -2890,13 +2890,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estimated starts from your vehicle average, then adjusts for this trip’s speeds, acceleration, and GPS-supported traffic idle. Longer queues still count even when a Stop pin is on the map. Weakly supported GPS gaps are discounted. It is an estimate — not a pump reading. Grade, weather, and whether the engine was on are unknown."
+            "value": "Starts from the average you set for this vehicle. Then it looks at this trip: speeds, waiting, hard acceleration, and whether the engine was likely cold. Short stop-go usually uses more than your average; a steady highway trip usually uses less. Not a pump reading. A Stop pin on the map does not mean the engine was off."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tahmini, araç ortalamanızı taban alır; bu yolculuğun hızı, hızlanması ve GPS ile desteklenen trafik rölantisine göre düzeltir. Haritadaki Stop pini motorun kapalı olduğu anlamına gelmez; uzun kuyruklar hesaba girer. Kanıtı zayıf GPS boşlukları azaltılır. Pompa ölçümü değildir. Eğim, hava ve motorun açık olup olmadığı bilinmez."
+            "value": "Bu araç için girdiğin ortalamadan başlar. Bu yolculuğun hızına, beklemene, sert gaza ve motorun soğuk olup olmadığına bakar. Kısa dur-kalk genelde ortalamanın üstü, akıcı yol altıdır. Pompa ölçümü değildir. Haritadaki Stop pini motorun kapalı olduğu anlamına gelmez."
           }
         }
       }
@@ -17570,13 +17570,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avg fuel is the catalog cost: distance × consumption × unit price. Change those values here to recalculate. It is not Estimated fuel, which looks at this trip’s speeds and stops."
+            "value": "If you change L/100 here, Trailhound treats it as what this trip actually used. It does not replace your vehicle average and it is not Estimated fuel. Over time it helps the estimate learn your car. Unit price still updates Average fuel cost."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ort. yakıt katalog maliyeti: mesafe × tüketim × birim fiyat. Değerleri buradan değiştirince yeniden hesaplanır. Bu yolculuğun hız ve duruşlarına bakan Tahmini yakıt değildir."
+            "value": "Buradaki L/100’ü değiştirirsen bu yolculuğun gerçek tüketimi sayılır. Araç ortalamanın yerine geçmez; Tahmini yakıt da değildir. Zamanla tahmin senin arabana alışır. Birim fiyat hâlâ Ort. yakıt maliyetini günceller."
           }
         }
       }
@@ -17587,13 +17587,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What is Avg fuel calculate?"
+            "value": "What is this consumption?"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ort. yakıt hesapla nedir?"
+            "value": "Bu tüketim nedir?"
           }
         }
       }
@@ -21991,6 +21991,618 @@
           "stringUnit": {
             "state": "translated",
             "value": "İki farklı ülkede sür."
+          }
+        }
+      }
+    },
+    "label.avg_fuel.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is average fuel?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ortalama yakıt nedir?"
+          }
+        }
+      }
+    },
+    "label.avg_fuel.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catalog cost: distance × the average consumption for this vehicle × unit price. It does not look at this trip’s GPS. Change the average in Settings or here; Estimated fuel is the GPS version."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katalog: mesafe × bu aracın ortalama tüketimi × birim fiyat. Bu yolculuğun GPS’ine bakmaz. Ortalamayı Ayarlar veya buradan değiştirirsin; Tahmini yakıt GPS’li olandır."
+          }
+        }
+      }
+    },
+    "stats.dynamic_fuel.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts from the average you set for each vehicle. Then it looks at each trip: speeds, waiting, hard acceleration, and whether the engine was likely cold. This is the total for the selected period. Not a pump reading."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her araç için girdiğin ortalamadan başlar. Her yolculuğun hızına, beklemene, sert gaza ve soğuk motora bakar. Seçilen dönemdeki toplamdır. Pompa ölçümü değildir."
+          }
+        }
+      }
+    },
+    "label.fuel_efficiency": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Driving efficiency"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüş verimi"
+          }
+        }
+      }
+    },
+    "label.fuel_efficiency.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is driving efficiency?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüş verimi nedir?"
+          }
+        }
+      }
+    },
+    "label.fuel_efficiency.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How economical this trip was versus your vehicle average. Around 80 is typical for you. Lower means this trip used more than usual (traffic, short cold start, high speed). Higher means easier than your average."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu yolculuğun, senin araç ortalamana göre ne kadar ekonomik olduğu. 80 civarı senin normalin. Daha düşük: trafik, kısa soğuk çalışma veya yüksek hız. Daha yüksek: ortalamadan hafif."
+          }
+        }
+      }
+    },
+    "label.fuel_traffic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trafik"
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is the traffic estimate?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trafik tahmini nedir?"
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A guess from this trip’s GPS only — slow moving, lots of stops, speed that keeps changing. Not live traffic. Low, moderate, or heavy. Poor GPS shows unknown."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnız bu yolculuğun GPS’i: yavaş gitme, çok duruş, dalgalı hız. Canlı trafik verisi değil. Düşük, orta veya yoğun. GPS zayıfsa bilinmiyor."
+          }
+        }
+      }
+    },
+    "label.fuel_factors.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What are these factors?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu etkenler nedir?"
+          }
+        }
+      }
+    },
+    "label.fuel_factors.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The main reasons Estimated fuel is above or below your average on this trip."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu yolculukta Tahmini yakıtın ortalamadan sapmasının başlıca nedenleri."
+          }
+        }
+      }
+    },
+    "label.measured_fuel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measured"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ölçülen"
+          }
+        }
+      }
+    },
+    "label.measured_fuel.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is this consumption?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu tüketim nedir?"
+          }
+        }
+      }
+    },
+    "label.measured_fuel.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you change L/100 here, Trailhound treats it as what this trip actually used. It does not replace your vehicle average and it is not Estimated fuel. Over time it helps the estimate learn your car."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buradaki L/100’ü değiştirirsen bu yolculuğun gerçek tüketimi sayılır. Araç ortalamanın yerine geçmez; Tahmini yakıt da değildir. Zamanla tahmin senin arabana alışır."
+          }
+        }
+      }
+    },
+    "stats.fuel_volume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Est. volume"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tah. hacim"
+          }
+        }
+      }
+    },
+    "stats.fuel_volume.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is estimated volume?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini hacim nedir?"
+          }
+        }
+      }
+    },
+    "stats.fuel_rate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Est. L/100 km"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tah. L/100 km"
+          }
+        }
+      }
+    },
+    "stats.fuel_rate.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is estimated rate?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini tüketim nedir?"
+          }
+        }
+      }
+    },
+    "stats.fuel_volume.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated fuel used in the selected period, for vehicles that share the same fuel unit. Petrol and electric are not added together."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilen dönemde, aynı yakıt birimindeki tahmini toplam. Karışık benzin ve elektrik toplanmaz."
+          }
+        }
+      }
+    },
+    "stats.fuel_rate.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance-weighted estimated consumption for the selected period, for vehicles that share the same fuel unit. Petrol and electric are not mixed."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilen dönemde, aynı yakıt birimindeki mesafeye ağırlıklı tahmini ortalama. Karışık benzin ve elektrik toplanmaz."
+          }
+        }
+      }
+    },
+    "stats.fuel_efficiency": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Est. efficiency"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tah. verim"
+          }
+        }
+      }
+    },
+    "stats.fuel_mixed_units": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mixed units"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karışık birimler"
+          }
+        }
+      }
+    },
+    "stats.dynamic_cost_per_km.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is estimated cost per km?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini km maliyeti nedir?"
+          }
+        }
+      }
+    },
+    "stats.dynamic_cost_per_km.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated fuel cost divided by distance for this period. Average fuel per km uses the catalog average instead of GPS."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu dönemde tahmini yakıt maliyeti ÷ mesafe. Ort. yakıt/km katalog ortalamasını kullanır, GPS’i değil."
+          }
+        }
+      }
+    },
+    "stats.dynamic_cost_per_trip.help.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is estimated cost per trip?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini yolculuk maliyeti nedir?"
+          }
+        }
+      }
+    },
+    "stats.dynamic_cost_per_trip.help.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated fuel cost divided by trip count for this period. Average fuel per trip uses the catalog average instead of GPS."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu dönemde tahmini yakıt maliyeti ÷ yolculuk sayısı. Ort. yakıt/yolculuk katalog ortalamasını kullanır, GPS’i değil."
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.low": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düşük"
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.moderate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moderate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orta"
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.heavy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heavy"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yoğun"
+          }
+        }
+      }
+    },
+    "label.fuel_traffic.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmiyor"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.cold_start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cold start"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soğuk çalışma"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting / idle"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekleme / rölanti"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.accel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hard acceleration"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sert hızlanma"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.high_speed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High speed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüksek hız"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.low_speed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low speed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düşük hız"
+          }
+        }
+      }
+    },
+    "label.fuel_factor.steady": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steady efficient speed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akıcı ekonomik hız"
           }
         }
       }

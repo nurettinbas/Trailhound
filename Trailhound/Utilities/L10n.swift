@@ -172,9 +172,45 @@ enum L10n {
     static var tripSummary: String { string("trip.summary") }
     static var estimatedFuel: String { string("label.estimated_fuel") }
     static var avgFuel: String { string("label.avg_fuel") }
+    static var avgFuelHelpTitle: String { string("label.avg_fuel.help.title") }
+    static var avgFuelHelpBody: String { string("label.avg_fuel.help.body") }
     static var dynamicFuel: String { string("label.dynamic_fuel") }
     static var dynamicFuelHelpTitle: String { string("label.dynamic_fuel.help.title") }
     static var dynamicFuelHelpBody: String { string("label.dynamic_fuel.help.body") }
+    static var statsDynamicFuelHelpBody: String { string("stats.dynamic_fuel.help.body") }
+    static var fuelEfficiency: String { string("label.fuel_efficiency") }
+    static var fuelEfficiencyHelpTitle: String { string("label.fuel_efficiency.help.title") }
+    static var fuelEfficiencyHelpBody: String { string("label.fuel_efficiency.help.body") }
+    static var fuelTraffic: String { string("label.fuel_traffic") }
+    static var fuelTrafficHelpTitle: String { string("label.fuel_traffic.help.title") }
+    static var fuelTrafficHelpBody: String { string("label.fuel_traffic.help.body") }
+    static var fuelFactorsHelpTitle: String { string("label.fuel_factors.help.title") }
+    static var fuelFactorsHelpBody: String { string("label.fuel_factors.help.body") }
+    static var measuredFuel: String { string("label.measured_fuel") }
+    static var measuredFuelHelpTitle: String { string("label.measured_fuel.help.title") }
+    static var measuredFuelHelpBody: String { string("label.measured_fuel.help.body") }
+    static var statsFuelVolume: String { string("stats.fuel_volume") }
+    static var statsFuelVolumeHelpTitle: String { string("stats.fuel_volume.help.title") }
+    static var statsFuelVolumeHelpBody: String { string("stats.fuel_volume.help.body") }
+    static var statsFuelRate: String { string("stats.fuel_rate") }
+    static var statsFuelRateHelpTitle: String { string("stats.fuel_rate.help.title") }
+    static var statsFuelRateHelpBody: String { string("stats.fuel_rate.help.body") }
+    static var statsFuelEfficiency: String { string("stats.fuel_efficiency") }
+    static var statsMixedFuelUnits: String { string("stats.fuel_mixed_units") }
+    static var statsDynamicCostPerKmHelpTitle: String { string("stats.dynamic_cost_per_km.help.title") }
+    static var statsDynamicCostPerKmHelpBody: String { string("stats.dynamic_cost_per_km.help.body") }
+    static var statsDynamicCostPerTripHelpTitle: String { string("stats.dynamic_cost_per_trip.help.title") }
+    static var statsDynamicCostPerTripHelpBody: String { string("stats.dynamic_cost_per_trip.help.body") }
+    static var fuelTrafficLow: String { string("label.fuel_traffic.low") }
+    static var fuelTrafficModerate: String { string("label.fuel_traffic.moderate") }
+    static var fuelTrafficHeavy: String { string("label.fuel_traffic.heavy") }
+    static var fuelTrafficUnknown: String { string("label.fuel_traffic.unknown") }
+    static var fuelFactorColdStart: String { string("label.fuel_factor.cold_start") }
+    static var fuelFactorIdle: String { string("label.fuel_factor.idle") }
+    static var fuelFactorAccel: String { string("label.fuel_factor.accel") }
+    static var fuelFactorHighSpeed: String { string("label.fuel_factor.high_speed") }
+    static var fuelFactorLowSpeed: String { string("label.fuel_factor.low_speed") }
+    static var fuelFactorSteady: String { string("label.fuel_factor.steady") }
     static var loggedVehicleExpensesHelpTitle: String { string("stats.compare.vehicles_help.title") }
     static var loggedVehicleExpensesHelpBody: String { string("stats.compare.vehicles_help.body") }
     static var maxSpeed: String { string("label.max_speed") }

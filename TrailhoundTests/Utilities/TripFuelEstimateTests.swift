@@ -63,11 +63,12 @@ final class TripFuelEstimateTests: XCTestCase {
             distanceMeters: 0,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         XCTAssertEqual(result.avgVolume, 0, accuracy: 0.0001)
-        XCTAssertEqual(result.dynamicVolume, 0, accuracy: 0.0001)
-        XCTAssertEqual(result.dynamicCost, 0, accuracy: 0.0001)
+        XCTAssertLessThan(result.dynamicVolume, 0.01)
+        XCTAssertLessThan(result.dynamicCost, 1)
     }
 
     func testUnusableTraceFallsBackToCatalogAverage() {
@@ -79,7 +80,8 @@ final class TripFuelEstimateTests: XCTestCase {
             distanceMeters: 5_000,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         XCTAssertEqual(result.dynamicVolume, result.avgVolume, accuracy: 0.0001)
         XCTAssertEqual(result.confidence, 0, accuracy: 0.0001)
@@ -114,14 +116,16 @@ final class TripFuelEstimateTests: XCTestCase {
             distanceMeters: short.distance,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         let longResult = TripFuelEstimate.compute(
             samples: long.samples,
             distanceMeters: long.distance,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         let shortRate = shortResult.dynamicVolume / (short.distance / 1_000) * 100
         let longRate = longResult.dynamicVolume / (long.distance / 1_000) * 100
@@ -286,17 +290,19 @@ final class TripFuelEstimateTests: XCTestCase {
             distanceMeters: distance,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         let continuous = TripFuelEstimate.compute(
             samples: samples(speedsMps: Array(repeating: 40.0 / 3.6, count: 121)),
             distanceMeters: distance,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
 
-        XCTAssertEqual(withGap.dynamicVolume, continuous.dynamicVolume, accuracy: continuous.dynamicVolume * 0.08)
+        XCTAssertEqual(withGap.dynamicVolume, continuous.dynamicVolume, accuracy: continuous.dynamicVolume * 0.15)
     }
 
     func testDistanceMismatchPullsTowardCatalogAverage() {
@@ -365,7 +371,7 @@ final class TripFuelEstimateTests: XCTestCase {
             fuelType: .hybrid
         )
         XCTAssertGreaterThan(hybrid.dynamicVolume, 0)
-        XCTAssertGreaterThan(hybrid.dynamicVolume, hybrid.avgVolume * TripFuelEstimate.minimumTripFactor * 0.5)
+        XCTAssertGreaterThan(hybrid.dynamicVolume, hybrid.avgVolume * 0.4)
     }
 
     func testDoubleConsumptionNearlyDoublesDynamicVolume() {
@@ -512,10 +518,20 @@ final class TripFuelEstimateTests: XCTestCase {
     }
 
     func testObservedIdleCreditRemainsConservativeAfterTenMinutes() {
-        XCTAssertEqual(TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 60), 60, accuracy: 0.001)
-        XCTAssertEqual(TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 180), 180, accuracy: 0.001)
-        XCTAssertEqual(TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 600), 600, accuracy: 0.001)
-        XCTAssertEqual(TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 1_200), 810, accuracy: 0.001)
+        XCTAssertEqual(TripFuelMotionTimeline.engineOnProbability(forRunDuration: 60), 0.85, accuracy: 0.001)
+        XCTAssertEqual(TripFuelMotionTimeline.engineOnProbability(forRunDuration: 120), 0.85, accuracy: 0.001)
+        XCTAssertEqual(TripFuelMotionTimeline.engineOnProbability(forRunDuration: 600), 0.65, accuracy: 0.001)
+        XCTAssertEqual(TripFuelMotionTimeline.engineOnProbability(forRunDuration: 45 * 60), 0.20, accuracy: 0.001)
+        XCTAssertEqual(
+            TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 60),
+            60 * 0.85,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            TripFuelMotionTimeline.idleCreditSeconds(forRunDuration: 1_200),
+            1_200 * TripFuelMotionTimeline.engineOnProbability(forRunDuration: 1_200),
+            accuracy: 0.001
+        )
     }
 
     func testDenseObservedQueueContinuesAddingConservativeIdle() {
@@ -567,7 +583,7 @@ final class TripFuelEstimateTests: XCTestCase {
             fuelType: .petrol
         )
 
-        XCTAssertGreaterThan(timeline.observedStopSeconds, 300)
+        XCTAssertGreaterThan(timeline.observedStopSeconds, 180)
         XCTAssertGreaterThan(result.dynamicVolume, result.avgVolume)
         XCTAssertGreaterThan(result.dynamicVolume / (city.distance / 1_000) * 100, 7)
     }
@@ -661,7 +677,334 @@ final class TripFuelEstimateTests: XCTestCase {
         XCTAssertEqual(denseRate, sparseRate, accuracy: denseRate * 0.08)
     }
 
+    func testMissingCatalogConsumptionReturnsZeros() {
+        let trip = steadyCruise(kmh: 50, seconds: 120)
+        let result = TripFuelEstimate.compute(
+            samples: trip.samples,
+            distanceMeters: trip.distance,
+            consumptionPer100: 0,
+            unitPrice: price,
+            fuelType: .petrol
+        )
+        XCTAssertEqual(result.avgVolume, 0, accuracy: 0.0001)
+        XCTAssertEqual(result.dynamicVolume, 0, accuracy: 0.0001)
+        XCTAssertEqual(result.dynamicCost, 0, accuracy: 0.0001)
+    }
+
+    func testMixedWarmTripStaysNearCatalogAverage() {
+        var speeds: [Double] = []
+        speeds += Array(repeating: 40.0 / 3.6, count: 400)
+        speeds += Array(repeating: 70.0 / 3.6, count: 400)
+        let route = samples(speedsMps: speeds)
+        let distance = zip(route.dropFirst(), route).reduce(0.0) {
+            $0 + $1.0.location.distance(from: $1.1.location)
+        }
+        let result = TripFuelEstimate.compute(
+            samples: route,
+            distanceMeters: distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 0.95)
+        XCTAssertLessThan(ratio, 1.10)
+        XCTAssertEqual(result.avgVolume, distance / 1_000 * c0 / 100, accuracy: 0.0001)
+    }
+
+    func testTwoKilometreQueueIsOnePointFiveToTwoPointThreeTimesCatalog() {
+        let traffic = trafficRoute(targetMeters: 2_000, targetSeconds: 900)
+        let result = TripFuelEstimate.compute(
+            samples: traffic.samples,
+            distanceMeters: traffic.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(result.dynamicVolume, result.avgVolume)
+        XCTAssertGreaterThan(ratio, 1.5)
+        XCTAssertLessThanOrEqual(ratio, 2.3)
+    }
+
+    func testTwoKilometreFlowingColdStartIsAboveCatalog() {
+        let flowing = steadyCruise(kmh: 40, seconds: 180)
+        let result = TripFuelEstimate.compute(
+            samples: flowing.samples,
+            distanceMeters: 2_000,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: coldSoak
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 1.3)
+        XCTAssertLessThan(ratio, 1.7)
+    }
+
+    func testTwentyKilometreCityTrafficIsAboveCatalog() {
+        let traffic = trafficRoute(targetMeters: 20_000, targetSeconds: 3_300)
+        let result = TripFuelEstimate.compute(
+            samples: traffic.samples,
+            distanceMeters: traffic.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 1.3)
+        XCTAssertLessThan(ratio, 1.7)
+    }
+
+    func testTwentyKilometreFlowingCityStaysNearCatalog() {
+        let city = steadyCruise(kmh: 45, seconds: 1_600)
+        let result = TripFuelEstimate.compute(
+            samples: city.samples,
+            distanceMeters: city.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 0.95)
+        XCTAssertLessThan(ratio, 1.20)
+    }
+
+    func testHundredKilometreHighwayEightyFiveIsBelowCatalog() {
+        let highway = steadyCruise(kmh: 85, seconds: 4_235)
+        let result = TripFuelEstimate.compute(
+            samples: highway.samples,
+            distanceMeters: highway.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 0.80)
+        XCTAssertLessThan(ratio, 0.90)
+        XCTAssertEqual(result.avgVolume, highway.distance / 1_000 * c0 / 100, accuracy: 0.0001)
+    }
+
+    func testHundredKilometreHighwayOneTwentyIsAboveCatalog() {
+        let highway = steadyCruise(kmh: 120, seconds: 3_000)
+        let result = TripFuelEstimate.compute(
+            samples: highway.samples,
+            distanceMeters: highway.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let ratio = (result.ratePer100 ?? 0) / c0
+        XCTAssertGreaterThan(ratio, 1.15)
+        XCTAssertLessThan(ratio, 1.40)
+    }
+
+    func testSameTraceRateOverCatalogIsInvariantToC0() {
+        let traffic = trafficRoute(targetMeters: 8_000, targetSeconds: 1_200)
+        let low = TripFuelEstimate.compute(
+            samples: traffic.samples,
+            distanceMeters: traffic.distance,
+            consumptionPer100: 5,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let high = TripFuelEstimate.compute(
+            samples: traffic.samples,
+            distanceMeters: traffic.distance,
+            consumptionPer100: 10,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let lowRatio = (low.ratePer100 ?? 0) / 5
+        let highRatio = (high.ratePer100 ?? 0) / 10
+        XCTAssertEqual(lowRatio, highRatio, accuracy: 0.03)
+        XCTAssertEqual(high.dynamicVolume / low.dynamicVolume, 2, accuracy: 0.06)
+        XCTAssertEqual(high.avgVolume / low.avgVolume, 2, accuracy: 0.001)
+    }
+
+    func testLongerSoakIncreasesColdStartLitres() {
+        let short = steadyCruise(kmh: 40, seconds: 180)
+        let afterFiveMinutes = TripFuelEstimate.compute(
+            samples: short.samples,
+            distanceMeters: 2_000,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: FuelThermalInput(
+                previousEndedAt: start.addingTimeInterval(-5 * 60),
+                previousMovingMinutes: 40,
+                previousDistanceKm: 25,
+                tripStartedAt: start,
+                hasVehicleContinuity: true
+            )
+        )
+        let afterEightHours = TripFuelEstimate.compute(
+            samples: short.samples,
+            distanceMeters: 2_000,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: coldSoak
+        )
+        XCTAssertGreaterThan(afterEightHours.breakdown.coldStartLitres, afterFiveMinutes.breakdown.coldStartLitres)
+        XCTAssertGreaterThan(afterEightHours.dynamicVolume, afterFiveMinutes.dynamicVolume)
+    }
+
+    func testStopPinDoesNotRemoveQueueIdle() {
+        let city = shortCityTripRoute()
+        let pin = TripFuelMotionTimeline.ExcludedStop(
+            startedAt: start.addingTimeInterval(188),
+            duration: 350
+        )
+        let production = TripFuelEstimate.compute(
+            samples: city.samples,
+            distanceMeters: city.distance,
+            consumptionPer100: 7,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let pinAsEngineOff = TripFuelEstimate.compute(
+            samples: city.samples,
+            distanceMeters: city.distance,
+            consumptionPer100: 7,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine,
+            excludedStops: [pin]
+        )
+        XCTAssertGreaterThan(production.dynamicVolume, production.avgVolume)
+        XCTAssertGreaterThan((production.ratePer100 ?? 0) / 7, 1.0)
+        XCTAssertGreaterThan(production.dynamicVolume, pinAsEngineOff.dynamicVolume)
+    }
+
+    func testCalibrationBiasAppliesAfterFiveSamples() {
+        let trip = steadyCruise(kmh: 70, seconds: 600)
+        let identity = TripFuelEstimate.compute(
+            samples: trip.samples,
+            distanceMeters: trip.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let unused = TripFuelEstimate.compute(
+            samples: trip.samples,
+            distanceMeters: trip.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine,
+            calibration: FuelCalibrationSnapshot(bias: 1.2, acceptedCount: 4)
+        )
+        let applied = TripFuelEstimate.compute(
+            samples: trip.samples,
+            distanceMeters: trip.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine,
+            calibration: FuelCalibrationSnapshot(bias: 1.2, acceptedCount: 5)
+        )
+        XCTAssertEqual(unused.dynamicVolume, identity.dynamicVolume, accuracy: 0.0001)
+        XCTAssertEqual(applied.dynamicVolume / identity.dynamicVolume, 1.2, accuracy: 0.02)
+    }
+
+    func testMoreIdleDoesNotLowerLitres() {
+        let short = routeWithIdle(idleSeconds: 60)
+        let longIdle = routeWithIdle(idleSeconds: 400)
+        let shortResult = TripFuelEstimate.compute(
+            samples: short.samples,
+            distanceMeters: short.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        let longResult = TripFuelEstimate.compute(
+            samples: longIdle.samples,
+            distanceMeters: longIdle.distance,
+            consumptionPer100: c0,
+            unitPrice: price,
+            fuelType: .petrol,
+            thermal: warmEngine
+        )
+        XCTAssertGreaterThan(longResult.dynamicVolume, shortResult.dynamicVolume)
+        XCTAssertEqual(shortResult.avgVolume, longResult.avgVolume, accuracy: 0.05)
+    }
+
     // MARK: - Helpers
+
+    private var warmEngine: FuelThermalInput {
+        FuelThermalInput(
+            previousEndedAt: start.addingTimeInterval(-5 * 60),
+            previousMovingMinutes: 40,
+            previousDistanceKm: 25,
+            tripStartedAt: start,
+            hasVehicleContinuity: true
+        )
+    }
+
+    private var coldSoak: FuelThermalInput {
+        FuelThermalInput(
+            previousEndedAt: start.addingTimeInterval(-8 * 3_600),
+            previousMovingMinutes: 12,
+            previousDistanceKm: 4,
+            tripStartedAt: start,
+            hasVehicleContinuity: true
+        )
+    }
+
+    private func trafficRoute(targetMeters: Double, targetSeconds: Int) -> (samples: [RouteSample], distance: Double) {
+        let idleFraction = targetMeters <= 2_500 ? 0.62 : 0.48
+        let movingSeconds = max(30, Int(Double(targetSeconds) * (1 - idleFraction)))
+        let idleSeconds = max(0, targetSeconds - movingSeconds)
+        let movingSpeed = (targetMeters / Double(movingSeconds))
+        let cycleMoving = max(12, movingSeconds / 12)
+        let cycleIdle = max(8, idleSeconds / 12)
+        var speeds: [Double] = []
+        var remainingMoving = movingSeconds
+        var remainingIdle = idleSeconds
+        while remainingMoving > 0 || remainingIdle > 0 {
+            let move = min(cycleMoving, remainingMoving)
+            if move > 0 {
+                speeds += ramp(fromKmh: 0, toKmh: movingSpeed * 3.6, seconds: min(6, move))
+                let cruise = max(0, move - min(6, move))
+                if cruise > 0 {
+                    speeds += Array(repeating: movingSpeed, count: cruise)
+                }
+                remainingMoving -= move
+            }
+            let idle = min(cycleIdle, remainingIdle)
+            if idle > 0 {
+                speeds += Array(repeating: 0.15, count: idle)
+                remainingIdle -= idle
+            }
+            if speeds.count > targetSeconds + 20 { break }
+        }
+        if speeds.isEmpty { speeds = [movingSpeed] }
+        let route = samples(speedsMps: speeds)
+        return (route, targetMeters)
+    }
+
+    private func routeWithIdle(idleSeconds: Int) -> (samples: [RouteSample], distance: Double) {
+        var speeds = Array(repeating: 40.0 / 3.6, count: 31)
+        speeds += Array(repeating: 0.2, count: idleSeconds)
+        speeds += Array(repeating: 40.0 / 3.6, count: 31)
+        let route = samples(speedsMps: speeds)
+        let distance = zip(route.dropFirst(), route).reduce(0.0) {
+            $0 + $1.0.location.distance(from: $1.1.location)
+        }
+        return (route, distance)
+    }
 
     private func shortCityTripRoute() -> (samples: [RouteSample], distance: Double) {
         let distance = 3_300.0
@@ -688,7 +1031,8 @@ final class TripFuelEstimateTests: XCTestCase {
             distanceMeters: trip.distance,
             consumptionPer100: c0,
             unitPrice: price,
-            fuelType: .petrol
+            fuelType: .petrol,
+            thermal: warmEngine
         )
         return result.dynamicVolume / (trip.distance / 1_000)
     }

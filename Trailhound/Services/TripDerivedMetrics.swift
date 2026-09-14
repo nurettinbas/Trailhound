@@ -75,7 +75,14 @@ enum TripDerivedMetrics {
         fuelType: VehicleFuelType = .petrol,
         vehicle: VehicleProfile? = nil
     ) {
-        let resolvedType = vehicle?.fuelType ?? fuelType
+        let resolvedType = trip.fuelTypeSnapshot
+            ?? vehicle?.fuelType
+            ?? fuelType
+        if let vehicle {
+            trip.fuelTypeSnapshot = vehicle.fuelType
+        } else if trip.fuelTypeSnapshot == nil {
+            trip.fuelTypeSnapshot = fuelType
+        }
         let c0 = FuelCostCalculator.resolvedConsumption(
             tripConsumption: trip.fuelConsumptionPer100,
             vehicle: vehicle
@@ -83,7 +90,7 @@ enum TripDerivedMetrics {
         let unitPrice = FuelCostCalculator.resolvedUnitPrice(
             tripUnitPrice: trip.fuelUnitPrice,
             vehicle: vehicle,
-            fuelType: resolvedType
+            fuelType: trip.fuelTypeSnapshot ?? resolvedType
         )
         // Do not feed `TripStop` pins into idle exclusion. Auto-detected parking is written
         // after two minutes below 2 km/h — the same signature as a long light or queue — and
@@ -94,9 +101,58 @@ enum TripDerivedMetrics {
             distanceMeters: trip.distanceMeters,
             consumptionPer100: c0,
             unitPrice: unitPrice,
-            fuelType: resolvedType
+            fuelType: trip.fuelTypeSnapshot ?? resolvedType,
+            durationSeconds: trip.duration,
+            thermal: thermalInput(for: trip),
+            calibration: TripFuelCalibrationService.snapshot(
+                for: trip.vehicleID,
+                in: trip.modelContext
+            )
         )
         trip.dynamicFuelCost = estimate.dynamicCost
+        trip.dynamicFuelVolume = estimate.dynamicVolume
+        trip.dynamicFuelRatePer100 = estimate.ratePer100
+        trip.fuelEfficiencyScore = estimate.efficiencyScore
+        trip.fuelEstimateConfidence = estimate.confidence
+        trip.fuelSpeedDeltaVolume = estimate.breakdown.speedDelta
+        trip.fuelIdleVolume = estimate.breakdown.idleLitres
+        trip.fuelTransientVolume = estimate.breakdown.transientDelta
+        trip.fuelColdStartVolume = estimate.breakdown.coldStartLitres
+        trip.fuelTrafficScore = estimate.trafficScore
+        trip.dynamicFuelModelVersion = TripFuelEstimate.currentModelVersion
+    }
+
+    static func thermalInput(for trip: Trip) -> FuelThermalInput {
+        guard let previous = previousCompletedTrip(for: trip) else {
+            return .unknown(startedAt: trip.startedAt)
+        }
+        let movingSeconds = previous.cruiseDurationSeconds ?? previous.duration ?? 0
+        return FuelThermalInput(
+            previousEndedAt: previous.endedAt,
+            previousMovingMinutes: movingSeconds / 60,
+            previousDistanceKm: previous.distanceMeters / 1_000,
+            tripStartedAt: trip.startedAt,
+            hasVehicleContinuity: true
+        )
+    }
+
+    private static func previousCompletedTrip(for trip: Trip) -> Trip? {
+        guard let context = trip.modelContext, let vehicleID = trip.vehicleID else { return nil }
+        let start = trip.startedAt
+        let tripID = trip.id
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate {
+                $0.vehicleID == vehicleID
+                    && $0.endedAt != nil
+                    && $0.id != tripID
+            },
+            sortBy: [SortDescriptor(\.endedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 12
+        return (try? context.fetch(descriptor))?.first { candidate in
+            guard let ended = candidate.endedAt else { return false }
+            return ended <= start
+        }
     }
 
     /// Rewrites stored GPS fuel for a completed trip the user is looking at, so a stale
@@ -108,13 +164,14 @@ enum TripDerivedMetrics {
         guard trip.endedAt != nil else { return false }
         let previous = TripRollupService.snapshot(of: trip)
         let before = trip.dynamicFuelCost
+        let beforeVolume = trip.dynamicFuelVolume
         let vehicle = trip.vehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: context) }
         recomputeFuel(
             for: trip,
-            fuelType: vehicle?.fuelType ?? .petrol,
+            fuelType: vehicle?.fuelType ?? trip.fuelTypeSnapshot ?? .petrol,
             vehicle: vehicle
         )
-        guard trip.dynamicFuelCost != before else { return false }
+        guard trip.dynamicFuelCost != before || trip.dynamicFuelVolume != beforeVolume else { return false }
         TripRollupService.update(trip, from: previous, in: context)
         return true
     }

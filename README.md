@@ -15,7 +15,22 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). The **Pairing** setup wizard remembers the trigger and vehicle, shows every Shortcuts step (including Run Shortcut), tests that Trailhound handles an external start, and includes a not-working checklist. Apple cannot let Trailhound create the automation for you. See [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md)
 - Vehicle profiles with fuel/EV cost per trip
 - **Avg fuel**: catalog cost from `distance × consumption × price`, shown as currency · litres (or kWh) like Estimated fuel. Trip detail **Avg fuel calculate** (with ?) edits consumption and unit price; the live line is **Avg fuel estimate**. Defaults from the vehicle and Settings
-- **Estimated fuel**: starts from the vehicle’s average (`distance × consumption`), then applies a GPS-based relative correction for this drive’s speeds, acceleration, and GPS-supported traffic idle. Longer queues still count even when a Stop pin is on the map; weakly supported GPS gaps are discounted. Shown next to Avg on trip detail and Stats, with a short help tip — not a pump reading. Details: [Fuel estimation](docs/FUEL_ESTIMATION.md)
+- **Estimated fuel**: starts from this vehicle’s average (`C₀`), then adds GPS litres for this trip. Short stop-go is usually above your average; a steady highway trip is usually below. Shown as currency · litres (or kWh) · L/100 on trip detail, with driving efficiency, traffic, and factor chips; Stats totals match after backfill. A Stop pin is not engine-off. Not a pump reading.
+
+  ```
+  Avg  = km × C₀ / 100
+
+  Est litres = Avg
+             + speedDelta      // km × C₀/100 × (distance-weighted speed factor − 1)
+             + idle            // idle hours × idle L/h(C₀)
+             + transient       // acceleration energy, ≤ 35% of Avg
+             + cold start      // previous trip soak, scaled to C₀
+
+  L/100 = 100 × Est litres / km
+  cost  = Est litres × unit price
+  ```
+
+  Traffic is a label, not a multiplier. Same GPS trace at C₀=5 vs C₀=12 keeps `rate/C₀`. Engine: `TripFuelEstimate` (v6). Details: [Fuel estimation](docs/FUEL_ESTIMATION.md)
 - **Vehicle avatar photos**: choose Library or Camera, then an in-app ~70% gallery/camera overlay and frame the crop before save (shown in recording / Live Activity)
 - Siri Shortcuts: *Start trip*, *Pause trip*, *Resume trip*, *End trip*
 - Widget + Live Activity controls
@@ -204,7 +219,7 @@ docs/                 # Battery, design system, Stats, TestFlight, privacy, supp
 - [Design system](docs/DESIGN_SYSTEM.md) — Liquid Glass, 20-color shell palette, engine rules, tokens
 - [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance) — Settings theme, palette, Home Screen icon, share cards
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards, glass budget
-- [Fuel estimation](docs/FUEL_ESTIMATION.md) — Avg vs estimated fuel, GPS relative model, backfill
+- [Fuel estimation](docs/FUEL_ESTIMATION.md) — Avg vs estimated fuel, additive GPS litres, backfill v6 / rollup 14
 - [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts, premium recap/badges/routes/forecast
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — product layout and performance contract
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)

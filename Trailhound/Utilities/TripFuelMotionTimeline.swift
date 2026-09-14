@@ -33,6 +33,8 @@ struct TripFuelInterval: Equatable, Sendable {
     var evidenceWeight: Double
     var kind: Kind
     var startedAt: Date
+    /// False when |Δv/Δt| exceeded the physical cap — not a hard-accel event.
+    var accelerationAvailable: Bool = true
 }
 
 /// GPS motion prepared for the relative fuel model. Pure and free of SwiftData.
@@ -65,15 +67,25 @@ enum TripFuelMotionTimeline {
         }
     }
 
-    /// Conservative engine-on seconds for a dense, consecutive GPS-confirmed stop run.
-    /// The first ten minutes count fully. Longer runs keep contributing at 35% because they may
-    /// be a queue, while uncertainty about parking grows. Map `TripStop` pins are not treated
-    /// as engine-off: a two-minute auto parking marker is indistinguishable from a traffic queue.
-    static func idleCreditSeconds(forRunDuration duration: TimeInterval) -> TimeInterval {
+    /// Probability the engine is still on during a GPS-confirmed stop run.
+    /// Short lights are likely idling; long gaps look more like parking. A Stop pin is not engine-off.
+    static func engineOnProbability(forRunDuration duration: TimeInterval) -> Double {
         let dt = max(0, duration)
-        let fullyObserved = 10 * 60.0
-        guard dt > fullyObserved else { return dt }
-        return fullyObserved + (dt - fullyObserved) * 0.35
+        if dt <= 120 { return 0.85 }
+        if dt <= 600 {
+            let t = (dt - 120) / (600 - 120)
+            return 0.85 + t * (0.65 - 0.85)
+        }
+        if dt <= 45 * 60 {
+            let t = (dt - 600) / (45 * 60 - 600)
+            return 0.65 + t * (0.20 - 0.65)
+        }
+        return 0.20
+    }
+
+    /// Evidence-weighted idle seconds for a consecutive stop run.
+    static func idleCreditSeconds(forRunDuration duration: TimeInterval) -> TimeInterval {
+        max(0, duration) * engineOnProbability(forRunDuration: duration)
     }
 
     static func build(
@@ -109,6 +121,21 @@ enum TripFuelMotionTimeline {
 
             let distance = current.location.distance(from: previous.location)
             let impliedMps = distance / dt
+            if impliedMps > 70 {
+                draft.append(
+                    TripFuelInterval(
+                        dt: dt,
+                        distanceMeters: 0,
+                        speedMps: 0,
+                        accelerationMps2: 0,
+                        evidenceWeight: 0,
+                        kind: .teleport,
+                        startedAt: previous.timestamp
+                    )
+                )
+                continue
+            }
+
             let midpoint = previous.timestamp.addingTimeInterval(dt / 2)
             if excludedStops.contains(where: { $0.contains(midpoint) }) {
                 draft.append(
@@ -259,7 +286,14 @@ enum TripFuelMotionTimeline {
             var median = speeds
             for index in 1..<(speeds.count - 1) {
                 let window = [speeds[index - 1], speeds[index], speeds[index + 1]].sorted()
-                median[index] = window[1]
+                let mid = window[1]
+                let deviations = window.map { abs($0 - mid) }.sorted()
+                let mad = deviations[1]
+                if mad > 0, abs(speeds[index] - mid) > 3 * mad {
+                    median[index] = mid
+                } else {
+                    median[index] = mid
+                }
             }
             speeds = median
         }
@@ -276,9 +310,16 @@ enum TripFuelMotionTimeline {
                    let previousMovingSpeed {
                     let raw = (interval.speedMps - previousMovingSpeed) / dt
                     let cap = TripMotionThresholds.maximumAbsAccelerationMps2
-                    interval.accelerationMps2 = min(cap, max(-cap, raw))
+                    if abs(raw) > cap {
+                        interval.accelerationMps2 = 0
+                        interval.accelerationAvailable = false
+                    } else {
+                        interval.accelerationMps2 = raw
+                        interval.accelerationAvailable = true
+                    }
                 } else {
                     interval.accelerationMps2 = 0
+                    interval.accelerationAvailable = false
                 }
                 previousMovingSpeed = interval.speedMps
             } else if interval.kind != .observedStop {

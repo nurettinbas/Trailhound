@@ -9,8 +9,12 @@ enum TripCleanupService {
         let trips = TripStore.completedBefore(cutoff, from: context)
         for trip in trips {
             TravelJournalTotals.handleTripDeletion(trip, in: context)
+            let successor = TripFuelDependencyService.successor(of: trip, in: context)
             TripRollupService.remove(trip, in: context)
             context.delete(trip)
+            if let successor {
+                TripFuelDependencyService.recompute(successor, in: context)
+            }
         }
         try context.save()
         return trips.count

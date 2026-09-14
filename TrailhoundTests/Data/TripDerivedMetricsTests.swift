@@ -38,6 +38,7 @@ final class TripDerivedMetricsMigrationTests: XCTestCase {
                 UserCategory.self,
                 MatchedRoutePoint.self,
                 VehicleProfile.self,
+                VehicleFuelCalibration.self,
             ]),
             configurations: ModelConfiguration(url: storeURL)
         )

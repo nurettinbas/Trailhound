@@ -53,6 +53,8 @@ Previous-period values from comparison live on the hero and on tiles that have a
 
 Estimated fuel on the summary tile and the daily dual Avg / Est. chart is the GPS-adjusted `dynamicFuelCost` (see [Fuel estimation](FUEL_ESTIMATION.md)). After a formula change, launch backfill rewrites stored trip values first; daily rollups rebuild only when that walk has finished. Avg fuel, month forecast, and year recap stay on catalog `estimatedFuelCost`.
 
+When the filter is a single fuel unit, Stats also shows estimated volume (litres or kWh), distance-weighted L/100 or kWh/100 km, and driving efficiency. Petrol and electric in the same filter are not added together.
+
 Logged vehicle expenses (Capsule bars, not Swift Charts) is its **own** full-width card, with a `?` that explains the sum. Each vehicle uses the donut `sliceColor` (stable per vehicle id) and `StatsShareBar` scaled to the top spend — not identical bucket-green fills. Vehicle donut charts stay in the following pager card. Both still use the same cost snapshot — no extra fetch.
 
 ## What stays deferred

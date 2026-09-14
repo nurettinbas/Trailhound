@@ -1251,8 +1251,12 @@ struct TripListView: View {
         TripMapSnapshotCache.shared.remove(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
         TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
+        let successor = TripFuelDependencyService.successor(of: trip, in: modelContext)
         TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
+        if let successor {
+            TripFuelDependencyService.recompute(successor, in: modelContext)
+        }
         mergeSelection.remove(trip.id)
         try? modelContext.save()
         ToastPresenter.shared.show(.deleted, playHaptic: false)

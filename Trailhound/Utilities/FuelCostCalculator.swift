@@ -147,4 +147,34 @@ enum FuelCostCalculator {
         let number = formatter.string(from: NSNumber(value: volume)) ?? String(format: "%.1f", volume)
         return "\(number) \(unit)"
     }
+
+    static func formatVolumeAmount(
+        _ volume: Double,
+        isElectric: Bool,
+        locale: Locale? = nil
+    ) -> String? {
+        guard volume > 0 else { return nil }
+        let unit = isElectric ? "kWh" : "L"
+        let formatter = NumberFormatter()
+        formatter.locale = locale ?? DateFormatters.currentLocale
+        formatter.maximumFractionDigits = volume >= 10 ? 1 : 2
+        formatter.minimumFractionDigits = 0
+        let number = formatter.string(from: NSNumber(value: volume)) ?? String(format: "%.1f", volume)
+        return "\(number) \(unit)"
+    }
+
+    static func formatRatePer100(
+        _ rate: Double,
+        isElectric: Bool,
+        locale: Locale? = nil
+    ) -> String? {
+        guard rate > 0 else { return nil }
+        let unit = isElectric ? "kWh/100 km" : "L/100 km"
+        let formatter = NumberFormatter()
+        formatter.locale = locale ?? DateFormatters.currentLocale
+        formatter.maximumFractionDigits = rate >= 10 ? 1 : 1
+        formatter.minimumFractionDigits = 0
+        let number = formatter.string(from: NSNumber(value: rate)) ?? String(format: "%.1f", rate)
+        return "\(number) \(unit)"
+    }
 }

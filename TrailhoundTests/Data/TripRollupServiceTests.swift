@@ -340,7 +340,7 @@ final class TripRollupServiceTests: XCTestCase {
 
         await TripRollupService.rebuildIfNeeded(container: container)
 
-        XCTAssertEqual(UserDefaults.standard.integer(forKey: rollupKey), 13)
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: rollupKey), 14)
         XCTAssertEqual(try rollups().count, 1)
         XCTAssertEqual(try XCTUnwrap(try rollups().first).dynamicFuelCost, 42, accuracy: 0.1)
     }
