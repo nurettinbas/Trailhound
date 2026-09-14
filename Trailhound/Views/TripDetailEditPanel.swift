@@ -71,6 +71,7 @@ struct TripDetailEditPanel: View {
     @State private var selectedCategoryID: String = BuiltInCategory.personalID.uuidString
     @State private var selectedVehicleID: UUID?
     @State private var editedFuelConsumption: Double = 7.5
+    @State private var fuelConsumptionAtOpen: Double = 7.5
     @State private var editedFuelUnitPrice: Double = 65
     @State private var startAddressText: String = ""
     @State private var endAddressText: String = ""
@@ -640,8 +641,41 @@ struct TripDetailEditPanel: View {
     @ViewBuilder
     private var statsStrip: some View {
         let fuelCurrencyCode = settings.fuelCurrency.rawValue
-        statsMetricGrid(metrics: viewModel.summaryMetrics)
-            .id(fuelCurrencyCode)
+        VStack(alignment: .leading, spacing: 8) {
+            statsMetricGrid(metrics: viewModel.summaryMetrics)
+                .id(fuelCurrencyCode)
+            if !viewModel.fuelFactorKinds.isEmpty {
+                fuelFactorRow
+            }
+        }
+    }
+
+    private var fuelFactorRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text(L10n.fuelFactorsHelpTitle)
+                    .font(.caption2.weight(.medium))
+                    .glassSecondaryInk()
+                HelpPopoverButton(
+                    accessibilityLabel: L10n.fuelFactorsHelpTitle,
+                    message: L10n.fuelFactorsHelpBody,
+                    side: TripSummaryMetricCardLayout.helpButtonSide,
+                    sheetHeight: 260
+                )
+                Spacer(minLength: 0)
+            }
+            GlassChipGroup(spacing: 6) {
+                HStack(spacing: 6) {
+                    ForEach(viewModel.fuelFactorKinds, id: \.rawValue) { kind in
+                        Text(TripSummaryMetric.factorTitle(kind))
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .glassNestedChoice(isSelected: false)
+                    }
+                }
+            }
+        }
     }
 
     private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
@@ -672,7 +706,8 @@ struct TripDetailEditPanel: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: TripSummaryMetricCardLayout.helpButtonSide
+                        side: TripSummaryMetricCardLayout.helpButtonSide,
+                        sheetHeight: 320
                     )
                 }
             }
@@ -1083,16 +1118,24 @@ struct TripDetailEditPanel: View {
             sortedDetailVehicles.first(where: { $0.id == id })
         }
         if preferTripSnapshot {
-            editedFuelConsumption = FuelCostCalculator.resolvedConsumption(
+            let catalog = FuelCostCalculator.resolvedConsumption(
                 tripConsumption: trip.fuelConsumptionPer100,
                 vehicle: vehicle
             )
+            fuelConsumptionAtOpen = catalog
+            if trip.fuelMeasurementSource == .userMeasured,
+               let measured = trip.measuredFuelConsumptionPer100, measured > 0 {
+                editedFuelConsumption = measured
+            } else {
+                editedFuelConsumption = catalog
+            }
             editedFuelUnitPrice = FuelCostCalculator.resolvedUnitPrice(
                 tripUnitPrice: trip.fuelUnitPrice,
                 vehicle: vehicle
             )
         } else {
             editedFuelConsumption = FuelCostCalculator.resolvedConsumption(vehicle: vehicle)
+            fuelConsumptionAtOpen = editedFuelConsumption
             editedFuelUnitPrice = FuelCostCalculator.resolvedUnitPrice(vehicle: vehicle)
         }
     }
@@ -1121,20 +1164,39 @@ struct TripDetailEditPanel: View {
             trip.endedAt = max(editedEndedAt, editedStartedAt)
         }
         let didTrim = applyGPSTrimIfNeeded()
-        FuelCostCalculator.applyEstimate(
-            to: trip,
-            distanceMeters: trip.distanceMeters,
-            vehicle: vehicle,
-            consumptionPer100: editedFuelConsumption,
-            unitPrice: editedFuelUnitPrice
-        )
+        let consumptionChanged = abs(editedFuelConsumption - fuelConsumptionAtOpen) > 0.049
+        if consumptionChanged {
+            trip.measuredFuelConsumptionPer100 = editedFuelConsumption
+            trip.fuelMeasurementSource = .userMeasured
+            FuelCostCalculator.applyEstimate(
+                to: trip,
+                distanceMeters: trip.distanceMeters,
+                vehicle: vehicle,
+                consumptionPer100: trip.fuelConsumptionPer100,
+                unitPrice: editedFuelUnitPrice
+            )
+        } else {
+            FuelCostCalculator.applyEstimate(
+                to: trip,
+                distanceMeters: trip.distanceMeters,
+                vehicle: vehicle,
+                consumptionPer100: editedFuelConsumption,
+                unitPrice: editedFuelUnitPrice
+            )
+        }
         TripDerivedMetrics.recompute(
             for: trip,
             places: places,
             privacyRadius: settings.privacyRadiusMeters,
-            fuelType: vehicle?.fuelType ?? .petrol
+            fuelType: vehicle?.fuelType ?? .petrol,
+            vehicle: vehicle
         )
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
+        TripFuelDependencyService.invalidateSuccessor(of: trip, in: modelContext)
+        if consumptionChanged, let vehicleID = trip.vehicleID {
+            TripFuelCalibrationService.rebuild(for: vehicleID, in: modelContext)
+            TripFuelCalibrationService.recomputeVehicleTrips(vehicleID: vehicleID, in: modelContext)
+        }
         if let journal = trip.journal {
             TravelJournalTotals.refresh(journal)
         } else {

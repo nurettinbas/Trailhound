@@ -41,6 +41,13 @@ public enum DateFormatters {
         return formatter
     }
 
+    public static func monthNameFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = currentLocale
+        formatter.setLocalizedDateFormatFromTemplate("MMMM")
+        return formatter
+    }
+
     public static func chartDayFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = currentLocale
@@ -49,7 +56,22 @@ public enum DateFormatters {
     }
 
     public static var monthYear: DateFormatter { monthYearFormatter() }
+    public static var monthName: DateFormatter { monthNameFormatter() }
     public static var chartDay: DateFormatter { chartDayFormatter() }
+
+    /// Localized month name only (`August` / `Ağustos`). Pass a real year so the date is not year 1.
+    public static func formatMonthName(
+        month: Int,
+        year: Int,
+        calendar: Calendar = .current
+    ) -> String {
+        var components = DateComponents()
+        components.year = year
+        components.month = min(12, max(1, month))
+        components.day = 1
+        let date = calendar.date(from: components) ?? Date()
+        return monthName.string(from: date)
+    }
 
     public static func formatDuration(_ interval: TimeInterval) -> String {
         let totalSeconds = max(0, Int(interval.rounded()))

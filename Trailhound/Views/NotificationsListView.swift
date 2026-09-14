@@ -155,6 +155,8 @@ struct NotificationsListView: View {
             && trip?.id != recordingService.activeTripID
         // Open any finished trip (started/ended rows). Active/unfinished trips stay non-tappable.
         let canOpenTrip = trip?.endedAt != nil && !showsOrphanActions
+        let route = store.route(for: item)
+        let opensRoute = !canOpenTrip && route.opensDestination && !showsOrphanActions
 
         VStack(alignment: .leading, spacing: 6) {
             if canOpenTrip, let trip {
@@ -163,6 +165,13 @@ struct NotificationsListView: View {
                     .onTapGesture {
                         store.markRead(item.id)
                         openedTripID = trip.id
+                    }
+            } else if opensRoute {
+                rowContent(item: item, kind: kind, showsChevron: true)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        store.markRead(item.id)
+                        route.perform()
                     }
             } else {
                 rowContent(item: item, kind: kind, showsChevron: false)
@@ -250,6 +259,8 @@ struct NotificationsListView: View {
         case .orphanStale: .orange
         case .recordingStopped: .red
         case .pairingSuggestion: .blue
+        case .achievementUnlocked: Color(red: 0.85, green: 0.65, blue: 0.18)
+        case .yearRecapReady: Color(red: 0.62, green: 0.42, blue: 0.86)
         case .vehicleCareReminder:
             isVehicleCareOverdue(body) ? .red : .orange
         }

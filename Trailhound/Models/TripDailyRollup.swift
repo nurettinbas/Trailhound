@@ -21,8 +21,18 @@ final class TripDailyRollup {
     var nightDistanceMeters: Double = 0
     var trackedDistanceMeters: Double = 0
     var estimatedFuelCost: Double = 0
-    /// Sum of each trip's VSP/Willans estimated fuel cost for the day.
+    /// Sum of each trip's GPS-adjusted estimated fuel cost for the day.
     var dynamicFuelCost: Double = 0
+    /// `liquid` or `electric` so Stats never sums litres with kWh.
+    var fuelUnitKey: String = "liquid"
+    var dynamicFuelVolume: Double = 0
+    var dynamicFuelVolumeDistanceMeters: Double = 0
+    var fuelEfficiencyProduct: Double = 0
+    var fuelEfficiencyWeight: Double = 0
+    var fuelSpeedDeltaVolume: Double = 0
+    var fuelIdleVolume: Double = 0
+    var fuelTransientVolume: Double = 0
+    var fuelColdStartVolume: Double = 0
     var tripCount: Int = 0
     var maxSpeedMps: Double = 0
     var stopDurationSeconds: Double = 0
@@ -38,11 +48,13 @@ final class TripDailyRollup {
     init(
         dayStart: Date,
         categoryID: String,
-        vehicleKey: String
+        vehicleKey: String,
+        fuelUnitKey: String = "liquid"
     ) {
         self.dayStart = dayStart
         self.categoryID = categoryID
         self.vehicleKey = vehicleKey
+        self.fuelUnitKey = fuelUnitKey
     }
 
     static func vehicleKey(for vehicleID: UUID?) -> String {

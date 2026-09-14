@@ -38,7 +38,7 @@ struct TrailhoundLockScreenWidgetView: View {
 
     var body: some View {
         circularLayout
-            .widgetURL(TrailhoundDeepLink.startRecording)
+            .widgetURL((entry.isRecording || entry.isPaused) ? TrailhoundDeepLink.startRecording : TrailhoundDeepLink.statsGoal)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel)
     }

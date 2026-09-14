@@ -3,19 +3,41 @@ import SwiftData
 
 /// Nonisolated rollup deltas so `@ModelActor` workers can maintain daily totals off the main thread.
 enum TripRollupDelta {
+    static func snapshot(of trip: Trip) -> TripRollupEntry? {
+        guard trip.endedAt != nil else { return nil }
+        let places = (try? trip.modelContext?.fetch(FetchDescriptor<SavedPlace>())) ?? []
+        let defaults = UserDefaults(suiteName: RecordingControlBridge.appGroupSuiteName) ?? .standard
+        let storedRadius = defaults.double(forKey: "privacyRadiusMeters")
+        return TripRollupEntry(
+            key: TripRollupKey(trip: trip),
+            contribution: Contribution(trip: trip),
+            premium: PremiumDerivedDelta.snapshot(
+                of: trip,
+                places: places,
+                privacyRadius: storedRadius > 0 ? storedRadius : 500
+            )
+        )
+    }
+
     static func add(_ trip: Trip, in context: ModelContext) {
         applyDelta(for: trip, sign: 1, in: context)
+        PremiumDerivedDelta.add(trip, in: context)
     }
 
     static func remove(_ trip: Trip, in context: ModelContext) {
+        PremiumDerivedDelta.remove(trip, in: context)
         applyDelta(for: trip, sign: -1, in: context)
     }
 
     static func update(_ trip: Trip, from previous: TripRollupEntry?, in context: ModelContext) {
         if let previous {
             applyDelta(key: previous.key, contribution: previous.contribution, sign: -1, in: context)
+            if let premium = previous.premium {
+                PremiumDerivedDelta.apply(trip: trip, snapshot: premium, sign: -1, in: context)
+            }
         }
         applyDelta(for: trip, sign: 1, in: context)
+        PremiumDerivedDelta.add(trip, in: context)
     }
 
     private static func applyDelta(for trip: Trip, sign: Double, in context: ModelContext) {
@@ -43,6 +65,23 @@ enum TripRollupDelta {
         rollup.trackedDistanceMeters = max(0, rollup.trackedDistanceMeters + sign * contribution.trackedMeters)
         rollup.estimatedFuelCost = max(0, rollup.estimatedFuelCost + sign * contribution.fuelCost)
         rollup.dynamicFuelCost = max(0, rollup.dynamicFuelCost + sign * contribution.dynamicFuelCost)
+        rollup.dynamicFuelVolume = max(0, rollup.dynamicFuelVolume + sign * contribution.dynamicFuelVolume)
+        rollup.dynamicFuelVolumeDistanceMeters = max(
+            0,
+            rollup.dynamicFuelVolumeDistanceMeters + sign * contribution.dynamicFuelVolumeDistanceMeters
+        )
+        rollup.fuelEfficiencyProduct = max(
+            0,
+            rollup.fuelEfficiencyProduct + sign * contribution.fuelEfficiencyProduct
+        )
+        rollup.fuelEfficiencyWeight = max(
+            0,
+            rollup.fuelEfficiencyWeight + sign * contribution.fuelEfficiencyWeight
+        )
+        rollup.fuelSpeedDeltaVolume += sign * contribution.fuelSpeedDeltaVolume
+        rollup.fuelIdleVolume = max(0, rollup.fuelIdleVolume + sign * contribution.fuelIdleVolume)
+        rollup.fuelTransientVolume = max(0, rollup.fuelTransientVolume + sign * contribution.fuelTransientVolume)
+        rollup.fuelColdStartVolume = max(0, rollup.fuelColdStartVolume + sign * contribution.fuelColdStartVolume)
         rollup.tripCount = max(0, rollup.tripCount + Int(sign))
         rollup.stopDurationSeconds = max(0, rollup.stopDurationSeconds + sign * contribution.stopDurationSeconds)
         rollup.cruiseWeightSeconds = max(0, rollup.cruiseWeightSeconds + sign * contribution.cruiseWeightSeconds)
@@ -65,11 +104,13 @@ enum TripRollupDelta {
         let dayStart = key.dayStart
         let categoryID = key.categoryID
         let vehicleKey = key.vehicleKey
+        let fuelUnitKey = key.fuelUnitKey
         var descriptor = FetchDescriptor<TripDailyRollup>(
             predicate: #Predicate { rollup in
                 rollup.dayStart == dayStart
                     && rollup.categoryID == categoryID
                     && rollup.vehicleKey == vehicleKey
+                    && rollup.fuelUnitKey == fuelUnitKey
             }
         )
         descriptor.fetchLimit = 1
@@ -86,7 +127,8 @@ enum TripRollupDelta {
         let rollup = TripDailyRollup(
             dayStart: key.dayStart,
             categoryID: key.categoryID,
-            vehicleKey: key.vehicleKey
+            vehicleKey: key.vehicleKey,
+            fuelUnitKey: key.fuelUnitKey
         )
         context.insert(rollup)
         return rollup
@@ -113,8 +155,7 @@ enum TripRollupService {
 
     /// Everything a trip contributed before an edit, so the edit can be applied as a delta.
     static func snapshot(of trip: Trip) -> TripRollupEntry? {
-        guard trip.endedAt != nil else { return nil }
-        return TripRollupEntry(key: TripRollupKey(trip: trip), contribution: Contribution(trip: trip))
+        TripRollupDelta.snapshot(of: trip)
     }
 
     /// Re-points a trip's contribution after an edit that may have moved it to another day,
@@ -135,13 +176,21 @@ enum TripRollupService {
     /// Version 7 refreshes after stop time uses implied speed (GPS wander is still a stop).
     /// Version 8 fills most-common speed totals added in schema V17.
     /// Version 9 fills dynamic (VSP/Willans) fuel totals added in schema V18.
-    private static let rebuildVersion = 9
+    /// Version 10 refreshes estimated fuel after the C₀-relative GPS model.
+    /// Version 11 refreshes short-city idle after evidence-weighted stop handling.
+    /// Version 12 rebuilds after fuel formula v4 (v11 may already have been written).
+    /// Version 13 rebuilds after Stop-pin idle exclusion was removed (formula v5).
+    /// Version 14 rebuilds after additive litres + per-unit volume totals (formula v6).
+    private static let rebuildVersion = 14
 
     /// Builds the table on the first launch that has it, and after any change to how rollups are
     /// derived. Cheap no-op afterwards.
     static func rebuildIfNeeded(container: ModelContainer) async {
         let defaults = UserDefaults.standard
         guard defaults.integer(forKey: rebuildVersionKey) < rebuildVersion else { return }
+        // Fuel refresh writes `dynamicFuelCost` first. Persisting a new rollup version while
+        // that walk is incomplete would freeze a half-updated Stats table.
+        guard TripDerivedBackfillService.hasFinishedDynamicFuelRefresh() else { return }
         await rebuildAll(container: container)
         defaults.set(rebuildVersion, forKey: rebuildVersionKey)
     }
@@ -178,6 +227,14 @@ enum TripRollupService {
         var totalDuration = 0.0
         var totalFuel = 0.0
         var totalDynamicFuel = 0.0
+        var totalDynamicVolume = 0.0
+        var volumeDistance = 0.0
+        var efficiencyProduct = 0.0
+        var efficiencyWeight = 0.0
+        var idleVolume = 0.0
+        var transientVolume = 0.0
+        var coldVolume = 0.0
+        var speedAbsVolume = 0.0
         var nightMeters = 0.0
         var trackedMeters = 0.0
         var maxSpeedMps = 0.0
@@ -193,6 +250,14 @@ enum TripRollupService {
             totalDuration += rollup.duration
             totalFuel += rollup.estimatedFuelCost
             totalDynamicFuel += rollup.dynamicFuelCost
+            totalDynamicVolume += rollup.dynamicFuelVolume
+            volumeDistance += rollup.dynamicFuelVolumeDistanceMeters
+            efficiencyProduct += rollup.fuelEfficiencyProduct
+            efficiencyWeight += rollup.fuelEfficiencyWeight
+            idleVolume += rollup.fuelIdleVolume
+            transientVolume += rollup.fuelTransientVolume
+            coldVolume += rollup.fuelColdStartVolume
+            speedAbsVolume += abs(rollup.fuelSpeedDeltaVolume)
             nightMeters += rollup.nightDistanceMeters
             trackedMeters += rollup.trackedDistanceMeters
             maxSpeedMps = max(maxSpeedMps, rollup.maxSpeedMps)
@@ -203,6 +268,11 @@ enum TripRollupService {
             mostCommonProduct += rollup.mostCommonSpeedProduct
             count += rollup.tripCount
         }
+
+        let unitKeys = Set(rollups.map { rollup in
+            rollup.fuelUnitKey.isEmpty ? "liquid" : rollup.fuelUnitKey
+        })
+        let mixedUnits = unitKeys.count > 1
 
         return TripStats(
             tripCount: count,
@@ -219,8 +289,39 @@ enum TripRollupService {
             stopDuration: stopDuration,
             estimatedFuelCost: totalFuel,
             dynamicFuelCost: totalDynamicFuel,
-            nightDrivingRatio: trackedMeters > 0 ? nightMeters / trackedMeters : 0
+            nightDrivingRatio: trackedMeters > 0 ? nightMeters / trackedMeters : 0,
+            dynamicFuelVolume: mixedUnits ? 0 : totalDynamicVolume,
+            dynamicFuelVolumeDistanceMeters: mixedUnits ? 0 : volumeDistance,
+            fuelEfficiencyScore: mixedUnits || efficiencyWeight <= 0
+                ? 0
+                : efficiencyProduct / efficiencyWeight,
+            hasMixedFuelUnits: mixedUnits,
+            fuelUnitIsElectric: !mixedUnits && unitKeys.contains("electric"),
+            topFuelFactors: mixedUnits ? [] : Self.topFactors(
+                idle: idleVolume,
+                transient: transientVolume,
+                cold: coldVolume,
+                speed: speedAbsVolume
+            )
         )
+    }
+
+    private static func topFactors(
+        idle: Double,
+        transient: Double,
+        cold: Double,
+        speed: Double
+    ) -> [FuelFactorKind] {
+        [
+            (FuelFactorKind.idleTraffic, idle),
+            (.transientAcceleration, transient),
+            (.coldStart, cold),
+            (.highSpeed, speed)
+        ]
+        .filter { $0.1 > 0.01 }
+        .sorted { $0.1 > $1.1 }
+        .prefix(3)
+        .map(\.0)
     }
 }
 
@@ -263,7 +364,8 @@ actor TripRollupRebuilder {
             let rollup = TripDailyRollup(
                 dayStart: key.dayStart,
                 categoryID: key.categoryID,
-                vehicleKey: key.vehicleKey
+                vehicleKey: key.vehicleKey,
+                fuelUnitKey: key.fuelUnitKey
             )
             rollup.distanceMeters = contribution.distanceMeters
             rollup.duration = contribution.duration
@@ -271,6 +373,14 @@ actor TripRollupRebuilder {
             rollup.trackedDistanceMeters = contribution.trackedMeters
             rollup.estimatedFuelCost = contribution.fuelCost
             rollup.dynamicFuelCost = contribution.dynamicFuelCost
+            rollup.dynamicFuelVolume = contribution.dynamicFuelVolume
+            rollup.dynamicFuelVolumeDistanceMeters = contribution.dynamicFuelVolumeDistanceMeters
+            rollup.fuelEfficiencyProduct = contribution.fuelEfficiencyProduct
+            rollup.fuelEfficiencyWeight = contribution.fuelEfficiencyWeight
+            rollup.fuelSpeedDeltaVolume = contribution.fuelSpeedDeltaVolume
+            rollup.fuelIdleVolume = contribution.fuelIdleVolume
+            rollup.fuelTransientVolume = contribution.fuelTransientVolume
+            rollup.fuelColdStartVolume = contribution.fuelColdStartVolume
             rollup.tripCount = contribution.tripCount
             rollup.maxSpeedMps = contribution.maxSpeedMps
             rollup.stopDurationSeconds = contribution.stopDurationSeconds
@@ -290,11 +400,13 @@ struct TripRollupKey: Hashable {
     let dayStart: Date
     let categoryID: String
     let vehicleKey: String
+    let fuelUnitKey: String
 
     init(trip: Trip) {
         self.dayStart = Calendar.current.startOfDay(for: trip.startedAt)
         self.categoryID = trip.categoryID
         self.vehicleKey = TripDailyRollup.vehicleKey(for: trip.vehicleID)
+        self.fuelUnitKey = trip.fuelUnitKey
     }
 }
 
@@ -302,6 +414,7 @@ struct TripRollupKey: Hashable {
 struct TripRollupEntry {
     fileprivate let key: TripRollupKey
     fileprivate let contribution: Contribution
+    fileprivate let premium: PremiumTripSnapshot?
 }
 
 fileprivate struct Contribution {
@@ -311,6 +424,14 @@ fileprivate struct Contribution {
     var trackedMeters = 0.0
     var fuelCost = 0.0
     var dynamicFuelCost = 0.0
+    var dynamicFuelVolume = 0.0
+    var dynamicFuelVolumeDistanceMeters = 0.0
+    var fuelEfficiencyProduct = 0.0
+    var fuelEfficiencyWeight = 0.0
+    var fuelSpeedDeltaVolume = 0.0
+    var fuelIdleVolume = 0.0
+    var fuelTransientVolume = 0.0
+    var fuelColdStartVolume = 0.0
     var maxSpeedMps = 0.0
     var stopDurationSeconds = 0.0
     var cruiseWeightSeconds = 0.0
@@ -328,6 +449,18 @@ fileprivate struct Contribution {
         trackedMeters = trip.trackedDistanceMeters ?? 0
         fuelCost = StatsViewModel.fuelCost(for: trip)
         dynamicFuelCost = trip.dynamicFuelCost ?? 0
+        dynamicFuelVolume = trip.dynamicFuelVolume ?? 0
+        if let volume = trip.dynamicFuelVolume, volume > 0 {
+            dynamicFuelVolumeDistanceMeters = trip.distanceMeters
+        }
+        if let score = trip.fuelEfficiencyScore, trip.distanceMeters > 0 {
+            fuelEfficiencyProduct = score * trip.distanceMeters
+            fuelEfficiencyWeight = trip.distanceMeters
+        }
+        fuelSpeedDeltaVolume = trip.fuelSpeedDeltaVolume ?? 0
+        fuelIdleVolume = trip.fuelIdleVolume ?? 0
+        fuelTransientVolume = trip.fuelTransientVolume ?? 0
+        fuelColdStartVolume = trip.fuelColdStartVolume ?? 0
         // A rollup keeps the highest value it ever saw and never lowers it, so one phantom
         // maximum would poison a whole day's statistics permanently.
         maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) ?? 0
@@ -355,6 +488,14 @@ fileprivate struct Contribution {
         trackedMeters += other.trackedMeters
         fuelCost += other.fuelCost
         dynamicFuelCost += other.dynamicFuelCost
+        dynamicFuelVolume += other.dynamicFuelVolume
+        dynamicFuelVolumeDistanceMeters += other.dynamicFuelVolumeDistanceMeters
+        fuelEfficiencyProduct += other.fuelEfficiencyProduct
+        fuelEfficiencyWeight += other.fuelEfficiencyWeight
+        fuelSpeedDeltaVolume += other.fuelSpeedDeltaVolume
+        fuelIdleVolume += other.fuelIdleVolume
+        fuelTransientVolume += other.fuelTransientVolume
+        fuelColdStartVolume += other.fuelColdStartVolume
         maxSpeedMps = max(maxSpeedMps, other.maxSpeedMps)
         stopDurationSeconds += other.stopDurationSeconds
         cruiseWeightSeconds += other.cruiseWeightSeconds

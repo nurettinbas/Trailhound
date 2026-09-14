@@ -68,6 +68,8 @@ struct TripListView: View {
     @State private var hasMorePages = false
     @State private var hasAnyTrips = false
     @State private var weekSummaryText = ""
+    @State private var showDeepLinkedTrip = false
+    @State private var deepLinkedTrip: Trip?
 
     private var isSearchBusy: Bool {
         TripListViewModel.isSearchActivityVisible(
@@ -119,6 +121,23 @@ struct TripListView: View {
         let visible = Array(matching.prefix(pageLimit))
         loadedTrips = visible
         tripGroups = TripDateGrouping.groupedSections(from: visible)
+    }
+
+    private func consumeTripDeepLink() {
+        guard let id = tabSelection.consumePendingTripID() else { return }
+        if let existing = loadedTrips.first(where: { $0.id == id }) {
+            deepLinkedTrip = existing
+            showDeepLinkedTrip = true
+            return
+        }
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        if let match = (try? modelContext.fetch(descriptor))?.first {
+            deepLinkedTrip = match
+            showDeepLinkedTrip = true
+        }
     }
 
     /// The parts of a filter the store cannot answer exactly: date-section boundaries move with
@@ -604,6 +623,11 @@ struct TripListView: View {
         .navigationDestination(for: Trip.self) { trip in
             TripDetailView(trip: trip)
         }
+        .navigationDestination(isPresented: $showDeepLinkedTrip) {
+            if let trip = deepLinkedTrip {
+                TripDetailView(trip: trip)
+            }
+        }
         .navigationDestination(for: TravelJournal.self) { journal in
             TravelJournalDetailView(journal: journal)
         }
@@ -627,6 +651,7 @@ struct TripListView: View {
             reloadJournals()
             careSummary.refresh(in: modelContext)
             beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
+            consumeTripDeepLink()
         }
         .onStoreSave {
             // Row identity must refresh before the next body pass or a deleted model crashes.
@@ -1226,8 +1251,12 @@ struct TripListView: View {
         TripMapSnapshotCache.shared.remove(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
         TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
+        let successor = TripFuelDependencyService.successor(of: trip, in: modelContext)
         TripRollupService.remove(trip, in: modelContext)
         modelContext.delete(trip)
+        if let successor {
+            TripFuelDependencyService.recompute(successor, in: modelContext)
+        }
         mergeSelection.remove(trip.id)
         try? modelContext.save()
         ToastPresenter.shared.show(.deleted, playHaptic: false)
@@ -1399,33 +1428,31 @@ private struct TripListActiveRecordingNavIcon: View {
     private let maxTilt: Double = 55
     /// One ease-in-out half-swing (right → left). Full cycle is 2× this.
     private let swingDuration: Double = 2.4
-    private var tickInterval: TimeInterval {
-        ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 / 10 : 1 / 20
-    }
 
     private var shouldAnimate: Bool {
         !isPaused && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
+    @State private var clockDate = Date()
+
     var body: some View {
-        TimelineView(
-            .animation(
-                minimumInterval: tickInterval,
-                paused: !shouldAnimate
-            )
-        ) { context in
-            Image(systemName: "steeringwheel")
-                .font(.system(size: 15, weight: .semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(accent)
-                // Must stay inside the frame and nudge below. Applied outside them, the
-                // anchor is the badge center while the glyph has been moved away from it,
-                // so the wheel orbits that point instead of spinning in place.
-                .rotationEffect(.degrees(tilt(at: context.date)))
-                .frame(width: badgeSize, height: badgeSize)
-                .offset(glyphNudge)
-        }
-        .accessibilityHidden(true)
+        Image(systemName: "steeringwheel")
+            .font(.system(size: 15, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(accent)
+            .rotationEffect(.degrees(tilt(at: clockDate)))
+            .frame(width: badgeSize, height: badgeSize)
+            .offset(glyphNudge)
+            .overlay(alignment: .topLeading) {
+                TrailhoundDisplayLinkTicker(
+                    isRunning: shouldAnimate,
+                    framesPerSecond: ProcessInfo.processInfo.isLowPowerModeEnabled ? 10 : 20
+                ) { clockDate = Date(timeIntervalSinceReferenceDate: $0) }
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            .accessibilityHidden(true)
     }
 
     private func tilt(at date: Date) -> Double {

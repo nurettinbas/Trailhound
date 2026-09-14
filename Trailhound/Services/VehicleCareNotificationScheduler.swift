@@ -186,11 +186,17 @@ enum VehicleCareNotificationScheduler {
             AppNotificationStore.shared.record(
                 kind: .vehicleCareReminder,
                 title: title,
-                body: body
+                body: body,
+                action: openVehicleCareAction,
+                target: planVehicleID(from: content.userInfo)
             )
         }
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
+    }
+
+    private static func planVehicleID(from userInfo: [AnyHashable: Any]) -> String? {
+        userInfo[vehicleIDUserInfoKey] as? String
     }
 
     private static func hasDeliveredOverdue(

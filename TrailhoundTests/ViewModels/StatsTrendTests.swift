@@ -126,4 +126,11 @@ final class StatsTrendTests: XCTestCase {
             ).first?.costPerKm
         )
     }
+
+    func testVehicleCompareBarShareScalesToTopSpend() {
+        XCTAssertEqual(StatsVehicleCompareBuilder.barShare(amount: 3_200, maxAmount: 3_200), 1)
+        XCTAssertEqual(StatsVehicleCompareBuilder.barShare(amount: 350, maxAmount: 3_200), 350 / 3_200, accuracy: 0.0001)
+        XCTAssertEqual(StatsVehicleCompareBuilder.barShare(amount: 0, maxAmount: 3_200), 0)
+        XCTAssertEqual(StatsVehicleCompareBuilder.barShare(amount: 10, maxAmount: 0), 0)
+    }
 }

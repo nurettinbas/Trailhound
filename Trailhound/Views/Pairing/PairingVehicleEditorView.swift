@@ -909,7 +909,7 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
                     .accessibilityLabel(Text("onboarding.back"))
                 }
             }
-            .background(NavigationInteractivePopDisabled(disabled: hasUnsavedChanges))
+            .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {
                 Button(L10n.pairingTabDiscardVehicleEditsLeave, role: .destructive) {
                     dismiss()
@@ -918,20 +918,6 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
             } message: {
                 Text(L10n.pairingTabDiscardVehicleEditsMessage)
             }
-    }
-}
-
-private struct NavigationInteractivePopDisabled: UIViewControllerRepresentable {
-    let disabled: Bool
-
-    func makeUIViewController(context: Context) -> UIViewController {
-        UIViewController()
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        DispatchQueue.main.async {
-            uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = !disabled
-        }
     }
 }
 

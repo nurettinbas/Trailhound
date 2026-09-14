@@ -180,24 +180,20 @@ struct TravelJournalDetailView: View {
     private var backToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button(action: dismiss.callAsFunction) {
-                GlassNavCircleIcon(systemName: "chevron.backward")
+                GlassToolbarBackButton()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel(Text("onboarding.back"))
         }
-        .hideSharedToolbarBackgroundIfAvailable()
     }
 
     @ToolbarContentBuilder
     private var mapExpandToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: toggleMapExpanded) {
-                GlassNavCircleIcon(systemName: mapExpandIconName)
+                GlassToolbarSymbol(systemName: mapExpandIconName)
             }
-            .buttonStyle(.plain)
             .accessibilityLabel(mapExpandAccessibilityLabel)
         }
-        .hideSharedToolbarBackgroundIfAvailable()
     }
 
     private func mapAndPanel(in geometry: GeometryProxy) -> some View {

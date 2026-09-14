@@ -6,6 +6,7 @@ struct StatsVehicleCompareList: View {
     let currencyCode: String
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -65,7 +66,7 @@ struct StatsVehicleCompareList: View {
                 Spacer(minLength: 0)
             }
 
-            bucketBar(for: row)
+            shareBar(for: row)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(for: row))
@@ -79,24 +80,22 @@ struct StatsVehicleCompareList: View {
         return String(format: L10n.string("stats.compare.cost_per_km"), formatted)
     }
 
-    private func bucketBar(for row: VehicleCompareRow) -> some View {
-        GeometryReader { geo in
-            let total = max(row.amount, 0.0001)
-            HStack(spacing: 1) {
-                ForEach(VehicleCostBucket.allCases, id: \.rawValue) { bucket in
-                    let amount = row.amount(for: bucket)
-                    if amount > 0 {
-                        Capsule()
-                            .fill(StatsChartTheme.bucketColor(for: bucket))
-                            .frame(width: max(geo.size.width * CGFloat(amount / total), 2))
-                    }
-                }
-            }
-        }
-        .frame(height: 5)
-        .clipShape(Capsule())
-        .accessibilityHidden(true)
+    private func shareBar(for row: VehicleCompareRow) -> some View {
+        StatsShareBar(
+            share: StatsVehicleCompareBuilder.barShare(amount: row.amount, maxAmount: maxAmount),
+            fill: StatsChartTheme.sliceColor(
+                forStableKey: row.id,
+                durationStyle: false,
+                domainKeys: vehicleKeys,
+                palette: shellPalette,
+                scheme: colorScheme
+            )
+        )
     }
+
+    private var vehicleKeys: [String] { rows.map(\.id) }
+
+    private var maxAmount: Double { rows.map(\.amount).max() ?? 0 }
 
     private func accessibilityLabel(for row: VehicleCompareRow) -> String {
         var parts = [

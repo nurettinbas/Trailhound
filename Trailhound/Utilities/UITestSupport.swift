@@ -54,6 +54,7 @@ enum UITestSupport {
             for point in trip.points {
                 context.insert(point)
             }
+            TripRollupService.add(trip, in: context)
         }
         if seedsSmartCategory {
             let seedID = smartCategorySeedTripID

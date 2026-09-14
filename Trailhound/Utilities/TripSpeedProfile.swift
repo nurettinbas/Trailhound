@@ -17,13 +17,13 @@ import Foundation
 ///   a stop; only merge-length gaps and physical teleports are ignored.
 enum TripSpeedProfile {
     /// Below this, the car counts as stopped rather than moving.
-    static let movingSpeedKmh: Double = 5
+    static let movingSpeedKmh: Double = TripMotionThresholds.movingSpeedKmh
     /// Below this, time counts as moving but not toward “most common” (queue / crawl).
     static let drivingSpeedKmh: Double = 20
     /// Bucket width for modal speeds (±2.5 around the reported midpoint).
     static let bucketWidthKmh: Double = 5
     /// Cap for a single no-points standstill (matches the chart’s drawn-stop ceiling).
-    static let maximumStopGapSeconds: TimeInterval = 45 * 60
+    static let maximumStopGapSeconds: TimeInterval = TripMotionThresholds.maximumStopGapSeconds
     /// Not enough moving time to report cruise / modal speeds.
     static let minimumMovingSecondsForCruise: TimeInterval = 60
 

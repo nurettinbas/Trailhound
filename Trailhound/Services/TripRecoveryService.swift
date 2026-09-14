@@ -60,14 +60,13 @@ enum TripRecoveryService {
         if saveTrip {
             trip.geocodeStatus = .pending
             let places = (try? context.fetch(FetchDescriptor<SavedPlace>())) ?? []
-            let fuelType = trip.vehicleID
-                .flatMap { VehicleResolver.vehicle(withID: $0, in: context)?.fuelType }
-                ?? .petrol
+            let vehicle = trip.vehicleID.flatMap { VehicleResolver.vehicle(withID: $0, in: context) }
             TripDerivedMetrics.recompute(
                 for: trip,
                 places: places,
                 privacyRadius: AppSettings.shared.privacyRadiusMeters,
-                fuelType: fuelType
+                fuelType: vehicle?.fuelType ?? .petrol,
+                vehicle: vehicle
             )
             TripRollupService.add(trip, in: context)
         } else {

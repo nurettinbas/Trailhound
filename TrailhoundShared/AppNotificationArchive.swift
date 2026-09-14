@@ -7,6 +7,8 @@ public struct StoredAppNotification: Codable, Identifiable, Sendable {
     public let body: String
     public let createdAt: Date
     public let tripID: UUID?
+    public let action: String?
+    public let target: String?
     public var isRead: Bool
 
     public init(
@@ -16,6 +18,8 @@ public struct StoredAppNotification: Codable, Identifiable, Sendable {
         body: String,
         createdAt: Date = Date(),
         tripID: UUID? = nil,
+        action: String? = nil,
+        target: String? = nil,
         isRead: Bool = false
     ) {
         self.id = id
@@ -24,6 +28,8 @@ public struct StoredAppNotification: Codable, Identifiable, Sendable {
         self.body = body
         self.createdAt = createdAt
         self.tripID = tripID
+        self.action = action
+        self.target = target
         self.isRead = isRead
     }
 }

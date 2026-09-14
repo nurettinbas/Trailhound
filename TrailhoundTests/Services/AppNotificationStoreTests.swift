@@ -61,7 +61,9 @@ final class AppNotificationStoreTests: XCTestCase {
         let record = StoredAppNotification(
             kind: AppNotificationKind.pairingSuggestion.rawValue,
             title: "Pair",
-            body: "Suggestion"
+            body: "Suggestion",
+            action: TripNotificationService.openPairingAction,
+            target: "pairing"
         )
         AppNotificationArchive.save([record])
 
@@ -69,6 +71,78 @@ final class AppNotificationStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].title, "Pair")
+        XCTAssertEqual(loaded[0].action, TripNotificationService.openPairingAction)
+        XCTAssertEqual(loaded[0].target, "pairing")
+    }
+
+    func testArchiveDecodesLegacyPayloadWithoutAction() throws {
+        let legacy = StoredAppNotification(
+            kind: AppNotificationKind.tripEnded.rawValue,
+            title: "Ended",
+            body: "Done"
+        )
+        let data = try JSONEncoder().encode([legacy])
+        let decoded = try JSONDecoder().decode([StoredAppNotification].self, from: data)
+        XCTAssertNil(decoded[0].action)
+        XCTAssertNil(decoded[0].target)
+    }
+
+    func testRecordSystemNotificationMapsAchievementAndRecap() {
+        store.recordSystemNotification(
+            title: "Badge unlocked",
+            body: "First trip",
+            identifier: "trailhound.achievement.first.trip"
+        )
+        XCTAssertEqual(store.kind(for: store.items[0]), .achievementUnlocked)
+        XCTAssertEqual(store.items[0].action, TripNotificationService.openAchievementsAction)
+        XCTAssertEqual(store.items[0].target, "first.trip")
+
+        store.clearAll()
+        store.recordSystemNotification(
+            title: "Recap",
+            body: "Ready",
+            identifier: "trailhound.recap.2026"
+        )
+        XCTAssertEqual(store.kind(for: store.items[0]), .yearRecapReady)
+        XCTAssertEqual(store.items[0].action, TripNotificationService.openRecapAction)
+        XCTAssertEqual(store.items[0].target, "2026")
+    }
+
+    func testNotificationRouteResolvesActions() {
+        XCTAssertEqual(
+            NotificationRoute.resolve(
+                action: TripNotificationService.openAchievementsAction,
+                target: nil,
+                tripID: nil
+            ),
+            .achievements
+        )
+        XCTAssertEqual(
+            NotificationRoute.resolve(
+                action: TripNotificationService.openRecapAction,
+                target: "2026",
+                tripID: nil
+            ),
+            .recap
+        )
+        let tripID = UUID()
+        XCTAssertEqual(
+            NotificationRoute.resolve(
+                action: TripNotificationService.openTripAction,
+                target: nil,
+                tripID: tripID
+            ),
+            .trip(tripID)
+        )
+        let vehicleID = UUID()
+        XCTAssertEqual(
+            NotificationRoute.resolve(
+                action: VehicleCareNotificationScheduler.openVehicleCareAction,
+                target: vehicleID.uuidString,
+                tripID: nil
+            ),
+            .vehicleCare(vehicleID)
+        )
     }
 
     func testRecordCapsAtOneHundred() {

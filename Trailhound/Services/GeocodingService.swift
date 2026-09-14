@@ -5,6 +5,8 @@ import MapKit
 struct GeocodedPlace {
     let suggestedName: String?
     let address: String?
+    let locality: String?
+    let countryCode: String?
 }
 
 struct NearbyPlaceOption: Identifiable {
@@ -28,12 +30,16 @@ actor GeocodingService {
             let placemark = placemarks.first
             return GeocodedPlace(
                 suggestedName: suggestedName(from: placemark),
-                address: formattedAddress(from: placemark)
+                address: formattedAddress(from: placemark),
+                locality: normalized(placemark?.locality),
+                countryCode: normalized(placemark?.isoCountryCode)?.uppercased()
             )
         } catch {
             return GeocodedPlace(
                 suggestedName: nil,
-                address: DateFormatters.formatCoordinate(location.coordinate)
+                address: DateFormatters.formatCoordinate(location.coordinate),
+                locality: nil,
+                countryCode: nil
             )
         }
     }
@@ -134,5 +140,10 @@ actor GeocodingService {
             return placemark.name
         }
         return parts.joined(separator: ", ")
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

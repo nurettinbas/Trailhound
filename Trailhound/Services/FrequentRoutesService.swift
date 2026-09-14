@@ -143,7 +143,7 @@ enum FrequentRoutesService {
             .sorted { $0.visits > $1.visits }
     }
 
-    private static func displayName(
+    static func displayName(
         placeName: String?,
         address: String?,
         coordinate: CLLocationCoordinate2D?,

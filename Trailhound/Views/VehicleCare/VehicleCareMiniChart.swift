@@ -213,11 +213,12 @@ private struct CostBarChartStyle: ViewModifier {
                                     AxisValueLabel {
                                         Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
                                             .font(.caption2)
+                                            .foregroundStyle(StatsChartTheme.axisLabelInk)
                                     }
                                 }
                             }
                         }
-                        .chartYAxisLabel(currencyCode)
+                        .chartStatsYAxisUnit(currencyCode)
                         .chartLegend(.hidden)
                         .frame(maxWidth: .infinity)
                         .frame(height: StatsChartTheme.costBarPlotHeight)
