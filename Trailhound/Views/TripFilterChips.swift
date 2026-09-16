@@ -157,8 +157,9 @@ struct TripListFiltersBar: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(GlassText.secondary(for: colorScheme))
+                        .glassGlyphHit()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .accessibilityLabel(L10n.placePickerSearchClear)
             }
         }
@@ -225,7 +226,7 @@ struct TripListFiltersBar: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.tripsFilters)
         .accessibilityValue(
             activeChipFilterCount > 0
@@ -247,7 +248,7 @@ struct TripListFiltersBar: View {
                 .contentShape(Rectangle())
                 .glassField(cornerRadius: 10)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.tripsFiltersClear)
         .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.85)))
     }
@@ -281,33 +282,24 @@ struct TripListFiltersBar: View {
 
     private var dateFilterRow: some View {
         filterChipRow(label: L10n.filterDate) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        dateChip(
-                            title: L10n.all,
-                            key: "date:all",
-                            isSelected: selectedDateSection == nil
-                        ) {
-                            selectedDateSection = nil
-                        }
-                        ForEach(TripDateSection.allCases) { section in
-                            dateChip(
-                                title: section.title,
-                                key: "date:\(section.rawValue)",
-                                isSelected: selectedDateSection == section
-                            ) {
-                                selectedDateSection = selectedDateSection == section ? nil : section
-                            }
-                        }
-                    }
-                    .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: dateSelectionKey)
+            chipScroller(selectionKey: dateSelectionKey) {
+                dateChip(
+                    title: L10n.all,
+                    key: "date:all",
+                    isSelected: selectedDateSection == nil
+                ) {
+                    selectedDateSection = nil
                 }
-                .onChange(of: dateSelectionKey) { _, newKey in
-                    revealChip(withID: newKey, using: proxy)
+                ForEach(TripDateSection.allCases) { section in
+                    dateChip(
+                        title: section.title,
+                        key: "date:\(section.rawValue)",
+                        isSelected: selectedDateSection == section
+                    ) {
+                        selectedDateSection = selectedDateSection == section ? nil : section
+                    }
                 }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 
@@ -321,78 +313,60 @@ struct TripListFiltersBar: View {
 
     private var vehicleFilterRow: some View {
         filterChipRow(label: L10n.filterVehicle) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        vehicleChip(
-                            title: L10n.all,
-                            key: "vehicle:all",
-                            isSelected: selectedVehicleFilter == nil
-                        ) {
-                            selectedVehicleFilter = nil
-                        }
-                        vehicleChip(
-                            title: L10n.string("stats.vehicle.unassigned"),
-                            key: "vehicle:unassigned",
-                            isSelected: selectedVehicleFilter == .unassigned
-                        ) {
-                            selectedVehicleFilter = selectedVehicleFilter == .unassigned ? nil : .unassigned
-                        }
-                        ForEach(sortedVehicles) { vehicle in
-                            let key = "vehicle:\(vehicle.id.uuidString)"
-                            let filter = TripListPage.VehicleFilter.vehicle(vehicle.id)
-                            vehicleChip(
-                                title: vehicle.name,
-                                key: key,
-                                isSelected: selectedVehicleFilter == filter,
-                                avatarSystemImage: vehicle.systemImage,
-                                avatarPhotoFileName: vehicle.photoFileName,
-                                avatarIsElectric: vehicle.fuelType == .electric
-                            ) {
-                                selectedVehicleFilter = selectedVehicleFilter == filter ? nil : filter
-                            }
-                        }
-                    }
-                    .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: vehicleSelectionKey)
+            chipScroller(selectionKey: vehicleSelectionKey) {
+                vehicleChip(
+                    title: L10n.all,
+                    key: "vehicle:all",
+                    isSelected: selectedVehicleFilter == nil
+                ) {
+                    selectedVehicleFilter = nil
                 }
-                .onChange(of: vehicleSelectionKey) { _, newKey in
-                    revealChip(withID: newKey, using: proxy)
+                vehicleChip(
+                    title: L10n.string("stats.vehicle.unassigned"),
+                    key: "vehicle:unassigned",
+                    isSelected: selectedVehicleFilter == .unassigned
+                ) {
+                    selectedVehicleFilter = selectedVehicleFilter == .unassigned ? nil : .unassigned
+                }
+                ForEach(sortedVehicles) { vehicle in
+                    let key = "vehicle:\(vehicle.id.uuidString)"
+                    let filter = TripListPage.VehicleFilter.vehicle(vehicle.id)
+                    vehicleChip(
+                        title: vehicle.name,
+                        key: key,
+                        isSelected: selectedVehicleFilter == filter,
+                        avatarSystemImage: vehicle.systemImage,
+                        avatarPhotoFileName: vehicle.photoFileName,
+                        avatarIsElectric: vehicle.fuelType == .electric
+                    ) {
+                        selectedVehicleFilter = selectedVehicleFilter == filter ? nil : filter
+                    }
                 }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 
     private var placeFilterRow: some View {
         filterChipRow(label: L10n.filterPlace) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        placeChip(
-                            title: L10n.all,
-                            key: "place:all",
-                            isSelected: selectedPlaceID == nil
-                        ) {
-                            selectedPlaceID = nil
-                        }
-                        ForEach(sortedPlaces, id: \.id) { place in
-                            let key = "place:\(place.id.uuidString)"
-                            placeChip(
-                                title: place.name,
-                                key: key,
-                                isSelected: selectedPlaceID == place.id
-                            ) {
-                                selectedPlaceID = selectedPlaceID == place.id ? nil : place.id
-                            }
-                        }
-                    }
-                    .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: placeSelectionKey)
+            chipScroller(selectionKey: placeSelectionKey) {
+                placeChip(
+                    title: L10n.all,
+                    key: "place:all",
+                    isSelected: selectedPlaceID == nil
+                ) {
+                    selectedPlaceID = nil
                 }
-                .onChange(of: placeSelectionKey) { _, newKey in
-                    revealChip(withID: newKey, using: proxy)
+                ForEach(sortedPlaces, id: \.id) { place in
+                    let key = "place:\(place.id.uuidString)"
+                    placeChip(
+                        title: place.name,
+                        key: key,
+                        isSelected: selectedPlaceID == place.id
+                    ) {
+                        selectedPlaceID = selectedPlaceID == place.id ? nil : place.id
+                    }
                 }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 
@@ -407,13 +381,34 @@ struct TripListFiltersBar: View {
                 .fixedSize()
                 .accessibilityHidden(true)
 
-            GlassChipGroup(spacing: 6) {
-                chips()
-            }
+            chips()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 32)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
+    }
+
+    private func chipScroller<Content: View>(
+        selectionKey: String,
+        @ViewBuilder chips: () -> Content
+    ) -> some View {
+        let chipViews = chips()
+        return ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                GlassChipGroup(spacing: 8) {
+                    HStack(spacing: 8) {
+                        chipViews
+                    }
+                    .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: selectionKey)
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .onChange(of: selectionKey) { _, newKey in
+                revealChip(withID: newKey, using: proxy)
+            }
+        }
+        .glassChipScroller()
     }
 
     private func dateChip(
@@ -566,12 +561,14 @@ struct TripFilterChips: View {
                     .padding(.trailing, trailingInset)
                     .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: selectionKey)
                 }
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
                 .onChange(of: selectionKey) { _, newKey in
                     revealChip(withID: newKey, using: proxy)
                 }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .glassChipScroller()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 32)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.filterCategory)

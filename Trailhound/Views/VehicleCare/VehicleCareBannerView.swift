@@ -40,8 +40,9 @@ struct VehicleCareBannerView: View {
                 Image(systemName: "xmark")
                     .font(.caption2.weight(.bold))
                     .glassSecondaryInk()
+                    .glassGlyphHit(minSide: 28)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())

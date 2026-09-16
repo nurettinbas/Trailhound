@@ -240,6 +240,45 @@ enum StatsChartTheme {
         return [0, maxValue * 1.12]
     }
 
+    /// Forecast poster artwork — complementary hue of the shell, not trend orange.
+    static let forecastSparklineStrokeWidth: CGFloat = 3.5
+    static let forecastSparklineGlowWidth: CGFloat = 16
+    static let forecastSparklineMidGlowWidth: CGFloat = 8
+    static let forecastSparklineHighlightWidth: CGFloat = 1.5
+    static let forecastSparklineAreaTopOpacity: Double = 0.62
+    static let forecastSparklineAreaBottomOpacity: Double = 0.04
+    static let forecastSparklineOrbRadius: CGFloat = 5.5
+    static let forecastSparklineHaloRadius: CGFloat = 30
+
+    static func forecastSparklineStrokeRGB(
+        scheme: ColorScheme,
+        palette: ShellPalette
+    ) -> ShellRGB {
+        palette.atmosphere(for: scheme).mid.complementaryInk(for: scheme)
+    }
+
+    static func forecastSparklineStroke(
+        scheme: ColorScheme,
+        palette: ShellPalette
+    ) -> Color {
+        forecastSparklineStrokeRGB(scheme: scheme, palette: palette).color
+    }
+
+    static func forecastSparklineFill(
+        scheme: ColorScheme,
+        palette: ShellPalette
+    ) -> LinearGradient {
+        let color = forecastSparklineStroke(scheme: scheme, palette: palette)
+        return LinearGradient(
+            colors: [
+                color.opacity(forecastSparklineAreaTopOpacity),
+                color.opacity(forecastSparklineAreaBottomOpacity)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     /// Room above the tallest bar so value labels are not clipped.
     static func barValueHeadroom(maxValue: Double) -> [Double] {
         guard maxValue.isFinite, maxValue > 0 else { return [0, 1] }
@@ -265,6 +304,84 @@ enum StatsChartTheme {
             hash = ((hash << 5) &+ hash) &+ Int(byte)
         }
         return abs(hash)
+    }
+}
+
+enum StatsForecastSparklineLayout {
+    static let horizontalInset: CGFloat = 6
+    static let topInset: CGFloat = 16
+    static let bottomInset: CGFloat = 20
+
+    struct Plot: Equatable {
+        var points: [CGPoint]
+        var currentIndex: Int?
+    }
+
+    static func plot(
+        months: [VehicleMonthlyCost],
+        in size: CGSize,
+        currentMonth: Date,
+        calendar: Calendar = .current
+    ) -> Plot {
+        let ordered = months.sorted { $0.monthStart < $1.monthStart }
+        guard !ordered.isEmpty, size.width > 1, size.height > 1 else {
+            return Plot(points: [], currentIndex: nil)
+        }
+        let peak = max(ordered.map(\.total).max() ?? 1, 1) * 1.12
+        let usableW = size.width - horizontalInset * 2
+        let usableH = size.height - topInset - bottomInset
+        let last = CGFloat(max(ordered.count - 1, 1))
+        var currentIndex: Int?
+        let points: [CGPoint] = ordered.enumerated().map { index, month in
+            let x: CGFloat
+            if ordered.count == 1 {
+                x = size.width / 2
+            } else {
+                x = horizontalInset + usableW * CGFloat(index) / last
+            }
+            let y = topInset + usableH * (1 - CGFloat(month.total / peak))
+            if calendar.isDate(month.monthStart, equalTo: currentMonth, toGranularity: .month) {
+                currentIndex = index
+            }
+            return CGPoint(x: x, y: y)
+        }
+        return Plot(points: points, currentIndex: currentIndex)
+    }
+
+    static func line(through points: [CGPoint]) -> Path {
+        var path = Path()
+        guard let first = points.first else { return path }
+        path.move(to: first)
+        guard points.count > 1 else { return path }
+        if points.count == 2 {
+            path.addLine(to: points[1])
+            return path
+        }
+        for index in 0..<(points.count - 1) {
+            let p0 = points[max(0, index - 1)]
+            let p1 = points[index]
+            let p2 = points[index + 1]
+            let p3 = points[min(points.count - 1, index + 2)]
+            let control1 = CGPoint(
+                x: p1.x + (p2.x - p0.x) / 6,
+                y: p1.y + (p2.y - p0.y) / 6
+            )
+            let control2 = CGPoint(
+                x: p2.x - (p3.x - p1.x) / 6,
+                y: p2.y - (p3.y - p1.y) / 6
+            )
+            path.addCurve(to: p2, control1: control1, control2: control2)
+        }
+        return path
+    }
+
+    static func area(through points: [CGPoint], height: CGFloat) -> Path {
+        var path = line(through: points)
+        guard let first = points.first, let last = points.last else { return path }
+        path.addLine(to: CGPoint(x: last.x, y: height))
+        path.addLine(to: CGPoint(x: first.x, y: height))
+        path.closeSubpath()
+        return path
     }
 }
 

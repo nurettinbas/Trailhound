@@ -410,7 +410,7 @@ struct LiveFollowMapView: View {
                     .background(GlassSemantic.notificationBadge, in: Capsule())
                     .compositingGroup()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityLabel(L10n.string("recording.live_map.close"))
         }
         .accessibilityElement(children: .contain)
@@ -476,7 +476,7 @@ struct LiveFollowMapView: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(
             title == "2D"
                 ? L10n.string("recording.live_map.switch_2d")
@@ -507,7 +507,7 @@ struct LiveFollowMapView: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }

@@ -59,23 +59,26 @@ struct VehicleScheduleEditorView: View {
     var body: some View {
         Form {
             Section(L10n.string("vehicles.care.schedule.kind")) {
-                Picker(L10n.string("vehicles.care.schedule.kind"), selection: draftBinding(\.kind)) {
-                    ForEach(VehicleScheduleKind.allCases, id: \.self) { kind in
-                        Text(kind.defaultTitle).tag(kind)
+                LabeledContent(L10n.string("vehicles.care.schedule.kind")) {
+                    Picker(L10n.string("vehicles.care.schedule.kind"), selection: draftBinding(\.kind)) {
+                        ForEach(VehicleScheduleKind.allCases, id: \.self) { kind in
+                            Text(kind.defaultTitle).tag(kind)
+                        }
                     }
-                }
-                .onChange(of: activeDraft.kind) { _, newKind in
-                    guard draft != nil else { return }
-                    if draft?.title == VehicleScheduleKind.service.defaultTitle
-                        || draft?.title == VehicleScheduleKind.inspection.defaultTitle
-                        || draft?.title == VehicleScheduleKind.trafficInsurance.defaultTitle
-                        || draft?.title == VehicleScheduleKind.casco.defaultTitle
-                        || draft?.title == VehicleScheduleKind.custom.defaultTitle
-                        || draft?.title.isEmpty == true {
-                        draft?.title = newKind.defaultTitle
+                    .onChange(of: activeDraft.kind) { _, newKind in
+                        guard draft != nil else { return }
+                        if draft?.title == VehicleScheduleKind.service.defaultTitle
+                            || draft?.title == VehicleScheduleKind.inspection.defaultTitle
+                            || draft?.title == VehicleScheduleKind.trafficInsurance.defaultTitle
+                            || draft?.title == VehicleScheduleKind.casco.defaultTitle
+                            || draft?.title == VehicleScheduleKind.custom.defaultTitle
+                            || draft?.title.isEmpty == true {
+                            draft?.title = newKind.defaultTitle
+                        }
+                        draft?.intervalMonths = newKind == .inspection ? 24 : 12
+                        draft?.intervalKind = newKind == .service ? .everyMonths : .everyYears
                     }
-                    draft?.intervalMonths = newKind == .inspection ? 24 : 12
-                    draft?.intervalKind = newKind == .service ? .everyMonths : .everyYears
+                    .glassMenuPicker()
                 }
                 .glassRow(position: .first)
 
@@ -91,17 +94,23 @@ struct VehicleScheduleEditorView: View {
             }
 
             Section(L10n.string("vehicles.care.schedule.due")) {
-                DatePicker(
-                    L10n.string("vehicles.care.schedule.next_due"),
-                    selection: draftBinding(\.nextDueDate),
-                    displayedComponents: .date
-                )
+                LabeledContent(L10n.string("vehicles.care.schedule.next_due")) {
+                    DatePicker(
+                        L10n.string("vehicles.care.schedule.next_due"),
+                        selection: draftBinding(\.nextDueDate),
+                        displayedComponents: .date
+                    )
+                    .glassDatePicker()
+                }
                 .glassRow(position: .first)
 
-                Picker(L10n.string("vehicles.care.schedule.interval"), selection: draftBinding(\.intervalKind)) {
-                    ForEach(VehicleScheduleIntervalKind.allCases, id: \.self) { kind in
-                        Text(kind.displayName).tag(kind)
+                LabeledContent(L10n.string("vehicles.care.schedule.interval")) {
+                    Picker(L10n.string("vehicles.care.schedule.interval"), selection: draftBinding(\.intervalKind)) {
+                        ForEach(VehicleScheduleIntervalKind.allCases, id: \.self) { kind in
+                            Text(kind.displayName).tag(kind)
+                        }
                     }
+                    .glassMenuPicker()
                 }
                 .glassRow(position: .middle)
 
@@ -114,6 +123,7 @@ struct VehicleScheduleEditorView: View {
                     ) {
                         Text("\(activeDraft.intervalMonths) \(L10n.string("vehicles.care.schedule.months"))")
                     }
+                    .glassStepper()
                     .glassRow(position: .middle)
                 }
 
@@ -126,6 +136,7 @@ struct VehicleScheduleEditorView: View {
                     ) {
                         Text("\(activeDraft.intervalKm) km")
                     }
+                    .glassStepper()
                     .glassRow(position: .middle)
                 }
 
@@ -169,13 +180,9 @@ struct VehicleScheduleEditorView: View {
         )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    GlassToolbarBackButton()
-                }
-                .accessibilityLabel(Text("onboarding.back"))
+                GlassToolbarBackButton(action: dismiss.callAsFunction)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     save()

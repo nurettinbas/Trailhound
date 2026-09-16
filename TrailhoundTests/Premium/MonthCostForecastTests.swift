@@ -1,4 +1,5 @@
 import SwiftData
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -97,6 +98,58 @@ final class MonthCostForecastTests: XCTestCase {
         let shares = MonthCostForecast.empty.compositionShares
         XCTAssertEqual(shares, .zero)
         XCTAssertFalse(MonthCostForecast.empty.hasComposition)
+    }
+
+    func testForecastSparklineStrokeOpposesPaletteHue() {
+        func hueDistance(_ a: Double, _ b: Double) -> Double {
+            let delta = abs(a - b).truncatingRemainder(dividingBy: 360)
+            return min(delta, 360 - delta)
+        }
+
+        for palette: ShellPalette in [.gold, .sand, .lime, .sky, .rose, .orange] {
+            let mid = palette.atmosphere(for: .light).mid
+            let stroke = StatsChartTheme.forecastSparklineStrokeRGB(scheme: .light, palette: palette)
+            XCTAssertGreaterThan(
+                hueDistance(stroke.hsl.h, mid.hsl.h),
+                150,
+                palette.rawValue
+            )
+            XCTAssertNotEqual(stroke, mid, palette.rawValue)
+        }
+
+        XCTAssertNotEqual(
+            StatsChartTheme.forecastSparklineStrokeRGB(scheme: .light, palette: .gold),
+            StatsChartTheme.forecastSparklineStrokeRGB(scheme: .light, palette: .sky)
+        )
+        XCTAssertNotEqual(
+            StatsChartTheme.forecastSparklineStroke(scheme: .light, palette: .gold),
+            GlassSemantic.paused(for: .light)
+        )
+    }
+
+    func testForecastSparklineLayoutOrdersLeftToRightAndCurrentPoint() {
+        var low = VehicleExpenseCategoryAmounts()
+        low.add(100, category: .fuel)
+        var high = VehicleExpenseCategoryAmounts()
+        high.add(400, category: .fuel)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let first = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1))!
+        let second = calendar.date(from: DateComponents(year: 2026, month: 5, day: 1))!
+        let plot = StatsForecastSparklineLayout.plot(
+            months: [
+                VehicleMonthlyCost(monthStart: first, amounts: low),
+                VehicleMonthlyCost(monthStart: second, amounts: high)
+            ],
+            in: CGSize(width: 200, height: 100),
+            currentMonth: second,
+            calendar: calendar
+        )
+        XCTAssertEqual(plot.points.count, 2)
+        XCTAssertLessThan(plot.points[0].x, plot.points[1].x)
+        XCTAssertLessThan(plot.points[1].y, plot.points[0].y)
+        XCTAssertEqual(plot.currentIndex, 1)
+        XCTAssertFalse(StatsForecastSparklineLayout.line(through: plot.points).isEmpty)
     }
 }
 

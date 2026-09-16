@@ -242,13 +242,13 @@ struct YearRecapStoryView: View {
                     ) {
                         GlassNavCircleIcon(systemName: "square.and.arrow.up")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassPlainHit)
                     .disabled(shareItem.image.size.width < 2)
                     .accessibilityIdentifier("stats.premium.recap.share")
                     Button(action: close) {
                         GlassNavCircleIcon(systemName: "xmark")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassPlainHit)
                     .accessibilityIdentifier("stats.premium.recap.close")
                     .accessibilityLabel(L10n.string("premium.recap.close_a11y"))
                 }

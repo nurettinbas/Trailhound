@@ -40,6 +40,7 @@ private struct LightChromeProminentButtonStyle: ButtonStyle {
                             .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
                     }
             }
+            .contentShape(Capsule(style: .continuous))
             .scaleEffect((configuration.isPressed && !reduceMotion) ? 0.97 : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: configuration.isPressed)
     }
@@ -65,8 +66,8 @@ private struct TrailhoundCompactProminentChromeModifier: ViewModifier {
                             .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
                     }
             }
-            .contentShape(Capsule())
             .padding(6)
+            .contentShape(Capsule(style: .continuous))
     }
 }
 
@@ -90,17 +91,28 @@ private struct TrailhoundGlassButtonModifier: ViewModifier {
     }
 }
 
-private struct TrailhoundDestructiveButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .buttonStyle(.plain)
+/// Solid system-red fill lives in `makeBody` so the capsule — not the title glyphs — is the control.
+private struct TrailhoundDestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity, minHeight: 34)
             .background {
                 Capsule(style: .continuous)
                     .fill(GlassSemantic.notificationBadge)
             }
+            .contentShape(Capsule(style: .continuous))
             .compositingGroup()
+            .opacity(configuration.isPressed ? 0.88 : 1)
+    }
+}
+
+/// `.plain` hit-tests Text / SF Symbol glyphs only. Same look; the **label bounds** fire the action.
+struct GlassPlainHitButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
     }
 }
 
@@ -120,7 +132,13 @@ extension View {
 
     /// Solid system-red fill — never glass-prominent, never Appearance tint.
     func trailhoundDestructiveButton() -> some View {
-        modifier(TrailhoundDestructiveButtonModifier())
+        buttonStyle(TrailhoundDestructiveButtonStyle())
+    }
+
+    /// Icon-only control in a compact field (search clear). Expands the glyph to a hittable square.
+    func glassGlyphHit(minSide: CGFloat = 32) -> some View {
+        frame(minWidth: minSide, minHeight: minSide, alignment: .center)
+            .contentShape(Rectangle())
     }
 
     /// Scale-press for a whole glass / Stats card. Not a second chrome recipe.
@@ -135,9 +153,14 @@ struct TrailhoundCardPressButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .contentShape(Rectangle())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: configuration.isPressed)
     }
+}
+
+extension ButtonStyle where Self == GlassPlainHitButtonStyle {
+    static var glassPlainHit: GlassPlainHitButtonStyle { GlassPlainHitButtonStyle() }
 }
 
 extension ButtonStyle where Self == TrailhoundCardPressButtonStyle {

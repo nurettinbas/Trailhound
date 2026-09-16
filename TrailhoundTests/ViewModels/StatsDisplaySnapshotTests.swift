@@ -97,7 +97,6 @@ final class StatsDisplaySnapshotTests: XCTestCase {
     }
 
     func testInProgressMonthPreviousStatsUsesMTDSliceNotFullPreviousMonth() {
-        let calendar = Calendar.current
         let now = Date()
         let currentStart = StatsViewModel.calendarMonthInterval(containing: now).start
         let selectedInterval = StatsViewModel.calendarMonthInterval(containing: currentStart)
@@ -239,7 +238,6 @@ final class StatsDisplaySnapshotTests: XCTestCase {
     }
 
     func testGoalMonthResolver() {
-        let calendar = Calendar.current
         let now = Date()
         let currentStart = StatsViewModel.calendarMonthInterval(containing: now).start
         let previous = StatsViewModel.shiftMonth(currentStart, by: -1)

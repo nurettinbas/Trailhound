@@ -32,9 +32,7 @@ struct StatsYearAwardsCard: View {
                             Text(String(year)).tag(year)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .tint(TrailhoundBrandColors.brandBottom)
-                    .labelsHidden()
+                    .glassMenuPicker()
                     .accessibilityLabel(L10n.string("stats.awards.year"))
                     .accessibilityValue(String(selectedYear))
                 } else {

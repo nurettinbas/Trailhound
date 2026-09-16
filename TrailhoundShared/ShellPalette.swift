@@ -18,6 +18,59 @@ public struct ShellRGB: Sendable, Equatable {
     public var relativeLuminance: Double {
         0.2126 * r + 0.7152 * g + 0.0722 * b
     }
+
+    /// HSL with h in 0...360, s/l in 0...1.
+    public var hsl: (h: Double, s: Double, l: Double) {
+        let maxC = max(r, g, b)
+        let minC = min(r, g, b)
+        let lightness = (maxC + minC) / 2
+        let delta = maxC - minC
+        guard delta > 0.0008 else { return (0, 0, lightness) }
+        let saturation = delta / (1 - abs(2 * lightness - 1))
+        let hueSector: Double
+        if maxC == r {
+            hueSector = (g - b) / delta
+        } else if maxC == g {
+            hueSector = (b - r) / delta + 2
+        } else {
+            hueSector = (r - g) / delta + 4
+        }
+        var hue = hueSector * 60
+        if hue < 0 { hue += 360 }
+        return (hue, min(1, max(0, saturation)), min(1, max(0, lightness)))
+    }
+
+    public static func hsl(hue: Double, saturation: Double, lightness: Double) -> ShellRGB {
+        let wrapped = (hue.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        let h = wrapped / 360
+        let s = min(1, max(0, saturation))
+        let l = min(1, max(0, lightness))
+        let c = (1 - abs(2 * l - 1)) * s
+        let x = c * (1 - abs((h * 6).truncatingRemainder(dividingBy: 2) - 1))
+        let m = l - c / 2
+        let r: Double
+        let g: Double
+        let b: Double
+        switch h * 6 {
+        case 0..<1: r = c; g = x; b = 0
+        case 1..<2: r = x; g = c; b = 0
+        case 2..<3: r = 0; g = c; b = x
+        case 3..<4: r = 0; g = x; b = c
+        case 4..<5: r = x; g = 0; b = c
+        default: r = c; g = 0; b = x
+        }
+        return ShellRGB(r + m, g + m, b + m)
+    }
+
+    /// Vivid opposite hue of this swatch so artwork reads on the shell, not same-family yellow-on-gold.
+    public func complementaryInk(for scheme: ColorScheme) -> ShellRGB {
+        let source = hsl
+        return .hsl(
+            hue: source.h + 180,
+            saturation: max(0.76, source.s),
+            lightness: scheme == .dark ? 0.66 : 0.56
+        )
+    }
 }
 
 public struct ShellAtmosphere: Sendable, Equatable {

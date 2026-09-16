@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import XCTest
 @testable import Trailhound
 
@@ -107,6 +108,21 @@ final class GlassPaletteTests: XCTestCase {
         )
     }
 
+    func testDatePickerInkIsWhiteNotBlack() {
+        XCTAssertEqual(GlassControlTint.datePickerCompact(for: .light), Color.white)
+        XCTAssertEqual(GlassControlTint.datePickerSelectedFill, Color.white)
+        XCTAssertEqual(GlassControlTint.datePickerSelectedTitle, Color.white)
+        XCTAssertNotEqual(
+            GlassControlTint.datePickerCompact(for: .light),
+            GlassControlTint.segmented(for: .light, palette: .sky)
+        )
+        XCTAssertTrue(
+            GlassDatePickerChrome.isAccentBlue(UIColor(red: 0, green: 0.48, blue: 1, alpha: 1))
+        )
+        XCTAssertFalse(GlassDatePickerChrome.isAccentBlue(.white))
+        XCTAssertFalse(GlassDatePickerChrome.isAccentBlue(.black))
+    }
+
     func testNativeGlassTintFollowsPalette() {
         let sky = LightGlassPalette.nativeTint(for: .sky)
         let magenta = LightGlassPalette.nativeTint(for: .magenta)
@@ -139,5 +155,23 @@ final class GlassPaletteTests: XCTestCase {
         XCTAssertEqual(GlassTokens.fieldRim(for: .dark, increasedContrast: true), Color.clear)
         XCTAssertGreaterThan(LightGlassPalette.fieldRimOpacity, LightGlassPalette.nativeRimOpacity)
         XCTAssertLessThan(LightGlassPalette.fieldRimOpacity, 0.72)
+    }
+
+    func testToolbarControlCircleMatchesOverlayHitSize() {
+        XCTAssertEqual(GlassTokens.toolbarControlCircleSide, 44)
+        XCTAssertEqual(GlassTokens.toolbarFrozenCircleSide, 36)
+        XCTAssertEqual(6 + 32 + 6, Int(GlassTokens.toolbarControlCircleSide))
+        XCTAssertEqual(GlassTokens.toolbarCircleClusterSpacing, 16)
+        XCTAssertEqual(GlassTokens.toolbarSharedClusterSpacing, 8)
+        XCTAssertEqual(GlassTokens.toolbarClusterGlyphWidth, 32)
+        XCTAssertLessThan(
+            GlassTokens.toolbarClusterGlyphWidth + GlassTokens.toolbarSharedClusterSpacing + GlassTokens.toolbarClusterGlyphWidth,
+            GlassTokens.toolbarControlCircleSide + GlassTokens.toolbarCircleClusterSpacing + GlassTokens.toolbarControlCircleSide
+        )
+    }
+
+    func testGlassPlainHitStyleIsAvailable() {
+        _ = GlassPlainHitButtonStyle()
+        _ = TrailhoundCardPressButtonStyle()
     }
 }

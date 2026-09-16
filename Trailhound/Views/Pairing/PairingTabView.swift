@@ -121,7 +121,7 @@ struct PairingTabView: View {
                 .glassAccentForeground()
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
     }
 
     private func vehicleRow(_ vehicle: VehicleProfile) -> some View {

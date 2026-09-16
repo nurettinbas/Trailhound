@@ -255,7 +255,7 @@ struct VehicleDetailView: View {
                 .foregroundStyle(careRowPrimaryInk)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .glassRow(position: rowPosition)
     }
 
@@ -349,7 +349,7 @@ struct VehicleDetailView: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
     }
 
     private func installmentBadge(for expense: VehicleExpense) -> String? {
@@ -432,7 +432,7 @@ private struct CareTrackingCardRow: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
 
                 Button(action: onComplete) {
                     Image(systemName: "checkmark.circle.fill")

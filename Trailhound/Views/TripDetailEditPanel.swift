@@ -148,12 +148,6 @@ struct TripDetailEditPanel: View {
         GlassText.secondary(for: colorScheme)
     }
 
-    private var fieldTint: Color {
-        colorScheme == .dark
-            ? shellPalette.tintColor(for: .dark)
-            : Color.white
-    }
-
     private var previewFuelCost: Double {
         FuelCostCalculator.estimateCost(
             distanceMeters: trip.distanceMeters,
@@ -780,12 +774,10 @@ struct TripDetailEditPanel: View {
 
             DatePicker(title, selection: selection, displayedComponents: .date)
                 .glassDatePicker()
-                .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
                 .glassDatePicker()
-                .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -836,7 +828,7 @@ struct TripDetailEditPanel: View {
                 .frame(width: 26, height: 26)
                 .glassField(cornerRadius: 6)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
     }
 
     private func detailMenuPicker<Selection: Hashable, Content: View>(
@@ -891,7 +883,7 @@ struct TripDetailEditPanel: View {
                     .contentShape(Rectangle())
                 }
                 .menuIndicator(.hidden)
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -1267,7 +1259,6 @@ struct TripDetailEditPanel: View {
 private struct TripStopEditRow: View {
     @Bindable var stop: TripStop
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
     @State private var startedAt: Date = Date()
 
     private let durationRange = 1...240
@@ -1278,12 +1269,6 @@ private struct TripStopEditRow: View {
 
     private var fieldSecondaryInk: Color {
         GlassText.secondary(for: colorScheme)
-    }
-
-    private var fieldTint: Color {
-        colorScheme == .dark
-            ? shellPalette.tintColor(for: .dark)
-            : Color.white
     }
 
     private var durationMinutes: Binding<Int> {
@@ -1310,12 +1295,10 @@ private struct TripStopEditRow: View {
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .date)
                         .glassDatePicker()
-                        .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
                         .glassDatePicker()
-                        .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -1372,7 +1355,7 @@ private struct TripStopEditRow: View {
                 .contentShape(Rectangle())
                 .glassField(cornerRadius: 6)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
     }
 }
 

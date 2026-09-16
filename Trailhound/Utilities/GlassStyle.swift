@@ -20,6 +20,12 @@ enum GlassTokens {
     /// Overlay toolbar circle (Year recap story Share/Close).
     /// Matches camera overlay hit size (`GlassToolbarControlBackground` 44pt).
     static let toolbarControlCircleSide: CGFloat = 44
+    /// Gap between independent 44pt toolbar circles (Trip detail Share/collapse, Year recap).
+    static let toolbarCircleClusterSpacing: CGFloat = 16
+    /// Gap between glyphs that share one system platter (Trips merge+bell).
+    static let toolbarSharedClusterSpacing: CGFloat = 8
+    /// Width of a glyph inside a shared platter. Height stays `toolbarControlCircleSide`.
+    static let toolbarClusterGlyphWidth: CGFloat = 32
 
     static func fieldFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         if scheme == .dark {
@@ -491,7 +497,9 @@ private struct NativeGlassBackgroundModifier<S: InsettableShape>: ViewModifier {
     }
 }
 
-/// Floating tab bar: `.clear` glass in a Capsule so Light is not milky `.regular`.
+/// Floating tab bar: Light is one Capsule `.clear` native glass; Dark keeps the
+/// thin Material platter. Native `.regular` in Dark reads as a heavy black plate
+/// over the atmosphere, so the tab bar is not a `glassCircleChrome` exception.
 private struct GlassTabBarModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -630,6 +638,7 @@ struct GlassCircleChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         let shaped = content
             .frame(width: side, height: side)
+            .contentShape(Circle())
         // Same circle as the system toolbar item (Trip/Travel back): native
         // Liquid Glass in Light *and* Dark. Do not use GlassEngineResolver here —
         // Dark would pick Material and paint an opaque plate over the map.
@@ -752,12 +761,13 @@ struct GlassFilterChip: View {
     @Environment(\.shellPalette) private var shellPalette
 
     private var usesNativeChip: Bool {
-        GlassEngineResolver.resolve(
-            scheme: colorScheme,
-            reduceTransparency: reduceTransparency,
-            frozen: false,
-            allowsNative: true
-        ) == .native
+        isSelected
+            && GlassEngineResolver.resolve(
+                scheme: colorScheme,
+                reduceTransparency: reduceTransparency,
+                frozen: false,
+                allowsNative: true
+            ) == .native
     }
 
     private var labelColor: Color {
@@ -805,8 +815,9 @@ struct GlassFilterChip: View {
                 }
             }
             .modifier(NativeFilterChipGlass(isSelected: isSelected, highlightID: highlightID, namespace: namespace))
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -839,7 +850,6 @@ private struct NativeFilterChipGlass: ViewModifier {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
@@ -849,17 +859,13 @@ private struct NativeFilterChipGlass: ViewModifier {
             frozen: false,
             allowsNative: true
         )
-        if #available(iOS 26.0, *), engine == .native {
+        // Unselected chips stay frost fills so a horizontal scroller can clip
+        // them at the card edge. Native glass on every chip unions off-screen
+        // pills and paints past the trailing corner.
+        if #available(iOS 26.0, *), engine == .native, isSelected {
             content
                 .glassEffect(
-                    .regular.tint(
-                        isSelected
-                            ? selectedTint
-                            : LightGlassPalette.nativeTint(
-                                for: shellPalette,
-                                increasedContrast: contrast == .increased
-                            )
-                    ).interactive(),
+                    .regular.tint(selectedTint).interactive(),
                     in: Capsule()
                 )
                 .glassEffectID(highlightID, in: namespace)
@@ -940,12 +946,24 @@ struct GlassToolbarSaveButton: View {
     }
 }
 
-/// Back chevron. Defaults to the system toolbar platter.
+/// Back chevron. The action is on the whole 44pt Liquid Glass circle, not the glyph.
 struct GlassToolbarBackButton: View {
     var sampling: GlassToolbarSampling = .system
+    var action: () -> Void
 
+    @ViewBuilder
     var body: some View {
-        GlassToolbarSymbol(systemName: "chevron.backward", sampling: sampling)
+        if sampling == .system {
+            GlassToolbarCircleButton(systemName: "chevron.backward", action: action)
+                .accessibilityLabel(Text("onboarding.back"))
+        } else {
+            Button(action: action) {
+                GlassToolbarSymbol(systemName: "chevron.backward", sampling: sampling)
+            }
+            .buttonStyle(.glassPlainHit)
+            .contentShape(Circle())
+            .accessibilityLabel(Text("onboarding.back"))
+        }
     }
 }
 
@@ -1146,6 +1164,8 @@ private struct GlassNestedChoiceModifier: ViewModifier {
 }
 
 /// Batches chip glass into one render pass on iOS 26 without changing HStack spacing.
+/// Put this around the chip `HStack` inside a `ScrollView`, never around the scroller
+/// itself — `GlassEffectContainer` otherwise sizes to every off-screen pill.
 struct GlassChipGroup<Content: View>: View {
     var spacing: CGFloat
     var content: Content
@@ -1191,12 +1211,105 @@ private struct GlassNavigationChromeModifier: ViewModifier {
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
                 .scrollEdgeEffectHidden(true, for: [.top, .bottom])
+                .background(GlassNavigationBarEdgeHider())
         } else if #available(iOS 18.0, *) {
             content
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         } else {
             content.toolbarBackground(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+/// SwiftUI’s `scrollEdgeEffectHidden` often applies only after the push
+/// animation, so Trip/Travel detail flashes a cream title plate over MapKit.
+/// Set transparent bar appearances and hide scroll-edge effects as soon as
+/// the hosting controller appears.
+private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller {
+        Controller()
+    }
+
+    func updateUIViewController(_ uiViewController: Controller, context: Context) {
+        uiViewController.apply()
+    }
+
+    final class Controller: UIViewController {
+        private var edgePassCount = 0
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.isUserInteractionEnabled = false
+            view.backgroundColor = .clear
+            view.isAccessibilityElement = false
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            apply()
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            apply()
+        }
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            apply()
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            guard edgePassCount < 12 else { return }
+            edgePassCount += 1
+            hideScrollEdgeEffects()
+        }
+
+        func apply() {
+            applyTransparentBarAppearance()
+            hideScrollEdgeEffects()
+        }
+
+        private func applyTransparentBarAppearance() {
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithTransparentBackground()
+            appearance.shadowColor = .clear
+            appearance.backgroundColor = .clear
+            appearance.backgroundEffect = nil
+
+            if let item = parent?.navigationItem {
+                item.standardAppearance = appearance
+                item.scrollEdgeAppearance = appearance
+                item.compactAppearance = appearance
+                item.compactScrollEdgeAppearance = appearance
+            }
+
+            if let bar = navigationController?.navigationBar {
+                bar.standardAppearance = appearance
+                bar.scrollEdgeAppearance = appearance
+                bar.compactAppearance = appearance
+                bar.compactScrollEdgeAppearance = appearance
+            }
+        }
+
+        private func hideScrollEdgeEffects() {
+            guard #available(iOS 26.0, *) else { return }
+            hideScrollEdgeEffects(in: parent?.view)
+            hideScrollEdgeEffects(in: navigationController?.view)
+        }
+
+        @available(iOS 26.0, *)
+        private func hideScrollEdgeEffects(in view: UIView?) {
+            guard let view else { return }
+            if let scrollView = view as? UIScrollView {
+                scrollView.topEdgeEffect.isHidden = true
+                scrollView.bottomEdgeEffect.isHidden = true
+            }
+            for subview in view.subviews {
+                hideScrollEdgeEffects(in: subview)
+            }
         }
     }
 }
@@ -1258,7 +1371,7 @@ extension View {
         modifier(GlassCircleChromeModifier(side: side, frozen: frozen))
     }
 
-    /// Floating tab bar platter — Capsule, Light `.clear` glass (not milky `.regular`).
+    /// Floating tab bar platter — Light Capsule `.clear` glass, Dark thin Material.
     func glassTabBar() -> some View {
         modifier(GlassTabBarModifier())
     }
@@ -1297,6 +1410,16 @@ extension View {
     /// Groups chip `glassEffect` hosts on iOS 26. Do not wrap a `List`.
     func glassEffectGrouping(spacing: CGFloat = GlassTokens.sectionSpacing) -> some View {
         modifier(GlassEffectGroupingModifier(spacing: spacing))
+    }
+
+    /// Horizontal chip scroller inside a glass card. `ScrollView` in an `HStack`
+    /// otherwise keeps its content width, and native chip glass paints past the
+    /// trailing corner. Apply to the scroller, not the whole card (labels stay whole).
+    func glassChipScroller() -> some View {
+        self
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            .clipShape(Rectangle())
+            .mask(Rectangle())
     }
 
     func glassListChrome() -> some View {

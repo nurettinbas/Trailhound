@@ -112,7 +112,7 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 4)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsFavoritePlaces)
@@ -206,10 +206,8 @@ struct SettingsView: View {
                         } label: {
                             Text(L10n.settingsFuelCurrency)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
+                        .glassMenuPicker()
                         .accessibilityLabel(L10n.settingsFuelCurrency)
-                        .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     }
                 }
                 .glassRow(position: .first)
@@ -243,11 +241,14 @@ struct SettingsView: View {
                     .onChange(of: settings.widgetShowRoutePreview) { _, _ in
                         TripStore.syncWidgetWeekDistance(in: modelContext)
                     }
-                Picker(L10n.settingsAutoDelete, selection: $settings.autoDeleteDays) {
-                    Text(L10n.settingsAutoDeleteNever).tag(0)
-                    Text(L10n.settingsAutoDeleteDays(30)).tag(30)
-                    Text(L10n.settingsAutoDeleteDays(90)).tag(90)
-                    Text(L10n.settingsAutoDeleteDays(365)).tag(365)
+                LabeledContent(L10n.settingsAutoDelete) {
+                    Picker(L10n.settingsAutoDelete, selection: $settings.autoDeleteDays) {
+                        Text(L10n.settingsAutoDeleteNever).tag(0)
+                        Text(L10n.settingsAutoDeleteDays(30)).tag(30)
+                        Text(L10n.settingsAutoDeleteDays(90)).tag(90)
+                        Text(L10n.settingsAutoDeleteDays(365)).tag(365)
+                    }
+                    .glassMenuPicker()
                 }
                 .glassRow(position: .last)
             }
@@ -604,7 +605,7 @@ private struct ShellPalettePicker: View {
                     .frame(width: 36, height: 36)
                     .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .accessibilityLabel(L10n.shellPaletteName(palette))
                 .accessibilityAddTraits(selection == palette ? .isSelected : [])
                 .accessibilityIdentifier("settings.shellPalette.\(palette.rawValue)")

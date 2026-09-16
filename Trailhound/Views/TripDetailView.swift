@@ -235,38 +235,29 @@ struct TripDetailView: View {
         .background(NavigationInteractivePopEnabler())
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    GlassToolbarBackButton()
-                }
-                .accessibilityLabel(Text("onboarding.back"))
+                GlassToolbarBackButton(action: dismiss.callAsFunction)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .topBarTrailing) {
                 GlassToolbarCluster {
-                    Button {
-                        Task { await renderShareCard() }
-                    } label: {
-                        GlassToolbarSymbol(
-                            systemName: "square.and.arrow.up",
-                            isLoading: isRenderingShareCard
-                        )
-                    }
+                    GlassToolbarCircleButton(
+                        systemName: "square.and.arrow.up",
+                        isLoading: isRenderingShareCard,
+                        action: { Task { await renderShareCard() } }
+                    )
                     .disabled(isRenderingShareCard)
                     .accessibilityLabel(L10n.share)
 
-                    Button {
-                        toggleMapExpanded()
-                    } label: {
-                        GlassToolbarSymbol(
-                            systemName: isMapExpanded
-                                ? "arrow.down.right.and.arrow.up.left"
-                                : "arrow.up.left.and.arrow.down.right"
-                        )
-                    }
+                    GlassToolbarCircleButton(
+                        systemName: isMapExpanded
+                            ? "arrow.down.right.and.arrow.up.left"
+                            : "arrow.up.left.and.arrow.down.right",
+                        action: toggleMapExpanded
+                    )
                     .accessibilityLabel(isMapExpanded ? L10n.mapExitFullscreen : L10n.mapFullscreen)
                 }
             }
+            .hideSharedToolbarBackgroundIfAvailable()
         }
         .sheet(isPresented: $showSharePreview, onDismiss: {
             if pendingSystemShare {

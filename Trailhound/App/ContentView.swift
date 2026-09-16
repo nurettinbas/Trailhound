@@ -19,9 +19,9 @@ struct ContentView: View {
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .onGlassShell()
-        .environment(\.shellPalette, settings.shellPalette)
         .toastHost()
         .deleteConfirmHost()
+        .environment(\.shellPalette, settings.shellPalette)
         .onAppear { AppIconSync.syncWindowStyle(settings.appearanceMode) }
         .onChange(of: settings.appearanceMode) { _, mode in
             AppIconSync.syncWindowStyle(mode)
@@ -42,9 +42,15 @@ struct ContentView: View {
                     TripListView()
                 }
                 .background(Color.clear)
+                .glassNavigationChrome()
                 .modifier(TrailhoundTabContentChrome())
                 .tabItem {
-                    Label(L10n.tabTrips, systemImage: "map")
+                    TabBarItemLabel(
+                        title: L10n.tabTrips,
+                        systemImage: "map",
+                        isSelected: tabSelection.selectedTab == .trips
+                    )
+                    .accessibilityIdentifier("tab.trips")
                 }
                 .badge(isRecordingSession ? "" : nil)
                 .tag(AppTab.trips)
@@ -58,7 +64,12 @@ struct ContentView: View {
                 }
                 .modifier(TrailhoundTabContentChrome())
                 .tabItem {
-                    Label(L10n.string("vehicles.tab.title"), systemImage: "car")
+                    TabBarItemLabel(
+                        title: L10n.string("vehicles.tab.title"),
+                        systemImage: "car",
+                        isSelected: tabSelection.selectedTab == .pairing
+                    )
+                    .accessibilityIdentifier("tab.pairing")
                 }
                 .tag(AppTab.pairing)
 
@@ -72,7 +83,12 @@ struct ContentView: View {
                 .background(Color.clear)
                 .modifier(TrailhoundTabContentChrome())
                 .tabItem {
-                    Label(L10n.tabStats, systemImage: "chart.bar")
+                    TabBarItemLabel(
+                        title: L10n.tabStats,
+                        systemImage: "chart.bar",
+                        isSelected: tabSelection.selectedTab == .stats
+                    )
+                    .accessibilityIdentifier("tab.stats")
                 }
                 .tag(AppTab.stats)
 
@@ -86,21 +102,20 @@ struct ContentView: View {
                 .background(Color.clear)
                 .modifier(TrailhoundTabContentChrome())
                 .tabItem {
-                    Label(L10n.tabSettings, systemImage: "gearshape")
+                    TabBarItemLabel(
+                        title: L10n.tabSettings,
+                        systemImage: "gearshape",
+                        isSelected: tabSelection.selectedTab == .settings
+                    )
+                    .accessibilityIdentifier("tab.settings")
                 }
                 .tag(AppTab.settings)
             }
             .background(Color.clear)
-            .background(TrailhoundTabBarCompactInstaller())
-            .toolbar(.hidden, for: .tabBar)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                TrailhoundFloatingTabBar(
-                    selection: $tabSelection.selectedTab,
-                    isRecording: isRecordingSession
-                )
-            }
-            .animation(TrailhoundMotion.tabSwitch, value: tabSelection.selectedTab)
+            .background(TrailhoundTabBarCompactInstaller(selectedTab: tabSelection.selectedTab))
+            .modifier(TrailhoundTabSelectionTint())
         }
+        .modifier(TrailhoundTabBarChrome())
         .modifier(TrailhoundRootTint())
         .task {
             await authenticateOnLaunch()
@@ -179,6 +194,18 @@ struct ContentView: View {
 
 }
 
+private struct TrailhoundTabBarChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
+        }
+    }
+}
+
 private struct TrailhoundRootTint: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -188,6 +215,27 @@ private struct TrailhoundRootTint: ViewModifier {
             content
         } else {
             content.tint(shellPalette.shellTint(for: colorScheme))
+        }
+    }
+}
+
+/// Dark selected uses the palette tint. Light is the unmodified system tab bar.
+private struct TrailhoundTabSelectionTint: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        if colorScheme == .light {
+            content
+        } else {
+            content.tint(
+                Color(
+                    uiColor: TrailhoundTabBarTheme.selectedGlyphUIColor(
+                        palette: shellPalette,
+                        scheme: .dark
+                    )
+                )
+            )
         }
     }
 }
@@ -203,6 +251,28 @@ private struct TrailhoundTabContentChrome: ViewModifier {
             content
         } else {
             content.tint(shellPalette.shellTint(for: colorScheme))
+        }
+    }
+}
+
+/// Tab bar forces `.fill` via `symbolVariants`. Pin exact outline/fill names and clear the env.
+private struct TabBarItemLabel: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Label {
+            if colorScheme == .light, isSelected {
+                Text(title).foregroundStyle(.white)
+            } else {
+                Text(title)
+            }
+        } icon: {
+            Image(systemName: isSelected ? "\(systemImage).fill" : systemImage)
+                .environment(\.symbolVariants, .none)
+                .foregroundStyle(colorScheme == .light && isSelected ? Color.white : Color.primary)
         }
     }
 }

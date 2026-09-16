@@ -112,9 +112,15 @@ struct TravelJournalEditPanel: View {
                         .glassSecondaryInk()
                 }
                 Spacer()
-                Button(L10n.string("journal.edit"), action: onEdit)
-                    .font(.subheadline.weight(.semibold))
-                    .glassAccentForeground()
+                Button(action: onEdit) {
+                    Text(L10n.string("journal.edit"))
+                        .font(.subheadline.weight(.semibold))
+                        .glassAccentForeground()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.glassPlainHit)
             }
 
             if let note = journal.note, !note.isEmpty {
@@ -128,7 +134,7 @@ struct TravelJournalEditPanel: View {
                 Button(action: onToggleExpanded) {
                     metric(L10n.journalTripCount(journal.tripCount), icon: "map")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .accessibilityHint(isExpanded
                     ? L10n.string("journal.map.collapse")
                     : L10n.string("journal.map.expand"))
@@ -154,7 +160,7 @@ struct TravelJournalEditPanel: View {
             .padding(8)
             .glassChrome(cornerRadius: 14, enabled: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedTripID)
         .listRowInsets(
             EdgeInsets(

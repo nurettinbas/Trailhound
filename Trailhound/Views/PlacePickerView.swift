@@ -154,7 +154,7 @@ struct PlacePickerView: View {
                 Image(systemName: "plus.circle")
               }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .glassRow(position: GlassRowPosition.index(index, in: suggestions.count))
           }
         }
@@ -232,7 +232,7 @@ struct PlacePickerView: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .glassRow(position: locationSectionPosition(.useCurrentLocation))
       } header: {
         Text(L10n.string("place.location.section"))
@@ -245,13 +245,9 @@ struct PlacePickerView: View {
     .background(NavigationInteractivePopEnabler())
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
-        Button {
-          dismiss()
-        } label: {
-          GlassToolbarBackButton()
-        }
-        .accessibilityLabel(Text("onboarding.back"))
+        GlassToolbarBackButton(action: dismiss.callAsFunction)
       }
+      .hideSharedToolbarBackgroundIfAvailable()
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()
@@ -360,8 +356,9 @@ struct PlacePickerView: View {
           Image(systemName: "xmark.circle.fill")
             .font(.body)
             .glassSecondaryInk()
+            .glassGlyphHit()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.placePickerSearchClear)
       }
     }
@@ -410,7 +407,7 @@ struct PlacePickerView: View {
                 placeResultRow(place)
                   .padding(.vertical, 10)
               }
-              .buttonStyle(.plain)
+              .buttonStyle(.glassPlainHit)
 
               if place.id != searchResults.last?.id {
                 Divider()
@@ -458,7 +455,7 @@ struct PlacePickerView: View {
                 placeResultRow(place)
                   .padding(.vertical, 10)
               }
-              .buttonStyle(.plain)
+              .buttonStyle(.glassPlainHit)
 
               if place.id != nearbyPlaces.last?.id {
                 Divider()

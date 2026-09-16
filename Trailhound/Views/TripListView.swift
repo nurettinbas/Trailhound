@@ -274,7 +274,9 @@ struct TripListView: View {
                         travelSuggestion = nil
                     } label: {
                         Image(systemName: "xmark")
+                            .glassGlyphHit(minSide: 28)
                     }
+                    .buttonStyle(.glassPlainHit)
                     .accessibilityLabel(L10n.journalSuggestDismiss)
                 }
                 .padding(.vertical, 4)
@@ -314,7 +316,7 @@ struct TripListView: View {
                         }
                     }
                     .glassHidesNavigationLinkIndicator()
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassPlainHit)
                     .glassRow(position: GlassRowPosition.index(index, in: loadedJournals.count))
                     .confirmingDeleteSwipe(title: L10n.journalDelete) {
                         TravelJournalTotals.prepareForDelete(journal)
@@ -733,8 +735,10 @@ struct TripListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if isMergeMode {
-                    Button(L10n.actionMerge) {
+                    Button {
                         presentMergeConfirm()
+                    } label: {
+                        GlassToolbarTitle(title: L10n.actionMerge)
                     }
                     .disabled(completedMergeSelectionCount < 2)
                 } else if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
@@ -752,7 +756,7 @@ struct TripListView: View {
                                 .glassPrimaryInk()
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassPlainHit)
                     .accessibilityLabel(L10n.string("trips.active_recording.show"))
                     .accessibilityIdentifier("trips.active_recording.nav")
                 } else if !recordingService.state.isActiveSession {
@@ -784,9 +788,11 @@ struct TripListView: View {
             }
             if isMergeMode {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(L10n.cancel) {
+                    Button {
                         isMergeMode = false
                         mergeSelection.removeAll()
+                    } label: {
+                        GlassToolbarTitle(title: L10n.cancel)
                     }
                 }
             } else {
@@ -938,7 +944,7 @@ struct TripListView: View {
                 }
             }
             .glassHidesNavigationLinkIndicator()
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .allowsHitTesting(!isMergeMode)
         }
         .overlay {
@@ -1317,14 +1323,16 @@ private struct OrphanRecoveryBanner: View {
                 .font(.caption)
                 .foregroundStyle(messageColor)
             HStack {
-                Button(L10n.orphanResume, action: onResume)
-                    .buttonStyle(.plain)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(resumeFill, in: Capsule())
-                    .compositingGroup()
+                Button(action: onResume) {
+                    Text(L10n.orphanResume)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(resumeFill, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.glassPlainHit)
 
                 Button(L10n.orphanSave, action: onSave)
                     .buttonStyle(.bordered)
@@ -1362,20 +1370,21 @@ private struct TripListTrailingToolbarCluster: View {
     let onNotifications: () -> Void
 
     var body: some View {
-        GlassToolbarCluster {
+        GlassToolbarCluster(clustered: true) {
             Button(action: onPrimary) {
                 GlassToolbarSymbol(systemName: primarySystemImage)
             }
+            .contentShape(Rectangle())
             .accessibilityLabel(primaryAccessibilityLabel)
 
             Button(action: onNotifications) {
                 GlassToolbarSymbol(systemName: "bell")
             }
+            .contentShape(Rectangle())
             .accessibilityLabel(L10n.notificationsTitle)
             .accessibilityValue(unreadCount > 0 ? "\(min(unreadCount, 99))" : "")
             .accessibilityIdentifier("trips.notifications")
         }
-        .padding(.top, 7)
         .padding(.trailing, 6)
         .overlay(alignment: .topTrailing) {
             if unreadCount > 0 {

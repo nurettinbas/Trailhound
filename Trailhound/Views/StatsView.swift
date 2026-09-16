@@ -1044,7 +1044,7 @@ struct StatsView: View {
                     .frame(minHeight: 28)
                     .glassField(cornerRadius: 10)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityIdentifier("stats.filters.clear")
         }
         .accessibilityElement(children: .contain)
@@ -1258,7 +1258,7 @@ struct StatsView: View {
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .disabled(!enabled)
         .accessibilityLabel(L10n.string(accessibilityKey))
     }
@@ -1273,7 +1273,6 @@ struct StatsView: View {
 
             DatePicker(title, selection: date, displayedComponents: .date)
                 .glassDatePicker()
-                .tint(GlassControlTint.control(for: colorScheme, palette: shellPalette))
                 .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
         }
         .padding(.horizontal, 10)
@@ -1346,7 +1345,7 @@ struct StatsView: View {
             }
             .disabled(kilometers >= maximum)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .foregroundStyle(GlassText.primary(for: colorScheme))
         .glassField(cornerRadius: 12)
         .fixedSize()
@@ -2780,7 +2779,7 @@ private struct StatsFilterMenuField<MenuContent: View>: View {
         }
         .menuIndicator(.hidden)
         .menuOrder(.fixed)
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .tint(GlassControlTint.link(for: colorScheme, palette: shellPalette))
         .accessibilityLabel(title)
         .accessibilityValue(value)

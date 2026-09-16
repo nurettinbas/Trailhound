@@ -257,10 +257,13 @@ struct PairingVehicleEditorForm: View {
         defaultVehicleRow
             .glassRow(position: .middle)
 
-        Picker(L10n.pairingTabFuelType, selection: draftBinding(\.fuelType)) {
-            ForEach(VehicleFuelType.allCases, id: \.self) { type in
-                Text(type.displayName).tag(type)
+        LabeledContent(L10n.pairingTabFuelType) {
+            Picker(L10n.pairingTabFuelType, selection: draftBinding(\.fuelType)) {
+                ForEach(VehicleFuelType.allCases, id: \.self) { type in
+                    Text(type.displayName).tag(type)
+                }
             }
+            .glassMenuPicker()
         }
         .glassRow(position: .middle)
         LabeledContent(activeDraft.consumptionLabel) {
@@ -306,7 +309,7 @@ struct PairingVehicleEditorForm: View {
                     )
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .disabled(isOnlyVehicle)
     }
 
@@ -897,17 +900,15 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
+                    GlassToolbarBackButton {
                         if hasUnsavedChanges {
                             showDiscardConfirm = true
                         } else {
                             dismiss()
                         }
-                    } label: {
-                        GlassToolbarBackButton()
                     }
-                    .accessibilityLabel(Text("onboarding.back"))
                 }
+                .hideSharedToolbarBackgroundIfAvailable()
             }
             .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {

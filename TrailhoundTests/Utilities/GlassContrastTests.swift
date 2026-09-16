@@ -113,7 +113,9 @@ final class GlassContrastTests: XCTestCase {
             )
         }
         XCTAssertEqual(GlassContrast.tabBarGlassTintOpacity, 0.28)
+        XCTAssertEqual(GlassContrast.tabBarSystemGlassTintOpacity, 0.05)
         XCTAssertEqual(GlassContrast.tabBarClearGlassTintOpacity, 0.22)
+        XCTAssertLessThan(GlassContrast.tabBarSystemGlassTintOpacity, GlassContrast.tabBarClearGlassTintOpacity)
         XCTAssertLessThan(GlassContrast.tabBarClearGlassTintOpacity, GlassContrast.nativeGlassTintOpacity)
         XCTAssertLessThan(LightGlassPalette.nativeRimOpacity, LightGlassPalette.panelRimOpacity)
         XCTAssertEqual(LightGlassPalette.nativeRimOpacity, 0.10)

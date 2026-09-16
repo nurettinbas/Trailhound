@@ -124,7 +124,7 @@ struct TravelJournalEditorSheet: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.glassPlainHit)
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .glassListRow()
                     }

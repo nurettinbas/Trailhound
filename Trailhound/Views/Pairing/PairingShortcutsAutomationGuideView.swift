@@ -29,7 +29,7 @@ struct PairingShortcutsAutomationCard: View {
                             .glassDisclosureInk()
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
             }
         }
     }
@@ -40,16 +40,22 @@ struct PairingShortcutsAutomationCard: View {
                 Button(action: onOpenTest) {
                     Text(L10n.pairingShortcutsGuideCardTest)
                         .font(.caption2.weight(.semibold))
+                        .glassAccentForeground()
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .glassAccentForeground()
+                .buttonStyle(.glassPlainHit)
 
                 Button(action: onOpenTroubleshoot) {
                     Text(L10n.pairingShortcutsGuideCardTroubleshoot)
                         .font(.caption2.weight(.semibold))
+                        .glassAccentForeground()
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .glassAccentForeground()
+                .buttonStyle(.glassPlainHit)
             }
         }
     }
@@ -395,7 +401,7 @@ struct PairingShortcutsAutomationGuideView: View {
             }
             .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .trailhoundCardPress()
         .glassNestedChoice(isSelected: selected)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -460,7 +466,7 @@ struct PairingShortcutsAutomationGuideView: View {
             }
             .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .trailhoundCardPress()
         .glassNestedChoice(isSelected: selected)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -671,7 +677,7 @@ struct PairingShortcutsAutomationGuideView: View {
                 Spacer(minLength: 0)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .glassNestedChoice(isSelected: false)
     }
 

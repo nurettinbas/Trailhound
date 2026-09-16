@@ -27,6 +27,8 @@ public enum GlassContrast {
     public static let nativeTintBottomMix = 0.42
     /// Light floating tab bar — one step past the system white frost, still glass.
     public static let tabBarGlassTintOpacity = 0.28
+    /// System `UITabBar` `UIGlassEffect.tintColor` — unused on Light (system default).
+    public static let tabBarSystemGlassTintOpacity = 0.05
     /// Clear tab-bar glass: same hue as cards, more open than card native 0.50.
     public static let tabBarClearGlassTintOpacity = 0.22
     public static let fieldTintOpacity = 0.18

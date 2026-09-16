@@ -24,10 +24,8 @@ enum StatsCardTokens {
     static let posterOverlayInsets = EdgeInsets(top: 8, leading: 10, bottom: 10, trailing: 10)
     /// Forecast expand hero — taller than the Stats-list poster.
     static let posterExpandedHeight: CGFloat = 220
-    /// White frost over the forecast sparkline so hero copy reads.
-    static func posterSparklineVeil(for scheme: ColorScheme) -> Color {
-        Color.white.opacity(scheme == .dark ? 0.16 : 0.22)
-    }
+    /// Accessibility / stacked forecast artwork, matching Recap stacked teaser.
+    static let posterStackedArtworkHeight: CGFloat = 88
 }
 
 /// Palette-tint opacities for `StatsSegmentBar` — not expense-category colors.
@@ -84,17 +82,6 @@ enum StatsTextColor {
 
     static func tertiary(for scheme: ColorScheme) -> Color {
         GlassText.tertiary(for: scheme)
-    }
-}
-
-private struct StatsPosterSparklineVeilModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content.overlay {
-            StatsCardTokens.posterSparklineVeil(for: colorScheme)
-                .allowsHitTesting(false)
-        }
     }
 }
 
@@ -291,11 +278,6 @@ extension View {
     /// Overlay copy on Recap / forecast posters. Artwork stays edge-to-edge.
     func statsPosterOverlayPadding() -> some View {
         padding(StatsCardTokens.posterOverlayInsets)
-    }
-
-    /// Whitish frost over poster artwork so overlay copy reads. Not a second Material.
-    func statsPosterSparklineVeil() -> some View {
-        modifier(StatsPosterSparklineVeilModifier())
     }
 
     /// Full-width Stats card in a clear List row. Light iOS 26 uses native

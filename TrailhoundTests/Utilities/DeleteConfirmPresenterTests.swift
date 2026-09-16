@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -91,6 +92,18 @@ final class DeleteConfirmPresenterTests: XCTestCase {
     func testJournalRemoveCopyDiffersFromGeneric() {
         XCTAssertNotEqual(DeleteConfirmKind.journalRemove.message, DeleteConfirmKind.generic.message)
         XCTAssertEqual(DeleteConfirmKind.journalRemove.confirmTitle, L10n.journalRemove)
+    }
+
+    func testProminentMergeAccentFollowsPaletteNotSystemBlue() {
+        let rose = ShellPalette.rose.tintColor(for: .light)
+        let sky = ShellPalette.sky.tintColor(for: .light)
+        XCTAssertNotEqual(rose, sky)
+        XCTAssertNotEqual(rose, Color.blue)
+        XCTAssertNotEqual(rose, Color.accentColor)
+        XCTAssertEqual(
+            ShellPalette.magenta.tintColor(for: .light),
+            ShellPalette.magenta.atmosphere(for: .light).tint.color
+        )
     }
 
     func testProminentMergeConfirmDoesNotUseDestructiveChrome() {

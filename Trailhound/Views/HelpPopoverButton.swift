@@ -25,7 +25,7 @@ struct HelpPopoverButton: View {
                 .frame(width: side, height: side)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(accessibilityLabel)
         .sheet(isPresented: $isPresented) {
             VStack(alignment: .leading, spacing: 16) {

@@ -130,6 +130,15 @@ enum GlassControlTint {
         palette.shellTint(for: scheme)
     }
 
+    /// Compact DatePicker value on glass. Always white on Light; never system blue.
+    static func datePickerCompact(for scheme: ColorScheme, palette _: ShellPalette = .sky) -> Color {
+        GlassText.primary(for: scheme)
+    }
+
+    /// Calendar selected day. White disc, white number — never blue, never black ink.
+    static let datePickerSelectedFill = Color.white
+    static let datePickerSelectedTitle = Color.white
+
     /// Row disclosure chevron. Light uses palette chrome (dark ink on open glass);
     /// Dark keeps secondary so it does not compete with `.primary`.
     static func disclosure(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {

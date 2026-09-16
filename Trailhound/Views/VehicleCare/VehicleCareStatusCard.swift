@@ -36,7 +36,7 @@ struct VehicleCareStatusCard: View {
             }
             .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .disabled(action == nil)
     }
 }

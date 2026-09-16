@@ -79,7 +79,7 @@ struct PairingVehicleRow: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .onAppear(perform: consumeEntranceIfNeeded)
     }
 

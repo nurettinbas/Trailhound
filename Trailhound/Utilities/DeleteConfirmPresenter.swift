@@ -149,6 +149,7 @@ final class DeleteConfirmPresenter {
 
 struct DeleteConfirmHostModifier: ViewModifier {
     @Bindable private var presenter = DeleteConfirmPresenter.shared
+    @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
@@ -188,6 +189,7 @@ struct DeleteConfirmHostModifier: ViewModifier {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .environment(\.shellPalette, settings.shellPalette)
                 .animation(overlayAnimation, value: isBlocking)
             }
     }
@@ -231,27 +233,23 @@ private struct DeleteConfirmCard: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 10) {
-                Button {
+                confirmActionButton(
+                    title: L10n.cancel,
+                    color: GlassText.primary(for: colorScheme)
+                ) {
                     DeleteConfirmPresenter.shared.cancel()
-                } label: {
-                    buttonLabel(L10n.cancel, color: GlassText.primary(for: colorScheme))
-                }
-                .buttonStyle(.plain)
-                .background {
+                } chrome: {
                     GlassToolbarControlBackground(shape: Capsule(style: .continuous))
                 }
-                .frame(maxWidth: .infinity, minHeight: buttonHeight)
 
-                Button {
+                confirmActionButton(
+                    title: request.confirmTitle,
+                    color: Color.white
+                ) {
                     DeleteConfirmPresenter.shared.performConfirm()
-                } label: {
-                    buttonLabel(request.confirmTitle, color: Color.white)
-                }
-                .buttonStyle(.plain)
-                .background {
+                } chrome: {
                     confirmFill
                 }
-                .frame(maxWidth: .infinity, minHeight: buttonHeight)
             }
         }
         .padding(22)
@@ -287,13 +285,26 @@ private struct DeleteConfirmCard: View {
         }
     }
 
-    private func buttonLabel(_ title: String, color: Color) -> some View {
-        Text(title)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(color)
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .frame(maxWidth: .infinity, minHeight: buttonHeight)
+    /// Chrome is the control. `.plain` + Text would otherwise hit-test only the glyphs,
+    /// so taps on the capsule padding would land on the card and do nothing.
+    private func confirmActionButton<Chrome: View>(
+        title: String,
+        color: Color,
+        action: @escaping () -> Void,
+        @ViewBuilder chrome: () -> Chrome
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity, minHeight: buttonHeight)
+                .background { chrome() }
+                .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.glassPlainHit)
+        .contentShape(Capsule(style: .continuous))
     }
 }
 
@@ -301,11 +312,14 @@ private struct DeleteConfirmCard: View {
 /// body is not invalidated when the flag flips.
 private struct GlassBlockingProgressCard: View {
     let message: String
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         VStack(spacing: 14) {
             ProgressView()
                 .controlSize(.large)
+                .tint(shellPalette.tintColor(for: colorScheme))
             Text(message)
                 .font(.subheadline.weight(.medium))
                 .glassPrimaryInk()

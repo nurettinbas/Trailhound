@@ -1,4 +1,3 @@
-import Charts
 import SwiftUI
 import UIKit
 
@@ -37,7 +36,7 @@ struct StatsForecastCard: View {
                     .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityHidden(true)
             .allowsHitTesting(!isExpanded)
             .padding(.top, StatsCardTokens.posterOverlayInsets.top)
@@ -65,14 +64,26 @@ struct StatsForecastCard: View {
             currencyCode: currencyCode,
             height: StatsCardTokens.posterHeight,
             reservesExpandSlot: true,
-            showsComposition: true,
             showsTrend: showsTrend
         )
     }
 
     private var stackedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            overlayCopy
+            if forecast.hasData, !forecast.monthlyTotals.isEmpty {
+                StatsForecastSparklineScene(
+                    months: forecast.monthlyTotals,
+                    currentMonth: forecast.monthStart,
+                    height: StatsCardTokens.posterStackedArtworkHeight,
+                    cornerRadius: StatsCardTokens.nestedRadius
+                )
+            }
+            StatsForecastTitleChip()
+            StatsForecastHeroCopy(
+                forecast: forecast,
+                currencyCode: currencyCode,
+                showsTrend: showsTrend
+            )
             if !forecast.hasData {
                 Text(L10n.string("premium.forecast.subtitle"))
                     .font(.caption)
@@ -80,16 +91,6 @@ struct StatsForecastCard: View {
             }
         }
         .padding(StatsCardTokens.contentInset)
-    }
-
-    private var overlayCopy: some View {
-        StatsForecastHeroCopy(
-            forecast: forecast,
-            currencyCode: currencyCode,
-            reservesExpandSlot: false,
-            showsComposition: true,
-            showsTrend: showsTrend
-        )
     }
 
     private var accessibilityValue: String {
@@ -139,23 +140,28 @@ enum StatsForecastCopy {
     }
 }
 
+struct StatsForecastTitleChip: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Text(L10n.string("premium.forecast.title"))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+            .statsFrostChip()
+    }
+}
+
 struct StatsForecastHeroCopy: View {
     let forecast: MonthCostForecast
     let currencyCode: String
-    var reservesExpandSlot: Bool
-    var showsComposition: Bool
     var showsTrend: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.string("premium.forecast.title"))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                .statsFrostChip()
-                .padding(.trailing, reservesExpandSlot ? 44 : 0)
+        VStack(alignment: .leading, spacing: 4) {
             Text(FuelCostCalculator.formatCost(forecast.projectedTotal, currencyCode: currencyCode))
                 .font(.title.weight(.bold).monospacedDigit())
                 .glassAccentForeground()
@@ -165,9 +171,6 @@ struct StatsForecastHeroCopy: View {
             if forecast.hasData {
                 metricsLine
             }
-            if showsComposition, forecast.hasComposition {
-                StatsSegmentBar(segments: ForecastCompositionBlock.segments(for: forecast))
-            }
         }
     }
 
@@ -176,24 +179,149 @@ struct StatsForecastHeroCopy: View {
             if let ratio = forecast.trendRatio, showsTrend {
                 Image(systemName: ratio >= 0 ? "arrow.up.right" : "arrow.down.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(
-                        ratio >= 0
-                            ? GlassSemantic.paused(for: colorScheme)
-                            : GlassSemantic.success(for: colorScheme)
-                    )
+                    .foregroundStyle(trendInk)
                 Text(StatsForecastCopy.trend(ratio))
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                    .foregroundStyle(trendInk)
                     .transition(reduceMotion ? .opacity : TrailhoundMotion.softScaleInTransition)
                 Text("·")
                     .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
             }
             Text(StatsForecastCopy.confidence(forecast.confidence))
-                .font(.caption)
-                .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+
+    private var trendInk: Color {
+        StatsChartTheme.forecastSparklineStroke(scheme: colorScheme, palette: shellPalette)
+    }
+}
+
+struct StatsForecastSparklineScene: View {
+    let months: [VehicleMonthlyCost]
+    let currentMonth: Date
+    var height: CGFloat?
+    var cornerRadius: CGFloat = StatsCardTokens.radius
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        Canvas { context, size in
+            draw(context: &context, size: size)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(maxHeight: height == nil ? .infinity : nil)
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func draw(context: inout GraphicsContext, size: CGSize) {
+        let stroke = StatsChartTheme.forecastSparklineStroke(
+            scheme: colorScheme,
+            palette: shellPalette
+        )
+        let plot = StatsForecastSparklineLayout.plot(
+            months: months,
+            in: size,
+            currentMonth: currentMonth
+        )
+        guard !plot.points.isEmpty else { return }
+
+        let area = StatsForecastSparklineLayout.area(through: plot.points, height: size.height)
+        let line = StatsForecastSparklineLayout.line(through: plot.points)
+        let peakY = plot.points.map(\.y).min() ?? 0
+        context.fill(
+            area,
+            with: .linearGradient(
+                Gradient(colors: [
+                    stroke.opacity(StatsChartTheme.forecastSparklineAreaTopOpacity),
+                    stroke.opacity(StatsChartTheme.forecastSparklineAreaBottomOpacity)
+                ]),
+                startPoint: CGPoint(x: size.width / 2, y: peakY),
+                endPoint: CGPoint(x: size.width / 2, y: size.height)
+            )
+        )
+        context.stroke(
+            line,
+            with: .color(stroke.opacity(0.22)),
+            style: StrokeStyle(
+                lineWidth: StatsChartTheme.forecastSparklineGlowWidth,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+        context.stroke(
+            line,
+            with: .color(stroke.opacity(0.45)),
+            style: StrokeStyle(
+                lineWidth: StatsChartTheme.forecastSparklineMidGlowWidth,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+        context.stroke(
+            line,
+            with: .color(stroke),
+            style: StrokeStyle(
+                lineWidth: StatsChartTheme.forecastSparklineStrokeWidth,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+        context.stroke(
+            line,
+            with: .color(Color.white.opacity(0.88)),
+            style: StrokeStyle(
+                lineWidth: StatsChartTheme.forecastSparklineHighlightWidth,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+
+        if let index = plot.currentIndex {
+            let point = plot.points[index]
+            let halo = StatsChartTheme.forecastSparklineHaloRadius
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: point.x - halo,
+                    y: point.y - halo,
+                    width: halo * 2,
+                    height: halo * 2
+                )),
+                with: .radialGradient(
+                    Gradient(colors: [stroke.opacity(0.55), .clear]),
+                    center: point,
+                    startRadius: 2,
+                    endRadius: halo
+                )
+            )
+            let orb = StatsChartTheme.forecastSparklineOrbRadius
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: point.x - orb,
+                    y: point.y - orb,
+                    width: orb * 2,
+                    height: orb * 2
+                )),
+                with: .color(Color.white)
+            )
+            context.stroke(
+                Path(ellipseIn: CGRect(
+                    x: point.x - orb,
+                    y: point.y - orb,
+                    width: orb * 2,
+                    height: orb * 2
+                )),
+                with: .color(stroke),
+                lineWidth: 1.5
+            )
+        }
     }
 }
 
@@ -202,7 +330,6 @@ struct StatsForecastHeroPoster: View {
     let currencyCode: String
     var height: CGFloat
     var reservesExpandSlot: Bool
-    var showsComposition: Bool
     var showsTrend: Bool
     var cornerRadius: CGFloat = StatsCardTokens.radius
 
@@ -210,11 +337,13 @@ struct StatsForecastHeroPoster: View {
     @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            sparkline
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .statsPosterSparklineVeil()
-                .allowsHitTesting(false)
+        ZStack {
+            StatsForecastSparklineScene(
+                months: forecast.monthlyTotals,
+                currentMonth: forecast.monthStart,
+                cornerRadius: cornerRadius
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             LinearGradient(
                 colors: [
                     shellPalette.atmosphere(for: colorScheme).bottom.color.opacity(0.92),
@@ -225,64 +354,20 @@ struct StatsForecastHeroPoster: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
-            StatsForecastHeroCopy(
-                forecast: forecast,
-                currencyCode: currencyCode,
-                reservesExpandSlot: reservesExpandSlot,
-                showsComposition: showsComposition,
-                showsTrend: showsTrend
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            VStack(alignment: .leading, spacing: 0) {
+                StatsForecastTitleChip()
+                    .padding(.trailing, reservesExpandSlot ? 44 : 0)
+                Spacer(minLength: 0)
+                StatsForecastHeroCopy(
+                    forecast: forecast,
+                    currencyCode: currencyCode,
+                    showsTrend: showsTrend
+                )
+            }
             .statsPosterOverlayPadding()
         }
         .frame(maxWidth: .infinity, minHeight: height)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-    }
-
-    @ViewBuilder
-    private var sparkline: some View {
-        Color.clear
-            .overlay {
-                if !forecast.monthlyTotals.isEmpty {
-                    let peak = forecast.monthlyTotals.map(\.total).max() ?? 1
-                    Chart(forecast.monthlyTotals) { month in
-                        AreaMark(
-                            x: .value("m", month.monthStart, unit: .month),
-                            y: .value("c", month.total)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    shellPalette.tintColor(for: colorScheme).opacity(0.55),
-                                    shellPalette.tintColor(for: colorScheme).opacity(0.04)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        LineMark(
-                            x: .value("m", month.monthStart, unit: .month),
-                            y: .value("c", month.total)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.white.opacity(0.88))
-                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                        PointMark(
-                            x: .value("m", month.monthStart, unit: .month),
-                            y: .value("c", month.total)
-                        )
-                        .symbolSize(isCurrentMonth(month.monthStart) ? 36 : 0)
-                        .foregroundStyle(Color.white)
-                    }
-                    .chartStatsSparklineFill(maxValue: peak)
-                }
-            }
-            .accessibilityHidden(true)
-    }
-
-    private func isCurrentMonth(_ monthStart: Date) -> Bool {
-        Calendar.current.isDate(monthStart, equalTo: forecast.monthStart, toGranularity: .month)
     }
 }
 
@@ -404,7 +489,6 @@ struct StatsForecastDetailSheet: View {
                         currencyCode: currencyCode,
                         height: StatsCardTokens.posterExpandedHeight,
                         reservesExpandSlot: false,
-                        showsComposition: false,
                         showsTrend: true,
                         cornerRadius: StatsCardTokens.nestedRadius
                     )

@@ -75,11 +75,14 @@ struct VehicleExpenseEditorView: View {
                     }
                     .glassRow(position: .first)
                 } else {
-                    Picker(L10n.string("vehicles.care.expense.category"), selection: draftBinding(\.category)) {
-                        ForEach(VehicleExpenseCategory.allCases, id: \.self) { category in
-                            Label(category.displayName, systemImage: category.systemImage)
-                                .tag(category)
+                    LabeledContent(L10n.string("vehicles.care.expense.category")) {
+                        Picker(L10n.string("vehicles.care.expense.category"), selection: draftBinding(\.category)) {
+                            ForEach(VehicleExpenseCategory.allCases, id: \.self) { category in
+                                Label(category.displayName, systemImage: category.systemImage)
+                                    .tag(category)
+                            }
                         }
+                        .glassMenuPicker()
                     }
                     .glassRow(position: .first)
                 }
@@ -101,6 +104,7 @@ struct VehicleExpenseEditorView: View {
                 ) {
                     Text(installmentStepperLabel)
                 }
+                .glassStepper()
                 .glassRow(position: .middle)
 
                 if activeDraft.isInstallmentPlan, let preview = installmentPreviewText {
@@ -110,11 +114,14 @@ struct VehicleExpenseEditorView: View {
                         .glassRow(position: .middle)
                 }
 
-                DatePicker(
-                    dateFieldTitle,
-                    selection: draftBinding(\.occurredAt),
-                    displayedComponents: .date
-                )
+                LabeledContent(dateFieldTitle) {
+                    DatePicker(
+                        dateFieldTitle,
+                        selection: draftBinding(\.occurredAt),
+                        displayedComponents: .date
+                    )
+                    .glassDatePicker()
+                }
                 .glassRow(position: .middle)
 
                 GlassFieldLabel(title: L10n.string("vehicles.care.expense.note")) {
@@ -188,13 +195,9 @@ struct VehicleExpenseEditorView: View {
         )
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    GlassToolbarBackButton()
-                }
-                .accessibilityLabel(Text("onboarding.back"))
+                GlassToolbarBackButton(action: dismiss.callAsFunction)
             }
+            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     save()

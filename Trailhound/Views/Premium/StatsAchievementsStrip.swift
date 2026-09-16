@@ -29,7 +29,7 @@ struct StatsAchievementsStrip: View {
                     .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityLabel(L10n.mapFullscreen)
             .accessibilityIdentifier("stats.premium.achievements")
             .allowsHitTesting(!isExpanded)
@@ -563,6 +563,7 @@ private struct AchievementShareButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .contentShape(Rectangle())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: configuration.isPressed)
     }

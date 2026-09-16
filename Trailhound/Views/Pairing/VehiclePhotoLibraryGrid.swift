@@ -180,7 +180,7 @@ private struct VehiclePhotoLibraryThumbCell: View {
             .frame(width: side, height: side)
             .clipped()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassPlainHit)
         .onAppear(perform: load)
         .onDisappear(perform: cancel)
     }

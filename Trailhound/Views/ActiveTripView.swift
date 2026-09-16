@@ -193,6 +193,7 @@ private struct LiveMapOpenPressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .contentShape(Rectangle())
             .scaleEffect((configuration.isPressed && !reduceMotion) ? 0.92 : 1)
             .opacity(configuration.isPressed ? 0.92 : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: configuration.isPressed)
@@ -772,7 +773,7 @@ private struct RecordingLocationChromeRow: View {
                     .background(Color.orange.opacity(0.15))
                     .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassPlainHit)
                 .accessibilityLabel(L10n.string("recording.location.always_required"))
             }
 

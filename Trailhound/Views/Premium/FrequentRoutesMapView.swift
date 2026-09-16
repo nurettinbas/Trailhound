@@ -16,7 +16,7 @@ struct FrequentRoutesMapLegend: View {
                     Text(L10n.string("premium.routes.map.standard")).tag(false)
                     Text(L10n.string("premium.routes.map.dark")).tag(true)
                 }
-                .pickerStyle(.segmented)
+                .glassSegmentedStyle()
                 .frame(maxWidth: 180)
             }
             if let selected {
@@ -192,7 +192,7 @@ struct FrequentRoutesPreviewCard: View {
                     .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityLabel(L10n.mapFullscreen)
             .accessibilityIdentifier("stats.premium.routes")
             .allowsHitTesting(!isExpanded)

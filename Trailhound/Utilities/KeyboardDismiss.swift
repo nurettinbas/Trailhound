@@ -490,7 +490,7 @@ private struct KeyboardAccessoryBar: View {
                     .glassAccentForeground()
                     .modifier(KeyboardAccessoryChipChrome(cornerRadius: chipCorner))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassPlainHit)
             .accessibilityLabel(L10n.ok)
         }
         .overlay {
@@ -521,5 +521,6 @@ private struct KeyboardAccessoryChipChrome: ViewModifier {
                 GlassToolbarControlBackground(shape: shape, frozen: true)
             }
             .clipShape(shape)
+            .contentShape(shape)
     }
 }
