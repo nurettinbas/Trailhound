@@ -53,7 +53,7 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 - Reduce Transparency uses `GlassEngine.solid` with opaque mid-family fill, not system grouped white and not chrome.
 - Reduce Motion skips chip morph, sheen, card-press scale, forecast glint, segment-bar grow-in, recap hub idle, Play-chip pulse, badge flag-wave, distance path-node travel, and night sky bob.
 - VoiceOver labels are unchanged. Palette swatches use `settings.shellPalette.<id>`.
-- System exceptions stay system: `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity. Light floating tab bar keeps system glass with a one-step mid-family tint.
+- System exceptions stay system: `.alert`, Mail, share sheet, keyboard, Lock Screen widget, Live Activity. The CarPlay Dashboard Live Activity must not paint an opaque fill or `activityBackgroundTint` — CarPlay supplies the same Liquid Glass as Now Playing. Light floating tab bar keeps system glass with a one-step mid-family tint.
 - Legitimate blacks stay black: map vignette/dimming, delete/merge scrims, shadows, camera/crop stage. Semantic Stop/unread remains solid red.
 
 ## Code map

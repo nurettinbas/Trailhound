@@ -45,7 +45,7 @@ enum DeviceTestChecklist {
         "Live follow map: green start pin at first point; orange pause pin at each pause (stays after resume)",
         "Vespa / motorcycle / car markers face right on the road",
         "Dynamic Island + lock banner: vehicle photo or correct SF; facing right",
-        "CarPlay Live Activity tile: after 1+ hour / long km, Duration Distance Speed stay the same size, centered in their columns, no overlap; car icon size unchanged; cancel a CarPlay phone call — labels/values are not stacked on top of older frames",
+        "CarPlay Live Activity tile: after 1+ hour / long km, Duration Distance Speed stay the same size, centered in their columns, no overlap; car icon size unchanged; cancel a CarPlay phone call — labels/values are not stacked on top of older frames; chrome matches Now Playing (map shows through, not a solid plate)",
         "Notifications: live recording card shows road + photo + controls",
         "Pause/resume: no road remount; Island photo stays",
         "Home-screen widget: Pause → Resume label flips; Resume → Pause returns",

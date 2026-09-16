@@ -887,7 +887,7 @@ private struct LiveActivitySmallFamilyBanner: View {
                 } else if size.width >= 8, size.height >= 8 {
                     LiveActivityCarPlayDashboardTile(state: state, tileSize: size)
                 } else {
-                    LiveActivityCarPlayChrome.fill
+                    Color.clear
                 }
             }
             .frame(width: size.width, height: size.height)
@@ -896,12 +896,9 @@ private struct LiveActivitySmallFamilyBanner: View {
     }
 }
 
-/// Opaque fill so CarPlay replaces the previous snapshot instead of stacking it.
-/// Phone/Siri hide this tile; when it returns, translucent frames ghost Duration / Distance / Speed.
-private enum LiveActivityCarPlayChrome {
-    static let fill = Color(red: 0.165, green: 0.286, blue: 0.455)
-}
-
+/// CarPlay Dashboard tile. Do not paint a fill — CarPlay wraps this snapshot in
+/// the same Liquid Glass as Now Playing / Maps. Phone-call ghosting is handled by
+/// `LiveActivityDashboardOcclusionMonitor`, not an opaque plate.
 private struct LiveActivityCarPlayDashboardTile: View {
     let state: TripRecordingAttributes.ContentState
     let tileSize: CGSize
@@ -916,24 +913,21 @@ private struct LiveActivityCarPlayDashboardTile: View {
         // different width after Phone UI restores the dashboard.
         let iconSide = min(40, max(28, tileSize.height - 12))
 
-        ZStack {
-            LiveActivityCarPlayChrome.fill
-            HStack(alignment: .center, spacing: 4) {
-                LiveActivityCarIcon(
-                    side: iconSide,
-                    photoRevision: state.vehiclePhotoRevision,
-                    symbolTint: WidgetPalette.tint(for: .light)
-                )
-                .frame(width: iconSide, height: iconSide)
-                .accessibilityHidden(true)
+        HStack(alignment: .center, spacing: 4) {
+            LiveActivityCarIcon(
+                side: iconSide,
+                photoRevision: state.vehiclePhotoRevision,
+                symbolTint: WidgetPalette.tint(for: .light)
+            )
+            .frame(width: iconSide, height: iconSide)
+            .accessibilityHidden(true)
 
-                metricColumn(value: metrics.duration, label: WidgetL10n.duration, valueFontSize: valueFontSize)
-                metricColumn(value: metrics.distance, label: WidgetL10n.distance, valueFontSize: valueFontSize)
-                metricColumn(value: metrics.speed, label: WidgetL10n.speed, valueFontSize: valueFontSize)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            metricColumn(value: metrics.duration, label: WidgetL10n.duration, valueFontSize: valueFontSize)
+            metricColumn(value: metrics.distance, label: WidgetL10n.distance, valueFontSize: valueFontSize)
+            metricColumn(value: metrics.speed, label: WidgetL10n.speed, valueFontSize: valueFontSize)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .environment(\.colorScheme, .dark)
         .frame(width: tileSize.width, height: tileSize.height)
         .clipped()
@@ -979,7 +973,7 @@ private struct LiveActivityBannerRoot: View {
             switch activityFamily {
             case .small:
                 LiveActivitySmallFamilyBanner(state: state)
-                    .activityBackgroundTint(LiveActivityCarPlayChrome.fill)
+                    .activityBackgroundTint(nil)
             case .medium:
                 LiveActivityLockScreenBanner(state: state)
                     .activityBackgroundTint(lockScreenActivityTint)
