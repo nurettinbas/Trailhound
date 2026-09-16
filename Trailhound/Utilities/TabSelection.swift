@@ -66,4 +66,14 @@ enum AppTab: Hashable {
     case stats
     case pairing
     case settings
+
+    /// Matches `ContentView` TabView order: Trips, Vehicles, Statistics, Settings.
+    var tabBarIndex: Int {
+        switch self {
+        case .trips: 0
+        case .pairing: 1
+        case .stats: 2
+        case .settings: 3
+        }
+    }
 }

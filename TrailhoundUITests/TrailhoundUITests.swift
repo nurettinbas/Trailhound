@@ -46,17 +46,25 @@ class TrailhoundUITestCase: XCTestCase {
     }
 
     func tabButton(identifier: String, fallbackLabels: String...) -> XCUIElement {
-        let byIdentifier = app.tabBars.buttons[identifier]
+        let inTabBar = app.tabBars.buttons[identifier]
+        if inTabBar.waitForExistence(timeout: 1) {
+            return inTabBar
+        }
+        let byIdentifier = app.buttons[identifier]
         if byIdentifier.waitForExistence(timeout: 1) {
             return byIdentifier
         }
         for label in fallbackLabels {
-            let button = app.tabBars.buttons[label]
+            let tabBarButton = app.tabBars.buttons[label]
+            if tabBarButton.waitForExistence(timeout: 0.5) {
+                return tabBarButton
+            }
+            let button = app.buttons[label]
             if button.waitForExistence(timeout: 0.5) {
                 return button
             }
         }
-        return app.tabBars.buttons[fallbackLabels.first ?? identifier]
+        return app.buttons[fallbackLabels.first ?? identifier]
     }
 
     var tripsTab: XCUIElement {

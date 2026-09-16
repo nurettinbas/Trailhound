@@ -134,8 +134,7 @@ struct SettingsView: View {
                                 Text(Self.hourLabel(hour)).tag(hour)
                             }
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
+                        .glassMenuPicker()
                     }
                     .accessibilityIdentifier("settings.smartCategory.workStart")
                     .glassRow(position: .middle)
@@ -145,8 +144,7 @@ struct SettingsView: View {
                                 Text(Self.hourLabel(hour)).tag(hour)
                             }
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
+                        .glassMenuPicker()
                     }
                     .accessibilityIdentifier("settings.smartCategory.workEnd")
                     .glassRow(position: .last)
@@ -176,16 +174,6 @@ struct SettingsView: View {
                     Text(L10n.settingsAppearanceHint)
                     Text(L10n.settingsShellPaletteHint)
                 }
-            }
-
-            Section {
-                Button(L10n.settingsRecapPlay) {
-                    TabSelection.shared.openStats(anchor: .recap)
-                }
-                .accessibilityIdentifier("settings.recap.play")
-                .glassRow(position: .only)
-            } footer: {
-                Text(L10n.settingsRecapHint)
             }
 
             Section {
@@ -243,6 +231,7 @@ struct SettingsView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
                         .focused($focusedField, equals: .privacyRadius)
+                        .glassInputField()
                 }
                 .glassRow(position: .middle)
                 Toggle(L10n.settingsBlurExport, isOn: $settings.blurExportCoordinates)
@@ -333,6 +322,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(L10n.settingsTitle)
+        .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showAddPlacePicker) {
             PlacePickerView()
         }

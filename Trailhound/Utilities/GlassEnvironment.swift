@@ -18,17 +18,19 @@ private struct OnGlassShellModifier: ViewModifier {
     func body(content: Content) -> some View {
         if colorScheme == .dark {
             content
+        } else if GlassEngineResolver.lightAvoidsWhiteChromeTint {
+            content.foregroundStyle(shellPalette.shellForeground(for: .light))
         } else {
             content
                 .foregroundStyle(shellPalette.shellForeground(for: .light))
                 .tint(shellPalette.shellTint(for: .light))
-                .toolbarColorScheme(shellPalette.toolbarColorScheme(for: .light), for: .navigationBar, .tabBar)
         }
     }
 }
 
 extension View {
-    /// Light glass shell: hierarchical text/icons and a matching toolbar color scheme.
+    /// Light glass shell: white type on the atmosphere. iOS 26 does not apply
+    /// white `.tint` — that fills toolbar/tab liquid with a second white plate.
     /// Dark is a no-op so the existing recipe is unchanged.
     func onGlassShell() -> some View {
         modifier(OnGlassShellModifier())

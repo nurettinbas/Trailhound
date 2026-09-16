@@ -169,10 +169,13 @@ struct PlacePickerView: View {
         }
         .glassRow(position: .first)
 
-        Picker(L10n.string("place.kind.field"), selection: $kind) {
-          ForEach(SavedPlaceKind.allCases, id: \.self) { kind in
-            Text(kind.displayName).tag(kind)
+        LabeledContent(L10n.string("place.kind.field")) {
+          Picker(L10n.string("place.kind.field"), selection: $kind) {
+            ForEach(SavedPlaceKind.allCases, id: \.self) { kind in
+              Text(kind.displayName).tag(kind)
+            }
           }
+          .glassMenuPicker()
         }
         .glassRow(position: .middle)
 
@@ -309,13 +312,14 @@ struct PlacePickerView: View {
 
       HStack(spacing: 10) {
         TextField(L10n.placeCoordinatesPlaceholder, text: $coordinateText)
-          .font(.subheadline.monospacedDigit())
           .keyboardType(.numbersAndPunctuation)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .focused($focusedField, equals: .coordinates)
           .submitLabel(.go)
           .onSubmit { applyCoordinateText() }
+          .glassInputField()
+          .font(.subheadline.monospacedDigit())
 
         Button(L10n.placeCoordinatesApply) {
           applyCoordinateText()
@@ -364,7 +368,7 @@ struct PlacePickerView: View {
     .padding(.horizontal, 14)
     .padding(.vertical, 14)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .glassField(cornerRadius: 12)
+    .glassInputWell(cornerRadius: 12)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(L10n.placePickerSearchPlaceholder)
   }

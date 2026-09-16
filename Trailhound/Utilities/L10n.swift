@@ -343,8 +343,6 @@ enum L10n {
     static var settingsAboutSection: String { string("settings.about.section") }
     static var settingsVersion: String { string("settings.about.version") }
     static var settingsAboutPrivacy: String { string("settings.about.privacy") }
-    static var settingsRecapPlay: String { string("settings.recap.play") }
-    static var settingsRecapHint: String { string("settings.recap.hint") }
     static var settingsReportProblem: String { string("settings.report_problem") }
     static var settingsReportProblemTitle: String { string("settings.report_problem.title") }
     static var settingsReportProblemDisclosure: String { string("settings.report_problem.disclosure") }

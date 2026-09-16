@@ -248,8 +248,8 @@ struct TripDetailMapLayer: View, Equatable {
             }
         }
         .mapStyle(style.mapStyle())
-        .environment(\.colorScheme, style.forcedColorScheme)
-        .preferredColorScheme(style.forcedColorScheme)
+        .colorScheme(style.forcedColorScheme)
+        .glassMapTopEdgeHidden()
     }
 }
 

@@ -11,7 +11,13 @@ enum LightGlassPalette {
     static let panelSheenOpacity = GlassContrast.panelSheenOpacity
     static let chromeFillOpacity = GlassContrast.chromeFrostOpacity
     static let chromeRimOpacity = 0.26
+    /// Native `glassEffect` rim — a whisper, not the Material white halo.
+    static let nativeRimOpacity = 0.10
+    static let nativeIncreasedContrastRimOpacity = 0.18
     static let fieldFillOpacity = GlassContrast.fieldTintOpacity
+    /// Light input rim — a thin liquid-glass edge so wells read on the card. Dark draws none.
+    static let fieldRimOpacity = 0.42
+    static let fieldIncreasedContrastRimOpacity = 0.56
     static let formPanelFillOpacity = GlassContrast.fieldTintOpacity
     static let nativeGlassTintOpacity = GlassContrast.nativeGlassTintOpacity
     static let atmosphereVeilOpacity = GlassContrast.atmosphereVeilOpacity
@@ -33,11 +39,17 @@ enum LightGlassPalette {
     static let nativeGlassTint = Color.white.opacity(0.08)
 
     static func nativeTint(for palette: ShellPalette, increasedContrast: Bool = false) -> Color {
-        palette.glassReadabilityTint(for: .light).opacity(
+        GlassContrast.nativeGlassTint(palette: palette).color.opacity(
             GlassContrast.adaptiveNativeTintOpacity(
                 palette: palette,
                 increasedContrast: increasedContrast
             )
+        )
+    }
+
+    static func nativeRim(increasedContrast: Bool) -> Color {
+        Color.white.opacity(
+            increasedContrast ? nativeIncreasedContrastRimOpacity : nativeRimOpacity
         )
     }
 

@@ -226,6 +226,7 @@ struct StatsView: View {
             .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             .glassListChrome()
             .navigationTitle(L10n.string("stats.title"))
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear(perform: handleStatsAppear)
             .onStoreSave(perform: handleStatsStoreSave)
             .onDisappear {

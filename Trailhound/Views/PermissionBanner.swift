@@ -13,10 +13,13 @@ struct PermissionStatusCapsule: View {
         .font(.caption2)
       Text(label)
         .font(.caption2.weight(.semibold))
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
     .foregroundStyle(Color.white)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
+    .fixedSize(horizontal: true, vertical: false)
     .background {
       Capsule(style: .continuous)
         .fill(

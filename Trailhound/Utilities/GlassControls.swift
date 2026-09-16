@@ -232,6 +232,12 @@ extension View {
             .glassControlScheme()
     }
 
+    /// Menu Picker on glass — Light value + chevron stay white (system menu uses accent blue).
+    /// Local `.tint` on the leaf control only; do not apply white tint at tab/toolbar chrome.
+    func glassMenuPicker() -> some View {
+        modifier(GlassMenuPickerModifier())
+    }
+
     func glassStepper() -> some View {
         glassControlScheme()
             .modifier(GlassStepperTintModifier())
@@ -248,6 +254,20 @@ extension ToolbarContent {
         } else {
             self
         }
+    }
+}
+
+private struct GlassMenuPickerModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .buttonStyle(.plain)
+            .glassControlScheme()
+            .tint(GlassControlTint.control(for: colorScheme, palette: shellPalette))
     }
 }
 

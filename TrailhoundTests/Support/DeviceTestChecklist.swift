@@ -14,6 +14,7 @@ enum DeviceTestChecklist {
         "While recording, switching away from Trips reduces jank",
         "Long trip detail opens without freezing",
         "Trip detail edit fields: place/address/fuel/note stay above keyboard accessory; title chip hugs text (not full-bleed); Tamam glass chip; map does not jump; scroll dismisses keyboard; Reduce Motion settles instantly",
+        "Appearance Light: every text field / search well has a thin white liquid-glass rim; Dark fields have no extra rim",
         "Form sheets (expense/schedule/settings/place/pairing): title chip + glass Tamam on first focus; tap/scroll dismiss; Trip Detail still grows panel without map jump",
         "Trip list search: keyboard shows hug-content title chip + glass Tamam; tap/scroll also dismisses",
         "50 km trip detail: colorSegs ≤ 60; route remains readable",
@@ -70,7 +71,7 @@ enum DeviceTestChecklist {
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
-        "Appearance Light: open palette glass (Forest/Gold stay a bright wash, not olive plates) + white type; floating tab bar is one step deeper than system frost; Dark keeps the deep shade",
+        "Appearance Light: floating tab bar is stable; white unselected, black selected icon + title; Dark keeps the deep shade",
         "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
     ]
 }

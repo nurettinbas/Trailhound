@@ -58,7 +58,7 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertEqual(ShellPalette.sand.shellForeground(for: .light), Color.white)
         XCTAssertEqual(ShellPalette.gold.shellForeground(for: .light), Color.white)
         XCTAssertEqual(ShellPalette.sky.shellTint(for: .light), Color.white)
-        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .light), .dark)
+        XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .light), .light)
         XCTAssertEqual(ShellPalette.sky.toolbarColorScheme(for: .dark), .dark)
     }
 
@@ -122,6 +122,13 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertNotEqual(puma, vespa)
     }
 
+    func testAppTabBarIndexMatchesTabViewOrder() {
+        XCTAssertEqual(AppTab.trips.tabBarIndex, 0)
+        XCTAssertEqual(AppTab.pairing.tabBarIndex, 1)
+        XCTAssertEqual(AppTab.stats.tabBarIndex, 2)
+        XCTAssertEqual(AppTab.settings.tabBarIndex, 3)
+    }
+
     func testTabBarSelectionFollowsPaletteTint() {
         let forest = TrailhoundTabBarTheme.selectedUIColor(palette: .forest, scheme: .light)
         let sunset = TrailhoundTabBarTheme.selectedUIColor(palette: .sunset, scheme: .light)
@@ -176,14 +183,46 @@ final class ShellPaletteTests: XCTestCase {
         )
     }
 
-    func testTabBarUnselectedUsesDarkInkInLight() {
+    func testTabBarUnselectedIsWhiteInLight() {
         let gold = TrailhoundTabBarTheme.unselectedUIColor(palette: .gold, scheme: .light)
         let sky = TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .light)
         XCTAssertEqual(gold, sky)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        sky.getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertEqual(r, 1, accuracy: 0.01)
+        XCTAssertEqual(g, 1, accuracy: 0.01)
+        XCTAssertEqual(b, 1, accuracy: 0.01)
+        XCTAssertEqual(a, 1, accuracy: 0.01)
         XCTAssertEqual(
             TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .dark),
-            UIColor.secondaryLabel
+            UIColor.white
         )
+    }
+
+    func testTabBarLightSelectedGlyphIsBlack() {
+        let sky = TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light)
+        let lime = TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .light)
+        XCTAssertEqual(sky, .black)
+        XCTAssertEqual(lime, .black)
+        XCTAssertEqual(
+            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .dark),
+            TrailhoundTabBarTheme.selectedUIColor(palette: .lime, scheme: .dark)
+        )
+    }
+
+    func testTabBarLightSelectedMatchesDarkVividTint() {
+        for palette in ShellPalette.allCases {
+            XCTAssertEqual(
+                TrailhoundTabBarTheme.selectedUIColor(palette: palette, scheme: .light),
+                TrailhoundTabBarTheme.selectedUIColor(palette: palette, scheme: .dark),
+                palette.rawValue
+            )
+        }
+        let lime = TrailhoundTabBarTheme.selectedUIColor(palette: .lime, scheme: .light)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        lime.getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertGreaterThan(g, r)
+        XCTAssertGreaterThan(g, 0.5)
     }
 
     func testTabBarLightGlassTintIsMidFamilyWash() {
@@ -200,6 +239,23 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertNotEqual(
             TrailhoundTabBarTheme.lightGlassTintUIColor(palette: .pink),
             TrailhoundTabBarTheme.lightGlassTintUIColor(palette: .sky)
+        )
+    }
+
+    func testTabBarClearGlassTintMatchesCardFamilyAtLowerOpacity() {
+        let pink = TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .pink)
+        let expected = TrailhoundTabBarTheme.uiColor(
+            GlassContrast.nativeGlassTint(palette: .pink),
+            alpha: CGFloat(GlassContrast.tabBarClearGlassTintOpacity)
+        )
+        XCTAssertEqual(pink, expected)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        pink.getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertEqual(Double(a), GlassContrast.tabBarClearGlassTintOpacity, accuracy: 0.001)
+        XCTAssertGreaterThan(r, b)
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .pink),
+            TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .sky)
         )
     }
 }

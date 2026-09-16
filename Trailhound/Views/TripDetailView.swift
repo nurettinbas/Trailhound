@@ -227,6 +227,7 @@ struct TripDetailView: View {
         // Extend under the translucent tab bar so the card wash covers it — no map peeking through.
         .ignoresSafeArea(edges: .bottom)
         .glassNavigationChrome()
+        .glassMapTopEdgeHidden()
         .accessibilityIdentifier("tripDetail.screen")
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)

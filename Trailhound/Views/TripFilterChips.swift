@@ -165,7 +165,7 @@ struct TripListFiltersBar: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .frame(minHeight: 36)
-        .glassField(cornerRadius: 10)
+        .glassInputWell(cornerRadius: 10)
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(

@@ -39,7 +39,7 @@ enum AppIconSync {
             guard UIApplication.shared.alternateIconName != targetName,
                   inFlightTarget != targetKey else { return }
 
-            AppearanceWindowStyle.sync(AppSettings.shared.appearanceMode)
+            syncWindowStyle(AppSettings.shared.appearanceMode)
             await Task.yield()
             guard !Task.isCancelled else { return }
 
@@ -54,12 +54,11 @@ enum AppIconSync {
             }
         }
     }
-}
 
-/// Keeps UIKit windows on the same Light/Dark as SwiftUI `preferredColorScheme`.
-enum AppearanceWindowStyle {
+    /// Keeps UIKit windows on the same Light/Dark as SwiftUI `preferredColorScheme`.
+    /// Nav title ink stays in SwiftUI (`onGlassShell`).
     @MainActor
-    static func sync(_ mode: AppearanceMode) {
+    static func syncWindowStyle(_ mode: AppearanceMode) {
         let style: UIUserInterfaceStyle
         switch mode {
         case .system: style = .unspecified

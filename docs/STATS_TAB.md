@@ -13,7 +13,7 @@ One chrome (`StatsCard.swift`):
 | **Nested tile** | Remaining summary metrics inside the summary card; palette-tinted frost fill, radius 16 — not a second glass card |
 | **Nested panel** | Same frost fill as nested tiles, variable height (`.statsNestedPanel()`). Forecast expand uses this — never a grouped `List` plate |
 
-List rows use a **clear** background. The card is `glassCard` only (one `Material`). Mixing `glassListRow` / `GlassRowPosition.first` with a floating chart card is forbidden. Swift Charts axis ticks and Y-axis units (`km`, hours, currency) use `StatsChartTheme.axisLabelInk` / `.chartStatsYAxisUnit` so they stay white on Light — never the Charts default primary (black).
+List rows use a **clear** background. The card is `glassCard` only (native Light `glassEffect` behind content). Mixing `glassListRow` / `GlassRowPosition.first` with a floating chart card is forbidden. Swift Charts axis ticks and Y-axis units (`km`, hours, currency) use `StatsChartTheme.axisLabelInk` / `.chartStatsYAxisUnit` so they stay white on Light — never the Charts default primary (black).
 
 ## Premium cards
 

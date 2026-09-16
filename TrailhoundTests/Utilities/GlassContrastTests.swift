@@ -95,8 +95,28 @@ final class GlassContrastTests: XCTestCase {
 
     func testTintOpacitiesStayLight() {
         XCTAssertEqual(GlassContrast.panelTintOpacity, 0.22)
-        XCTAssertEqual(GlassContrast.nativeGlassTintOpacity, 0.16)
+        XCTAssertEqual(GlassContrast.nativeGlassTintOpacity, 0.50)
+        XCTAssertEqual(GlassContrast.nativeIncreasedContrastTintOpacity, 0.62)
+        XCTAssertEqual(GlassContrast.nativeTintBottomMix, 0.42)
+        XCTAssertGreaterThan(GlassContrast.nativeGlassTintOpacity, GlassContrast.panelTintOpacity)
+        XCTAssertGreaterThan(GlassContrast.nativeTintBottomMix, GlassContrast.glassTintBottomMix)
+        for palette in ShellPalette.allCases {
+            XCTAssertLessThan(
+                GlassContrast.wcagRelativeLuminance(GlassContrast.nativeGlassTint(palette: palette)),
+                GlassContrast.wcagRelativeLuminance(GlassContrast.glassTint(palette: palette)),
+                palette.rawValue
+            )
+            XCTAssertNotEqual(
+                GlassContrast.nativeGlassTint(palette: palette),
+                palette.atmosphere(for: .light).chrome,
+                palette.rawValue
+            )
+        }
         XCTAssertEqual(GlassContrast.tabBarGlassTintOpacity, 0.28)
+        XCTAssertEqual(GlassContrast.tabBarClearGlassTintOpacity, 0.22)
+        XCTAssertLessThan(GlassContrast.tabBarClearGlassTintOpacity, GlassContrast.nativeGlassTintOpacity)
+        XCTAssertLessThan(LightGlassPalette.nativeRimOpacity, LightGlassPalette.panelRimOpacity)
+        XCTAssertEqual(LightGlassPalette.nativeRimOpacity, 0.10)
         XCTAssertLessThan(GlassContrast.panelTintOpacity, 0.40)
         XCTAssertLessThan(GlassContrast.tabBarGlassTintOpacity, 0.40)
         XCTAssertLessThan(GlassContrast.recordingWashOpacity, 0.45)

@@ -70,6 +70,6 @@ struct TravelJournalMapLayer: View, Equatable {
         }
         .mapStyle(style.mapStyle())
         .mapControlVisibility(.hidden)
-        .colorScheme(style.forcedColorScheme)
+        .glassMapTopEdgeHidden()
     }
 }

@@ -46,7 +46,7 @@ final class GlassEngineTests: XCTestCase {
         )
     }
 
-    func testListRowsDisallowNative() {
+    func testPinnedSurfacesDisallowNative() {
         let engine = GlassEngineResolver.resolve(
             scheme: .light,
             reduceTransparency: false,
@@ -67,6 +67,24 @@ final class GlassEngineTests: XCTestCase {
             XCTAssertEqual(engine, .native)
         } else {
             XCTAssertEqual(engine, .material)
+        }
+    }
+
+    func testLightAvoidsWhiteChromeTintMatchesNativeGlass() {
+        XCTAssertEqual(
+            GlassEngineResolver.lightAvoidsWhiteChromeTint,
+            GlassEngineResolver.isNativeAvailable
+        )
+    }
+
+    func testDockClearGlassStyleExistsOnIOS26() {
+        if #available(iOS 26.0, *) {
+            let clear = UIGlassEffect(style: .clear)
+            XCTAssertNil(clear.tintColor)
+            XCTAssertNotEqual(
+                UIGlassEffect.Style.clear.rawValue,
+                UIGlassEffect.Style.regular.rawValue
+            )
         }
     }
 

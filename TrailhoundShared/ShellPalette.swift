@@ -133,8 +133,10 @@ public enum ShellPalette: String, CaseIterable, Identifiable, Sendable {
         return Color.white
     }
 
-    public func toolbarColorScheme(for _: ColorScheme) -> ColorScheme {
-        .dark
+    /// Light keeps the system light glass platter — a dark toolbar scheme
+    /// paints the smoky plate behind nav buttons. Dark stays Dark.
+    public func toolbarColorScheme(for scheme: ColorScheme) -> ColorScheme {
+        scheme
     }
 
     /// Alternate Home Screen icon fill — light tint, dark atmosphere mid.

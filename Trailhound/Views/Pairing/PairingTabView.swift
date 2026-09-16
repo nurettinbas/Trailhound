@@ -104,6 +104,8 @@ struct PairingTabView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 LocationPermissionBadge(state: locationService.authorizationState)
+                    .fixedSize()
+                    .layoutPriority(1)
             }
             .hideSharedToolbarBackgroundIfAvailable()
         }

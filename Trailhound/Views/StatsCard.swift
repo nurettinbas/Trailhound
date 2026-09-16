@@ -298,14 +298,14 @@ extension View {
         modifier(StatsPosterSparklineVeilModifier())
     }
 
-    /// Full-width Stats card in a clear List row — same frost as Vehicles / trip list
-    /// (`allowsNative: false`). Native light glass is a clear plate and the atmosphere leaks.
+    /// Full-width Stats card in a clear List row. Light iOS 26 uses native
+    /// `glassEffect` behind the content. Nested tiles stay frost fills.
+    /// Pass `frozen:` during morph.
     func statsFullCard(contentInset: CGFloat = StatsCardTokens.contentInset, frozen: Bool = false) -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
             contentInset: contentInset,
-            frozen: frozen,
-            allowsNative: false
+            frozen: frozen
         )
         .statsCardListRow()
     }
@@ -314,8 +314,7 @@ extension View {
     func statsHalfCard() -> some View {
         glassCard(
             cornerRadius: StatsCardTokens.radius,
-            contentInset: StatsCardTokens.contentInset,
-            allowsNative: false
+            contentInset: StatsCardTokens.contentInset
         )
         .frame(
             maxWidth: .infinity,

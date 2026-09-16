@@ -98,13 +98,22 @@ final class GlassPaletteTests: XCTestCase {
         )
     }
 
+    func testMenuPickerControlTintIsWhiteOnLightShell() {
+        XCTAssertEqual(GlassControlTint.control(for: .light, palette: .pink), Color.white)
+        XCTAssertEqual(GlassControlTint.control(for: .light, palette: .sunset), Color.white)
+        XCTAssertEqual(
+            GlassControlTint.control(for: .dark, palette: .sky),
+            ShellPalette.sky.tintColor(for: .dark)
+        )
+    }
+
     func testNativeGlassTintFollowsPalette() {
         let sky = LightGlassPalette.nativeTint(for: .sky)
         let magenta = LightGlassPalette.nativeTint(for: .magenta)
         XCTAssertNotEqual(sky, magenta)
         XCTAssertEqual(
             sky,
-            ShellPalette.sky.glassReadabilityTint(for: .light).opacity(
+            GlassContrast.nativeGlassTint(palette: .sky).color.opacity(
                 GlassContrast.adaptiveNativeTintOpacity(palette: .sky, increasedContrast: false)
             )
         )
@@ -112,5 +121,23 @@ final class GlassPaletteTests: XCTestCase {
             GlassContrast.adaptiveNativeTintOpacity(palette: .sky, increasedContrast: false),
             GlassContrast.nativeGlassTintOpacity
         )
+    }
+
+    func testLightFieldRimIsWhiteAndDarkHasNone() {
+        XCTAssertEqual(LightGlassPalette.fieldRimOpacity, 0.42)
+        XCTAssertEqual(LightGlassPalette.fieldIncreasedContrastRimOpacity, 0.56)
+        XCTAssertEqual(GlassTokens.fieldRimWidth, 1)
+        XCTAssertEqual(
+            GlassTokens.fieldRim(for: .light),
+            Color.white.opacity(LightGlassPalette.fieldRimOpacity)
+        )
+        XCTAssertEqual(
+            GlassTokens.fieldRim(for: .light, increasedContrast: true),
+            Color.white.opacity(LightGlassPalette.fieldIncreasedContrastRimOpacity)
+        )
+        XCTAssertEqual(GlassTokens.fieldRim(for: .dark), Color.clear)
+        XCTAssertEqual(GlassTokens.fieldRim(for: .dark, increasedContrast: true), Color.clear)
+        XCTAssertGreaterThan(LightGlassPalette.fieldRimOpacity, LightGlassPalette.nativeRimOpacity)
+        XCTAssertLessThan(LightGlassPalette.fieldRimOpacity, 0.72)
     }
 }

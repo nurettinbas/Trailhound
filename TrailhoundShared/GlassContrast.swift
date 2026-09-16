@@ -20,10 +20,15 @@ public enum GlassContrast {
     public static let panelIncreasedContrastTintOpacity = 0.34
     public static let chromeDensityTintOpacity = 0.16
     public static let chromeIncreasedContrastTintOpacity = 0.26
-    public static let nativeGlassTintOpacity = 0.16
-    public static let nativeIncreasedContrastTintOpacity = 0.26
+    public static let nativeGlassTintOpacity = 0.50
+    public static let nativeIncreasedContrastTintOpacity = 0.62
+    /// Native `glassEffect` already supplies white frost — mix further toward
+    /// atmosphere bottom so cards read as colored glass, not ice.
+    public static let nativeTintBottomMix = 0.42
     /// Light floating tab bar — one step past the system white frost, still glass.
     public static let tabBarGlassTintOpacity = 0.28
+    /// Clear tab-bar glass: same hue as cards, more open than card native 0.50.
+    public static let tabBarClearGlassTintOpacity = 0.22
     public static let fieldTintOpacity = 0.18
     public static let nestedTileTintOpacity = 0.16
     public static let recordingWashOpacity = 0.34
@@ -102,11 +107,16 @@ public enum GlassContrast {
         return overlay(white, alpha: panelSheenOpacity * 0.5, on: panel)
     }
 
+    public static func nativeGlassTint(palette: ShellPalette) -> ShellRGB {
+        let atmosphere = palette.atmosphere(for: .light)
+        return overlay(atmosphere.bottom, alpha: nativeTintBottomMix, on: atmosphere.mid)
+    }
+
     public static func nativePanelFill(palette: ShellPalette, increasedContrast: Bool) -> ShellRGB {
         let atmosphere = palette.atmosphere(for: .light)
         let veiled = overlay(white, alpha: atmosphereVeilOpacity, on: atmosphere.mid)
         return overlay(
-            glassTint(palette: palette),
+            nativeGlassTint(palette: palette),
             alpha: adaptiveNativeTintOpacity(palette: palette, increasedContrast: increasedContrast),
             on: veiled
         )

@@ -18,8 +18,6 @@ struct TravelJournalEditPanel: View {
     var onGrabberDragEnded: (CGFloat) -> Void
 
     @Bindable private var settings = AppSettings.shared
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
         VStack(spacing: 0) {
@@ -144,7 +142,8 @@ struct TravelJournalEditPanel: View {
     }
 
     private func tripRow(_ trip: Trip) -> some View {
-        Button {
+        let isSelected = trip.id == selectedTripID
+        return Button {
             onSelectTrip(trip.id)
         } label: {
             TripRowView(
@@ -153,17 +152,7 @@ struct TravelJournalEditPanel: View {
                 privacyRadius: settings.privacyRadiusMeters
             )
             .padding(8)
-            .background {
-                let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-                let isSelected = trip.id == selectedTripID
-                shape
-                    .fill(isSelected ? selectedTripFill : Color.clear)
-                    .overlay {
-                        if isSelected, colorScheme == .light {
-                            shape.strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
-                        }
-                    }
-            }
+            .glassChrome(cornerRadius: 14, enabled: isSelected)
         }
         .buttonStyle(.plain)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedTripID)
@@ -192,13 +181,6 @@ struct TravelJournalEditPanel: View {
                 Text(L10n.journalRemove)
             }
         }
-    }
-
-    private var selectedTripFill: Color {
-        if colorScheme == .dark {
-            return shellPalette.tintColor(for: .dark).opacity(0.22)
-        }
-        return Color.white.opacity(0.36)
     }
 
     private var dayGroups: [(day: Date, trips: [Trip])] {

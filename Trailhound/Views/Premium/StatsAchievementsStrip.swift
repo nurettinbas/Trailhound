@@ -45,7 +45,6 @@ struct StatsAchievementsStrip: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 medalRow
             }
-            .scrollClipDisabled()
         }
         .frame(maxWidth: .infinity)
         .achievementIdleClock(enabled: ticksIdleClock && !isExpanded)
@@ -479,7 +478,7 @@ struct AchievementGalleryCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, minHeight: cardMinHeight, maxHeight: cardMaxHeight, alignment: .top)
-        .glassCard(cornerRadius: AchievementGalleryTokens.cardRadius, contentInset: 0, allowsNative: false)
+        .glassCard(cornerRadius: AchievementGalleryTokens.cardRadius, contentInset: 0)
         .accessibilityIdentifier("stats.achievement.card.\(item.id.rawValue)")
         .task(id: shareRenderKey) {
             guard item.isUnlocked else { return }

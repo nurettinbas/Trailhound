@@ -28,6 +28,18 @@ enum GlassTokens {
         return palette.glassReadabilityTint(for: .light).opacity(LightGlassPalette.fieldFillOpacity)
     }
 
+    static let fieldRimWidth: CGFloat = 1
+
+    /// Light-only input stroke. Dark returns clear so wells stay unoutlined.
+    static func fieldRim(for scheme: ColorScheme, increasedContrast: Bool = false) -> Color {
+        guard scheme == .light else { return .clear }
+        return Color.white.opacity(
+            increasedContrast
+                ? LightGlassPalette.fieldIncreasedContrastRimOpacity
+                : LightGlassPalette.fieldRimOpacity
+        )
+    }
+
     /// Frosted panel look without `Material` (keyboard-friendly forms).
     static func formPanelFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         if scheme == .dark {
@@ -124,6 +136,16 @@ enum GlassRowPosition {
         case .only, .last: GlassTokens.cardRadius
         case .first, .middle: 0
         }
+    }
+
+    var shape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: topRadius,
+            bottomLeadingRadius: bottomRadius,
+            bottomTrailingRadius: bottomRadius,
+            topTrailingRadius: topRadius,
+            style: .continuous
+        )
     }
 }
 
@@ -327,7 +349,7 @@ struct GlassSurface: View {
         switch engine {
         case .native:
             shape.fill(Color.clear)
-            shape.strokeBorder(Color.white.opacity(rim), lineWidth: 1)
+            shape.strokeBorder(LightGlassPalette.nativeRim(increasedContrast: increased), lineWidth: 1)
         case .solid:
             shape.fill(GlassTokens.solidFallback(for: .light, palette: shellPalette))
             shape.strokeBorder(Color.white.opacity(rim), lineWidth: 1)
@@ -353,14 +375,42 @@ struct GlassSurface: View {
 struct GlassSectionRowBackground: View {
     let position: GlassRowPosition
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
     var body: some View {
-        GlassSurface(
-            topRadius: position.topRadius,
-            bottomRadius: position.bottomRadius,
-            density: .panel,
-            allowsNative: false
+        plate
+            .padding(.horizontal, GlassTokens.panelHorizontalInset)
+    }
+
+    @ViewBuilder
+    private var plate: some View {
+        let engine = GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: false,
+            allowsNative: true
         )
-        .padding(.horizontal, GlassTokens.panelHorizontalInset)
+        let shape = position.shape
+        if #available(iOS 26.0, *), engine == .native {
+            Color.clear
+                .modifier(
+                    NativeGlassBackgroundModifier(
+                        shape: shape,
+                        palette: shellPalette,
+                        increasedContrast: contrast == .increased
+                    )
+                )
+        } else {
+            GlassSurface(
+                topRadius: position.topRadius,
+                bottomRadius: position.bottomRadius,
+                density: .panel,
+                allowsNative: false
+            )
+        }
     }
 }
 
@@ -403,6 +453,92 @@ struct FormSolidSectionRowBackground: View {
     }
 }
 
+/// Native Liquid Glass with the mid-family tint plate. The plate is clipped
+/// to the card; content is not, so labels in the corners stay whole.
+private struct NativeGlassBackgroundModifier<S: InsettableShape>: ViewModifier {
+    var shape: S
+    var palette: ShellPalette
+    var increasedContrast: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background {
+                    shape
+                        .fill(Color.clear)
+                        .glassEffect(
+                            .regular.tint(
+                                LightGlassPalette.nativeTint(
+                                    for: palette,
+                                    increasedContrast: increasedContrast
+                                )
+                            ),
+                            in: shape
+                        )
+                        .clipShape(shape)
+                        .mask(shape)
+                }
+                .overlay {
+                    shape.strokeBorder(
+                        LightGlassPalette.nativeRim(increasedContrast: increasedContrast),
+                        lineWidth: 1
+                    )
+                    .allowsHitTesting(false)
+                }
+        } else {
+            content
+        }
+    }
+}
+
+/// Floating tab bar: `.clear` glass in a Capsule so Light is not milky `.regular`.
+private struct GlassTabBarModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        let engine = GlassEngineResolver.resolve(
+            scheme: colorScheme,
+            reduceTransparency: reduceTransparency,
+            frozen: false,
+            allowsNative: true
+        )
+        let shape = Capsule(style: .continuous)
+        if #available(iOS 26.0, *), engine == .native {
+            content
+                .background {
+                    shape
+                        .fill(Color.clear)
+                        .glassEffect(
+                            .clear.tint(
+                                GlassContrast.nativeGlassTint(palette: shellPalette).color.opacity(
+                                    GlassContrast.tabBarClearGlassTintOpacity
+                                )
+                            )
+                            .interactive(),
+                            in: shape
+                        )
+                        .clipShape(shape)
+                        .mask(shape)
+                }
+                .overlay {
+                    shape
+                        .strokeBorder(
+                            LightGlassPalette.nativeRim(increasedContrast: contrast == .increased),
+                            lineWidth: 1
+                        )
+                        .allowsHitTesting(false)
+                }
+        } else if engine == .solid {
+            content.background(GlassTokens.solidFallback(for: colorScheme, palette: shellPalette), in: shape)
+        } else {
+            content.background(.ultraThinMaterial, in: shape)
+        }
+    }
+}
+
 struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = GlassTokens.cardRadius
     var density: GlassDensity = .panel
@@ -428,22 +564,13 @@ struct GlassCardModifier: ViewModifier {
             .padding(.vertical, contentInset)
 
         if #available(iOS 26.0, *), engine == .native {
-            padded
-                .glassEffect(
-                    .regular.tint(
-                        LightGlassPalette.nativeTint(
-                            for: shellPalette,
-                            increasedContrast: contrast == .increased
-                        )
-                    ),
-                    in: shape
+            padded.modifier(
+                NativeGlassBackgroundModifier(
+                    shape: shape,
+                    palette: shellPalette,
+                    increasedContrast: contrast == .increased
                 )
-                .overlay {
-                    shape.strokeBorder(
-                        Color.white.opacity(density.rimOpacity(for: .light) + (contrast == .increased ? 0.10 : 0)),
-                        lineWidth: 1
-                    )
-                }
+            )
         } else {
             padded
                 .background {
@@ -454,7 +581,6 @@ struct GlassCardModifier: ViewModifier {
                         allowsNative: allowsNative
                     )
                 }
-                .clipShape(shape)
         }
     }
 }
@@ -477,24 +603,13 @@ struct GlassChromeModifier: ViewModifier {
         )
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         if #available(iOS 26.0, *), engine == .native {
-            content
-                .glassEffect(
-                    .regular.tint(
-                        LightGlassPalette.nativeTint(
-                            for: shellPalette,
-                            increasedContrast: contrast == .increased
-                        )
-                    ),
-                    in: shape
+            content.modifier(
+                NativeGlassBackgroundModifier(
+                    shape: shape,
+                    palette: shellPalette,
+                    increasedContrast: contrast == .increased
                 )
-                .overlay {
-                    shape.strokeBorder(
-                        Color.white.opacity(
-                            GlassDensity.chrome.rimOpacity(for: .light) + (contrast == .increased ? 0.10 : 0)
-                        ),
-                        lineWidth: 1
-                    )
-                }
+            )
         } else {
             content
                 .background {
@@ -550,6 +665,40 @@ struct GlassFieldModifier: ViewModifier {
     }
 }
 
+/// Thin white liquid-glass rim on Light input wells. Dark draws nothing.
+struct GlassFieldLightRimModifier: ViewModifier {
+    var cornerRadius: CGFloat = 8
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if colorScheme == .light {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        GlassTokens.fieldRim(
+                            for: .light,
+                            increasedContrast: contrast == .increased
+                        ),
+                        lineWidth: GlassTokens.fieldRimWidth
+                    )
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+struct GlassInputWellModifier: ViewModifier {
+    var cornerRadius: CGFloat = 8
+
+    func body(content: Content) -> some View {
+        content
+            .glassField(cornerRadius: cornerRadius)
+            .modifier(GlassFieldLightRimModifier(cornerRadius: cornerRadius))
+    }
+}
+
 struct GlassInputFieldModifier: ViewModifier {
     var cornerRadius: CGFloat = 8
 
@@ -558,7 +707,7 @@ struct GlassInputFieldModifier: ViewModifier {
             .font(.subheadline)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .glassField(cornerRadius: cornerRadius)
+            .glassInputWell(cornerRadius: cornerRadius)
     }
 }
 
@@ -1017,6 +1166,53 @@ struct GlassChipGroup<Content: View>: View {
     }
 }
 
+private struct GlassEffectGroupingModifier: ViewModifier {
+    var spacing: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// Hides the iOS 26 full-width nav blur that appears on scroll. Toolbar
+/// capsules (Start, back, Save, bell) stay; the extra plate does not.
+/// Do not pair this with `toolbarColorScheme(.light)` — that reintroduces
+/// a white bar over MapKit.
+private struct GlassNavigationChromeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+                .scrollEdgeEffectHidden(true, for: [.top, .bottom])
+        } else if #available(iOS 18.0, *) {
+            content
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+        } else {
+            content.toolbarBackground(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+/// MapKit is not a SwiftUI `ScrollView`, so the nav-chrome edge hide may
+/// miss it. Apply on `Map` so the white title plate does not sit on the map.
+private struct GlassMapTopEdgeHidden: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
     /// Segmented pickers inside glass cards — palette selection instead of AccentColor.
     func glassSegmentedStyle() -> some View {
@@ -1041,8 +1237,17 @@ extension View {
         )
     }
 
-    func glassChrome(cornerRadius: CGFloat = GlassTokens.chipRadius, frozen: Bool = false) -> some View {
-        modifier(GlassChromeModifier(cornerRadius: cornerRadius, frozen: frozen))
+    @ViewBuilder
+    func glassChrome(
+        cornerRadius: CGFloat = GlassTokens.chipRadius,
+        frozen: Bool = false,
+        enabled: Bool = true
+    ) -> some View {
+        if enabled {
+            modifier(GlassChromeModifier(cornerRadius: cornerRadius, frozen: frozen))
+        } else {
+            self
+        }
     }
 
     /// 44pt Liquid Glass circle — overlay collapse (Badges, Frequent routes, month forecast).
@@ -1053,6 +1258,11 @@ extension View {
         modifier(GlassCircleChromeModifier(side: side, frozen: frozen))
     }
 
+    /// Floating tab bar platter — Capsule, Light `.clear` glass (not milky `.regular`).
+    func glassTabBar() -> some View {
+        modifier(GlassTabBarModifier())
+    }
+
     /// Nested frost inside a glass card. Selected = chip chrome; unselected = nested tint fill.
     func glassNestedChoice(isSelected: Bool) -> some View {
         modifier(GlassNestedChoiceModifier(isSelected: isSelected))
@@ -1061,6 +1271,11 @@ extension View {
     /// Inline inputs on glass panels — frosted tint instead of system grouped black/white.
     func glassField(cornerRadius: CGFloat = 8) -> some View {
         modifier(GlassFieldModifier(cornerRadius: cornerRadius))
+    }
+
+    /// Frosted input well + Light-only white rim. Search HStacks use this; buttons keep `glassField`.
+    func glassInputWell(cornerRadius: CGFloat = 8) -> some View {
+        modifier(GlassInputWellModifier(cornerRadius: cornerRadius))
     }
 
     /// Standard frosted text field — matches trip detail place/address inputs.
@@ -1077,6 +1292,11 @@ extension View {
     /// Single-row glass panel (banners, one-off cards in lists).
     func glassListRow() -> some View {
         glassRow(position: .only)
+    }
+
+    /// Groups chip `glassEffect` hosts on iOS 26. Do not wrap a `List`.
+    func glassEffectGrouping(spacing: CGFloat = GlassTokens.sectionSpacing) -> some View {
+        modifier(GlassEffectGroupingModifier(spacing: spacing))
     }
 
     func glassListChrome() -> some View {
@@ -1112,9 +1332,15 @@ extension View {
         glassFormRow(position: .only)
     }
 
-    /// Keeps the nav bar visually merged with the atmospheric shell (no separate grey strip).
+    /// Keeps the nav bar visually merged with the atmospheric shell. Only the
+    /// system toolbar *items* keep Liquid Glass — not a full-width scroll-edge plate.
     func glassNavigationChrome() -> some View {
-        toolbarBackground(.hidden, for: .navigationBar)
+        modifier(GlassNavigationChromeModifier())
+    }
+
+    /// Hides the iOS 26 white scroll-edge plate on MapKit (Trip / Travel detail).
+    func glassMapTopEdgeHidden() -> some View {
+        modifier(GlassMapTopEdgeHidden())
     }
 
     /// Destructive actions stay red even when the app shell uses brand-blue tint.

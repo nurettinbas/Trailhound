@@ -118,6 +118,7 @@ struct TravelJournalDetailView: View {
         mapRoot
             .ignoresSafeArea(edges: .bottom)
             .glassNavigationChrome()
+            .glassMapTopEdgeHidden()
             .navigationTitle(journal.title)
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)

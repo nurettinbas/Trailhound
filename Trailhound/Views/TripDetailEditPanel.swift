@@ -664,15 +664,16 @@ struct TripDetailEditPanel: View {
                 )
                 Spacer(minLength: 0)
             }
-            GlassChipGroup(spacing: 6) {
-                HStack(spacing: 6) {
-                    ForEach(viewModel.fuelFactorKinds, id: \.rawValue) { kind in
-                        Text(TripSummaryMetric.factorTitle(kind))
-                            .font(.caption2.weight(.medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .glassNestedChoice(isSelected: false)
-                    }
+            HStack(spacing: 6) {
+                ForEach(viewModel.fuelFactorKinds, id: \.rawValue) { kind in
+                    Text(TripSummaryMetric.factorTitle(kind))
+                        .font(.caption2.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .glassPrimaryInk()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .glassChrome(cornerRadius: 10, frozen: glassFrozen)
                 }
             }
         }
