@@ -61,10 +61,18 @@ enum DeleteConfirmKind {
     }
 }
 
+/// Confirm overlay chrome: destructive delete vs prominent actions such as trip merge.
+enum GlassConfirmRole: Equatable {
+    case destructive
+    case prominent
+}
+
 struct DeleteConfirmRequest {
     var title: String
     var message: String
     var confirmTitle: String
+    var role: GlassConfirmRole
+    var systemImage: String
     var onConfirm: () -> Void
 }
 
@@ -74,6 +82,13 @@ final class DeleteConfirmPresenter {
     static let shared = DeleteConfirmPresenter()
 
     var request: DeleteConfirmRequest?
+    /// Blocking progress on the same root host as confirm (trip merge). Independent of
+    /// `TripListView` so flipping this flag cannot rebuild the trip list.
+    var progressMessage: String?
+
+    var isProgressVisible: Bool { progressMessage != nil }
+
+    var isBlocking: Bool { request != nil || progressMessage != nil }
 
     func confirm(_ kind: DeleteConfirmKind, perform: @escaping () -> Void) {
         present(
@@ -88,13 +103,18 @@ final class DeleteConfirmPresenter {
         title: String,
         message: String,
         confirmTitle: String,
+        role: GlassConfirmRole = .destructive,
+        systemImage: String? = nil,
         perform: @escaping () -> Void
     ) {
         KeyboardDismiss.dismiss()
+        progressMessage = nil
         request = DeleteConfirmRequest(
             title: title,
             message: message,
             confirmTitle: confirmTitle,
+            role: role,
+            systemImage: systemImage ?? Self.defaultSystemImage(for: role),
             onConfirm: perform
         )
         TrailhoundHaptics.selection()
@@ -109,6 +129,22 @@ final class DeleteConfirmPresenter {
         request = nil
         action?()
     }
+
+    func showProgress(_ message: String) {
+        request = nil
+        progressMessage = message
+    }
+
+    func hideProgress() {
+        progressMessage = nil
+    }
+
+    private static func defaultSystemImage(for role: GlassConfirmRole) -> String {
+        switch role {
+        case .destructive: "trash.circle.fill"
+        case .prominent: "arrow.triangle.merge"
+        }
+    }
 }
 
 struct DeleteConfirmHostModifier: ViewModifier {
@@ -116,13 +152,13 @@ struct DeleteConfirmHostModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        let isPresented = presenter.request != nil
+        let isBlocking = presenter.isBlocking
         content
             // Do not implicit-animate the tab/list tree when the dialog appears.
-            .animation(nil, value: isPresented)
+            .animation(nil, value: isBlocking)
             // Swipe-open List rows steal the first tap. Block the tree under the
             // dialog so Cancel/Delete land on the overlay, not the list.
-            .allowsHitTesting(!isPresented)
+            .allowsHitTesting(!isBlocking)
             .overlay {
                 ZStack {
                     if let request = presenter.request {
@@ -139,10 +175,20 @@ struct DeleteConfirmHostModifier: ViewModifier {
 
                         DeleteConfirmCard(request: request)
                             .transition(cardTransition)
+                    } else if let progressMessage = presenter.progressMessage {
+                        Color.black.opacity(0.25)
+                            .ignoresSafeArea()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .accessibilityHidden(true)
+                            .transition(.opacity)
+
+                        GlassBlockingProgressCard(message: progressMessage)
+                            .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .animation(overlayAnimation, value: isPresented)
+                .animation(overlayAnimation, value: isBlocking)
             }
     }
 
@@ -161,14 +207,15 @@ struct DeleteConfirmHostModifier: ViewModifier {
 private struct DeleteConfirmCard: View {
     let request: DeleteConfirmRequest
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     private let buttonHeight: CGFloat = 48
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "trash.circle.fill")
+            Image(systemName: request.systemImage)
                 .font(.system(size: 44))
-                .foregroundStyle(GlassSemantic.notificationBadge)
+                .foregroundStyle(iconColor)
                 .symbolRenderingMode(.hierarchical)
                 .accessibilityHidden(true)
 
@@ -201,7 +248,9 @@ private struct DeleteConfirmCard: View {
                     buttonLabel(request.confirmTitle, color: Color.white)
                 }
                 .buttonStyle(.plain)
-                .background(GlassSemantic.notificationBadge, in: Capsule(style: .continuous))
+                .background {
+                    confirmFill
+                }
                 .frame(maxWidth: .infinity, minHeight: buttonHeight)
             }
         }
@@ -213,6 +262,31 @@ private struct DeleteConfirmCard: View {
         .accessibilityElement(children: .contain)
     }
 
+    private var iconColor: Color {
+        switch request.role {
+        case .destructive:
+            GlassSemantic.notificationBadge
+        case .prominent:
+            shellPalette.tintColor(for: colorScheme)
+        }
+    }
+
+    @ViewBuilder
+    private var confirmFill: some View {
+        switch request.role {
+        case .destructive:
+            Capsule(style: .continuous)
+                .fill(GlassSemantic.notificationBadge)
+        case .prominent:
+            Capsule(style: .continuous)
+                .fill(shellPalette.tintColor(for: colorScheme))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
+                }
+        }
+    }
+
     private func buttonLabel(_ title: String, color: Color) -> some View {
         Text(title)
             .font(.body.weight(.semibold))
@@ -220,6 +294,27 @@ private struct DeleteConfirmCard: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity, minHeight: buttonHeight)
+    }
+}
+
+/// Merge / share-style blocking progress. Lives on the root host so the trip list
+/// body is not invalidated when the flag flips.
+private struct GlassBlockingProgressCard: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .controlSize(.large)
+            Text(message)
+                .font(.subheadline.weight(.medium))
+                .glassPrimaryInk()
+        }
+        .padding(28)
+        .glassCard(cornerRadius: 16, contentInset: 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 

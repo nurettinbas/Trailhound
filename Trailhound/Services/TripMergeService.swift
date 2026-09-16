@@ -134,6 +134,10 @@ enum TripMergeCore {
         }
     }
 
+    /// Yields on the merge worker every this many copied GPS points so a dense first
+    /// leg cannot stall the progress overlay until the whole history is inserted.
+    static let pointCopyYieldInterval = 500
+
     /// Copies one chronological leg onto `merged`.
     static func copyLeg(
         _ trip: Trip,
@@ -145,19 +149,51 @@ enum TripMergeCore {
         context: ModelContext
     ) {
         for point in trip.sortedPoints {
-            let newPoint = TripPoint(
-                timestamp: point.timestamp,
-                latitude: point.latitude,
-                longitude: point.longitude,
-                sequence: sequence,
-                speedMps: point.speedMps,
-                trip: merged
+            insertCopiedPoint(
+                point,
+                into: merged,
+                sequence: &sequence,
+                maxSpeed: &maxSpeed,
+                context: context
             )
-            sequence += 1
-            // `trip:` already wires the inverse relationship — no `merged.points.append`.
-            context.insert(newPoint)
-            if let speed = point.speedMps { maxSpeed = max(maxSpeed, speed) }
         }
+        finishCopiedLeg(
+            trip,
+            next: next,
+            into: merged,
+            totalDistance: &totalDistance,
+            context: context
+        )
+    }
+
+    static func insertCopiedPoint(
+        _ point: TripPoint,
+        into merged: Trip,
+        sequence: inout Int,
+        maxSpeed: inout Double,
+        context: ModelContext
+    ) {
+        let newPoint = TripPoint(
+            timestamp: point.timestamp,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            sequence: sequence,
+            speedMps: point.speedMps,
+            trip: merged
+        )
+        sequence += 1
+        // `trip:` already wires the inverse relationship — no `merged.points.append`.
+        context.insert(newPoint)
+        if let speed = point.speedMps { maxSpeed = max(maxSpeed, speed) }
+    }
+
+    static func finishCopiedLeg(
+        _ trip: Trip,
+        next: Trip?,
+        into merged: Trip,
+        totalDistance: inout Double,
+        context: ModelContext
+    ) {
         totalDistance += trip.distanceMeters
 
         var copiedStops: [TripStop] = []
@@ -315,16 +351,27 @@ actor TripMergeWorker {
 
         for (index, trip) in completed.enumerated() {
             let next = index + 1 < completed.count ? completed[index + 1] : nil
-            TripMergeCore.copyLeg(
+            let points = trip.sortedPoints
+            for (offset, point) in points.enumerated() {
+                TripMergeCore.insertCopiedPoint(
+                    point,
+                    into: merged,
+                    sequence: &sequence,
+                    maxSpeed: &maxSpeed,
+                    context: modelContext
+                )
+                if (offset + 1).isMultiple(of: TripMergeCore.pointCopyYieldInterval) {
+                    await Task.yield()
+                }
+            }
+            TripMergeCore.finishCopiedLeg(
                 trip,
                 next: next,
                 into: merged,
-                sequence: &sequence,
                 totalDistance: &totalDistance,
-                maxSpeed: &maxSpeed,
                 context: modelContext
             )
-            // Let the awaiting MainActor paint the loader between dense legs.
+            // Let the awaiting MainActor keep the progress overlay alive between legs.
             await Task.yield()
         }
 

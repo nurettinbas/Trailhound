@@ -5,6 +5,7 @@ import XCTest
 final class DeleteConfirmPresenterTests: XCTestCase {
     override func tearDown() {
         DeleteConfirmPresenter.shared.cancel()
+        DeleteConfirmPresenter.shared.hideProgress()
         super.tearDown()
     }
 
@@ -90,5 +91,47 @@ final class DeleteConfirmPresenterTests: XCTestCase {
     func testJournalRemoveCopyDiffersFromGeneric() {
         XCTAssertNotEqual(DeleteConfirmKind.journalRemove.message, DeleteConfirmKind.generic.message)
         XCTAssertEqual(DeleteConfirmKind.journalRemove.confirmTitle, L10n.journalRemove)
+    }
+
+    func testProminentMergeConfirmDoesNotUseDestructiveChrome() {
+        DeleteConfirmPresenter.shared.present(
+            title: L10n.tripsMergeTitle,
+            message: L10n.tripsMergeMessage(2),
+            confirmTitle: L10n.actionMerge,
+            role: .prominent
+        ) {}
+
+        let request = DeleteConfirmPresenter.shared.request
+        XCTAssertEqual(request?.role, .prominent)
+        XCTAssertEqual(request?.title, L10n.tripsMergeTitle)
+        XCTAssertEqual(request?.confirmTitle, L10n.actionMerge)
+        XCTAssertEqual(request?.systemImage, "arrow.triangle.merge")
+        XCTAssertNil(DeleteConfirmPresenter.shared.progressMessage)
+    }
+
+    func testShowProgressClearsConfirmAndBlocksUntilHidden() {
+        DeleteConfirmPresenter.shared.present(
+            title: L10n.tripsMergeTitle,
+            message: L10n.tripsMergeMessage(2),
+            confirmTitle: L10n.actionMerge,
+            role: .prominent
+        ) {}
+        XCTAssertTrue(DeleteConfirmPresenter.shared.isBlocking)
+
+        DeleteConfirmPresenter.shared.showProgress(L10n.tripsMergeProgress)
+        XCTAssertNil(DeleteConfirmPresenter.shared.request)
+        XCTAssertEqual(DeleteConfirmPresenter.shared.progressMessage, L10n.tripsMergeProgress)
+        XCTAssertTrue(DeleteConfirmPresenter.shared.isProgressVisible)
+        XCTAssertTrue(DeleteConfirmPresenter.shared.isBlocking)
+
+        DeleteConfirmPresenter.shared.hideProgress()
+        XCTAssertFalse(DeleteConfirmPresenter.shared.isProgressVisible)
+        XCTAssertFalse(DeleteConfirmPresenter.shared.isBlocking)
+    }
+
+    func testCancelDoesNotClearProgress() {
+        DeleteConfirmPresenter.shared.showProgress(L10n.tripsMergeProgress)
+        DeleteConfirmPresenter.shared.cancel()
+        XCTAssertEqual(DeleteConfirmPresenter.shared.progressMessage, L10n.tripsMergeProgress)
     }
 }

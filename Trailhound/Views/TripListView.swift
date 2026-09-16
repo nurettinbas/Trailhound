@@ -29,12 +29,10 @@ struct TripListView: View {
     @State private var travelSuggestion: TravelJournalSuggestion?
     @State private var mergeSelection = Set<UUID>()
     @State private var isMergeMode = false
-    @State private var isMerging = false
     @State private var aggregatesRefreshTask: Task<Void, Never>?
     @Bindable private var tabSelection = TabSelection.shared
 
     @State private var orphanTrips: [TripRecoveryService.OrphanTrip] = []
-    @State private var showMergeConfirm = false
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
     @State private var isSearchApplying = false
@@ -654,6 +652,18 @@ struct TripListView: View {
             consumeTripDeepLink()
         }
         .onStoreSave {
+            // Merge saves from a background actor; rebuilding the list under that lock
+            // is the hitch. Progress overlay lives on the root host — do not read it
+            // into this view's body.
+            if DeleteConfirmPresenter.shared.isProgressVisible {
+                aggregatesRefreshTask?.cancel()
+                aggregatesRefreshTask = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
+                    refreshListAggregates()
+                }
+                return
+            }
             // Row identity must refresh before the next body pass or a deleted model crashes.
             reloadTrips()
             reloadJournals()
@@ -720,21 +730,13 @@ struct TripListView: View {
         .onChange(of: scrollToTopToken) { _, _ in
             performScrollToTop(scrollProxy: scrollProxy)
         }
-        .alert(L10n.tripsMergeTitle, isPresented: $showMergeConfirm) {
-            Button(L10n.actionMerge) {
-                Task { await performMerge() }
-            }
-            Button(L10n.cancel, role: .cancel) {}
-        } message: {
-            Text(L10n.tripsMergeMessage(mergeSelection.count))
-        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if isMergeMode {
                     Button(L10n.actionMerge) {
-                        showMergeConfirm = true
+                        presentMergeConfirm()
                     }
-                    .disabled(completedMergeSelectionCount < 2 || isMerging)
+                    .disabled(completedMergeSelectionCount < 2)
                 } else if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
                     Button {
                         TrailhoundHaptics.selection()
@@ -786,7 +788,6 @@ struct TripListView: View {
                         isMergeMode = false
                         mergeSelection.removeAll()
                     }
-                    .disabled(isMerging)
                 }
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -810,26 +811,6 @@ struct TripListView: View {
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)
-        .overlay {
-            if isMerging {
-                ZStack {
-                    Color.black.opacity(0.25)
-                        .ignoresSafeArea()
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text(L10n.tripsMergeProgress)
-                            .font(.subheadline.weight(.medium))
-                            .glassPrimaryInk()
-                    }
-                    .padding(24)
-                    .glassCard(cornerRadius: 16)
-                }
-                .allowsHitTesting(true)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(L10n.tripsMergeProgress)
-                .zIndex(100)
-            }
-        }
         .overlay {
             if let endCredits {
                 GeometryReader { geo in
@@ -931,53 +912,46 @@ struct TripListView: View {
         let isMorphing = morphingTripID == trip.id
         let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
         let rowID = tripRowIdentifier(for: trip, isFirst: isFirst)
-        Group {
+        let isSelected = mergeSelection.contains(trip.id)
+        HStack(spacing: 8) {
             if isMergeMode {
-                Button {
-                    toggleMergeSelection(trip.id)
-                } label: {
-                    HStack {
-                        Image(systemName: mergeSelection.contains(trip.id) ? "checkmark.circle.fill" : "circle")
-                            .accessibilityLabel(mergeSelection.contains(trip.id) ? L10n.a11ySelected : L10n.a11yNotSelected)
-                        TripRowView(
-                            trip: trip,
-                            places: places,
-                            categories: categories,
-                            privacyRadius: settings.privacyRadiusMeters,
-                            vehicle: vehicle,
-                            morphNamespace: tripMorphNamespace,
-                            morphID: morphingTripID,
-                            emphasizeLanding: isMorphing,
-                            rowAccessibilityIdentifier: rowID
-                        )
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier(rowID)
-            } else {
-                NavigationLink(value: trip) {
-                    HStack(spacing: 8) {
-                        TripRowView(
-                            trip: trip,
-                            places: places,
-                            categories: categories,
-                            privacyRadius: settings.privacyRadiusMeters,
-                            vehicle: vehicle,
-                            morphNamespace: tripMorphNamespace,
-                            morphID: morphingTripID,
-                            emphasizeLanding: isMorphing,
-                            rowAccessibilityIdentifier: rowID
-                        )
-                        .contentShape(Rectangle())
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .accessibilityLabel(isSelected ? L10n.a11ySelected : L10n.a11yNotSelected)
+            }
+            NavigationLink(value: trip) {
+                HStack(spacing: 8) {
+                    TripRowView(
+                        trip: trip,
+                        places: places,
+                        categories: categories,
+                        privacyRadius: settings.privacyRadiusMeters,
+                        vehicle: vehicle,
+                        morphNamespace: tripMorphNamespace,
+                        morphID: morphingTripID,
+                        emphasizeLanding: isMorphing,
+                        rowAccessibilityIdentifier: rowID
+                    )
+                    .contentShape(Rectangle())
+                    if !isMergeMode {
                         GlassDisclosureChevron()
                     }
                 }
-                .glassHidesNavigationLinkIndicator()
-                .accessibilityIdentifier(rowID)
-                .buttonStyle(.plain)
+            }
+            .glassHidesNavigationLinkIndicator()
+            .buttonStyle(.plain)
+            .allowsHitTesting(!isMergeMode)
+        }
+        .overlay {
+            if isMergeMode {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { toggleMergeSelection(trip.id) }
+                    .accessibilityHidden(true)
             }
         }
+        .accessibilityElement(children: isMergeMode ? .combine : .contain)
+        .accessibilityIdentifier(rowID)
+        .accessibilityAddTraits(isMergeMode ? .isButton : [])
         .matchedGeometryEffectIfAvailable(
             id: isMorphing ? trip.id : nil,
             namespace: tripMorphNamespace,
@@ -1262,11 +1236,30 @@ struct TripListView: View {
         ToastPresenter.shared.show(.deleted, playHaptic: false)
     }
 
+    private func presentMergeConfirm() {
+        let count = completedMergeSelectionCount
+        guard count >= 2 else { return }
+        DeleteConfirmPresenter.shared.present(
+            title: L10n.tripsMergeTitle,
+            message: L10n.tripsMergeMessage(count),
+            confirmTitle: L10n.actionMerge,
+            role: .prominent
+        ) {
+            DeleteConfirmPresenter.shared.showProgress(L10n.tripsMergeProgress)
+            Task { await performMerge() }
+        }
+    }
+
     private func performMerge() async {
-        guard !isMerging else { return }
-        TrailhoundHaptics.selection()
-        isMerging = true
-        defer { isMerging = false }
+        let presenter = DeleteConfirmPresenter.shared
+        if !presenter.isProgressVisible {
+            presenter.showProgress(L10n.tripsMergeProgress)
+        }
+        defer { presenter.hideProgress() }
+
+        // Let the root overlay paint before the worker takes the store lock.
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(16))
 
         // Fetched by ID rather than filtered from the loaded pages: a selection made before
         // scrolling could otherwise include trips that are no longer resident.
@@ -1280,6 +1273,9 @@ struct TripListView: View {
             let legCount = selectedIDs.count
             isMergeMode = false
             mergeSelection.removeAll()
+            reloadTrips()
+            reloadJournals()
+            careSummary.refresh(in: modelContext)
             ToastPresenter.shared.show(.tripsMerged)
             if !UITestSupport.isUnitTesting {
                 TripNotificationService.notifyTripsMerged(

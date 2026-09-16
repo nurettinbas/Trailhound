@@ -14,13 +14,14 @@ Trailhound’s shell is a saturated atmosphere gradient with frosted glass cards
 | Solid / Reduce Transparency | Opaque mid mixed slightly toward bottom — never system grouped white, never chrome plate | system grouped + tint |
 | Field wells | mid-family tint 0.18 | white 0.10 |
 | Control tint | white on the colored shell | palette tint |
+| Compact DatePicker | `.glassDatePicker()` — Light labels are white (`glassControlScheme`); never system black compact ink | same, palette tint |
 | Row disclosure `>` | Palette chrome (`GlassControlTint.disclosure` / `GlassDisclosureChevron`) — not tertiary gray | `.secondary` |
 | Tab selection | palette tint icon + iOS 26 pill; Light capsule = system glass + mid-family tint 0.28; unselected dark ink | palette tint; unselected secondary |
 | Nav toolbar | System iOS 26 platter + `tintColor` glyphs (`GlassToolbarSymbol` / `Title` / `Cluster`). `onGlassShell` white tint is overridden so icons stay visible on the platter. Form/list, Trip/Travel detail, and Vehicles detail (same metrics as the Trips cluster). Custom back still hides the system chevron; `NavigationInteractivePopEnabler` restores edge-swipe pop (Vehicles blocks it only while the editor has unsaved edits). | Same platter recipe; glyphs use the dark `tintColor` |
 | Overlay collapse | 44pt Liquid Glass circle (`GlassToolbarCollapseButton` / `GlassNavCircleIcon` / `.glassCircleChrome()`): native `glassEffect(.regular.interactive())` in `Circle()` in Light **and** Dark — same chrome as the Trip/Travel toolbar back circle. Stats expand collapse, Year recap Share/Close. | Same |
 | Map overlay | Do not add extra live `glassEffect` hosts on the map beyond the Stats collapse circle. | Grouped solid + palette tint glyphs |
 | Overlay toolbar | Same 44pt Liquid Glass circle as overlay collapse (Year recap Share/Close). | Same |
-| Overlay chrome | `GlassToolbarControlBackground` Material / solid — never native `glassEffect` (camera, photo grid, delete confirm). Keyboard accessory Place name / OK chips use the same API `frozen: true`; palette and Light/Dark come from `FieldKeyboardAccessoryHost`. Dark solid also washes palette tint 0.22 so chips are not a system gray plate. | Same |
+| Overlay chrome | `GlassToolbarControlBackground` Material / solid — never native `glassEffect` (camera, photo grid, delete / merge confirm). Keyboard accessory Place name / OK chips use the same API `frozen: true`; palette and Light/Dark come from `FieldKeyboardAccessoryHost`. Dark solid also washes palette tint 0.22 so chips are not a system gray plate. | Same |
 | Semantics | `#FF6B6B` / `#FFB35C` / `#7BE495` / `#FF7A7A` | system red / orange / green |
 | Recording / live follow | Selected palette glow + tint on the card, follow path, and vehicle puck | Same hue, dark shade |
 | Pause chip (live follow) | Opaque orange (`TrailhoundBrandColors.paused`) + white type — never glass + hierarchical white | Same |
@@ -64,11 +65,12 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | `GlassEngine.swift` | Resolve native / material / solid |
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
 | `GlassEnvironment.swift` | `.onGlassShell()`, ink hierarchy, `.glassDisclosureInk()`, `shellPalette` env |
-| `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, toolbar symbol/title/cluster, `GlassToolbarCollapseButton` (44pt Liquid Glass circle) |
+| `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, `.glassDatePicker()`, toolbar symbol/title/cluster, `GlassToolbarCollapseButton` (44pt Liquid Glass circle) |
 | `NavigationInteractivePopEnabler.swift` | Edge-swipe pop when the system back button is hidden; `disabled` blocks pop while a vehicle editor has unsaved edits |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundCompactProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` / `.trailhoundCardPress()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome, `.glassNestedChoice(isSelected:)` (frost fill inside a card — not a second Material), `.glassCircleChrome()` (44pt overlay collapse), `GlassToolbarControlBackground` (overlay / keyboard accessory chips) |
 | `KeyboardDismiss.swift` | Field keyboard accessory: centered title + OK. `UIHostingController` gets `shellPalette` + `preferredColorScheme`; chips are `GlassToolbarControlBackground` (frozen). |
+| `DeleteConfirmPresenter.swift` | Root glass confirm + blocking progress (`deleteConfirmHost`). Destructive delete (red capsule, trash) vs prominent merge (palette capsule + white rim, merge glyph). Progress is large `ProgressView` + `.glassCard`, black 0.25 scrim — not a list overlay. |
 | `StatsCard.swift` | Stats full/half cards, nested tiles, `.statsNestedPanel()` (variable-height frost in expand overlays), `.statsFrostChip()`, `StatsSegmentBar` / `StatsSegmentSwatch` / `StatsShareBar` (vehicle-compare share of top spend, donut slice fill), overlay `posterHeight` / `posterExpandedHeight`. Recap and month-forecast posters use `contentInset: 0` plus `.statsPosterOverlayPadding()` so artwork fills the card. Forecast sparkline uses `.statsPosterSparklineVeil()` so hero copy reads. |
 | `TrailhoundMotion.swift` | `.numericTextAnimation`, `.glassEntranceGlint` (alias `.photoEntranceGlint`), `tabSwitch` |
 | `TrailhoundIndependentClock` | Periodic `TimelineView` clocks for recap / onboarding (not inside a `List`) — not `TimelineView.animation` |
@@ -93,6 +95,9 @@ This is a color and glass-layer change. Spacing, padding, radii, fonts, minHeigh
 | Overlay Share / Close | `GlassNavCircleIcon` — same 44pt Liquid Glass circle |
 | Collapse / exit-fullscreen | `GlassToolbarCollapseButton` — 44pt Liquid Glass circle (`.glassCircleChrome()`) |
 | Whole card press | `.trailhoundCardPress()` |
+| Glass confirm (delete) | `DeleteConfirmPresenter` role `.destructive` — red capsule, `trash.circle.fill`. Same 48 pt pair as Cancel. |
+| Glass confirm (merge) | role `.prominent` — palette fill + white rim (same recipe as Light prominent), `arrow.triangle.merge`. Never a system `.alert`. |
+| Blocking progress (merge) | Same root host: large `ProgressView` + `L10n.tripsMergeProgress` on `.glassCard`. Black 0.25 scrim. Do not put this overlay on `TripListView`. |
 
 ## Nested fills
 

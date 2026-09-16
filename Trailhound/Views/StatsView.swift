@@ -1271,9 +1271,7 @@ struct StatsView: View {
                 .minimumScaleFactor(0.85)
 
             DatePicker(title, selection: date, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .glassControlScheme()
+                .glassDatePicker()
                 .tint(GlassControlTint.control(for: colorScheme, palette: shellPalette))
                 .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
         }

@@ -224,6 +224,14 @@ extension View {
             .glassControlScheme()
     }
 
+    /// Compact DatePicker on glass — Light labels stay white (system compact is black).
+    func glassDatePicker() -> some View {
+        labelsHidden()
+            .datePickerStyle(.compact)
+            .buttonStyle(.plain)
+            .glassControlScheme()
+    }
+
     func glassStepper() -> some View {
         glassControlScheme()
             .modifier(GlassStepperTintModifier())

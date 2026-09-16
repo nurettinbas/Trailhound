@@ -158,6 +158,19 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   `pageLimit + 1` rows so it can tell whether another page exists without a second count query.
   `ModelContext.didSave` stands in for the change tracking `@Query` would have provided, via the
   `onStoreSave` modifier — see "Reacting to saves" below.
+- **Trip merge confirm and progress live on the root `deleteConfirmHost`, not on `TripListView`.**
+  A system `.alert` from the toolbar arrived late; an `isMerging` overlay in the list body
+  invalidated every row and often never painted because the merge worker already held SQLite.
+  `DeleteConfirmPresenter` shows a prominent glass confirm, then blocking progress. `TripListView`
+  must not `@Bindable` that presenter — it only writes `showProgress` / `hideProgress`.
+- **Skip list reloads while merge progress is visible.** Worker `save()` still fires
+  `onStoreSave`; rebuilding pages under that lock is the hitch. After merge returns, reload once
+  (`reloadTrips` / `reloadJournals` / care) and then hide progress. Week-summary debounce may still
+  run.
+- **Dense GPS copy yields every 500 points** (`TripMergeCore.pointCopyYieldInterval`) on the
+  `@ModelActor` worker, plus once per finished leg, so the first long history cannot monopolize
+  the actor until the overlay has had a frame (`Task.yield` + 16 ms in `performMerge` before
+  `TripMergeService.merge`).
 - What the store can answer exactly — completed-only, category, a date lower bound,
   favorite-place name (start or end), and `searchIndex` matching — lives in the `#Predicate`.
   Place + full search + category in one macro overloads the type checker, so place-active
@@ -356,7 +369,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Trip detail and travel-journal map expand still use `frozen` / solid glass so Material does not sample the live map.
 - Form/list, Trip/Travel detail, and Vehicles detail **nav-bar** buttons use the **system** toolbar platter (same host as the Trips merge+bell cluster). That is not a custom `glassEffect` and does not count against `GlassHostBudget`. Custom back keeps the system chevron hidden; `NavigationInteractivePopEnabler` re-enables the edge-swipe pop (including over MapKit). Vehicles passes `disabled` while the embedded editor has unsaved edits so swipe cannot discard silently.
 - Stats expand collapse and Year recap Share/Close are 44pt Liquid Glass circles (`.glassCircleChrome()` / `GlassNavCircleIcon` / `GlassToolbarCollapseButton`) — native `glassEffect(.regular.interactive())` in `Circle()` in Light and Dark (same as the system toolbar back circle). Do not route this through `GlassEngineResolver` in Dark (that paints an opaque Material plate). Compact `.frozen` 36pt is unused on these screens.
-- Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
+- Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete / merge confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
 - The **Badges gallery** uses `glassCard` with `allowsNative: false` (one Material/solid plate per cell, not native `glassEffect`). The Stats strip **morphs** into that gallery with a frozen plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `CADisplayLink`, not `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car hill-cruises on that clock (offset + nose pitch, opacity stays 1). Badge share rasters a 9:16 poster (`AchievementShareRenderer`) after the gallery settles (or on export); do not call `ImageRenderer` from the idle-clock `body`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.

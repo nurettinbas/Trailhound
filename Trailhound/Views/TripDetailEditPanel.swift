@@ -778,16 +778,12 @@ struct TripDetailEditPanel: View {
                 .minimumScaleFactor(0.8)
 
             DatePicker(title, selection: selection, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .buttonStyle(.plain)
+                .glassDatePicker()
                 .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .buttonStyle(.plain)
+                .glassDatePicker()
                 .tint(fieldTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1312,16 +1308,12 @@ private struct TripStopEditRow: View {
                         .minimumScaleFactor(0.8)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .date)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                        .buttonStyle(.plain)
+                        .glassDatePicker()
                         .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                        .buttonStyle(.plain)
+                        .glassDatePicker()
                         .tint(fieldTint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
