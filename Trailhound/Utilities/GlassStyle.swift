@@ -742,6 +742,9 @@ struct GlassToolbarControlBackground<ControlShape: InsettableShape>: View {
         ZStack {
             if useSolid {
                 shape.fill(GlassTokens.solidFallback(for: colorScheme, palette: shellPalette))
+                if colorScheme == .dark {
+                    shape.fill(shellPalette.tintColor(for: .dark).opacity(0.22))
+                }
             } else {
                 shape.fill(.ultraThinMaterial)
                 if colorScheme == .dark {

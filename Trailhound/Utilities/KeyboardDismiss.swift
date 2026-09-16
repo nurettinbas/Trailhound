@@ -233,6 +233,9 @@ private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
     var focusID: AnyHashable?
     var onDone: () -> Void
 
+    @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -242,7 +245,12 @@ private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
         view.coordinator = context.coordinator
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
-        context.coordinator.apply(title: title, onDone: onDone)
+        context.coordinator.apply(
+            title: title,
+            onDone: onDone,
+            shellPalette: shellPalette,
+            colorScheme: colorScheme
+        )
         return view
     }
 
@@ -250,7 +258,12 @@ private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
         uiView.coordinator = context.coordinator
         let focusChanged = context.coordinator.lastFocusID != focusID
         context.coordinator.lastFocusID = focusID
-        context.coordinator.apply(title: title, onDone: onDone)
+        context.coordinator.apply(
+            title: title,
+            onDone: onDone,
+            shellPalette: shellPalette,
+            colorScheme: colorScheme
+        )
         if focusChanged, focusID != nil {
             // Next runloop: FocusState may have moved first responder without beginEditing.
             DispatchQueue.main.async {
@@ -266,13 +279,18 @@ private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
     @MainActor
     final class Coordinator {
         let inputView: UIInputView
-        let hosting: UIHostingController<KeyboardAccessoryBar>
+        let hosting: UIHostingController<KeyboardAccessoryRoot>
         var lastFocusID: AnyHashable?
         private let barHeight = TripDetailKeyboardLayout.accessoryBarHeight
 
         init() {
             hosting = UIHostingController(
-                rootView: KeyboardAccessoryBar(title: "", onDone: {})
+                rootView: KeyboardAccessoryRoot(
+                    title: "",
+                    onDone: {},
+                    shellPalette: .sky,
+                    colorScheme: .dark
+                )
             )
             hosting.view.backgroundColor = .clear
             hosting.safeAreaRegions = []
@@ -290,8 +308,19 @@ private struct FieldKeyboardAccessoryHost: UIViewRepresentable {
             inputView.addSubview(hosting.view)
         }
 
-        func apply(title: String, onDone: @escaping () -> Void) {
-            hosting.rootView = KeyboardAccessoryBar(title: title, onDone: onDone)
+        func apply(
+            title: String,
+            onDone: @escaping () -> Void,
+            shellPalette: ShellPalette,
+            colorScheme: ColorScheme
+        ) {
+            hosting.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+            hosting.rootView = KeyboardAccessoryRoot(
+                title: title,
+                onDone: onDone,
+                shellPalette: shellPalette,
+                colorScheme: colorScheme
+            )
         }
 
         func attach(to responder: UIResponder) {
@@ -432,12 +461,24 @@ private extension UIResponder {
     }
 }
 
+private struct KeyboardAccessoryRoot: View {
+    var title: String
+    var onDone: () -> Void
+    var shellPalette: ShellPalette
+    var colorScheme: ColorScheme
+
+    var body: some View {
+        KeyboardAccessoryBar(title: title, onDone: onDone)
+            .environment(\.shellPalette, shellPalette)
+            .preferredColorScheme(colorScheme)
+    }
+}
+
 private struct KeyboardAccessoryBar: View {
     var title: String
     var onDone: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
 
-    /// Pill-like liquid glass chips (title + Done).
+    /// Pill-like overlay-chrome chips (title + Done).
     private let chipCorner: CGFloat = 18
 
     var body: some View {
@@ -447,12 +488,7 @@ private struct KeyboardAccessoryBar: View {
                 Text(L10n.ok)
                     .font(.subheadline.weight(.semibold))
                     .glassAccentForeground()
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background {
-                        GlassSurface(cornerRadius: chipCorner, density: .chrome)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: chipCorner, style: .continuous))
+                    .modifier(KeyboardAccessoryChipChrome(cornerRadius: chipCorner))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.ok)
@@ -461,19 +497,29 @@ private struct KeyboardAccessoryBar: View {
             if !title.isEmpty {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(GlassText.primary(for: colorScheme))
+                    .glassPrimaryInk()
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background {
-                        GlassSurface(cornerRadius: chipCorner, density: .chrome)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: chipCorner, style: .continuous))
+                    .modifier(KeyboardAccessoryChipChrome(cornerRadius: chipCorner))
                     .padding(.horizontal, 72)
             }
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct KeyboardAccessoryChipChrome: ViewModifier {
+    var cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background {
+                GlassToolbarControlBackground(shape: shape, frozen: true)
+            }
+            .clipShape(shape)
     }
 }
