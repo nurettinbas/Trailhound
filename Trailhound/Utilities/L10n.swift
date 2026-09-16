@@ -405,6 +405,7 @@ enum L10n {
     static var settingsSiriShortcutsLink: String { string("settings.siri.shortcuts_link") }
     static var tabTrips: String { string("tab.trips") }
     static var tabStats: String { string("tab.stats") }
+    static var tabYear: String { string("tab.year") }
     static var tabPairing: String { string("tab.pairing") }
     static var tabSettings: String { string("tab.settings") }
 

@@ -24,7 +24,7 @@
 1. Create a new app
 2. Include privacy manifest: `PrivacyInfo.xcprivacy`
 3. Location usage description: trip recording
-4. Screenshots: list, detail map, stats, settings
+4. Screenshots: list, detail map, stats, recap, settings
 5. Privacy Policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md`
 6. Support URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/SUPPORT.md`
 7. App Privacy (nutrition label), aligned with `docs/PRIVACY.md`:
@@ -95,7 +95,7 @@ Optional smoke:
 
 ## Premium Stats (V21)
 
-- [ ] **Year recap** — Stats hub + Play story; badges strip; frequent-routes map; month cost forecast (pump fuel on its own line)
+- [ ] **Year recap** — Recap tab: year awards first, badges, frequent-routes map, month cost forecast, recap poster last + Play story (pump fuel on its own line)
 - [ ] **Badge share** — unlocked gallery chip is a compact palette-tint Share control; the sheet gets a 9:16 medal poster (icon + glass card + Trailhound mark), not title text
 - [ ] **Widgets** — goal ring, last trip, cost summary; Last Trip route preview toggle under Settings → Privacy
 - [ ] **Schema upgrade** — existing journal + smart-category data survive; locality/caches backfill without store reset

@@ -18853,6 +18853,23 @@
         }
       }
     },
+    "tab.year" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recap"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yıllık"
+          }
+        }
+      }
+    },
     "Tahmini yakıt" : {
       "extractionState" : "stale",
       "localizations" : {

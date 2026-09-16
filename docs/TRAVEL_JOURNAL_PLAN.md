@@ -33,7 +33,7 @@ Out of v1: photos, journal share-poster, CKShare, live travel, clustering of GPS
 
 ## Placement (no new tab)
 
-[`AppTab`](../Trailhound/Utilities/TabSelection.swift) stays `trips | stats | pairing | settings`. Journals live inside the Trips tab.
+[`AppTab`](../Trailhound/Utilities/TabSelection.swift) stays `trips | pairing | stats | year | settings`. Journals live inside the Trips tab.
 
 ```
 TripListView

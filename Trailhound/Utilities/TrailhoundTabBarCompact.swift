@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// Selected-tab icon, label, and iOS 26 pill colors from `ShellPalette`.
-/// Light uses the unmodified system bar — these tokens are for Dark only.
+/// Light selected is white on a dark-atmosphere glass blob. Dark selected is palette tint.
 enum TrailhoundTabBarTheme {
     static func selectedUIColor(palette: ShellPalette, scheme: ColorScheme) -> UIColor {
         let hue = scheme == .light
@@ -15,7 +15,7 @@ enum TrailhoundTabBarTheme {
         .white
     }
 
-    /// Dark selected uses the palette tint. Light selected is white.
+    /// Light selected is white. Dark selected uses the palette tint.
     static func selectedGlyphUIColor(palette: ShellPalette, scheme: ColorScheme) -> UIColor {
         scheme == .light ? .white : selectedUIColor(palette: palette, scheme: .dark)
     }
@@ -34,19 +34,24 @@ enum TrailhoundTabBarTheme {
             alpha: CGFloat(GlassContrast.tabBarClearGlassTintOpacity)
         )
     }
+
+    /// Selected-tab ice blob in Light — dark mid so white glyphs read. Not chip fill, not accent blue.
+    static func selectedBlobGlassUIColor(palette: ShellPalette) -> UIColor {
+        uiColor(palette.atmosphere(for: .dark).mid)
+    }
 }
 
-/// System iOS 26 `UITabBar`. Light selected is white. Dark sets palette `tintColor`.
-/// Do not copy `UITabBarAppearance` on iOS 26.
+/// System iOS 26 `UITabBar`. Light selected is white on a dark glass blob.
+/// Dark sets palette `tintColor`. Do not copy `UITabBarAppearance` on iOS 26.
 @MainActor
 enum TrailhoundTabBarCompact {
     static func apply(to tabBar: UITabBar, palette: ShellPalette, scheme: ColorScheme) {
         tabBar.isHidden = false
         tabBar.alpha = 1
         restoreSystemWidthIfNeeded(tabBar)
+        restoreSystemDefault(tabBar)
         if scheme == .light {
-            restoreSystemDefault(tabBar)
-            applyLightSelectedWhite(to: tabBar)
+            applyLightSelectedWhite(to: tabBar, palette: palette)
             return
         }
         applyDarkSelectionTint(to: tabBar, palette: palette)
@@ -63,6 +68,7 @@ enum TrailhoundTabBarCompact {
         }
         restoreTemplateGlyphs(on: tabBar)
         clearGlassTint(on: tabBar)
+        clearItemInterfaceStylePins(in: tabBar)
     }
 
     private static func clearInterfaceStylePin(_ tabBar: UITabBar) {
@@ -81,40 +87,47 @@ enum TrailhoundTabBarCompact {
         }
     }
 
-    /// Selected icon + title are white. Unselected stays system default.
-    static func applyLightSelectedWhite(to tabBar: UITabBar) {
+    /// Selected icon + title are white. The ice blob is dark-atmosphere glass so
+    /// white reads — never accent blue, never palette tint.
+    static func applyLightSelectedWhite(to tabBar: UITabBar, palette: ShellPalette) {
         if tabBar.tintColor != .white {
             tabBar.tintColor = .white
         }
-        let symbols = ["map", "car", "chart.bar", "gearshape"]
+        let symbols = ["map", "car", "chart.bar", "sparkles", "gearshape"]
         if let items = tabBar.items, items.count == symbols.count {
-            let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
+            let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
             for (item, name) in zip(items, symbols) {
                 item.selectedImage = UIImage(systemName: "\(name).fill", withConfiguration: config)?
                     .withTintColor(.white, renderingMode: .alwaysOriginal)
                 item.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
             }
         }
-        paintLightSelectedTitle(in: tabBar)
+        paintLightSelectedTitle(in: tabBar, ink: .white)
+        pinSelectedItemDarkGlass(in: tabBar)
+        tintLightSelectedBlob(on: tabBar, palette: palette)
     }
 
     /// iOS 26 title vibrancy remaps the selected label to accent blue. Lift
     /// vibrancy on the title only — never `UIGlassEffect`.
-    static func paintLightSelectedTitle(in tabBar: UITabBar) {
+    static func paintLightSelectedTitle(in tabBar: UITabBar, ink: UIColor) {
         let selectedTitle = tabBar.selectedItem?.title?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        paintLightSelectedTitleChrome(in: tabBar, selectedTitle: selectedTitle)
+        paintLightSelectedTitleChrome(in: tabBar, selectedTitle: selectedTitle, ink: ink)
         guard let superview = tabBar.superview else { return }
         let barFrame = tabBar.frame
         for sibling in superview.subviews where sibling !== tabBar {
             let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
                 && sibling.frame.height <= barFrame.height + 120
             guard isChromeBand else { continue }
-            paintLightSelectedTitleChrome(in: sibling, selectedTitle: selectedTitle)
+            paintLightSelectedTitleChrome(in: sibling, selectedTitle: selectedTitle, ink: ink)
         }
     }
 
-    private static func paintLightSelectedTitleChrome(in view: UIView, selectedTitle: String?) {
+    private static func paintLightSelectedTitleChrome(
+        in view: UIView,
+        selectedTitle: String?,
+        ink: UIColor
+    ) {
         if let effectView = view as? UIVisualEffectView {
             let isTitleVibrancy: Bool
             if #available(iOS 26.0, *) {
@@ -127,9 +140,20 @@ enum TrailhoundTabBarCompact {
             }
         }
 
-        if let control = view as? UIControl, !(view is UITabBar), control.isSelected {
-            if control.tintColor != .white {
-                control.tintColor = .white
+        if let control = view as? UIControl, !(view is UITabBar) {
+            let style: UIUserInterfaceStyle = control.isSelected ? .dark : .unspecified
+            if control.overrideUserInterfaceStyle != style {
+                control.overrideUserInterfaceStyle = style
+            }
+            if control.isSelected, control.tintColor != ink {
+                control.tintColor = ink
+            }
+        }
+
+        if let imageView = view as? UIImageView, isInSelectedTabItem(imageView) {
+            imageView.tintColor = ink
+            if let image = imageView.image {
+                imageView.image = image.withTintColor(ink, renderingMode: .alwaysOriginal)
             }
         }
 
@@ -137,10 +161,10 @@ enum TrailhoundTabBarCompact {
             let text = (label.text ?? label.attributedText?.string ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if isLightSelectedTitle(text, selectedTitle: selectedTitle, in: label) {
-                label.textColor = .white
-                label.tintColor = .white
+                label.textColor = ink
+                label.tintColor = ink
                 if !text.isEmpty {
-                    var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.white]
+                    var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: ink]
                     if let font = label.font { attributes[.font] = font }
                     label.attributedText = NSAttributedString(string: text, attributes: attributes)
                 }
@@ -154,14 +178,14 @@ enum TrailhoundTabBarCompact {
                 ?? selectedTitle
                 ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            button.setTitleColor(.white, for: .selected)
-            button.setTitleColor(.white, for: .normal)
-            button.titleLabel?.textColor = .white
+            button.setTitleColor(ink, for: .selected)
+            button.setTitleColor(ink, for: .normal)
+            button.titleLabel?.textColor = ink
             if var config = button.configuration {
-                config.baseForegroundColor = .white
+                config.baseForegroundColor = ink
                 if !text.isEmpty {
                     var title = AttributedString(text)
-                    title.foregroundColor = .white
+                    title.foregroundColor = Color(uiColor: ink)
                     config.attributedTitle = title
                 }
                 button.configuration = config
@@ -169,10 +193,10 @@ enum TrailhoundTabBarCompact {
         }
 
         if let effectView = view as? UIVisualEffectView {
-            paintLightSelectedTitleChrome(in: effectView.contentView, selectedTitle: selectedTitle)
+            paintLightSelectedTitleChrome(in: effectView.contentView, selectedTitle: selectedTitle, ink: ink)
         }
         for subview in view.subviews {
-            paintLightSelectedTitleChrome(in: subview, selectedTitle: selectedTitle)
+            paintLightSelectedTitleChrome(in: subview, selectedTitle: selectedTitle, ink: ink)
         }
     }
 
@@ -193,8 +217,73 @@ enum TrailhoundTabBarCompact {
         return false
     }
 
+    private static func isInSelectedTabItem(_ view: UIView) -> Bool {
+        var node: UIView? = view
+        while let current = node {
+            if let control = current as? UIControl, !(current is UITabBar) {
+                return control.isSelected
+            }
+            node = current.superview
+        }
+        return false
+    }
+
+    /// Selected item draws Dark glass so the white glyph sits on a dark blob, not ice.
+    static func pinSelectedItemDarkGlass(in root: UIView) {
+        if let control = root as? UIControl, !(root is UITabBar) {
+            let style: UIUserInterfaceStyle = control.isSelected ? .dark : .unspecified
+            if control.overrideUserInterfaceStyle != style {
+                control.overrideUserInterfaceStyle = style
+            }
+        }
+        for subview in root.subviews {
+            pinSelectedItemDarkGlass(in: subview)
+        }
+    }
+
+    private static func clearItemInterfaceStylePins(in view: UIView) {
+        if let control = view as? UIControl, !(view is UITabBar),
+           control.overrideUserInterfaceStyle != .unspecified {
+            control.overrideUserInterfaceStyle = .unspecified
+        }
+        for subview in view.subviews {
+            clearItemInterfaceStylePins(in: subview)
+        }
+    }
+
+    /// Tint every non-capsule `UIGlassEffect` in the bar with dark mid — the selection blob.
+    static func tintLightSelectedBlob(on tabBar: UITabBar, palette: ShellPalette) {
+        guard #available(iOS 26.0, *) else { return }
+        let tint = TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: palette)
+        tintSelectedBlob(in: tabBar, matching: tabBar, tint: tint)
+        guard let superview = tabBar.superview else { return }
+        let barFrame = tabBar.frame
+        for sibling in superview.subviews where sibling !== tabBar {
+            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
+                && sibling.frame.height <= barFrame.height + 120
+            guard isChromeBand else { continue }
+            tintSelectedBlob(in: sibling, matching: tabBar, tint: tint)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func tintSelectedBlob(in view: UIView, matching tabBar: UITabBar, tint: UIColor) {
+        if let effectView = view as? UIVisualEffectView,
+           let glass = effectView.effect as? UIGlassEffect,
+           !isFloatingCapsule(effectView, matching: tabBar) {
+            glass.tintColor = tint
+            effectView.effect = glass
+        }
+        if let effectView = view as? UIVisualEffectView {
+            tintSelectedBlob(in: effectView.contentView, matching: tabBar, tint: tint)
+        }
+        for subview in view.subviews {
+            tintSelectedBlob(in: subview, matching: tabBar, tint: tint)
+        }
+    }
+
     private static func restoreTemplateGlyphs(on tabBar: UITabBar) {
-        let symbols = ["map", "car", "chart.bar", "gearshape"]
+        let symbols = ["map", "car", "chart.bar", "sparkles", "gearshape"]
         guard let items = tabBar.items, items.count == symbols.count else { return }
         let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
         for (item, name) in zip(items, symbols) {
@@ -224,10 +313,12 @@ enum TrailhoundTabBarCompact {
     private static func clearGlassTint(in view: UIView, matching tabBar: UITabBar) {
         if let effectView = view as? UIVisualEffectView,
            let glass = effectView.effect as? UIGlassEffect,
-           isFloatingCapsule(effectView, matching: tabBar),
            glass.tintColor != nil {
             glass.tintColor = nil
             effectView.effect = glass
+        }
+        if let effectView = view as? UIVisualEffectView {
+            clearGlassTint(in: effectView.contentView, matching: tabBar)
         }
         for subview in view.subviews {
             clearGlassTint(in: subview, matching: tabBar)
@@ -336,10 +427,7 @@ final class TrailhoundTabBarCompactController: UIViewController {
         guard let tabBar = resolveTabBar() else { return }
         TrailhoundTabBarCompact.restoreSystemWidthIfNeeded(tabBar)
         if colorScheme == .light {
-            if tabBar.tintColor != .white {
-                tabBar.tintColor = .white
-            }
-            TrailhoundTabBarCompact.paintLightSelectedTitle(in: tabBar)
+            TrailhoundTabBarCompact.applyLightSelectedWhite(to: tabBar, palette: palette)
         }
     }
 
@@ -349,7 +437,7 @@ final class TrailhoundTabBarCompactController: UIViewController {
         if colorScheme == .light {
             DispatchQueue.main.async { [weak self] in
                 guard let self, let tabBar = self.resolveTabBar() else { return }
-                TrailhoundTabBarCompact.paintLightSelectedTitle(in: tabBar)
+                TrailhoundTabBarCompact.applyLightSelectedWhite(to: tabBar, palette: self.palette)
             }
         }
     }

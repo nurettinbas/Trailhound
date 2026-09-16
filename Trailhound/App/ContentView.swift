@@ -93,6 +93,25 @@ struct ContentView: View {
                 .tag(AppTab.stats)
 
                 NavigationStack {
+                    if tabSelection.selectedTab == .year {
+                        YearView()
+                    } else {
+                        AtmosphericBackground()
+                    }
+                }
+                .background(Color.clear)
+                .modifier(TrailhoundTabContentChrome())
+                .tabItem {
+                    TabBarItemLabel(
+                        title: L10n.tabYear,
+                        systemImage: "sparkles",
+                        isSelected: tabSelection.selectedTab == .year
+                    )
+                    .accessibilityIdentifier("tab.year")
+                }
+                .tag(AppTab.year)
+
+                NavigationStack {
                     if tabSelection.selectedTab == .settings {
                         SettingsView()
                     } else {
@@ -219,7 +238,8 @@ private struct TrailhoundRootTint: ViewModifier {
     }
 }
 
-/// Dark selected uses the palette tint. Light is the unmodified system tab bar.
+/// Dark selected uses the palette tint. Light tab items are stamped in UIKit so
+/// a TabView tint cannot wash Light in-tab chrome.
 private struct TrailhoundTabSelectionTint: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -261,18 +281,27 @@ private struct TabBarItemLabel: View {
     let systemImage: String
     let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
+        let selectedInk: Color = colorScheme == .light
+            ? .white
+            : Color(
+                uiColor: TrailhoundTabBarTheme.selectedGlyphUIColor(
+                    palette: shellPalette,
+                    scheme: .dark
+                )
+            )
         Label {
-            if colorScheme == .light, isSelected {
-                Text(title).foregroundStyle(.white)
+            if isSelected {
+                Text(title).foregroundStyle(selectedInk)
             } else {
                 Text(title)
             }
         } icon: {
             Image(systemName: isSelected ? "\(systemImage).fill" : systemImage)
                 .environment(\.symbolVariants, .none)
-                .foregroundStyle(colorScheme == .light && isSelected ? Color.white : Color.primary)
+                .foregroundStyle(isSelected ? selectedInk : Color.primary)
         }
     }
 }

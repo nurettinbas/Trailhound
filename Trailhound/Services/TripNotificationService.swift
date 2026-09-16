@@ -119,12 +119,12 @@ enum TripNotificationService {
         action: String? = nil,
         tripID: UUID? = nil,
         target: String? = nil,
-        skipWhenStatsSelected: Bool = false
+        skipWhenYearSelected: Bool = false
     ) {
         Task { @MainActor in
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             guard settings.authorizationStatus == .authorized else { return }
-            if skipWhenStatsSelected, TabSelection.shared.selectedTab == .stats { return }
+            if skipWhenYearSelected, TabSelection.shared.selectedTab == .year { return }
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
@@ -230,7 +230,7 @@ enum TripNotificationService {
             body: body,
             action: openAchievementsAction,
             target: unique.count == 1 ? unique[0].rawValue : nil,
-            skipWhenStatsSelected: true
+            skipWhenYearSelected: true
         )
     }
 

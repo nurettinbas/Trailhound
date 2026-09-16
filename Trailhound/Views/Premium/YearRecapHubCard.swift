@@ -65,18 +65,20 @@ struct YearRecapHubCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 yearChip
                 Spacer(minLength: 0)
-                HStack(alignment: .bottom, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .center, spacing: 8) {
                         distanceText
-                        metricsLine
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        playChip
+                            .padding(.vertical, -6)
+                            .layoutPriority(1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    playChip
-                        .layoutPriority(1)
+                    metricsLine
                 }
             }
             .statsPosterOverlayPadding()
         }
+        .frame(maxWidth: .infinity, minHeight: RecapHubTeaserMetrics.posterHeight)
         .clipShape(RoundedRectangle(cornerRadius: StatsCardTokens.radius, style: .continuous))
     }
 

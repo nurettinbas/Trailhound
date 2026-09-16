@@ -75,6 +75,10 @@ class TrailhoundUITestCase: XCTestCase {
         tabButton(identifier: "tab.stats", fallbackLabels: "Statistics")
     }
 
+    var yearTab: XCUIElement {
+        tabButton(identifier: "tab.year", fallbackLabels: "Recap", "Yıllık")
+    }
+
     var settingsTab: XCUIElement {
         tabButton(identifier: "tab.settings", fallbackLabels: "Settings")
     }
@@ -179,24 +183,17 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(saveButton.waitForExistence(timeout: 10))
     }
 
-    func testStatsTabShowsPremiumRecapCard() {
-        XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
-        statsTab.tap()
+    func testYearTabShowsPremiumRecapCard() {
+        XCTAssertTrue(yearTab.waitForExistence(timeout: uiTimeout))
+        yearTab.tap()
         XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 15))
-        let summary = app.descendants(matching: .any)["stats.summary.grid"]
-        let skeleton = app.descendants(matching: .any)["stats.summary.skeleton"]
-        let summaryAppeared = summary.waitForExistence(timeout: uiTimeout)
-        XCTAssertTrue(
-            summaryAppeared || skeleton.exists,
-            "Summary should show packed tiles or a skeleton, not an empty hole"
-        )
 
         let recap = app.descendants(matching: .any)["stats.premium.recap"]
         for _ in 0..<12 {
             if recap.waitForExistence(timeout: 1), recap.isHittable { break }
             app.swipeUp()
         }
-        XCTAssertTrue(recap.waitForExistence(timeout: uiTimeout), "Year recap sits after by-category charts")
+        XCTAssertTrue(recap.waitForExistence(timeout: uiTimeout), "Year recap sits on the Recap tab")
 
         let play = app.buttons["stats.premium.recap.play"]
         if play.waitForExistence(timeout: 8) {

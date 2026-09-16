@@ -134,7 +134,8 @@ final class ShellPaletteTests: XCTestCase {
         XCTAssertEqual(AppTab.trips.tabBarIndex, 0)
         XCTAssertEqual(AppTab.pairing.tabBarIndex, 1)
         XCTAssertEqual(AppTab.stats.tabBarIndex, 2)
-        XCTAssertEqual(AppTab.settings.tabBarIndex, 3)
+        XCTAssertEqual(AppTab.year.tabBarIndex, 3)
+        XCTAssertEqual(AppTab.settings.tabBarIndex, 4)
     }
 
     func testTabBarSelectionFollowsPaletteTint() {
@@ -213,8 +214,25 @@ final class ShellPaletteTests: XCTestCase {
             .white
         )
         XCTAssertEqual(
+            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .light),
+            .white
+        )
+        XCTAssertEqual(
             TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .dark),
             TrailhoundTabBarTheme.selectedUIColor(palette: .lime, scheme: .dark)
+        )
+    }
+
+    func testTabBarSelectedBlobGlassIsDarkAtmosphereMid() {
+        let coral = TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral)
+        let expected = TrailhoundTabBarTheme.uiColor(ShellPalette.coral.atmosphere(for: .dark).mid)
+        XCTAssertEqual(coral, expected)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        coral.getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertLessThan((r + g + b) / 3, 0.35)
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral),
+            UIColor.white
         )
     }
 

@@ -32,7 +32,12 @@ final class TabSelection {
 
     func openStats(anchor: StatsPremiumAnchor? = nil) {
         pendingStatsAnchor = anchor
-        selectedTab = .stats
+        switch anchor {
+        case .forecast, .recap, .routes, .achievements:
+            selectedTab = .year
+        default:
+            selectedTab = .stats
+        }
     }
 
     func openTrip(id: UUID) {
@@ -65,15 +70,17 @@ enum AppTab: Hashable {
     case trips
     case stats
     case pairing
+    case year
     case settings
 
-    /// Matches `ContentView` TabView order: Trips, Vehicles, Statistics, Settings.
+    /// Matches `ContentView` TabView order: Trips, Vehicles, Statistics, Recap, Settings.
     var tabBarIndex: Int {
         switch self {
         case .trips: 0
         case .pairing: 1
         case .stats: 2
-        case .settings: 3
+        case .year: 3
+        case .settings: 4
         }
     }
 }

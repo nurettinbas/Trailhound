@@ -150,10 +150,25 @@ final class TabSelectionTests: XCTestCase {
         let tabs = TabSelection.shared
         tabs.selectedTab = .trips
         tabs.openStats(anchor: .achievements)
-        XCTAssertEqual(tabs.selectedTab, .stats)
+        XCTAssertEqual(tabs.selectedTab, .year)
         XCTAssertEqual(tabs.consumePendingStatsAnchor(), .achievements)
         tabs.openStats(anchor: .recap)
+        XCTAssertEqual(tabs.selectedTab, .year)
         XCTAssertEqual(tabs.consumePendingStatsAnchor(), .recap)
+        tabs.openStats(anchor: .forecast)
+        XCTAssertEqual(tabs.selectedTab, .year)
+        XCTAssertEqual(tabs.consumePendingStatsAnchor(), .forecast)
+        tabs.openStats(anchor: .routes)
+        XCTAssertEqual(tabs.selectedTab, .year)
+        XCTAssertEqual(tabs.consumePendingStatsAnchor(), .routes)
+    }
+
+    func testOpenStatsGoalStaysOnStatistics() {
+        let tabs = TabSelection.shared
+        tabs.selectedTab = .trips
+        tabs.openStats(anchor: .goal)
+        XCTAssertEqual(tabs.selectedTab, .stats)
+        XCTAssertEqual(tabs.consumePendingStatsAnchor(), .goal)
     }
 
     func testOpenTripSetsPendingID() {
