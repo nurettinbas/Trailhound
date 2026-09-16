@@ -104,7 +104,8 @@ struct ContentView: View {
                 .tabItem {
                     TabBarItemLabel(
                         title: L10n.tabYear,
-                        systemImage: "sparkles",
+                        systemImage: "star",
+                        selectedSystemImage: "star.fill",
                         isSelected: tabSelection.selectedTab == .year
                     )
                     .accessibilityIdentifier("tab.year")
@@ -279,6 +280,7 @@ private struct TrailhoundTabContentChrome: ViewModifier {
 private struct TabBarItemLabel: View {
     let title: String
     let systemImage: String
+    var selectedSystemImage: String? = nil
     let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -292,6 +294,7 @@ private struct TabBarItemLabel: View {
                     scheme: .dark
                 )
             )
+        let selectedName = selectedSystemImage ?? "\(systemImage).fill"
         Label {
             if isSelected {
                 Text(title).foregroundStyle(selectedInk)
@@ -299,9 +302,10 @@ private struct TabBarItemLabel: View {
                 Text(title)
             }
         } icon: {
-            Image(systemName: isSelected ? "\(systemImage).fill" : systemImage)
+            Image(systemName: isSelected ? selectedName : systemImage)
                 .environment(\.symbolVariants, .none)
                 .foregroundStyle(isSelected ? selectedInk : Color.primary)
+                .font(.system(size: 22, weight: isSelected ? .bold : .medium))
         }
     }
 }

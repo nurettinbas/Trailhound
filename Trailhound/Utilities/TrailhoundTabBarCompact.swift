@@ -39,6 +39,16 @@ enum TrailhoundTabBarTheme {
     static func selectedBlobGlassUIColor(palette: ShellPalette) -> UIColor {
         uiColor(palette.atmosphere(for: .dark).mid)
     }
+
+    /// Outline + fill SF Symbol per tab. Recap uses `star.fill` — `sparkles.fill` /
+    /// `sparkle.fill` are missing, so selected Recap was a transparent hole on ice.
+    static let itemSymbols: [(outline: String, fill: String)] = [
+        ("map", "map.fill"),
+        ("car", "car.fill"),
+        ("chart.bar", "chart.bar.fill"),
+        ("star", "star.fill"),
+        ("gearshape", "gearshape.fill")
+    ]
 }
 
 /// System iOS 26 `UITabBar`. Light selected is white on a dark glass blob.
@@ -93,11 +103,12 @@ enum TrailhoundTabBarCompact {
         if tabBar.tintColor != .white {
             tabBar.tintColor = .white
         }
-        let symbols = ["map", "car", "chart.bar", "sparkles", "gearshape"]
+        let symbols = TrailhoundTabBarTheme.itemSymbols
         if let items = tabBar.items, items.count == symbols.count {
-            let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
-            for (item, name) in zip(items, symbols) {
-                item.selectedImage = UIImage(systemName: "\(name).fill", withConfiguration: config)?
+            let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .bold)
+            for (item, symbol) in zip(items, symbols) {
+                let name = UIImage(systemName: symbol.fill) == nil ? symbol.outline : symbol.fill
+                item.selectedImage = UIImage(systemName: name, withConfiguration: config)?
                     .withTintColor(.white, renderingMode: .alwaysOriginal)
                 item.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
             }
@@ -283,13 +294,13 @@ enum TrailhoundTabBarCompact {
     }
 
     private static func restoreTemplateGlyphs(on tabBar: UITabBar) {
-        let symbols = ["map", "car", "chart.bar", "sparkles", "gearshape"]
+        let symbols = TrailhoundTabBarTheme.itemSymbols
         guard let items = tabBar.items, items.count == symbols.count else { return }
         let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
-        for (item, name) in zip(items, symbols) {
-            item.image = UIImage(systemName: name, withConfiguration: config)?
+        for (item, symbol) in zip(items, symbols) {
+            item.image = UIImage(systemName: symbol.outline, withConfiguration: config)?
                 .withRenderingMode(.alwaysTemplate)
-            item.selectedImage = UIImage(systemName: "\(name).fill", withConfiguration: config)?
+            item.selectedImage = UIImage(systemName: symbol.fill, withConfiguration: config)?
                 .withRenderingMode(.alwaysTemplate)
             item.setTitleTextAttributes(nil, for: .normal)
             item.setTitleTextAttributes(nil, for: .selected)

@@ -267,4 +267,15 @@ final class ShellPaletteTests: XCTestCase {
             TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .sky)
         )
     }
+
+    func testRecapTabFillSymbolExists() {
+        XCTAssertEqual(TrailhoundTabBarTheme.itemSymbols.count, 5)
+        XCTAssertEqual(TrailhoundTabBarTheme.itemSymbols[3].outline, "star")
+        XCTAssertEqual(TrailhoundTabBarTheme.itemSymbols[3].fill, "star.fill")
+        XCTAssertNotNil(UIImage(systemName: "star.fill"))
+        for symbol in TrailhoundTabBarTheme.itemSymbols {
+            XCTAssertNotNil(UIImage(systemName: symbol.outline), symbol.outline)
+            XCTAssertNotNil(UIImage(systemName: symbol.fill), symbol.fill)
+        }
+    }
 }
