@@ -220,11 +220,13 @@ docs/                 # Battery, design system, Stats, TestFlight, privacy, supp
 - [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance) — Settings theme, palette, Home Screen icon, share cards
 - [UI performance notes](docs/PERFORMANCE.md) — live follow map camera, route drawing, trip-list scroll, Stats cards, glass budget
 - [Fuel estimation](docs/FUEL_ESTIMATION.md) — Avg vs estimated fuel, additive GPS litres, backfill v6 / rollup 14
+- [Fuel estimation (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Fuel-Estimation) — Avg vs estimated, not a pump reading
 - [Stats tab](docs/STATS_TAB.md) — filter card, card spans, nested tiles, deferred charts, premium recap/badges/routes/forecast
 - [Architecture (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Architecture) — schema **V22**, models, premium derived caches
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — glass cards, year recap, badges, frequent routes, month forecast
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md) — Personal Automation wizard, honest test, checklist
+- [Shortcuts (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Shortcuts) — Pairing wizard, named Shortcut + Run Shortcut
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 - [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19

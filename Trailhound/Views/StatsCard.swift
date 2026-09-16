@@ -7,8 +7,10 @@ enum StatsCardTokens {
     static let nestedRadius: CGFloat = 12
     static let pairSpacing: CGFloat = 12
     static let contentInset: CGFloat = 14
-    /// Compact expand glyph sits in the card’s top-trailing padding, not on the title baseline.
-    static let expandGlyphOffset = CGSize(width: 10, height: -12)
+    /// Compact expand glyph sits in the card’s top-trailing corner, not on the title baseline.
+    static let expandGlyphOffset = CGSize(width: 16, height: -18)
+    /// Forecast / poster cards have no content inset — pin the same glyph this far from the rim.
+    static let expandGlyphPosterInsets = EdgeInsets(top: 2, leading: 0, bottom: 0, trailing: 2)
     static let summaryGridInset: CGFloat = 8
     static let halfMinHeight: CGFloat = 188
     static let listRowVerticalInset: CGFloat = 6

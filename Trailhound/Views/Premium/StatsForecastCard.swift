@@ -39,8 +39,8 @@ struct StatsForecastCard: View {
             .buttonStyle(.glassPlainHit)
             .accessibilityHidden(true)
             .allowsHitTesting(!isExpanded)
-            .padding(.top, StatsCardTokens.posterOverlayInsets.top)
-            .padding(.trailing, StatsCardTokens.posterOverlayInsets.trailing)
+            .padding(.top, StatsCardTokens.expandGlyphPosterInsets.top)
+            .padding(.trailing, StatsCardTokens.expandGlyphPosterInsets.trailing)
         }
         .glassEntranceGlint(
             cornerRadius: StatsCardTokens.radius,
