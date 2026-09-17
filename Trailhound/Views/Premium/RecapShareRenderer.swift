@@ -95,26 +95,27 @@ private struct RecapShareCardView: View {
                 badgeIDs: RecapStoryBadgeIDs.resolved(from: snapshot),
                 motion: 0,
                 purposeShare: snapshot.purposeVerdict?.share ?? 0,
+                estimatedFuelCost: snapshot.estimatedFuelCost,
+                paidExpenses: snapshot.paidExpenses,
                 pageElapsed: RecapIntroReveal.settledElapsed
             )
             RecapStoryBottomScrim()
-            VStack(spacing: 0) {
-                TrailhoundBrandMark(showsWordmark: true, symbolSize: 36)
-                    .padding(.top, 28)
-                RecapStoryPageForeground(
-                    snapshot: snapshot,
-                    page: page,
-                    displayedDistance: snapshot.distanceMeters,
-                    routeImage: routeImage,
-                    motion: 0,
-                    reduceMotion: true,
-                    pageElapsed: RecapIntroReveal.settledElapsed
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            RecapStoryPageForeground(
+                snapshot: snapshot,
+                page: page,
+                displayedDistance: snapshot.distanceMeters,
+                routeImage: routeImage,
+                motion: 0,
+                reduceMotion: true,
+                pageElapsed: RecapIntroReveal.settledElapsed
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onGlassShell()
+            TrailhoundBrandMark(showsWordmark: true, symbolSize: 36)
+                .padding(.top, 28)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+        .onGlassShell()
         .clipped()
     }
 }

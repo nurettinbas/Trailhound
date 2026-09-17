@@ -157,6 +157,8 @@ struct YearRecapStoryView: View {
                     badgeIDs: RecapStoryBadgeIDs.resolved(from: frozen),
                     motion: t,
                     purposeShare: frozen.purposeVerdict?.share ?? 0,
+                    estimatedFuelCost: frozen.estimatedFuelCost,
+                    paidExpenses: frozen.paidExpenses,
                     pageElapsed: pageElapsed(now: now)
                 )
                 .id(currentPage)
@@ -187,7 +189,7 @@ struct YearRecapStoryView: View {
                     : TrailhoundMotion.recapCopyTransition(reduceMotion: freezeStoryMotion)
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.bottom, 12)
+            .padding(.bottom, currentPage == .cost ? 0 : 12)
             .onGlassShell()
         }
         .animation(TrailhoundMotion.recapPage(reduceMotion: freezeStoryMotion), value: playback.pageIndex)

@@ -313,6 +313,31 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertEqual(RecapPurposePolicy.displayName(for: folded!.slices[3]), L10n.string("premium.recap.other"))
     }
 
+    func testCostPageShowsWhenFuelOrExpensesExist() {
+        var empty = YearRecapSnapshot.empty(year: 2026)
+        XCTAssertFalse(RecapStoryPagePolicy.pages(for: empty).contains(.cost))
+        empty.estimatedFuelCost = 400
+        XCTAssertTrue(RecapStoryPagePolicy.pages(for: empty).contains(.cost))
+        empty.estimatedFuelCost = 0
+        empty.paidExpenses = 200
+        XCTAssertTrue(RecapStoryPagePolicy.pages(for: empty).contains(.cost))
+    }
+
+    func testCostLayoutCentersPumpPairAboveCopySlot() {
+        let size = CGSize(width: 390, height: 844)
+        let left = RecapCostLayout.pumpRect(in: size, both: true, isLeading: true)
+        let right = RecapCostLayout.pumpRect(in: size, both: true, isLeading: false)
+        XCTAssertEqual(left.minY, RecapCostLayout.groupTop(in: size), accuracy: 0.5)
+        XCTAssertEqual(left.maxY, right.maxY, accuracy: 0.5)
+        let pairMid = (left.minX + right.maxX) / 2
+        XCTAssertEqual(pairMid, size.width / 2, accuracy: 1)
+        XCTAssertGreaterThan(right.minX, left.maxX)
+        let copyTop = RecapCostLayout.groupTop(in: size)
+            + RecapCostLayout.pumpHeight(in: size)
+            + RecapCostLayout.stackSpacing
+        XCTAssertGreaterThanOrEqual(copyTop, left.maxY)
+    }
+
     func testPurposeLoaderResolvesCustomCategoryWinner() async throws {
         let container = try ModelContainerFactory.makeInMemory()
         let context = container.mainContext

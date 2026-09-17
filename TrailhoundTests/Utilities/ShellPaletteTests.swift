@@ -100,6 +100,8 @@ final class ShellPaletteTests: XCTestCase {
             let installments = StatsSegmentTokens.fillRGB(index: 1, scheme: .light, palette: palette)
             let other = StatsSegmentTokens.fillRGB(index: 2, scheme: .light, palette: palette)
             XCTAssertEqual(drive, palette.atmosphere(for: .light).tint, palette.rawValue)
+            XCTAssertEqual(drive, RecapSpendInk.fuelRGB(scheme: .light, palette: palette), palette.rawValue)
+            XCTAssertEqual(installments, RecapSpendInk.expensesRGB(scheme: .light, palette: palette), palette.rawValue)
             XCTAssertGreaterThan(hueDistance(drive.hsl.h, installments.hsl.h), 40, palette.rawValue)
             XCTAssertGreaterThan(hueDistance(drive.hsl.h, other.hsl.h), 40, palette.rawValue)
             XCTAssertGreaterThan(hueDistance(installments.hsl.h, other.hsl.h), 40, palette.rawValue)

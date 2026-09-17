@@ -87,6 +87,8 @@ struct RecapPageScene: View {
     var badgeIDs: [AchievementID] = []
     var motion: TimeInterval = 0
     var purposeShare: Double = 0
+    var estimatedFuelCost: Double = 0
+    var paidExpenses: Double = 0
     var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
 
     @Environment(\.colorScheme) private var colorScheme
@@ -100,6 +102,8 @@ struct RecapPageScene: View {
             badgeIDs: badgeIDs,
             motion: reduceMotion ? 0 : motion,
             purposeShare: purposeShare,
+            estimatedFuelCost: estimatedFuelCost,
+            paidExpenses: paidExpenses,
             pageElapsed: pageElapsed,
             reduceMotion: reduceMotion
         )
@@ -147,32 +151,92 @@ struct RecapStoryPageForeground: View {
     var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
 
     var body: some View {
-        VStack(spacing: 12) {
-            RecapStoryPageCopy(
-                snapshot: snapshot,
-                page: page,
-                displayedDistance: displayedDistance,
-                routeImage: routeImage,
-                pageElapsed: pageElapsed,
-                reduceMotion: reduceMotion
-            )
-            .padding(.horizontal, 28)
-            if page == .badges {
-                let extra = RecapStoryBadgeLayout.overflowCount(RecapStoryBadgeIDs.resolved(from: snapshot).count)
-                if extra > 0 {
-                    Text("+\(extra)")
-                        .font(.headline.monospacedDigit())
-                        .glassSecondaryInk()
+        Group {
+            if page == .cost {
+                GeometryReader { geo in
+                    VStack(spacing: RecapCostLayout.stackSpacing) {
+                        Color.clear.frame(
+                            height: RecapCostLayout.groupTop(in: geo.size)
+                                + RecapCostLayout.pumpHeight(in: geo.size)
+                        )
+                        RecapStoryPageCopy(
+                            snapshot: snapshot,
+                            page: page,
+                            displayedDistance: displayedDistance,
+                            routeImage: routeImage,
+                            pageElapsed: pageElapsed,
+                            reduceMotion: reduceMotion
+                        )
+                        .padding(.horizontal, 20)
+                        Spacer(minLength: 0)
+                    }
                 }
+                .ignoresSafeArea()
+            } else {
+                VStack(spacing: 12) {
+                    RecapStoryPageCopy(
+                        snapshot: snapshot,
+                        page: page,
+                        displayedDistance: displayedDistance,
+                        routeImage: routeImage,
+                        pageElapsed: pageElapsed,
+                        reduceMotion: reduceMotion
+                    )
+                    .padding(.horizontal, 28)
+                    if page == .badges {
+                        let extra = RecapStoryBadgeLayout.overflowCount(RecapStoryBadgeIDs.resolved(from: snapshot).count)
+                        if extra > 0 {
+                            Text("+\(extra)")
+                                .font(.headline.monospacedDigit())
+                                .glassSecondaryInk()
+                        }
+                    }
+                }
+                .padding(.bottom, isTitleCardPage ? 0 : 10)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: isTitleCardPage ? .center : .bottom
+                )
             }
         }
-        .padding(.bottom, page == .intro || page == .categories ? 0 : 10)
-        .frame(
-            maxWidth: .infinity,
-            maxHeight: .infinity,
-            alignment: page == .intro || page == .categories ? .center : .bottom
-        )
         .allowsHitTesting(false)
+    }
+
+    private var isTitleCardPage: Bool {
+        page == .intro || page == .categories
+    }
+}
+
+enum RecapCostLayout {
+    static let stackSpacing: CGFloat = 14
+    static let copyBlockHeight: CGFloat = 152
+
+    static func pumpHeight(in size: CGSize) -> CGFloat {
+        min(max(size.height * 0.30, 210), 268)
+    }
+
+    static func groupHeight(in size: CGSize) -> CGFloat {
+        pumpHeight(in: size) + stackSpacing + copyBlockHeight
+    }
+
+    static func groupTop(in size: CGSize) -> CGFloat {
+        (size.height - groupHeight(in: size)) / 2
+    }
+
+    static func pumpRect(in size: CGSize, both: Bool, isLeading: Bool) -> CGRect {
+        let top = groupTop(in: size)
+        let height = pumpHeight(in: size)
+        if both {
+            let width = size.width * 0.26
+            let gap: CGFloat = 22
+            let pair = width * 2 + gap
+            let start = (size.width - pair) / 2
+            let x = isLeading ? start : start + width + gap
+            return CGRect(x: x, y: top, width: width, height: height)
+        }
+        let width = size.width * 0.32
+        return CGRect(x: (size.width - width) / 2, y: top, width: width, height: height)
     }
 }
 
@@ -327,6 +391,95 @@ private struct RecapPurposeMixRow: View {
     }
 }
 
+private struct RecapCostAmountCards: View {
+    let estimatedFuelCost: Double
+    let paidExpenses: Double
+    var elapsed: TimeInterval
+    var reduceMotion: Bool
+
+    @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var showsFuel: Bool { estimatedFuelCost > 0 }
+    private var showsExpenses: Bool { paidExpenses > 0 }
+    private var showsBoth: Bool { showsFuel && showsExpenses }
+
+    var body: some View {
+        let fade = RecapIntroReveal.whisperOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        VStack(spacing: 8) {
+            Text(L10n.string("premium.recap.cost_kicker"))
+                .font(.caption.weight(.semibold))
+                .tracking(1.8)
+                .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+            HStack(spacing: 6) {
+                if showsFuel {
+                    RecapCostAmountCard(
+                        amount: estimatedFuelCost,
+                        labelKey: "premium.recap.fuel_estimate",
+                        stop: RecapSpendInk.fuelStop,
+                        ink: RecapSpendInk.fuel(scheme: colorScheme, palette: shellPalette),
+                        compact: showsBoth
+                    )
+                }
+                if showsExpenses {
+                    RecapCostAmountCard(
+                        amount: paidExpenses,
+                        labelKey: "premium.recap.logged_expenses",
+                        stop: RecapSpendInk.expensesStop,
+                        ink: RecapSpendInk.expenses(scheme: colorScheme, palette: shellPalette),
+                        compact: showsBoth
+                    )
+                }
+            }
+            if showsBoth {
+                Text(L10n.string("premium.recap.cost_whisper"))
+                    .font(.caption.weight(.medium))
+                    .glassSecondaryInk()
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+            }
+        }
+        .opacity(fade)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RecapCostAmountCard: View {
+    let amount: Double
+    let labelKey: String
+    let stop: Int
+    let ink: Color
+    var compact: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                StatsSegmentSwatch(index: stop)
+                Text(L10n.string(labelKey))
+                    .font(.caption.weight(.semibold))
+                    .glassSecondaryInk()
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+            }
+            Text(verbatim: FuelCostCalculator.formatCost(amount))
+                .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(ink)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .shadow(color: ink.opacity(0.4), radius: 10)
+        }
+        .frame(minWidth: compact ? 118 : 160, maxWidth: compact ? 128 : 200, alignment: .leading)
+        .glassCard(
+            cornerRadius: GlassTokens.cardRadius,
+            contentInset: 12,
+            frozen: true,
+            allowsNative: false
+        )
+    }
+}
+
 struct RecapStoryPageCopy: View {
     let snapshot: YearRecapSnapshot
     let page: RecapStoryPage
@@ -430,26 +583,12 @@ struct RecapStoryPageCopy: View {
                 )
             }
         case .cost:
-            VStack(spacing: 10) {
-                if snapshot.estimatedFuelCost > 0 {
-                    Text(FuelCostCalculator.formatCost(snapshot.estimatedFuelCost))
-                        .font(.title.weight(.bold).monospacedDigit())
-                        .glassPrimaryInk()
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                    Text(L10n.string("premium.recap.fuel_estimate"))
-                        .glassSecondaryInk()
-                }
-                if snapshot.paidExpenses > 0 {
-                    Text(FuelCostCalculator.formatCost(snapshot.paidExpenses))
-                        .font(.title2.weight(.semibold).monospacedDigit())
-                        .glassPrimaryInk()
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                    Text(L10n.string("premium.recap.logged_expenses"))
-                        .glassSecondaryInk()
-                }
-            }
+            RecapCostAmountCards(
+                estimatedFuelCost: snapshot.estimatedFuelCost,
+                paidExpenses: snapshot.paidExpenses,
+                elapsed: pageElapsed,
+                reduceMotion: reduceMotion
+            )
         case .badges:
             Text(L10n.string("premium.recap.badges_title"))
                 .font(.headline)
@@ -636,6 +775,8 @@ private struct RecapStoryCanvas: View {
     let badgeIDs: [AchievementID]
     var motion: TimeInterval = 0
     var purposeShare: Double = 0
+    var estimatedFuelCost: Double = 0
+    var paidExpenses: Double = 0
     var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
     var reduceMotion: Bool = true
 
@@ -1035,37 +1176,181 @@ private struct RecapStoryCanvas: View {
         )
     }
 
-    private func drawCost(context: inout GraphicsContext, size: CGSize, tint: Color, glow: Color) {
-        let pump = CGRect(x: size.width * 0.14, y: size.height * 0.28, width: size.width * 0.28, height: size.height * 0.34)
-        context.fill(Path(roundedRect: pump, cornerRadius: 14), with: .color(tint.opacity(0.55)))
-        context.fill(
-            Path(roundedRect: CGRect(x: pump.minX + 16, y: pump.minY + 18, width: pump.width - 32, height: 36), cornerRadius: 8),
-            with: .color(.white.opacity(0.22))
+    private func drawCost(context: inout GraphicsContext, size: CGSize, tint _: Color, glow: Color) {
+        let fuelColor = RecapSpendInk.fuel(scheme: scheme, palette: palette)
+        let expenseColor = RecapSpendInk.expenses(scheme: scheme, palette: palette)
+        let showFuel = estimatedFuelCost > 0
+        let showExpenses = paidExpenses > 0
+        let both = showFuel && showExpenses
+        let pumpHeight = RecapCostLayout.pumpHeight(in: size)
+        let groupTop = RecapCostLayout.groupTop(in: size)
+        let pad = CGRect(
+            x: size.width * 0.18,
+            y: groupTop + pumpHeight - 22,
+            width: size.width * 0.64,
+            height: 28
         )
-        var hose = Path()
-        let sway = RecapSceneMotion.signedPhase(4.5, at: motion)
-        hose.move(to: CGPoint(x: pump.maxX - 8, y: pump.minY + 40))
-        hose.addQuadCurve(
-            to: CGPoint(x: pump.maxX + 28, y: pump.maxY - 24 + 14 * sway),
-            control: CGPoint(x: pump.maxX + 46, y: pump.minY + 10 + 16 * sway)
-        )
-        context.stroke(hose, with: .color(.white.opacity(0.7)), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-        let card = CGRect(x: size.width * 0.52, y: size.height * 0.32, width: size.width * 0.34, height: size.height * 0.22)
-        context.fill(Path(roundedRect: card, cornerRadius: 16), with: .color(.white.opacity(0.16)))
-        context.stroke(Path(roundedRect: card, cornerRadius: 16), with: .color(glow.opacity(0.7)), lineWidth: 2)
-        let sheenX = card.minX + card.width * RecapSceneMotion.saw(4.5, at: motion) * 0.7
         context.fill(
-            Path(roundedRect: CGRect(x: sheenX, y: card.minY + 10, width: 18, height: card.height - 20), cornerRadius: 4),
+            Path(ellipseIn: pad),
+            with: .color(Color.black.opacity(scheme == .dark ? 0.28 : 0.12))
+        )
+        if both {
+            drawPump(
+                context: &context,
+                in: RecapCostLayout.pumpRect(in: size, both: true, isLeading: true),
+                color: fuelColor,
+                glow: glow,
+                hoseToTrailing: false,
+                motionOffset: 0
+            )
+            drawPump(
+                context: &context,
+                in: RecapCostLayout.pumpRect(in: size, both: true, isLeading: false),
+                color: expenseColor,
+                glow: glow,
+                hoseToTrailing: true,
+                motionOffset: 0.85
+            )
+        } else if showFuel {
+            drawPump(
+                context: &context,
+                in: RecapCostLayout.pumpRect(in: size, both: false, isLeading: true),
+                color: fuelColor,
+                glow: glow,
+                hoseToTrailing: true,
+                motionOffset: 0
+            )
+        } else if showExpenses {
+            drawPump(
+                context: &context,
+                in: RecapCostLayout.pumpRect(in: size, both: false, isLeading: true),
+                color: expenseColor,
+                glow: glow,
+                hoseToTrailing: true,
+                motionOffset: 0.4
+            )
+        }
+    }
+
+    private func drawPump(
+        context: inout GraphicsContext,
+        in rect: CGRect,
+        color: Color,
+        glow: Color,
+        hoseToTrailing: Bool,
+        motionOffset: Double
+    ) {
+        let sway = RecapSceneMotion.signedPhase(4.8, at: motion + motionOffset)
+        let pulse = RecapSceneMotion.phase(3.6, at: motion + motionOffset)
+        let shadow = CGRect(
+            x: rect.minX + rect.width * 0.10,
+            y: rect.maxY - 12,
+            width: rect.width * 0.80,
+            height: 18
+        )
+        context.fill(Path(ellipseIn: shadow), with: .color(Color.black.opacity(scheme == .dark ? 0.38 : 0.18)))
+
+        let plinth = CGRect(
+            x: rect.minX + rect.width * 0.14,
+            y: rect.maxY - rect.height * 0.13,
+            width: rect.width * 0.72,
+            height: rect.height * 0.11
+        )
+        context.fill(Path(roundedRect: plinth, cornerRadius: 5), with: .color(color.opacity(0.38)))
+        context.fill(
+            Path(roundedRect: plinth.insetBy(dx: 6, dy: 3), cornerRadius: 3),
             with: .color(.white.opacity(0.12))
         )
+
+        let body = CGRect(
+            x: rect.minX + rect.width * 0.20,
+            y: rect.minY + rect.height * 0.06,
+            width: rect.width * 0.50,
+            height: rect.height * 0.78
+        )
         context.fill(
-            Path(roundedRect: CGRect(x: card.minX + 16, y: card.minY + 22, width: card.width * 0.42, height: 10), cornerRadius: 4),
+            Path(roundedRect: body, cornerRadius: 11),
+            with: .linearGradient(
+                Gradient(colors: [
+                    color.opacity(0.98),
+                    color.opacity(0.62),
+                    Color.black.opacity(scheme == .dark ? 0.35 : 0.18)
+                ]),
+                startPoint: CGPoint(x: body.minX, y: body.minY),
+                endPoint: CGPoint(x: body.maxX, y: body.maxY)
+            )
+        )
+        context.stroke(Path(roundedRect: body, cornerRadius: 11), with: .color(.white.opacity(0.22)), lineWidth: 1)
+        let band = CGRect(x: body.minX, y: body.minY + body.height * 0.46, width: body.width, height: 7)
+        context.fill(Path(band), with: .color(.white.opacity(0.24)))
+        context.fill(
+            Path(CGRect(x: body.minX + 6, y: body.minY + body.height * 0.62, width: body.width - 12, height: 4)),
+            with: .color(.white.opacity(0.12))
+        )
+
+        let display = CGRect(
+            x: body.minX + 9,
+            y: body.minY + 12,
+            width: body.width - 18,
+            height: body.height * 0.24
+        )
+        context.fill(Path(roundedRect: display, cornerRadius: 6), with: .color(Color.black.opacity(0.5)))
+        context.fill(
+            Path(ellipseIn: display.insetBy(dx: -8, dy: -10)),
+            with: .radialGradient(
+                Gradient(colors: [color.opacity(0.45 + 0.3 * Double(pulse)), .clear]),
+                center: CGPoint(x: display.midX, y: display.midY),
+                startRadius: 2,
+                endRadius: 28
+            )
+        )
+        context.fill(
+            Path(roundedRect: display.insetBy(dx: 3, dy: 3), cornerRadius: 4),
+            with: .color(color.opacity(0.55 + 0.35 * Double(pulse)))
+        )
+        context.fill(
+            Path(roundedRect: CGRect(x: display.minX + 6, y: display.minY + 5, width: display.width * 0.38, height: 5), cornerRadius: 2),
             with: .color(.white.opacity(0.45))
         )
         context.fill(
-            Path(roundedRect: CGRect(x: card.minX + 16, y: card.minY + 42, width: card.width * 0.62, height: 8), cornerRadius: 3),
-            with: .color(.white.opacity(0.28))
+            Path(ellipseIn: CGRect(x: display.maxX - 14, y: display.midY - 3, width: 6, height: 6)),
+            with: .color(glow.opacity(0.7 + 0.25 * Double(pulse)))
         )
+
+        let holsterX = hoseToTrailing ? body.maxX - 5 : body.minX - 9
+        let holster = CGRect(x: holsterX, y: body.minY + body.height * 0.38, width: 14, height: 24)
+        context.fill(Path(roundedRect: holster, cornerRadius: 3), with: .color(Color.black.opacity(0.35)))
+        context.stroke(Path(roundedRect: holster, cornerRadius: 3), with: .color(.white.opacity(0.2)), lineWidth: 1)
+
+        let hoseStart = CGPoint(x: hoseToTrailing ? body.maxX - 2 : body.minX + 2, y: body.minY + body.height * 0.42)
+        let outward: CGFloat = hoseToTrailing ? 1 : -1
+        let hoseEnd = CGPoint(
+            x: hoseStart.x + outward * (rect.width * 0.28),
+            y: body.maxY - 18 + 12 * sway
+        )
+        let hoseControl = CGPoint(
+            x: hoseStart.x + outward * (rect.width * 0.34),
+            y: body.minY + 18 + 14 * sway
+        )
+        var hose = Path()
+        hose.move(to: hoseStart)
+        hose.addQuadCurve(to: hoseEnd, control: hoseControl)
+        context.stroke(hose, with: .color(.white.opacity(0.55)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+        context.stroke(hose, with: .color(color.opacity(0.9)), style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+
+        let nozzle = CGRect(x: hoseEnd.x - 7, y: hoseEnd.y - 5, width: 18, height: 12)
+        context.fill(Path(roundedRect: nozzle, cornerRadius: 3), with: .color(color.opacity(0.95)))
+        context.fill(
+            Path(roundedRect: CGRect(x: nozzle.maxX - 6, y: nozzle.minY + 3, width: 8, height: 6), cornerRadius: 2),
+            with: .color(.white.opacity(0.35))
+        )
+        if pulse > 0.35 {
+            let dripY = hoseEnd.y + 10 + 6 * pulse
+            context.fill(
+                Path(ellipseIn: CGRect(x: hoseEnd.x - 2.5, y: dripY, width: 5, height: 7)),
+                with: .color(color.opacity(0.55 * Double(pulse)))
+            )
+        }
     }
 
     private func drawBadges(context: inout GraphicsContext, size: CGSize, tint _: Color, glow: Color) {

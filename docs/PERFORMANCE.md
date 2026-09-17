@@ -324,7 +324,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,
   background, and UI tests). Page changes use
   `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
-  atmosphere layer).   Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is 44pt Liquid Glass circles (`GlassNavCircleIcon` / `.glassCircleChrome()` — Close + Share under the
+  atmosphere layer). The cost page is that same Canvas (dual-hue pumps + pad, hose sway) with frozen `glassCard` amount plates — no extra clock.   Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is 44pt Liquid Glass circles (`GlassNavCircleIcon` / `.glassCircleChrome()` — Close + Share under the
   segment bars), native `glassEffect` in Light and Dark.
   Share PNG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
   The last page keeps the same clock; when the segment fills, the cover dismisses.

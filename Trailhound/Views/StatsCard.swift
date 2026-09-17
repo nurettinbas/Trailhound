@@ -50,6 +50,28 @@ enum StatsSegmentTokens {
     }
 }
 
+/// Recap cost page + forecast mix: estimated fuel is stop 0, logged expenses are stop 1.
+enum RecapSpendInk {
+    static let fuelStop = 0
+    static let expensesStop = 1
+
+    static func fuelRGB(scheme: ColorScheme, palette: ShellPalette) -> ShellRGB {
+        StatsSegmentTokens.fillRGB(index: fuelStop, scheme: scheme, palette: palette)
+    }
+
+    static func expensesRGB(scheme: ColorScheme, palette: ShellPalette) -> ShellRGB {
+        StatsSegmentTokens.fillRGB(index: expensesStop, scheme: scheme, palette: palette)
+    }
+
+    static func fuel(scheme: ColorScheme, palette: ShellPalette) -> Color {
+        fuelRGB(scheme: scheme, palette: palette).color
+    }
+
+    static func expenses(scheme: ColorScheme, palette: ShellPalette) -> Color {
+        expensesRGB(scheme: scheme, palette: palette).color
+    }
+}
+
 /// 8 pt palette capsule matching a `StatsSegmentBar` stop — legend only, not a chip.
 struct StatsSegmentSwatch: View {
     let index: Int
