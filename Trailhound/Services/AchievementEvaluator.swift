@@ -480,11 +480,9 @@ enum AchievementUnlockQueue {
     }
 }
 
-/// Compact Stats strip: unlocked medals only. Locked progress lives in the gallery.
+/// Compact Recap card: every unlocked medal, wrapping into centered rows.
 enum AchievementStripPreview {
-    static let unlockedCap = 8
-
     static func medals(from achievements: [AchievementDisplay]) -> [AchievementDisplay] {
-        Array(achievements.filter(\.isUnlocked).prefix(unlockedCap))
+        achievements.filter(\.isUnlocked)
     }
 }

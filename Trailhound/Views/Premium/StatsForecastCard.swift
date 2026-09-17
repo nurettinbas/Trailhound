@@ -95,6 +95,16 @@ struct StatsForecastCard: View {
 
     private var accessibilityValue: String {
         var parts = [FuelCostCalculator.formatCost(forecast.projectedTotal, currencyCode: currencyCode)]
+        if forecast.projectedFuel > 0 {
+            parts.append(
+                "\(L10n.string("premium.forecast.row.drive")) \(FuelCostCalculator.formatCost(forecast.projectedFuel, currencyCode: currencyCode))"
+            )
+        }
+        if forecast.installmentsDue > 0 {
+            parts.append(
+                "\(L10n.string("premium.forecast.row.installments")) \(FuelCostCalculator.formatCost(forecast.installmentsDue, currencyCode: currencyCode))"
+            )
+        }
         if let ratio = forecast.trendRatio {
             parts.append(StatsForecastCopy.trend(ratio))
         }
@@ -147,6 +157,8 @@ struct StatsForecastTitleChip: View {
         Text(L10n.string("premium.forecast.title"))
             .font(.caption.weight(.semibold))
             .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: true, vertical: false)
             .statsFrostChip()
     }
 }
@@ -167,11 +179,46 @@ struct StatsForecastHeroCopy: View {
                 .glassAccentForeground()
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .numericTextAnimation(value: forecast.projectedTotal)
             if forecast.hasData {
+                compositionLines
                 metricsLine
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var compositionLines: some View {
+        if forecast.projectedFuel > 0 {
+            compositionItem(
+                L10n.string("premium.forecast.row.drive"),
+                forecast.projectedFuel
+            )
+        }
+        if forecast.installmentsDue > 0 {
+            compositionItem(
+                L10n.string("premium.forecast.row.installments"),
+                forecast.installmentsDue
+            )
+        }
+    }
+
+    private func compositionItem(_ title: String, _ amount: Double) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+            Text(FuelCostCalculator.formatCost(amount, currencyCode: currencyCode))
+                .font(.caption.weight(.semibold).monospacedDigit())
+            Spacer(minLength: 0)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+        .multilineTextAlignment(.leading)
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private var metricsLine: some View {
@@ -190,9 +237,11 @@ struct StatsForecastHeroCopy: View {
             Text(StatsForecastCopy.confidence(forecast.confidence))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+            Spacer(minLength: 0)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var trendInk: Color {
@@ -337,7 +386,7 @@ struct StatsForecastHeroPoster: View {
     @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             StatsForecastSparklineScene(
                 months: forecast.monthlyTotals,
                 currentMonth: forecast.monthStart,
@@ -354,9 +403,12 @@ struct StatsForecastHeroPoster: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
-            VStack(alignment: .leading, spacing: 0) {
-                StatsForecastTitleChip()
-                    .padding(.trailing, reservesExpandSlot ? 44 : 0)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 0) {
+                    StatsForecastTitleChip()
+                    Spacer(minLength: 0)
+                }
+                .padding(.trailing, reservesExpandSlot ? 44 : 0)
                 Spacer(minLength: 0)
                 StatsForecastHeroCopy(
                     forecast: forecast,
@@ -365,6 +417,7 @@ struct StatsForecastHeroPoster: View {
                 )
             }
             .statsPosterOverlayPadding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, minHeight: height)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -516,27 +569,32 @@ struct StatsForecastDetailSheet: View {
                         Text(ForecastCompositionBlock.title(for: row.id))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: true, vertical: false)
                         Spacer(minLength: 0)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .statsNestedPanel()
     }
 
     private var legendRows: [(id: String, index: Int)] {
-        ForecastCompositionBlock.segments(for: forecast).enumerated().compactMap { index, segment in
-            segment.share > 0 ? (id: segment.id, index: index) : nil
+        ForecastCompositionBlock.segments(for: forecast).compactMap { segment in
+            segment.share > 0 ? (id: segment.id, index: segment.stop) : nil
         }
     }
 
     private var breakdownPanel: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             detailRow(L10n.string("premium.forecast.row.drive"), forecast.projectedFuel)
             detailRow(L10n.string("premium.forecast.row.installments"), forecast.installmentsDue)
             detailRow(L10n.string("premium.forecast.row.other"), forecast.otherExpenses)
             detailRow(L10n.string("premium.forecast.row.logged_fuel"), forecast.loggedFuel)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func detailRow(_ title: String, _ amount: Double) -> some View {
@@ -544,11 +602,15 @@ struct StatsForecastDetailSheet: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
             Spacer(minLength: 8)
             Text(amount > 0 ? FuelCostCalculator.formatCost(amount, currencyCode: currencyCode) : "—")
                 .font(.body.weight(.semibold).monospacedDigit())
                 .glassAccentForeground()
                 .opacity(amount > 0 ? 1 : 0.55)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .statsNestedPanel()
         .accessibilityElement(children: .combine)
@@ -562,11 +624,10 @@ struct StatsForecastDetailSheet: View {
 enum ForecastCompositionBlock {
     static func segments(for forecast: MonthCostForecast) -> [StatsSegment] {
         let shares = forecast.compositionShares
-        let opacities = StatsSegmentTokens.opacities
         return [
-            StatsSegment(id: "drive", share: shares.drive, opacity: opacities[0]),
-            StatsSegment(id: "installments", share: shares.installments, opacity: opacities[1]),
-            StatsSegment(id: "other", share: shares.other, opacity: opacities[2])
+            StatsSegment(id: "drive", share: shares.drive, stop: 0),
+            StatsSegment(id: "installments", share: shares.installments, stop: 1),
+            StatsSegment(id: "other", share: shares.other, stop: 2)
         ]
     }
 

@@ -166,6 +166,11 @@ enum TrailhoundMotion {
         )
     }
 
+    /// Intro title card uses a staged fade, not the copy push (year has its own scale).
+    static func recapIntroCopyTransition(reduceMotion _: Bool) -> AnyTransition {
+        .opacity
+    }
+
     static func recapCountUp(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeOut(duration: 1.15)
     }
@@ -217,6 +222,51 @@ enum TrailhoundMotion {
                 .combined(with: .offset(y: -10))
                 .combined(with: .scale(scale: 0.94))
         )
+    }
+}
+
+/// Title-card choreography for the year recap intro page. Times are page-local seconds.
+enum RecapIntroReveal {
+    static let kickerStart: TimeInterval = 0
+    static let kickerEnd: TimeInterval = 0.35
+    static let yearStart: TimeInterval = 0.15
+    static let yearEnd: TimeInterval = 0.80
+    static let whisperStart: TimeInterval = 0.55
+    static let whisperEnd: TimeInterval = 1.20
+    static let yearScaleFrom: CGFloat = 0.92
+    static let settledElapsed: TimeInterval = whisperEnd
+
+    static func kickerOpacity(elapsed: TimeInterval, reduceMotion: Bool) -> Double {
+        Double(eased(progress(elapsed: elapsed, start: kickerStart, end: kickerEnd, reduceMotion: reduceMotion)))
+    }
+
+    static func yearOpacity(elapsed: TimeInterval, reduceMotion: Bool) -> Double {
+        Double(eased(progress(elapsed: elapsed, start: yearStart, end: yearEnd, reduceMotion: reduceMotion)))
+    }
+
+    static func yearScale(elapsed: TimeInterval, reduceMotion: Bool) -> CGFloat {
+        let p = eased(progress(elapsed: elapsed, start: yearStart, end: yearEnd, reduceMotion: reduceMotion))
+        return yearScaleFrom + (1 - yearScaleFrom) * p
+    }
+
+    static func whisperOpacity(elapsed: TimeInterval, reduceMotion: Bool) -> Double {
+        Double(eased(progress(elapsed: elapsed, start: whisperStart, end: whisperEnd, reduceMotion: reduceMotion)))
+    }
+
+    static func progress(
+        elapsed: TimeInterval,
+        start: TimeInterval,
+        end: TimeInterval,
+        reduceMotion: Bool
+    ) -> CGFloat {
+        guard !reduceMotion else { return 1 }
+        guard end > start else { return elapsed >= end ? 1 : 0 }
+        let t = (elapsed - start) / (end - start)
+        return CGFloat(min(1, max(0, t)))
+    }
+
+    static func eased(_ linear: CGFloat) -> CGFloat {
+        1 - pow(1 - linear, 3)
     }
 }
 

@@ -139,6 +139,7 @@ struct RecapStoryPageForeground: View {
     var routeImage: UIImage?
     var motion: TimeInterval
     var reduceMotion: Bool
+    var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
 
     var body: some View {
         VStack(spacing: 12) {
@@ -146,7 +147,9 @@ struct RecapStoryPageForeground: View {
                 snapshot: snapshot,
                 page: page,
                 displayedDistance: displayedDistance,
-                routeImage: routeImage
+                routeImage: routeImage,
+                pageElapsed: pageElapsed,
+                reduceMotion: reduceMotion
             )
             .padding(.horizontal, 28)
             if page == .badges {
@@ -158,8 +161,8 @@ struct RecapStoryPageForeground: View {
                 }
             }
         }
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity)
+        .padding(.bottom, page == .intro ? 0 : 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: page == .intro ? .center : .bottom)
         .allowsHitTesting(false)
     }
 }
@@ -172,22 +175,66 @@ enum RecapStoryBadgeIDs {
     }
 }
 
+private struct RecapIntroTitleCard: View {
+    let year: Int
+    var elapsed: TimeInterval
+    var reduceMotion: Bool
+
+    @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let glow = shellPalette.atmosphere(for: colorScheme).glow.color
+        let kicker = RecapIntroReveal.kickerOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        let yearOpacity = RecapIntroReveal.yearOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        let yearScale = RecapIntroReveal.yearScale(elapsed: elapsed, reduceMotion: reduceMotion)
+        let whisper = RecapIntroReveal.whisperOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        VStack(spacing: 10) {
+            Text(L10n.string("premium.recap.intro_kicker"))
+                .font(.caption.weight(.semibold))
+                .tracking(1.8)
+                .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.8)
+                .lineLimit(1)
+                .opacity(kicker)
+            Text(verbatim: String(year))
+                .font(.system(size: 80, weight: .bold, design: .rounded).monospacedDigit())
+                .glassPrimaryInk()
+                .minimumScaleFactor(0.45)
+                .lineLimit(1)
+                .shadow(color: glow.opacity(0.55), radius: 24)
+                .shadow(color: glow.opacity(0.28), radius: 8)
+                .scaleEffect(yearScale)
+                .opacity(yearOpacity)
+            Text(L10n.string("premium.recap.intro_body"))
+                .font(.title3)
+                .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.7)
+                .opacity(whisper)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct RecapStoryPageCopy: View {
     let snapshot: YearRecapSnapshot
     let page: RecapStoryPage
     var displayedDistance: Double
     var routeImage: UIImage?
+    var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
+    var reduceMotion: Bool = true
 
     var body: some View {
         switch page {
         case .intro:
-            VStack(spacing: 8) {
-                Text(String(format: L10n.string("premium.recap.intro"), snapshot.year))
-                    .font(.largeTitle.weight(.bold))
-                    .glassPrimaryInk()
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.7)
-            }
+            RecapIntroTitleCard(
+                year: snapshot.year,
+                elapsed: pageElapsed,
+                reduceMotion: reduceMotion
+            )
         case .distance:
             VStack(spacing: 8) {
                 Text(DateFormatters.formatDistance(displayedDistance))
@@ -557,7 +604,7 @@ private struct RecapStoryCanvas: View {
                     endPoint: CGPoint(x: size.width / 2, y: size.height)
                 )
             )
-        if kind != .badges {
+        if kind != .badges && kind != .intro {
             let sunY = kind == .time ? size.height * 0.2 : size.height * 0.16
             let sunSize: CGFloat = kind == .time ? 52 : 44
             let breathe = RecapSceneMotion.phase(6, at: motion)
@@ -575,7 +622,7 @@ private struct RecapStoryCanvas: View {
             context.fill(Path(ellipseIn: sunRect), with: .color(sunColor.opacity(kind == .time ? 0.92 : 0.8)))
         }
         let compact = size.height <= RecapHubTeaserMetrics.posterHeight + 1
-        if !compact {
+        if !compact && kind != .intro {
             drawAmbientSparkles(context: &context, size: size, glow: glow)
         }
     }
@@ -641,23 +688,72 @@ private struct RecapStoryCanvas: View {
     }
 
     private func drawIntro(context: inout GraphicsContext, size: CGSize, tint: Color, glow: Color) {
-        drawVanishingRoad(context: &context, size: size, horizonY: size.height * 0.38, tint: tint)
-        drawPlate(context: &context, size: size, tint: tint, glow: glow)
         let compact = size.height <= RecapHubTeaserMetrics.posterHeight + 1
+        let dolly = compact ? 0 : RecapSceneMotion.phase(7, at: motion)
+        let horizonY = size.height * (0.40 - 0.04 * dolly)
+        drawVanishingRoad(context: &context, size: size, horizonY: horizonY, tint: tint)
+        let horizon = CGPoint(x: size.width * 0.5, y: horizonY)
+        let breathe = RecapSceneMotion.phase(6, at: motion)
+        let bloomRadius = (compact ? size.height * 0.55 : min(size.width, size.height) * 0.42)
+            + (compact ? 6 : 26) * breathe
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: horizon.x - bloomRadius,
+                y: horizon.y - bloomRadius * 0.78,
+                width: bloomRadius * 2,
+                height: bloomRadius * 1.6
+            )),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.46 + 0.2 * Double(breathe)),
+                    glow.opacity(0.4 + 0.18 * Double(breathe)),
+                    tint.opacity(0.18),
+                    .clear
+                ]),
+                center: horizon,
+                startRadius: compact ? 3 : 8,
+                endRadius: bloomRadius
+            )
+        )
+        let core = compact ? 5.0 : 11.0
+        context.fill(
+            Path(ellipseIn: CGRect(x: horizon.x - core, y: horizon.y - core * 0.55, width: core * 2, height: core * 1.1)),
+            with: .color(Color.white.opacity(0.55 + 0.25 * Double(breathe)))
+        )
         guard !compact else { return }
-        let wave = RecapSceneMotion.signedPhase(4, at: motion)
-        var flag = Path()
-        let pole = CGPoint(x: size.width * 0.18, y: size.height * 0.28)
-        flag.move(to: pole)
-        flag.addLine(to: CGPoint(x: pole.x, y: pole.y + size.height * 0.22))
-        context.stroke(flag, with: .color(.white.opacity(0.7)), lineWidth: 3)
-        var cloth = Path()
-        cloth.move(to: pole)
-        cloth.addLine(to: CGPoint(x: pole.x + size.width * 0.16, y: pole.y + 8 + 10 * wave))
-        cloth.addLine(to: CGPoint(x: pole.x, y: pole.y + size.height * 0.1))
-        cloth.closeSubpath()
-        context.fill(cloth, with: .color(tint.opacity(0.85)))
-        context.stroke(cloth, with: .color(.white.opacity(0.45)), lineWidth: 1)
+        drawIntroMotes(context: &context, size: size, glow: glow)
+    }
+
+    private func drawIntroMotes(context: inout GraphicsContext, size: CGSize, glow: Color) {
+        let seeds: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.12, 0.18, 2.1),
+            (0.28, 0.11, 1.6),
+            (0.46, 0.16, 2.4),
+            (0.63, 0.09, 1.9),
+            (0.81, 0.14, 2.7),
+            (0.18, 0.32, 3.0),
+            (0.74, 0.28, 2.2),
+            (0.88, 0.22, 1.7)
+        ]
+        for (index, seed) in seeds.enumerated() {
+            let twinkle = RecapSceneMotion.phase(2.2 + Double(seed.2) * 0.2, at: motion + Double(index) * 0.37)
+            guard twinkle > 0.22 else { continue }
+            let drift = RecapSceneMotion.signedPhase(9, at: motion + Double(index)) * 5
+            let point = CGPoint(x: size.width * seed.0 + drift, y: size.height * seed.1)
+            let r = 1.1 + 1.4 * twinkle
+            context.fill(
+                Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2)),
+                with: .radialGradient(
+                    Gradient(colors: [
+                        (index.isMultiple(of: 2) ? glow : Color.white).opacity(0.22 + 0.45 * Double(twinkle)),
+                        .clear
+                    ]),
+                    center: point,
+                    startRadius: 0.3,
+                    endRadius: r * 2.2
+                )
+            )
+        }
     }
 
     private func drawDistance(context: inout GraphicsContext, size: CGSize, tint: Color, glow: Color) {

@@ -65,6 +65,25 @@ final class YearRecapSnapshotTests: XCTestCase {
         _ = TrailhoundMotion.recapSceneTransition(reduceMotion: false, advancing: false)
         _ = TrailhoundMotion.recapCopyTransition(reduceMotion: true)
         _ = TrailhoundMotion.recapCopyTransition(reduceMotion: false)
+        _ = TrailhoundMotion.recapIntroCopyTransition(reduceMotion: true)
+        _ = TrailhoundMotion.recapIntroCopyTransition(reduceMotion: false)
+        XCTAssertEqual(RecapIntroReveal.kickerOpacity(elapsed: 0, reduceMotion: true), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.yearOpacity(elapsed: 0, reduceMotion: true), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.whisperOpacity(elapsed: 0, reduceMotion: true), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.yearScale(elapsed: 0, reduceMotion: true), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.kickerOpacity(elapsed: 0, reduceMotion: false), 0, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.yearOpacity(elapsed: 0, reduceMotion: false), 0, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.whisperOpacity(elapsed: 0, reduceMotion: false), 0, accuracy: 0.0001)
+        XCTAssertEqual(
+            RecapIntroReveal.yearScale(elapsed: 0, reduceMotion: false),
+            RecapIntroReveal.yearScaleFrom,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(RecapIntroReveal.kickerOpacity(elapsed: RecapIntroReveal.kickerEnd, reduceMotion: false), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.yearOpacity(elapsed: RecapIntroReveal.yearEnd, reduceMotion: false), 1, accuracy: 0.0001)
+        XCTAssertEqual(RecapIntroReveal.whisperOpacity(elapsed: RecapIntroReveal.whisperEnd, reduceMotion: false), 1, accuracy: 0.0001)
+        XCTAssertGreaterThan(RecapIntroReveal.yearOpacity(elapsed: 0.4, reduceMotion: false), 0)
+        XCTAssertLessThan(RecapIntroReveal.whisperOpacity(elapsed: 0.4, reduceMotion: false), 1)
     }
 
     func testHubTeaserIdleIntervalStaysCheap() {

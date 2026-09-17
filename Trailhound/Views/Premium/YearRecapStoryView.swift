@@ -64,6 +64,18 @@ struct YearRecapStoryView: View {
         return motionElapsed
     }
 
+    private func pageElapsed(now: Date) -> TimeInterval {
+        if freezeStoryMotion {
+            return RecapIntroReveal.settledElapsed
+        }
+        if playback.isPaused || !playback.autoplayEnabled {
+            return max(0, RecapStoryPlayback.pageDuration - playback.remaining)
+        }
+        let slice = max(0, now.timeIntervalSince(clockStartedAt))
+        let already = RecapStoryPlayback.pageDuration - remainingAtClock
+        return max(0, already + slice)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             visualLayers
@@ -157,22 +169,21 @@ struct YearRecapStoryView: View {
 
             RecapStoryBottomScrim()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                ZStack {
-                    RecapStoryPageForeground(
-                        snapshot: frozen,
-                        page: currentPage,
-                        displayedDistance: displayedDistance,
-                        routeImage: routeImage,
-                        motion: t,
-                        reduceMotion: freezeStoryMotion
-                    )
-                    .id(playback.pageIndex)
-                    .transition(TrailhoundMotion.recapCopyTransition(reduceMotion: freezeStoryMotion))
-                }
-                .frame(maxWidth: .infinity)
-            }
+            RecapStoryPageForeground(
+                snapshot: frozen,
+                page: currentPage,
+                displayedDistance: displayedDistance,
+                routeImage: routeImage,
+                motion: t,
+                reduceMotion: freezeStoryMotion,
+                pageElapsed: pageElapsed(now: now)
+            )
+            .id(playback.pageIndex)
+            .transition(
+                currentPage == .intro
+                    ? TrailhoundMotion.recapIntroCopyTransition(reduceMotion: freezeStoryMotion)
+                    : TrailhoundMotion.recapCopyTransition(reduceMotion: freezeStoryMotion)
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.bottom, 12)
             .onGlassShell()

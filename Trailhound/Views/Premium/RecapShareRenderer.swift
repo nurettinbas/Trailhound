@@ -99,15 +99,16 @@ private struct RecapShareCardView: View {
             VStack(spacing: 0) {
                 TrailhoundBrandMark(showsWordmark: true, symbolSize: 36)
                     .padding(.top, 28)
-                Spacer(minLength: 0)
                 RecapStoryPageForeground(
                     snapshot: snapshot,
                     page: page,
                     displayedDistance: snapshot.distanceMeters,
                     routeImage: routeImage,
                     motion: 0,
-                    reduceMotion: true
+                    reduceMotion: true,
+                    pageElapsed: RecapIntroReveal.settledElapsed
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onGlassShell()

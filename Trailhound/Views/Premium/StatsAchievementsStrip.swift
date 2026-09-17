@@ -40,13 +40,17 @@ struct StatsAchievementsStrip: View {
 
     @ViewBuilder
     private var idleMedals: some View {
-        ViewThatFits(in: .horizontal) {
-            medalRow
-            ScrollView(.horizontal, showsIndicators: false) {
-                medalRow
+        AchievementStripWrapLayout(
+            spacing: AchievementGalleryTokens.compactSpacing,
+            lineSpacing: AchievementGalleryTokens.compactLineSpacing
+        ) {
+            ForEach(visible) { item in
+                AchievementBadgeView(item: item, compact: true, playsMotion: !isExpanded)
+                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
         .achievementIdleClock(enabled: ticksIdleClock && !isExpanded)
     }
 
@@ -54,18 +58,84 @@ struct StatsAchievementsStrip: View {
         !reduceMotion && !UITestSupport.isEnabled && achievements.contains(where: \.isUnlocked)
     }
 
-    private var medalRow: some View {
-        HStack(spacing: 10) {
-            ForEach(visible) { item in
-                AchievementBadgeView(item: item, compact: true, playsMotion: !isExpanded)
-                    .accessibilityHidden(true)
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
     private var visible: [AchievementDisplay] {
         AchievementStripPreview.medals(from: achievements)
+    }
+}
+
+/// Wraps compact medals into centered rows so the Recap card grows down instead of scrolling sideways.
+struct AchievementStripWrapLayout: Layout {
+    var spacing: CGFloat
+    var lineSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let packWidth = packingWidth(proposal.width)
+        let rows = rowRanges(maxWidth: packWidth, subviews: subviews)
+        guard !rows.isEmpty else { return .zero }
+        let width = proposal.width ?? rowWidth(rows[0], subviews: subviews)
+        var height: CGFloat = 0
+        for (index, row) in rows.enumerated() {
+            if index > 0 { height += lineSpacing }
+            height += rowHeight(row, subviews: subviews)
+        }
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = rowRanges(maxWidth: packingWidth(bounds.width), subviews: subviews)
+        var y = bounds.minY
+        for row in rows {
+            let height = rowHeight(row, subviews: subviews)
+            var x = bounds.minX + (bounds.width - rowWidth(row, subviews: subviews)) / 2
+            for index in row {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(
+                    at: CGPoint(x: x, y: y + (height - size.height) / 2),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width + spacing
+            }
+            y += height + lineSpacing
+        }
+    }
+
+    private func packingWidth(_ proposed: CGFloat?) -> CGFloat {
+        guard let proposed, proposed.isFinite, proposed >= AchievementGalleryTokens.compactCellWidth else {
+            return .infinity
+        }
+        return proposed
+    }
+
+    private func rowRanges(maxWidth: CGFloat, subviews: Subviews) -> [[Int]] {
+        var rows: [[Int]] = []
+        var current: [Int] = []
+        var currentWidth: CGFloat = 0
+        for index in subviews.indices {
+            let width = subviews[index].sizeThatFits(.unspecified).width
+            let extra = current.isEmpty ? 0 : spacing
+            if !current.isEmpty, currentWidth + extra + width > maxWidth + 0.5 {
+                rows.append(current)
+                current = [index]
+                currentWidth = width
+            } else {
+                current.append(index)
+                currentWidth += extra + width
+            }
+        }
+        if !current.isEmpty {
+            rows.append(current)
+        }
+        return rows
+    }
+
+    private func rowWidth(_ row: [Int], subviews: Subviews) -> CGFloat {
+        let widths = row.map { subviews[$0].sizeThatFits(.unspecified).width }
+        return widths.reduce(0, +) + spacing * CGFloat(max(row.count - 1, 0))
+    }
+
+    private func rowHeight(_ row: [Int], subviews: Subviews) -> CGFloat {
+        row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
     }
 }
 
@@ -96,7 +166,10 @@ struct AchievementBadgeView: View {
                 }
             }
         }
-        .frame(width: compact ? 52 : 96, height: compact ? 56 : nil)
+        .frame(
+            width: compact ? AchievementGalleryTokens.compactCellWidth : 96,
+            height: compact ? AchievementGalleryTokens.compactCellHeight : nil
+        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(compactAccessibilityLabel)
     }

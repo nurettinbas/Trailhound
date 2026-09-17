@@ -7,6 +7,10 @@ enum AchievementGalleryTokens {
     static let medalSize: CGFloat = 48
     static let expandedMedalSize: CGFloat = 128
     static let compactMedalSize: CGFloat = 44
+    static let compactCellWidth: CGFloat = 52
+    static let compactCellHeight: CGFloat = 56
+    static let compactSpacing: CGFloat = 10
+    static let compactLineSpacing: CGFloat = 8
     /// Unlock overlay dwell before the next unseen badge.
     static let unlockDwell: TimeInterval = 3
     static let shareSlotHeight: CGFloat = 44

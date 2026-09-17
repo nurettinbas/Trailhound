@@ -62,14 +62,19 @@ public struct ShellRGB: Sendable, Equatable {
         return ShellRGB(r + m, g + m, b + m)
     }
 
-    /// Vivid opposite hue of this swatch so artwork reads on the shell, not same-family yellow-on-gold.
-    public func complementaryInk(for scheme: ColorScheme) -> ShellRGB {
+    /// Vivid hue rotated from this swatch so mix stops stay distinct on the shell.
+    public func rotatedInk(degrees: Double, for scheme: ColorScheme) -> ShellRGB {
         let source = hsl
         return .hsl(
-            hue: source.h + 180,
+            hue: source.h + degrees,
             saturation: max(0.76, source.s),
             lightness: scheme == .dark ? 0.66 : 0.56
         )
+    }
+
+    /// Vivid opposite hue of this swatch so artwork reads on the shell, not same-family yellow-on-gold.
+    public func complementaryInk(for scheme: ColorScheme) -> ShellRGB {
+        rotatedInk(degrees: 180, for: scheme)
     }
 }
 

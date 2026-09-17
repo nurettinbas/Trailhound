@@ -83,6 +83,27 @@ final class ShellPaletteTests: XCTestCase {
         let skyInk = ShellPalette.sky.atmosphere(for: .light).mid.complementaryInk(for: .light)
         XCTAssertGreaterThan(skyInk.r, skyInk.b)
         XCTAssertNotEqual(goldInk, skyInk)
+        XCTAssertEqual(
+            ShellPalette.sky.atmosphere(for: .light).mid.rotatedInk(degrees: 180, for: .light),
+            skyInk
+        )
+    }
+
+    func testForecastMixStopsUseDistinctHuesAndThemeTint() {
+        func hueDistance(_ a: Double, _ b: Double) -> Double {
+            let delta = abs(a - b).truncatingRemainder(dividingBy: 360)
+            return min(delta, 360 - delta)
+        }
+
+        for palette in ShellPalette.allCases {
+            let drive = StatsSegmentTokens.fillRGB(index: 0, scheme: .light, palette: palette)
+            let installments = StatsSegmentTokens.fillRGB(index: 1, scheme: .light, palette: palette)
+            let other = StatsSegmentTokens.fillRGB(index: 2, scheme: .light, palette: palette)
+            XCTAssertEqual(drive, palette.atmosphere(for: .light).tint, palette.rawValue)
+            XCTAssertGreaterThan(hueDistance(drive.hsl.h, installments.hsl.h), 40, palette.rawValue)
+            XCTAssertGreaterThan(hueDistance(drive.hsl.h, other.hsl.h), 40, palette.rawValue)
+            XCTAssertGreaterThan(hueDistance(installments.hsl.h, other.hsl.h), 40, palette.rawValue)
+        }
     }
 
     func testOrangeLightIsNotNavy() {

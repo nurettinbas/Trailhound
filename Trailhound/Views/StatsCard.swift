@@ -30,14 +30,23 @@ enum StatsCardTokens {
     static let posterStackedArtworkHeight: CGFloat = 88
 }
 
-/// Palette-tint opacities for `StatsSegmentBar` — not expense-category colors.
+/// Distinct mix-bar hues. Stop 0 is the selected shell tint; later stops rotate that hue.
+/// Not expense-category colors and not the same tint at lower opacity.
 enum StatsSegmentTokens {
-    static let opacities: [Double] = [0.95, 0.55, 0.28]
     static let spacing: CGFloat = 1
+    /// Drive / installments / other. `0` keeps the theme color; `180` / `90` split the wheel.
+    static let hueOffsets: [Double] = [0, 180, 90]
+
+    static func fillRGB(index: Int, scheme: ColorScheme, palette: ShellPalette) -> ShellRGB {
+        let tint = palette.atmosphere(for: scheme).tint
+        let clamped = min(max(index, 0), hueOffsets.count - 1)
+        let offset = hueOffsets[clamped]
+        guard offset != 0 else { return tint }
+        return tint.rotatedInk(degrees: offset, for: scheme)
+    }
 
     static func fill(index: Int, scheme: ColorScheme, palette: ShellPalette) -> Color {
-        let clamped = min(max(index, 0), opacities.count - 1)
-        return palette.tintColor(for: scheme).opacity(opacities[clamped])
+        fillRGB(index: index, scheme: scheme, palette: palette).color
     }
 }
 
@@ -73,7 +82,8 @@ enum StatsCardFill {
 struct StatsSegment: Identifiable, Equatable {
     let id: String
     let share: Double
-    let opacity: Double
+    /// Mix-bar stop (`StatsSegmentTokens.hueOffsets`). Survives filtering zero shares.
+    let stop: Int
 }
 
 /// Small supporting copy on Stats cards uses the shell-wide Light white hierarchy.
@@ -162,7 +172,7 @@ private struct StatsFrostChipModifier: ViewModifier {
     }
 }
 
-/// Palette-tint capsule mix for composition (month forecast). Vehicle compare uses `StatsShareBar`.
+/// Distinct-hue capsule mix for composition (month forecast). Vehicle compare uses `StatsShareBar`.
 struct StatsSegmentBar: View {
     let segments: [StatsSegment]
     @Environment(\.colorScheme) private var colorScheme
@@ -177,7 +187,13 @@ struct StatsSegmentBar: View {
             HStack(spacing: StatsSegmentTokens.spacing) {
                 ForEach(visibleSegments) { segment in
                     Capsule()
-                        .fill(shellPalette.tintColor(for: colorScheme).opacity(segment.opacity))
+                        .fill(
+                            StatsSegmentTokens.fill(
+                                index: segment.stop,
+                                scheme: colorScheme,
+                                palette: shellPalette
+                            )
+                        )
                         .frame(width: segmentWidth(share: segment.share, drawnWidth: drawnWidth))
                 }
             }

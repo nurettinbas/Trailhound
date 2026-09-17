@@ -159,6 +159,15 @@ final class AchievementEvaluatorTests: XCTestCase {
         )
         XCTAssertEqual(AchievementStripPreview.medals(from: [unlocked, locked]).map(\.id), [.firstTrip])
         XCTAssertTrue(AchievementStripPreview.medals(from: [locked]).isEmpty)
+        let many = AchievementID.allCases.prefix(9).map { id in
+            AchievementDisplay(
+                id: id,
+                currentValue: 1,
+                unlockedAt: Date(),
+                needsCelebration: false
+            )
+        }
+        XCTAssertEqual(AchievementStripPreview.medals(from: many + [locked]).count, 9)
     }
 
     func testApplyReturnsNewlyUnlockedWithoutInboxWhenNotifyFalse() throws {

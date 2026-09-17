@@ -312,7 +312,8 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   is stamped with `YearRecapCache.schemaVersion` (currently 3); a `storeVersion` change skips disk and rebuilds.
   Story pages are built before the cover appears; the snapshot is frozen at open; there is no fetch
   on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
-  is not rebuilt every frame (Low Power 12 fps). Recap badges compact strip uses `achievementIdleClock`
+  is not rebuilt every frame (Low Power 12 fps). Recap badges compact card wraps unlocked medals
+  in centered rows (no horizontal scroller) and uses `achievementIdleClock`
   (`CADisplayLink` at 12 fps, same host as the recording road) because iOS pauses `TimelineView` and `.task` sleep inside a `List`, which froze medals on a stale tick.
   Gallery overlay uses the same `achievementIdleClock` after the morph (not `withAnimation` 0→1, which parks the 100 km car at opacity 0). Tab switches use `TrailhoundMotion.tabSwitch`.
   Do not put `animation = nil` on `TabView` — that pauses `TimelineView.animation` (recap / onboarding)
