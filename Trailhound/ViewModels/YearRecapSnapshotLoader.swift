@@ -54,6 +54,17 @@ actor YearRecapSnapshotLoader {
         var otherDistance = 0.0
         var monthDistance: [Int: Double] = [:]
         var activeDays = Set<Date>()
+        var purposeTotals: [String: RecapPurposeBucket] = [:]
+
+        let categories = (try? modelContext.fetch(FetchDescriptor<UserCategory>())) ?? []
+        var customNames: [String: String] = [:]
+        for category in categories where !category.isBuiltIn {
+            let trimmed = category.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                customNames[category.id.uuidString] = trimmed
+            }
+        }
+        let knownCustomIDs = Set(customNames.keys)
 
         let businessID = BuiltInCategory.businessID.uuidString
         let legacyBusiness = TripCategory.business.rawValue
@@ -68,6 +79,19 @@ actor YearRecapSnapshotLoader {
             } else {
                 otherDistance += rollup.distanceMeters
             }
+            let key = RecapPurposePolicy.bucketKey(
+                forCategoryID: rollup.categoryID,
+                knownCustomIDs: knownCustomIDs
+            )
+            let kind = RecapPurposePolicy.kind(forCategoryID: rollup.categoryID)
+            let resolvedKind: RecapPurposeKind = key == "other" ? .custom : kind
+            var bucket = purposeTotals[key] ?? RecapPurposeBucket(
+                kind: resolvedKind,
+                customName: key == "other" ? nil : customNames[key],
+                distanceMeters: 0
+            )
+            bucket.distanceMeters += rollup.distanceMeters
+            purposeTotals[key] = bucket
             let month = calendar.component(.month, from: rollup.dayStart)
             monthDistance[month, default: 0] += rollup.distanceMeters
             if rollup.tripCount > 0 {
@@ -137,6 +161,7 @@ actor YearRecapSnapshotLoader {
             busiestMonthDistanceMeters: busiest?.value ?? 0,
             businessDistanceMeters: businessDistance,
             personalDistanceMeters: otherDistance,
+            purposeVerdict: RecapPurposePolicy.verdict(from: Array(purposeTotals.values)),
             estimatedFuelCost: fuel,
             paidExpenses: paid,
             unlockedAchievementIDs: unlocked

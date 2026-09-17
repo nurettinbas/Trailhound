@@ -86,6 +86,8 @@ struct RecapPageScene: View {
     var reduceMotion: Bool
     var badgeIDs: [AchievementID] = []
     var motion: TimeInterval = 0
+    var purposeShare: Double = 0
+    var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -96,7 +98,10 @@ struct RecapPageScene: View {
             scheme: colorScheme,
             kind: page,
             badgeIDs: badgeIDs,
-            motion: reduceMotion ? 0 : motion
+            motion: reduceMotion ? 0 : motion,
+            purposeShare: purposeShare,
+            pageElapsed: pageElapsed,
+            reduceMotion: reduceMotion
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
@@ -161,8 +166,12 @@ struct RecapStoryPageForeground: View {
                 }
             }
         }
-        .padding(.bottom, page == .intro ? 0 : 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: page == .intro ? .center : .bottom)
+        .padding(.bottom, page == .intro || page == .categories ? 0 : 10)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: page == .intro || page == .categories ? .center : .bottom
+        )
         .allowsHitTesting(false)
     }
 }
@@ -216,6 +225,105 @@ private struct RecapIntroTitleCard: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RecapPurposeTitleCard: View {
+    let verdict: RecapPurposeVerdict
+    var elapsed: TimeInterval
+    var reduceMotion: Bool
+
+    @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let glow = shellPalette.atmosphere(for: colorScheme).glow.color
+        let kicker = RecapIntroReveal.kickerOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        let heroOpacity = RecapIntroReveal.yearOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        let heroScale = RecapIntroReveal.yearScale(elapsed: elapsed, reduceMotion: reduceMotion)
+        let whisper = RecapIntroReveal.whisperOpacity(elapsed: elapsed, reduceMotion: reduceMotion)
+        VStack(spacing: 16) {
+            VStack(spacing: 8) {
+                Text(L10n.string("premium.recap.purpose_kicker"))
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.8)
+                    .glassSecondaryInk()
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
+                    .opacity(kicker)
+                Text(verbatim: RecapPurposePolicy.heroTitle(for: verdict))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .glassPrimaryInk()
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.55)
+                    .lineLimit(2)
+                    .shadow(color: glow.opacity(0.45), radius: 20)
+                    .shadow(color: glow.opacity(0.22), radius: 6)
+                    .scaleEffect(heroScale)
+                    .opacity(heroOpacity)
+                Text(verbatim: RecapPurposePolicy.whisper(for: verdict))
+                    .font(.subheadline.weight(.medium).monospacedDigit())
+                    .glassSecondaryInk()
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                    .opacity(whisper)
+            }
+            if !verdict.slices.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(verdict.slices.enumerated()), id: \.offset) { _, slice in
+                        RecapPurposeMixRow(
+                            slice: slice,
+                            isWinner: isWinner(slice)
+                        )
+                    }
+                }
+                .frame(maxWidth: 280)
+                .opacity(whisper)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func isWinner(_ slice: RecapPurposeSlice) -> Bool {
+        guard slice.kind == verdict.kind else { return false }
+        guard slice.kind == .custom else { return true }
+        return RecapPurposePolicy.normalizedCustomName(slice.customName)
+            == RecapPurposePolicy.normalizedCustomName(verdict.customName)
+    }
+}
+
+private struct RecapPurposeMixRow: View {
+    let slice: RecapPurposeSlice
+    var isWinner: Bool
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text(verbatim: RecapPurposePolicy.percentLabel(slice.share))
+                .font(
+                    isWinner
+                        ? .title2.weight(.bold).monospacedDigit()
+                        : .headline.weight(.semibold).monospacedDigit()
+                )
+                .glassPrimaryInk()
+                .opacity(isWinner ? 1 : 0.72)
+                .frame(minWidth: 56, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: RecapPurposePolicy.displayName(for: slice))
+                    .font(isWinner ? .headline.weight(.semibold) : .subheadline.weight(.medium))
+                    .glassPrimaryInk()
+                    .opacity(isWinner ? 1 : 0.78)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Text(verbatim: DateFormatters.formatDistance(slice.distanceMeters))
+                    .font(.caption.monospacedDigit())
+                    .glassSecondaryInk()
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -314,31 +422,12 @@ struct RecapStoryPageCopy: View {
             }
             .multilineTextAlignment(.center)
         case .categories:
-            VStack(spacing: 10) {
-                Text(L10n.string("premium.recap.categories_title"))
-                    .font(.headline)
-                    .glassSecondaryInk()
-                HStack(spacing: 28) {
-                    VStack {
-                        Text(DateFormatters.formatDistance(snapshot.businessDistanceMeters))
-                            .font(.title3.weight(.bold).monospacedDigit())
-                            .glassPrimaryInk()
-                            .minimumScaleFactor(0.7)
-                            .lineLimit(1)
-                        Text(L10n.string("premium.recap.business"))
-                            .glassSecondaryInk()
-                    }
-                    VStack {
-                        Text(DateFormatters.formatDistance(snapshot.otherDistanceMeters))
-                            .font(.title3.weight(.bold).monospacedDigit())
-                            .glassPrimaryInk()
-                            .minimumScaleFactor(0.7)
-                            .lineLimit(1)
-                        Text(L10n.string("premium.recap.other"))
-                            .glassSecondaryInk()
-                    }
-                }
-                .font(.caption)
+            if let verdict = snapshot.purposeVerdict {
+                RecapPurposeTitleCard(
+                    verdict: verdict,
+                    elapsed: pageElapsed,
+                    reduceMotion: reduceMotion
+                )
             }
         case .cost:
             VStack(spacing: 10) {
@@ -546,6 +635,9 @@ private struct RecapStoryCanvas: View {
     let kind: RecapStoryPage
     let badgeIDs: [AchievementID]
     var motion: TimeInterval = 0
+    var purposeShare: Double = 0
+    var pageElapsed: TimeInterval = RecapIntroReveal.settledElapsed
+    var reduceMotion: Bool = true
 
     var body: some View {
         Canvas { context, size in
@@ -604,7 +696,7 @@ private struct RecapStoryCanvas: View {
                     endPoint: CGPoint(x: size.width / 2, y: size.height)
                 )
             )
-        if kind != .badges && kind != .intro {
+        if kind != .badges && kind != .intro && kind != .categories {
             let sunY = kind == .time ? size.height * 0.2 : size.height * 0.16
             let sunSize: CGFloat = kind == .time ? 52 : 44
             let breathe = RecapSceneMotion.phase(6, at: motion)
@@ -622,7 +714,7 @@ private struct RecapStoryCanvas: View {
             context.fill(Path(ellipseIn: sunRect), with: .color(sunColor.opacity(kind == .time ? 0.92 : 0.8)))
         }
         let compact = size.height <= RecapHubTeaserMetrics.posterHeight + 1
-        if !compact && kind != .intro {
+        if !compact && kind != .intro && kind != .categories {
             drawAmbientSparkles(context: &context, size: size, glow: glow)
         }
     }
@@ -894,31 +986,53 @@ private struct RecapStoryCanvas: View {
     }
 
     private func drawCategories(context: inout GraphicsContext, size: CGSize, tint: Color, glow: Color) {
-        let horizon = CGPoint(x: size.width * 0.5, y: size.height * 0.4)
-        var left = Path()
-        left.move(to: horizon)
-        left.addLine(to: CGPoint(x: size.width * 1.05, y: size.height * 1.02))
-        left.addLine(to: CGPoint(x: size.width * 0.5, y: size.height * 1.02))
-        left.closeSubpath()
-        var right = Path()
-        right.move(to: horizon)
-        right.addLine(to: CGPoint(x: size.width * 0.5, y: size.height * 1.02))
-        right.addLine(to: CGPoint(x: -size.width * 0.05, y: size.height * 1.02))
-        right.closeSubpath()
-        let breathe = RecapSceneMotion.phase(9, at: motion)
-        context.fill(left, with: .color(tint.opacity(0.28 + 0.14 * Double(breathe))))
-        context.fill(right, with: .color(glow.opacity(0.38 - 0.12 * Double(breathe))))
-        var split = Path()
-        split.move(to: horizon)
-        split.addLine(to: CGPoint(x: size.width * 0.5, y: size.height))
-        let dashPhase = RecapSceneMotion.saw(3.2, at: motion) * 18
-        context.stroke(
-            split,
-            with: .color(.white.opacity(0.7)),
-            style: StrokeStyle(lineWidth: 3, dash: [10, 8], dashPhase: dashPhase)
+        let horizonY = size.height * 0.40
+        drawVanishingRoad(context: &context, size: size, horizonY: horizonY, tint: tint)
+        let reveal = RecapIntroReveal.yearOpacity(elapsed: pageElapsed, reduceMotion: reduceMotion)
+        let painted = CGFloat(min(1, max(0, purposeShare))) * CGFloat(reveal)
+        let horizon = CGPoint(x: size.width * 0.5, y: horizonY)
+        let roadHeight = size.height - horizonY
+        guard painted > 0.02, roadHeight > 0 else { return }
+        let endY = horizonY + roadHeight * painted
+        let t = min(1, max(0, (endY - horizonY) / roadHeight))
+        let leftX = size.width * 0.5 + (-size.width * 0.08 - size.width * 0.5) * t
+        let rightX = size.width * 0.5 + (size.width * 1.08 - size.width * 0.5) * t
+        var wash = Path()
+        wash.move(to: horizon)
+        wash.addLine(to: CGPoint(x: rightX, y: endY))
+        wash.addLine(to: CGPoint(x: leftX, y: endY))
+        wash.closeSubpath()
+        context.fill(
+            wash,
+            with: .linearGradient(
+                Gradient(colors: [tint.opacity(0.18), tint.opacity(0.55)]),
+                startPoint: horizon,
+                endPoint: CGPoint(x: size.width * 0.5, y: endY)
+            )
         )
-        context.stroke(edge(from: horizon, to: CGPoint(x: size.width * 0.08, y: size.height)), with: .color(.white.opacity(0.35)), lineWidth: 2)
-        context.stroke(edge(from: horizon, to: CGPoint(x: size.width * 0.92, y: size.height)), with: .color(.white.opacity(0.35)), lineWidth: 2)
+        let remainder = 1 - painted
+        if remainder > 0.04 {
+            let ribbon = StatsChartTheme.forecastSparklineStrokeRGB(scheme: scheme, palette: palette).color
+            let inner = 0.08 + 0.18 * (1 - t)
+            var stripe = Path()
+            stripe.move(to: CGPoint(x: rightX - size.width * inner, y: endY))
+            stripe.addLine(to: CGPoint(x: size.width * 0.84, y: size.height * 1.02))
+            context.stroke(
+                stripe,
+                with: .color(ribbon.opacity(0.55 + 0.2 * Double(RecapSceneMotion.phase(6, at: motion)))),
+                style: StrokeStyle(lineWidth: 3.5 + 6 * (1 - t), lineCap: .round)
+            )
+        }
+        let bloom = 10 + 28 * RecapSceneMotion.phase(6, at: motion)
+        context.fill(
+            Path(ellipseIn: CGRect(x: horizon.x - bloom, y: horizon.y - bloom * 0.5, width: bloom * 2, height: bloom)),
+            with: .radialGradient(
+                Gradient(colors: [glow.opacity(0.35), .clear]),
+                center: horizon,
+                startRadius: 2,
+                endRadius: bloom
+            )
+        )
     }
 
     private func drawCost(context: inout GraphicsContext, size: CGSize, tint: Color, glow: Color) {

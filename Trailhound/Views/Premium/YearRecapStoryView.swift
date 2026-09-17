@@ -155,7 +155,9 @@ struct YearRecapStoryView: View {
                     isActive: true,
                     reduceMotion: freezeStoryMotion,
                     badgeIDs: RecapStoryBadgeIDs.resolved(from: frozen),
-                    motion: t
+                    motion: t,
+                    purposeShare: frozen.purposeVerdict?.share ?? 0,
+                    pageElapsed: pageElapsed(now: now)
                 )
                 .id(currentPage)
                 .transition(
@@ -180,7 +182,7 @@ struct YearRecapStoryView: View {
             )
             .id(playback.pageIndex)
             .transition(
-                currentPage == .intro
+                currentPage == .intro || currentPage == .categories
                     ? TrailhoundMotion.recapIntroCopyTransition(reduceMotion: freezeStoryMotion)
                     : TrailhoundMotion.recapCopyTransition(reduceMotion: freezeStoryMotion)
             )

@@ -306,6 +306,7 @@
 		A1YEARRECAPSNAP000001 /* YearRecapSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */; };
 		A1RECAPPLAYBACK000001 /* RecapStoryPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */; };
 		A1RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */; };
+		A1RECAPPURPOSEPOL001 /* RecapPurposePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPPURPOSEPOL001 /* RecapPurposePolicy.swift */; };
 		A1RECAPYEARPOLICY0001 /* RecapYearPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */; };
 		A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */; };
 		A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */; };
@@ -695,6 +696,7 @@
 		A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearRecapSnapshot.swift; sourceTree = "<group>"; };
 		A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapStoryPlayback.swift; sourceTree = "<group>"; };
 		A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapStoryPagePolicy.swift; sourceTree = "<group>"; };
+		A2RECAPPURPOSEPOL001 /* RecapPurposePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapPurposePolicy.swift; sourceTree = "<group>"; };
 		A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapYearPolicy.swift; sourceTree = "<group>"; };
 		A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearRecapSnapshotLoader.swift; sourceTree = "<group>"; };
 		A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumWidgetBridge.swift; sourceTree = "<group>"; };
@@ -1029,6 +1031,7 @@
 				A2YEARRECAPSNAP000001 /* YearRecapSnapshot.swift */,
 				A2RECAPPLAYBACK000001 /* RecapStoryPlayback.swift */,
 				A2RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift */,
+				A2RECAPPURPOSEPOL001 /* RecapPurposePolicy.swift */,
 				A2RECAPYEARPOLICY0001 /* RecapYearPolicy.swift */,
 				A2YEARRECAPLOAD000001 /* YearRecapSnapshotLoader.swift */,
 				A2SPEEDCHARTSERIES0001 /* SpeedChartSeries.swift */,
@@ -1771,6 +1774,7 @@
 				A1YEARRECAPSNAP000001 /* YearRecapSnapshot.swift in Sources */,
 				A1RECAPPLAYBACK000001 /* RecapStoryPlayback.swift in Sources */,
 				A1RECAPPAGEPOLICY0001 /* RecapStoryPagePolicy.swift in Sources */,
+				A1RECAPPURPOSEPOL001 /* RecapPurposePolicy.swift in Sources */,
 				A1RECAPYEARPOLICY0001 /* RecapYearPolicy.swift in Sources */,
 				A1YEARRECAPSCENES00001 /* YearRecapScenes.swift in Sources */,
 				A1YEARRECAPSTORY00001 /* YearRecapStoryView.swift in Sources */,

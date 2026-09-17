@@ -21,6 +21,7 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
     var businessDistanceMeters: Double
     /// Non-business distance (custom categories included). Display as "Other".
     var personalDistanceMeters: Double
+    var purposeVerdict: RecapPurposeVerdict?
     var estimatedFuelCost: Double
     var paidExpenses: Double
     var unlockedAchievementIDs: [String]
@@ -51,6 +52,7 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
             busiestMonthDistanceMeters: 0,
             businessDistanceMeters: 0,
             personalDistanceMeters: 0,
+            purposeVerdict: nil,
             estimatedFuelCost: 0,
             paidExpenses: 0,
             unlockedAchievementIDs: []
@@ -61,7 +63,7 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
 }
 
 enum YearRecapCache {
-    static let schemaVersion = 3
+    static let schemaVersion = 5
     private static let directoryName = "YearRecapSnapshots"
 
     private struct Record: Codable {

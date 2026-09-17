@@ -93,7 +93,9 @@ private struct RecapShareCardView: View {
                 isActive: true,
                 reduceMotion: true,
                 badgeIDs: RecapStoryBadgeIDs.resolved(from: snapshot),
-                motion: 0
+                motion: 0,
+                purposeShare: snapshot.purposeVerdict?.share ?? 0,
+                pageElapsed: RecapIntroReveal.settledElapsed
             )
             RecapStoryBottomScrim()
             VStack(spacing: 0) {

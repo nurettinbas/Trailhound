@@ -237,6 +237,125 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.businessDistanceMeters, 0, accuracy: 0.1)
         XCTAssertEqual(snapshot.otherDistanceMeters, 5_000, accuracy: 0.1)
         XCTAssertEqual(snapshot.personalDistanceMeters, snapshot.otherDistanceMeters, accuracy: 0.1)
+        XCTAssertNil(snapshot.purposeVerdict)
+        XCTAssertFalse(RecapStoryPagePolicy.pages(for: snapshot).contains(.categories))
+    }
+
+    func testPurposePolicySkipsOneBucketTieAndTinyWinner() {
+        XCTAssertNil(
+            RecapPurposePolicy.verdict(from: [
+                RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 120_000)
+            ])
+        )
+        XCTAssertNil(
+            RecapPurposePolicy.verdict(from: [
+                RecapPurposeBucket(kind: .business, customName: nil, distanceMeters: 60_000),
+                RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 60_000)
+            ])
+        )
+        XCTAssertNil(
+            RecapPurposePolicy.verdict(from: [
+                RecapPurposeBucket(kind: .business, customName: nil, distanceMeters: 20_000),
+                RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 10_000)
+            ])
+        )
+        XCTAssertNil(
+            RecapPurposePolicy.verdict(from: [
+                RecapPurposeBucket(kind: .business, customName: nil, distanceMeters: 340_000),
+                RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 330_000),
+                RecapPurposeBucket(kind: .custom, customName: "Aile", distanceMeters: 330_000)
+            ])
+        )
+        var empty = YearRecapSnapshot.empty(year: 2026)
+        XCTAssertFalse(RecapStoryPagePolicy.pages(for: empty).contains(.categories))
+        empty.purposeVerdict = RecapPurposeVerdict(
+            kind: .custom,
+            customName: "Aile",
+            distanceMeters: 80_000,
+            share: 80_000 / 120_000,
+            slices: [
+                RecapPurposeSlice(kind: .custom, customName: "Aile", distanceMeters: 80_000, share: 80_000 / 120_000),
+                RecapPurposeSlice(kind: .personal, customName: nil, distanceMeters: 40_000, share: 40_000 / 120_000)
+            ]
+        )
+        XCTAssertTrue(RecapStoryPagePolicy.pages(for: empty).contains(.categories))
+        XCTAssertTrue(RecapPurposePolicy.heroTitle(for: empty.purposeVerdict!).contains("Aile"))
+    }
+
+    func testPurposePolicyListsRankedSlicesAndFoldsOther() {
+        let split = RecapPurposePolicy.verdict(from: [
+            RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 720_000),
+            RecapPurposeBucket(kind: .business, customName: nil, distanceMeters: 480_000)
+        ])
+        XCTAssertEqual(split?.slices.count, 2)
+        XCTAssertEqual(split?.slices[0].kind, .personal)
+        XCTAssertEqual(split?.slices[0].share ?? 0, 720_000 / 1_200_000, accuracy: 0.001)
+        XCTAssertEqual(split?.slices[1].kind, .business)
+        XCTAssertEqual(split?.slices[1].distanceMeters ?? 0, 480_000, accuracy: 0.1)
+        let whisper = RecapPurposePolicy.whisper(for: split!)
+        XCTAssertFalse(whisper.contains("·"))
+        XCTAssertTrue(whisper.contains("60") || whisper.contains("%") || whisper.contains("٪"))
+
+        let folded = RecapPurposePolicy.verdict(from: [
+            RecapPurposeBucket(kind: .personal, customName: nil, distanceMeters: 500_000),
+            RecapPurposeBucket(kind: .business, customName: nil, distanceMeters: 200_000),
+            RecapPurposeBucket(kind: .custom, customName: "Aile", distanceMeters: 80_000),
+            RecapPurposeBucket(kind: .custom, customName: "Kamp", distanceMeters: 40_000),
+            RecapPurposeBucket(kind: .custom, customName: "Okul", distanceMeters: 30_000)
+        ])
+        XCTAssertEqual(folded?.slices.count, RecapPurposePolicy.maxVisibleSlices)
+        XCTAssertEqual(folded?.slices[0].kind, .personal)
+        XCTAssertEqual(folded?.slices[1].kind, .business)
+        XCTAssertEqual(folded?.slices[2].customName, "Aile")
+        XCTAssertEqual(folded?.slices[3].kind, .custom)
+        XCTAssertNil(folded?.slices[3].customName)
+        XCTAssertEqual(folded?.slices[3].distanceMeters ?? 0, 70_000, accuracy: 0.1)
+        XCTAssertEqual(RecapPurposePolicy.displayName(for: folded!.slices[3]), L10n.string("premium.recap.other"))
+    }
+
+    func testPurposeLoaderResolvesCustomCategoryWinner() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let now = Date()
+        let year = RecapYearPolicy.displayYear(now: now)
+        guard let inYear = calendar.date(from: DateComponents(year: year, month: 6, day: 10, hour: 8)) else {
+            return XCTFail("expected a date in recap year")
+        }
+        let family = UserCategory(name: "Aile", systemImage: "house.fill", isBuiltIn: false, sortOrder: 8)
+        context.insert(family)
+        let familyTrip = Trip(
+            startedAt: inYear,
+            endedAt: inYear.addingTimeInterval(3600),
+            distanceMeters: 80_000
+        )
+        familyTrip.categoryID = family.id.uuidString
+        context.insert(familyTrip)
+        TripRollupService.add(familyTrip, in: context)
+        let personalTrip = Trip(
+            startedAt: inYear.addingTimeInterval(8_000),
+            endedAt: inYear.addingTimeInterval(10_000),
+            distanceMeters: 40_000,
+            category: .personal
+        )
+        context.insert(personalTrip)
+        TripRollupService.add(personalTrip, in: context)
+        try context.save()
+
+        let loader = YearRecapSnapshotLoader(modelContainer: container)
+        let snapshot = await loader.snapshot(year: year, storeVersion: 1, now: now)
+        XCTAssertEqual(snapshot.purposeVerdict?.kind, .custom)
+        XCTAssertEqual(snapshot.purposeVerdict?.customName, "Aile")
+        XCTAssertEqual(snapshot.purposeVerdict?.distanceMeters ?? 0, 80_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.purposeVerdict?.share ?? 0, 80_000 / 120_000, accuracy: 0.001)
+        XCTAssertEqual(snapshot.purposeVerdict?.slices.count, 2)
+        XCTAssertEqual(snapshot.purposeVerdict?.slices[0].kind, .custom)
+        XCTAssertEqual(snapshot.purposeVerdict?.slices[0].customName, "Aile")
+        XCTAssertEqual(snapshot.purposeVerdict?.slices[1].kind, .personal)
+        XCTAssertEqual(snapshot.purposeVerdict?.slices[1].distanceMeters ?? 0, 40_000, accuracy: 0.1)
+        XCTAssertTrue(RecapStoryPagePolicy.pages(for: snapshot).contains(.categories))
+        XCTAssertEqual(snapshot.businessDistanceMeters, 0, accuracy: 0.1)
+        XCTAssertEqual(snapshot.otherDistanceMeters, 120_000, accuracy: 0.1)
     }
 
     func testPlaybackFillsLastPageThenFinishes() {
@@ -427,8 +546,18 @@ final class YearRecapSnapshotTests: XCTestCase {
         snapshot.longestStreak = 4
         snapshot.busiestMonth = 8
         snapshot.busiestMonthDistanceMeters = 8_000
-        snapshot.businessDistanceMeters = 10_000
-        snapshot.personalDistanceMeters = 5_000
+        snapshot.businessDistanceMeters = 80_000
+        snapshot.personalDistanceMeters = 40_000
+        snapshot.purposeVerdict = RecapPurposeVerdict(
+            kind: .business,
+            customName: nil,
+            distanceMeters: 80_000,
+            share: 80_000 / 120_000,
+            slices: [
+                RecapPurposeSlice(kind: .business, customName: nil, distanceMeters: 80_000, share: 80_000 / 120_000),
+                RecapPurposeSlice(kind: .personal, customName: nil, distanceMeters: 40_000, share: 40_000 / 120_000)
+            ]
+        )
         snapshot.estimatedFuelCost = 400
         snapshot.paidExpenses = 200
         snapshot.unlockedAchievementIDs = [AchievementID.firstTrip.rawValue]

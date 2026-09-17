@@ -23,7 +23,7 @@ enum RecapStoryPagePolicy {
                     || snapshot.busiestMonth != nil
                     || snapshot.nightDistanceMeters > 0
             case .categories:
-                snapshot.businessDistanceMeters > 0 || snapshot.otherDistanceMeters > 0
+                RecapPurposePolicy.shouldPresent(snapshot.purposeVerdict)
             case .route:
                 snapshot.topRouteCount >= 2
             case .cost:
