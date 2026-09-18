@@ -124,6 +124,7 @@ struct TravelJournalDetailView: View {
             .navigationBarBackButtonHidden(true)
             .background(NavigationInteractivePopEnabler())
             .toolbar {
+                GlassToolbarNavTitleItem(title: journal.title)
                 backToolbar
                 mapExpandToolbar
             }

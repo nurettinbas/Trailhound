@@ -622,9 +622,13 @@ final class YearRecapSnapshotTests: XCTestCase {
             }
         }
 
-        let caption = RecapShareRenderer.caption(for: snapshot)
-        XCTAssertTrue(caption.contains("2026"))
-        XCTAssertTrue(caption.contains("Home"))
+        let introCaption = RecapShareRenderer.caption(for: snapshot, page: .intro)
+        XCTAssertTrue(introCaption.contains("2026"))
+        XCTAssertFalse(introCaption.localizedCaseInsensitiveContains("Trailhound"))
+
+        let routeCaption = RecapShareRenderer.caption(for: snapshot, page: .route)
+        XCTAssertTrue(routeCaption.contains("Home"))
+        XCTAssertFalse(routeCaption.localizedCaseInsensitiveContains("Trailhound"))
     }
 }
 

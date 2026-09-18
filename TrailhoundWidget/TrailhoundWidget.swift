@@ -896,9 +896,25 @@ private struct LiveActivitySmallFamilyBanner: View {
     }
 }
 
-/// CarPlay Dashboard tile. Do not paint a fill — CarPlay wraps this snapshot in
-/// the same Liquid Glass as Now Playing / Maps. Phone-call ghosting is handled by
-/// `LiveActivityDashboardOcclusionMonitor`, not an opaque plate.
+/// Opt out of WidgetKit’s default Live Activity material. `nil` tint is the
+/// extra frost plate; `.clear` leaves only CarPlay’s native glass (Maps / Now Playing).
+private struct CarPlayNativeGlassBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .containerBackground(.clear, for: .widget)
+            .activityBackgroundTint(.clear)
+    }
+}
+
+private extension View {
+    func carPlayNativeGlassBackground() -> some View {
+        modifier(CarPlayNativeGlassBackground())
+    }
+}
+
+/// CarPlay Dashboard tile. Snapshot is content-only: CarPlay wraps it in the
+/// same native Liquid Glass as Now Playing / Maps. Phone-call ghosting is
+/// handled by `LiveActivityDashboardOcclusionMonitor`, not an opaque plate.
 private struct LiveActivityCarPlayDashboardTile: View {
     let state: TripRecordingAttributes.ContentState
     let tileSize: CGSize
@@ -931,7 +947,7 @@ private struct LiveActivityCarPlayDashboardTile: View {
         .environment(\.colorScheme, .dark)
         .frame(width: tileSize.width, height: tileSize.height)
         .clipped()
-        .compositingGroup()
+        .background(.clear)
     }
 
     private func metricColumn(value: String, label: String, valueFontSize: CGFloat) -> some View {
@@ -973,7 +989,7 @@ private struct LiveActivityBannerRoot: View {
             switch activityFamily {
             case .small:
                 LiveActivitySmallFamilyBanner(state: state)
-                    .activityBackgroundTint(nil)
+                    .carPlayNativeGlassBackground()
             case .medium:
                 LiveActivityLockScreenBanner(state: state)
                     .activityBackgroundTint(lockScreenActivityTint)

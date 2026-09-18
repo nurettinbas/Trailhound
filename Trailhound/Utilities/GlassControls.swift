@@ -113,6 +113,35 @@ struct GlassToolbarSymbol: View {
     }
 }
 
+/// Inline navigation title without the iOS 26 glass header capsule.
+/// Place with `ToolbarItem(placement: .title)` and hide the shared platter.
+struct GlassToolbarNavTitle: View {
+    let title: String
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        Text(title)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
+
+/// `ToolbarItem(placement: .title)` plus hidden shared background.
+struct GlassToolbarNavTitleItem: ToolbarContent {
+    let title: String
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .title) {
+            GlassToolbarNavTitle(title: title)
+        }
+        .hideSharedToolbarBackgroundIfAvailable()
+    }
+}
+
 /// Palette-tinted nav-bar title (Save / Cancel / Done). System path has no
 /// custom capsule — the toolbar platter is the chrome.
 struct GlassToolbarTitle: View {

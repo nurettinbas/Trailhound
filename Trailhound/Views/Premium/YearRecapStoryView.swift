@@ -220,7 +220,6 @@ struct YearRecapStoryView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, RecapStoryChromeMetrics.topPadding(windowTop: windowTopInset))
         .ignoresSafeArea(edges: .top)
-        .onGlassShell()
         .zIndex(2)
     }
 
@@ -253,13 +252,17 @@ struct YearRecapStoryView: View {
                 GlassToolbarCluster {
                     ShareLink(
                         item: shareItem,
-                        preview: SharePreview("Trailhound", image: Image(uiImage: shareItem.image))
+                        subject: Text(shareItem.caption),
+                        message: Text(shareItem.caption),
+                        preview: SharePreview(shareItem.caption, image: Image(uiImage: shareItem.image))
                     ) {
                         GlassNavCircleIcon(systemName: "square.and.arrow.up")
                     }
                     .buttonStyle(.glassPlainHit)
+                    .labelStyle(.iconOnly)
                     .disabled(shareItem.image.size.width < 2)
                     .accessibilityIdentifier("stats.premium.recap.share")
+                    .accessibilityLabel(L10n.share)
                     Button(action: close) {
                         GlassNavCircleIcon(systemName: "xmark")
                     }

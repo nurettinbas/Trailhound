@@ -1226,6 +1226,10 @@ private struct GlassNavigationChromeModifier: ViewModifier {
 /// animation, so Trip/Travel detail flashes a cream title plate over MapKit.
 /// Set transparent bar appearances and hide scroll-edge effects as soon as
 /// the hosting controller appears.
+///
+/// Do **not** hide `_UIBarBackground` / scroll-pocket UIViews. iOS 26 draws
+/// Start, merge, bell, back, and share inside those layers — hiding them
+/// leaves empty capsules on Trips and kills detail toolbar buttons.
 private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Controller {
         Controller()

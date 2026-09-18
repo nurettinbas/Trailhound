@@ -23,17 +23,46 @@ enum RecapShareRenderer {
         CGSize(width: layoutWidth, height: layoutWidth * pixelSize.height / pixelSize.width)
     }
 
-    static func caption(for snapshot: YearRecapSnapshot) -> String {
-        var parts = [
-            String(format: L10n.string("premium.recap.share.distance"), snapshot.year, DateFormatters.formatDistance(snapshot.distanceMeters))
-        ]
-        if snapshot.cityCount > 0 {
-            parts.append(String(format: L10n.string("premium.recap.share.cities"), snapshot.cityCount))
+    static func caption(for snapshot: YearRecapSnapshot, page: RecapStoryPage) -> String {
+        switch page {
+        case .intro:
+            "\(L10n.string("premium.recap.intro_kicker")) · \(snapshot.year)"
+        case .distance:
+            DateFormatters.formatDistance(snapshot.distanceMeters)
+        case .cities:
+            String(format: L10n.string("premium.recap.share.cities"), snapshot.cityCount)
+        case .route:
+            if let start = snapshot.topRouteStart, let end = snapshot.topRouteEnd {
+                "\(start) → \(end)"
+            } else {
+                L10n.string("premium.recap.route_title")
+            }
+        case .time:
+            if snapshot.longestStreak > 0 {
+                String(format: L10n.string("premium.recap.streak"), snapshot.longestStreak)
+            } else if snapshot.nightDistanceMeters > 0 {
+                String(format: L10n.string("premium.recap.night"), DateFormatters.formatDistance(snapshot.nightDistanceMeters))
+            } else if let month = snapshot.busiestMonth {
+                String(
+                    format: L10n.string("premium.recap.busiest_month"),
+                    DateFormatters.formatMonthName(month: month, year: snapshot.year)
+                )
+            } else {
+                String(snapshot.year)
+            }
+        case .categories:
+            if let verdict = snapshot.purposeVerdict {
+                RecapPurposePolicy.heroTitle(for: verdict)
+            } else {
+                L10n.string("premium.recap.purpose_kicker")
+            }
+        case .cost:
+            L10n.string("premium.recap.cost_kicker")
+        case .badges:
+            L10n.string("premium.recap.badges_title")
+        case .closing:
+            String(format: L10n.string("premium.recap.closing"), snapshot.year)
         }
-        if snapshot.topRouteCount >= 2, let start = snapshot.topRouteStart, let end = snapshot.topRouteEnd {
-            parts.append("\(start) → \(end)")
-        }
-        return parts.joined(separator: " · ")
     }
 
     static func item(
@@ -51,7 +80,7 @@ enum RecapShareRenderer {
                 scheme: scheme,
                 routeImage: routeImage
             ),
-            caption: caption(for: snapshot)
+            caption: caption(for: snapshot, page: page)
         )
     }
 

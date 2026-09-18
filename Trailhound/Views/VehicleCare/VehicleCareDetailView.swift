@@ -76,9 +76,13 @@ struct VehicleDetailView: View {
                     }
             }
         }
+        .glassNavigationChrome()
         .navigationTitle(vehicle?.name ?? L10n.string("vehicles.care.detail.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            GlassToolbarNavTitleItem(
+                title: vehicle?.name ?? L10n.string("vehicles.care.detail.title")
+            )
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     vehicleSaveTrigger += 1

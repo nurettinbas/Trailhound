@@ -234,6 +234,7 @@ struct TripDetailView: View {
         .navigationBarBackButtonHidden(true)
         .background(NavigationInteractivePopEnabler())
         .toolbar {
+            GlassToolbarNavTitleItem(title: L10n.tripDetailTitle)
             ToolbarItem(placement: .topBarLeading) {
                 GlassToolbarBackButton(action: dismiss.callAsFunction)
             }
