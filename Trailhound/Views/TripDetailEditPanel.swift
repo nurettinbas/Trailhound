@@ -666,10 +666,11 @@ struct TripDetailEditPanel: View {
                         .glassPrimaryInk()
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
