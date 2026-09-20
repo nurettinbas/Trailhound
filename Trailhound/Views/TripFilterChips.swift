@@ -15,6 +15,8 @@ struct TripListFiltersBar: View {
     var places: [SavedPlace] = []
     /// Compact “This week” strip shown above search when non-empty.
     var weekSummaryText: String = ""
+    var weekSummaryRefreshToken: Int = 0
+    var isWeekSummaryRefreshing: Bool = false
 
     @Namespace private var dateChipNamespace
     @Namespace private var vehicleChipNamespace
@@ -109,7 +111,9 @@ struct TripListFiltersBar: View {
         HStack(spacing: 8) {
             Image(systemName: "calendar")
                 .font(.caption.weight(.semibold))
+                .symbolVariant(isWeekSummaryRefreshing ? .fill : .none)
                 .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+                .symbolEffect(.bounce, value: weekSummaryRefreshToken)
                 .frame(width: 16)
 
             Text(L10n.sectionThisWeek)
@@ -123,10 +127,20 @@ struct TripListFiltersBar: View {
                 .foregroundStyle(GlassText.secondary(for: colorScheme))
                 .lineLimit(1)
                 .multilineTextAlignment(.trailing)
-                .numericTextAnimation(value: weekSummaryText)
+                .numericTextAnimation(value: weekSummaryAnimationID)
         }
+        .padding(.vertical, 2)
+        .glassEntranceGlint(
+            cornerRadius: 10,
+            id: "trips.week.\(weekSummaryRefreshToken)",
+            isEnabled: weekSummaryRefreshToken > 0 && !reduceMotion && !UITestSupport.isEnabled
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummaryText)")
+    }
+
+    private var weekSummaryAnimationID: String {
+        WeekSummaryRefresh.animationID(text: weekSummaryText, token: weekSummaryRefreshToken)
     }
 
     private var filtersRevealTransition: AnyTransition {

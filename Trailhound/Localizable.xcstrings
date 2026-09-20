@@ -19320,6 +19320,57 @@
         }
       }
     },
+    "toast.record.fastest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastest cruise · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En hızlı cruise · %@"
+          }
+        }
+      }
+    },
+    "toast.record.kicker" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NEW RECORD"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YENİ REKOR"
+          }
+        }
+      }
+    },
+    "toast.record.longest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longest trip · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En uzun yolculuk · %@"
+          }
+        }
+      }
+    },
     "toast.saved" : {
       "extractionState" : "manual",
       "localizations" : {
