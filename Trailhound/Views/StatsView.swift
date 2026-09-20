@@ -2279,7 +2279,7 @@ struct StatsView: View {
     }
 
     private func fuelFactorTitle(_ kind: FuelFactorKind) -> String {
-        TripDetailViewModel.factorTitle(kind)
+        TripSummaryMetric.factorTitle(kind)
     }
 
     private func nightDayDonut() -> some View {
