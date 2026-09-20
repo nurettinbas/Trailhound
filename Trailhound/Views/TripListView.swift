@@ -10,6 +10,8 @@ struct TripListView: View {
     @Query private var schedules: [VehicleSchedule]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
     @Environment(TripRecordingService.self) private var recordingService
     @Bindable private var settings = AppSettings.shared
 
@@ -66,6 +68,8 @@ struct TripListView: View {
     @State private var hasMorePages = false
     @State private var hasAnyTrips = false
     @State private var weekSummaryText = ""
+    @State private var weekSummaryRefreshToken = 0
+    @State private var isWeekSummaryRefreshing = false
     @State private var showDeepLinkedTrip = false
     @State private var deepLinkedTrip: Trip?
 
@@ -355,6 +359,29 @@ struct TripListView: View {
         )
     }
 
+    @MainActor
+    private func refreshFromPull() async {
+        let playsMotion = WeekSummaryRefresh.shouldPlayMotion(
+            listMode: listMode,
+            weekSummaryText: weekSummaryText,
+            reduceMotion: reduceMotion
+        )
+        if playsMotion {
+            TrailhoundHaptics.selection()
+            isWeekSummaryRefreshing = true
+            weekSummaryRefreshToken += 1
+        }
+        refreshListAggregates()
+        reloadTrips()
+        reloadJournals()
+        careSummary.refresh(in: modelContext)
+        if playsMotion {
+            try? await Task.sleep(for: WeekSummaryRefresh.motionDuration)
+            TrailhoundHaptics.selection()
+            isWeekSummaryRefreshing = false
+        }
+    }
+
     private func newestCompletedTrip() -> Trip? {
         (try? modelContext.fetch(TripListPage.newestCompletedDescriptor()))?.first
     }
@@ -523,7 +550,9 @@ struct TripListView: View {
                         isSearchBusy: isSearchBusy,
                         vehicles: vehicles,
                         places: places,
-                        weekSummaryText: weekSummary
+                        weekSummaryText: weekSummary,
+                        weekSummaryRefreshToken: weekSummaryRefreshToken,
+                        isWeekSummaryRefreshing: isWeekSummaryRefreshing
                     )
                     .background {
                         // Only the stop-credits slide needs this, and a `.global` frame
@@ -613,6 +642,10 @@ struct TripListView: View {
         .glassListChrome()
         // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
         .listSectionSpacing(6)
+        .refreshable {
+            await refreshFromPull()
+        }
+        .tint(shellPalette.tintColor(for: colorScheme).opacity(0.42))
         .onChange(of: searchText) { _, newValue in
             scheduleSearchApply(newValue)
         }
@@ -711,6 +744,7 @@ struct TripListView: View {
                 // New recording must never be blocked by a stuck credits card.
                 if endCredits != nil {
                     endCredits = nil
+                    ToastPresenter.shared.flushRecordingCreditsQueue()
                 }
             } else {
                 isRecordingCardInViewport = true
@@ -721,6 +755,9 @@ struct TripListView: View {
             }
             // Vehicle auto-stop (and other external stops) still get a light morph —
             // full credits play only for manual Stop.
+            if wasActive, !isActive, endCredits == nil {
+                ToastPresenter.shared.flushRecordingCreditsQueue()
+            }
             if wasActive, !isActive, endCredits == nil, morphingTripID == nil,
                let newest = newestCompletedTrip(),
                let endedAt = newest.endedAt,
@@ -1065,6 +1102,7 @@ struct TripListView: View {
         if reduceMotion {
             recordingService.stopManualRecording()
             endCredits = nil
+            ToastPresenter.shared.flushRecordingCreditsQueue()
             clearMorphingTripSoon(delayMilliseconds: 50)
             return
         }
@@ -1167,6 +1205,7 @@ struct TripListView: View {
                 pinnedCreditsCardAnchor = RecordingCardAnchor()
             }
             TrailhoundHaptics.selection()
+            ToastPresenter.shared.flushRecordingCreditsQueue()
             clearMorphingTripSoon(delayMilliseconds: 220)
         }
     }
@@ -1283,6 +1322,17 @@ struct TripListView: View {
             reloadJournals()
             careSummary.refresh(in: modelContext)
             ToastPresenter.shared.show(.tripsMerged)
+            var mergedDescriptor = FetchDescriptor<Trip>(
+                predicate: #Predicate { $0.id == mergedUUID }
+            )
+            mergedDescriptor.fetchLimit = 1
+            if let merged = try? modelContext.fetch(mergedDescriptor).first {
+                PersonalRecordToast.presentIfNeeded(
+                    for: merged,
+                    in: modelContext,
+                    timing: .followingCurrent
+                )
+            }
             if !UITestSupport.isUnitTesting {
                 TripNotificationService.notifyTripsMerged(
                     tripID: mergedUUID,

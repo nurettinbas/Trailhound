@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum ToastKind {
+enum ToastKind: Equatable {
     case saved
     case deleted
     case placeSaved
@@ -17,6 +17,7 @@ enum ToastKind {
     case shortcutsAutomationReached
     case categoryAccepted
     case journalTitleRequired
+    case personalRecord(PersonalRecordBreak)
 
     var message: String {
         switch self {
@@ -35,6 +36,7 @@ enum ToastKind {
         case .shortcutsAutomationReached: L10n.toastShortcutsAutomationReached
         case .categoryAccepted: L10n.toastCategoryAccepted
         case .journalTitleRequired: L10n.journalTitleRequired
+        case .personalRecord(let payload): payload.accessibilityMessage
         }
     }
 
@@ -54,6 +56,8 @@ enum ToastKind {
             "arrow.triangle.merge"
         case .journalTitleRequired:
             "exclamationmark.circle.fill"
+        case .personalRecord:
+            "trophy.fill"
         }
     }
 
@@ -63,6 +67,8 @@ enum ToastKind {
             .orange
         case .tripsMerged:
             TrailhoundBrandColors.brandBottom
+        case .personalRecord:
+            TrailhoundBrandColors.brandBottom
         default:
             .green
         }
@@ -70,10 +76,22 @@ enum ToastKind {
 
     var usesSuccessHaptic: Bool {
         switch self {
-        case .deleted, .categoryDeleted, .journalTitleRequired:
+        case .deleted, .categoryDeleted, .journalTitleRequired, .personalRecord:
             false
         default:
             true
+        }
+    }
+
+    var usesBadgeHaptic: Bool {
+        if case .personalRecord = self { return true }
+        return false
+    }
+
+    var dwellSeconds: TimeInterval {
+        switch self {
+        case .personalRecord: 2.8
+        default: 2
         }
     }
 }
@@ -88,23 +106,31 @@ final class ToastPresenter {
 
     private var dismissTask: Task<Void, Never>?
     private var clearKindTask: Task<Void, Never>?
+    private var creditsQueuedKind: ToastKind?
+    private var creditsFallbackTask: Task<Void, Never>?
+    private var followTask: Task<Void, Never>?
 
     func show(_ kind: ToastKind, playHaptic: Bool = true) {
+        followTask?.cancel()
+        followTask = nil
         dismissTask?.cancel()
         clearKindTask?.cancel()
         self.kind = kind
         withAnimation(TrailhoundMotion.toastSpring) {
             isPresented = true
         }
-        if playHaptic {
-            if kind.usesSuccessHaptic {
+        if playHaptic, !UITestSupport.isEnabled {
+            if kind.usesBadgeHaptic {
+                TrailhoundHaptics.badgeUnlocked()
+            } else if kind.usesSuccessHaptic {
                 TrailhoundHaptics.pairingSucceeded()
             } else {
                 TrailhoundHaptics.selection()
             }
         }
+        let dwell = kind.dwellSeconds
         dismissTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(dwell))
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 self?.dismiss()
@@ -129,6 +155,37 @@ final class ToastPresenter {
             }
         }
     }
+
+    func queueAfterRecordingCredits(_ kind: ToastKind) {
+        creditsFallbackTask?.cancel()
+        creditsQueuedKind = kind
+        creditsFallbackTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3.6))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.flushRecordingCreditsQueue()
+            }
+        }
+    }
+
+    func flushRecordingCreditsQueue() {
+        creditsFallbackTask?.cancel()
+        creditsFallbackTask = nil
+        guard let kind = creditsQueuedKind else { return }
+        creditsQueuedKind = nil
+        show(kind)
+    }
+
+    func queueFollowingCurrent(_ kind: ToastKind) {
+        followTask?.cancel()
+        followTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.show(kind)
+            }
+        }
+    }
 }
 
 struct ToastHostModifier: ViewModifier {
@@ -138,7 +195,7 @@ struct ToastHostModifier: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay(alignment: .top) {
             if presenter.isPresented, let kind = presenter.kind {
-                ToastView(kind: kind)
+                toastContent(for: kind)
                     .padding(.horizontal, GlassTokens.panelHorizontalInset)
                     .padding(.top, 10)
                     .frame(maxWidth: .infinity)
@@ -146,6 +203,15 @@ struct ToastHostModifier: ViewModifier {
                     .zIndex(999)
                     .allowsHitTesting(false)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func toastContent(for kind: ToastKind) -> some View {
+        if case .personalRecord(let payload) = kind {
+            RecordToastView(payload: payload)
+        } else {
+            ToastView(kind: kind)
         }
     }
 }

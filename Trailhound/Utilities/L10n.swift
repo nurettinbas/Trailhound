@@ -663,6 +663,15 @@ enum L10n {
     static var toastCategoryAccepted: String { string("toast.category.accepted") }
     static var toastOrphanSaved: String { string("toast.orphan.saved") }
     static var toastTripsMerged: String { string("toast.trips.merged") }
+    static var toastRecordKicker: String { string("toast.record.kicker") }
+
+    static func toastRecordLongest(_ distance: String) -> String {
+        String(format: string("toast.record.longest"), distance)
+    }
+
+    static func toastRecordFastest(_ speed: String) -> String {
+        String(format: string("toast.record.fastest"), speed)
+    }
 
     static func pairingTabSaveFailed(_ detail: String) -> String {
         String(format: string("pairing.tab.save_failed"), detail)
