@@ -149,7 +149,7 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         let currentMonthStart = StatsViewModel.calendarMonthInterval(containing: Date()).start
         let today = calendar.startOfDay(for: Date())
 
-        // Early in the month, outside a rolling 7-day week window when today is late enough;
+        // Early in the month, outside last-7-calendar-days when today is late enough;
         // when today is near month start this still lands in the goal month.
         let earlyMonthTrip = Trip(
             startedAt: currentMonthStart.addingTimeInterval(10 * 3_600),
@@ -184,6 +184,9 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         XCTAssertEqual(weekSnapshot.goalDistanceMeters, 25_000, accuracy: 0.1)
         // Summary still follows the week filter; goal ring does not.
         XCTAssertLessThanOrEqual(weekSnapshot.stats.totalDistanceMeters, 25_000)
+        XCTAssertEqual(weekSnapshot.periodDayCount, 7)
+        XCTAssertEqual(weekSnapshot.previousPeriodDayCount, 7)
+        XCTAssertEqual(weekSnapshot.dailyTripCount.count, 7)
     }
 
     func testPlaceFilterNarrowsSummaryAndDailyChartsButNotGoal() {
@@ -326,6 +329,7 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         XCTAssertTrue(snapshot.hasWeekdayCharts)
         XCTAssertTrue(snapshot.hasMixCharts)
         XCTAssertEqual(snapshot.drivingDayCount, 2)
+        XCTAssertEqual(snapshot.periodDayCount, 2)
         XCTAssertEqual(snapshot.busiestDay, today)
         XCTAssertEqual(snapshot.busiestDayMeters, 8_000, accuracy: 0.1)
         XCTAssertEqual(snapshot.stats.averageDistanceMeters, 4_500, accuracy: 0.1)

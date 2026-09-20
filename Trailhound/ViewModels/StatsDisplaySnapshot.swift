@@ -380,12 +380,9 @@ enum StatsDisplaySnapshotBuilder {
             showsVehicleBreakdownCharts: showsVehicle,
             goalDistanceMeters: goalDistance,
             drivingDayCount: StatsViewModel.drivingDayCount(in: selectedInterval, from: scopedTrips),
-            periodDayCount: max(dailyTripCount.count, 1),
+            periodDayCount: max(StatsViewModel.calendarDayCount(in: selectedInterval), 1),
             previousDrivingDayCount: StatsViewModel.drivingDayCount(in: previousInterval, from: scopedTrips),
-            previousPeriodDayCount: max(
-                StatsViewModel.dailyTripCounts(in: previousInterval, from: scopedTrips).count,
-                1
-            ),
+            previousPeriodDayCount: max(StatsViewModel.calendarDayCount(in: previousInterval), 1),
             busiestDay: busiest?.day,
             busiestDayMeters: busiest?.meters ?? 0
         )

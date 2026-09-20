@@ -336,14 +336,15 @@ struct StatsViewModel {
         for period: StatsPeriod,
         customStart: Date,
         customEnd: Date,
-        selectedMonth: Date = Date()
+        selectedMonth: Date = Date(),
+        now: Date = Date(),
+        calendar: Calendar = .current
     ) -> DateInterval {
-        let calendar = Calendar.current
-        let end = Date()
         switch period {
         case .week:
-            let start = calendar.date(byAdding: .day, value: -7, to: end) ?? end
-            return DateInterval(start: start, end: end)
+            let today = calendar.startOfDay(for: now)
+            let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+            return DateInterval(start: start, end: now)
         case .month:
             return calendarMonthInterval(containing: selectedMonth, calendar: calendar)
         case .custom:
@@ -364,15 +365,42 @@ struct StatsViewModel {
         return DateInterval(start: start, end: end)
     }
 
-    /// Calendar midnights crossed by `interval`, not `duration / 86400` (DST-safe).
+    /// Inclusive calendar days that overlap `interval` (DST-safe).
+    /// A half-open midnight end (`[1 Sep, 1 Oct)`) does not include the end day.
+    static func calendarDays(
+        in interval: DateInterval,
+        calendar: Calendar = .current
+    ) -> [Date] {
+        let start = calendar.startOfDay(for: interval.start)
+        var last = calendar.startOfDay(for: interval.end)
+        if interval.end <= last {
+            last = calendar.date(byAdding: .day, value: -1, to: last) ?? start
+        }
+        guard last >= start else { return [start] }
+        var days: [Date] = []
+        var day = start
+        while day <= last {
+            days.append(day)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return days
+    }
+
+    /// Calendar days overlapping `interval`, not `duration / 86400` (DST-safe).
     static func calendarDayCount(
         in interval: DateInterval,
         calendar: Calendar = .current
     ) -> Int {
-        let start = calendar.startOfDay(for: interval.start)
-        let end = calendar.startOfDay(for: interval.end)
-        let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
-        return max(days, 1)
+        max(calendarDays(in: interval, calendar: calendar).count, 1)
+    }
+
+    private static func emptyCalendarDayBuckets<Value>(
+        in interval: DateInterval,
+        calendar: Calendar = .current,
+        value: Value
+    ) -> [Date: Value] {
+        Dictionary(uniqueKeysWithValues: calendarDays(in: interval, calendar: calendar).map { ($0, value) })
     }
 
     static func calendarDaysInMonth(
@@ -486,7 +514,11 @@ struct StatsViewModel {
         calendar: Calendar = .current
     ) -> DateInterval {
         switch period {
-        case .week, .custom:
+        case .week:
+            let end = calendar.startOfDay(for: selectedInterval.start)
+            let start = calendar.date(byAdding: .day, value: -7, to: end) ?? end
+            return DateInterval(start: start, end: end)
+        case .custom:
             return previousInterval(for: selectedInterval)
         case .month:
             let previousFull = previousMonthInterval(containing: selectedMonth, calendar: calendar)
@@ -583,18 +615,11 @@ struct StatsViewModel {
     ) -> [DailyDistance] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += trip.distanceMeters
         }
 
@@ -609,19 +634,12 @@ struct StatsViewModel {
     ) -> [DailyDuration] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             guard let duration = trip.duration, duration > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += duration
         }
 
@@ -636,20 +654,12 @@ struct StatsViewModel {
     ) -> [DailyAverageSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var distanceBuckets: [Date: Double] = [:]
-        var durationBuckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            distanceBuckets[day] = 0
-            durationBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var distanceBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var durationBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard distanceBuckets[tripDay] != nil else { continue }
             distanceBuckets[tripDay, default: 0] += trip.distanceMeters
             if let duration = trip.duration, duration > 0 {
                 durationBuckets[tripDay, default: 0] += duration
@@ -671,21 +681,14 @@ struct StatsViewModel {
     ) -> [DailyMaxSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             guard let maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) else {
                 continue
             }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] = max(buckets[tripDay, default: 0], maxSpeedMps * 3.6)
         }
 
@@ -700,23 +703,15 @@ struct StatsViewModel {
     ) -> [DailyCruiseSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var weightBuckets: [Date: Double] = [:]
-        var productBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            weightBuckets[day] = 0
-            productBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var weightBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var productBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let weight = trip.resolvedCruiseDurationSeconds
             let speed = trip.resolvedCruiseSpeedKmh
             guard weight > 0, speed > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard weightBuckets[tripDay] != nil else { continue }
             weightBuckets[tripDay, default: 0] += weight
             productBuckets[tripDay, default: 0] += speed * weight
         }
@@ -734,23 +729,15 @@ struct StatsViewModel {
     ) -> [DailyMostCommonSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var weightBuckets: [Date: Double] = [:]
-        var productBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            weightBuckets[day] = 0
-            productBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var weightBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var productBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let weight = trip.resolvedCruiseDurationSeconds
             let speed = trip.resolvedMostCommonSpeedKmh
             guard weight > 0, speed > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard weightBuckets[tripDay] != nil else { continue }
             weightBuckets[tripDay, default: 0] += weight
             productBuckets[tripDay, default: 0] += speed * weight
         }
@@ -768,18 +755,11 @@ struct StatsViewModel {
     ) -> [DailyStopDuration] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += trip.resolvedStopDurationSeconds
         }
 
@@ -794,20 +774,12 @@ struct StatsViewModel {
     ) -> [DailyFuelCost] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var avgBuckets: [Date: Double] = [:]
-        var dynamicBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            avgBuckets[day] = 0
-            dynamicBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var avgBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var dynamicBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard avgBuckets[tripDay] != nil else { continue }
             avgBuckets[tripDay, default: 0] += trip.resolvedFuelCost
             dynamicBuckets[tripDay, default: 0] += trip.resolvedDynamicFuelCost
         }
@@ -828,18 +800,11 @@ struct StatsViewModel {
     ) -> [DailyTripCount] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Int] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += trip.tripCount
         }
 
@@ -854,19 +819,12 @@ struct StatsViewModel {
     ) -> [DailyNightDistance] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             guard let share = trip.nightDistanceShare else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += share.nightMeters
         }
 
@@ -942,9 +900,13 @@ struct StatsViewModel {
         calendar: Calendar = .current
     ) -> Int {
         let filtered = Self.trips(in: interval, from: trips)
+        let periodDays = Set(calendarDays(in: interval, calendar: calendar))
         var days = Set<Date>()
         for trip in filtered {
-            days.insert(calendar.startOfDay(for: trip.startedAt))
+            let day = calendar.startOfDay(for: trip.startedAt)
+            if periodDays.contains(day) {
+                days.insert(day)
+            }
         }
         return days.count
     }

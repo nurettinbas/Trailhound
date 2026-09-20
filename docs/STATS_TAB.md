@@ -38,7 +38,7 @@ Filter changes can move tiles between the hero and the summary grid (trips vs ex
 
 Previous-period values from comparison live on the hero and on tiles that have a `StatsPeriodCompareRow` (trips, distance, duration, expenses, estimated fuel) plus extra nested tiles (average trip distance, moving time, night km, driving days). The old spreadsheet strip is not a separate card.
 
-Summary nested tiles also include average trip distance (beside average duration), moving time (beside total stop), night km (beside the night-distance percent), driving days (`12 / 30`), and busiest day (`14 Sep · 42 km`). Driving days counts calendar days with at least one trip over the days shown on the daily charts.
+Summary nested tiles also include average trip distance (beside average duration), moving time (beside total stop), night km (beside the night-distance percent), driving days (`12 / 30`), and busiest day (`14 Sep · 42 km`). Driving days counts calendar days with at least one trip over the days shown on the daily charts. Last 7 days is today plus the previous six calendar days — not a 7×24h window (which spans eight dates).
 
 Daily pager pages include trip count and, when the period has any night km, a night-distance bar. Two more full-width pagers sit after Daily trends, before vehicle compare:
 

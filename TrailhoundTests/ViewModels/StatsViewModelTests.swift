@@ -595,6 +595,67 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(calendar.component(.day, from: interval.end), 1)
     }
 
+    func testWeekIntervalSpansSevenCalendarDaysIncludingToday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 13, minute: 10))!
+        let interval = StatsViewModel.interval(
+            for: .week,
+            customStart: now,
+            customEnd: now,
+            now: now,
+            calendar: calendar
+        )
+        let expectedStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 14))!
+        XCTAssertEqual(calendar.startOfDay(for: interval.start), expectedStart)
+        XCTAssertEqual(interval.end, now)
+        XCTAssertEqual(StatsViewModel.calendarDays(in: interval, calendar: calendar).count, 7)
+
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .week,
+            selectedInterval: interval,
+            selectedMonth: now,
+            now: now,
+            calendar: calendar
+        )
+        XCTAssertEqual(StatsViewModel.calendarDays(in: previous, calendar: calendar).count, 7)
+        XCTAssertEqual(calendar.startOfDay(for: previous.start), calendar.date(from: DateComponents(year: 2026, month: 9, day: 7)))
+        XCTAssertEqual(calendar.startOfDay(for: previous.end), expectedStart)
+    }
+
+    func testCalendarDaysExcludesExclusiveMidnightEnd() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let june = calendar.date(from: DateComponents(year: 2026, month: 6, day: 18))!
+        let interval = StatsViewModel.calendarMonthInterval(containing: june, calendar: calendar)
+        XCTAssertEqual(StatsViewModel.calendarDays(in: interval, calendar: calendar).count, 30)
+        XCTAssertEqual(StatsViewModel.calendarDayCount(in: interval, calendar: calendar), 30)
+    }
+
+    func testDrivingDayCountStaysInsidePeriodDays() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = calendar.date(from: DateComponents(year: 2026, month: 9, day: 14))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 13))!
+        let interval = DateInterval(start: start, end: now)
+        let outside = calendar.date(from: DateComponents(year: 2026, month: 9, day: 13, hour: 22))!
+        let inside = calendar.date(from: DateComponents(year: 2026, month: 9, day: 15, hour: 10))!
+        let overnight = Trip(
+            startedAt: outside,
+            endedAt: start.addingTimeInterval(3600),
+            distanceMeters: 4_000
+        )
+        let inRange = Trip(
+            startedAt: inside,
+            endedAt: inside.addingTimeInterval(1800),
+            distanceMeters: 2_000
+        )
+        XCTAssertEqual(
+            StatsViewModel.drivingDayCount(in: interval, from: [overnight, inRange], calendar: calendar),
+            1
+        )
+    }
+
     func testSelectableMonthsSpansFirstTripToNow() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
