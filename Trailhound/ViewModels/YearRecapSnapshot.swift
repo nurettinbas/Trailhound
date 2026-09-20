@@ -23,6 +23,7 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
     var personalDistanceMeters: Double
     var purposeVerdict: RecapPurposeVerdict?
     var estimatedFuelCost: Double
+    /// Logged pump fuel for the year (`VehicleExpense` `.fuel` only — not service, insurance, or other).
     var paidExpenses: Double
     var unlockedAchievementIDs: [String]
 
@@ -63,7 +64,7 @@ struct YearRecapSnapshot: Equatable, Sendable, Codable {
 }
 
 enum YearRecapCache {
-    static let schemaVersion = 5
+    static let schemaVersion = 6
     private static let directoryName = "YearRecapSnapshots"
 
     private struct Record: Codable {

@@ -123,7 +123,9 @@ actor YearRecapSnapshotLoader {
                 expense.occurredAt >= yearStart && expense.occurredAt < yearEnd
             }
         )
-        let paid = ((try? modelContext.fetch(expenseDescriptor)) ?? []).reduce(0) { $0 + $1.amount }
+        let paid = ((try? modelContext.fetch(expenseDescriptor)) ?? [])
+            .filter { $0.category == .fuel }
+            .reduce(0) { $0 + $1.amount }
 
         let progressRows = ((try? modelContext.fetch(FetchDescriptor<AchievementProgress>())) ?? [])
         let yearUnlocked = progressRows.compactMap { row -> String? in

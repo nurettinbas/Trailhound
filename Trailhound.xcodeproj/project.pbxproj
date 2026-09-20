@@ -363,6 +363,10 @@
 		A1LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift */; };
 		A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPERRORPRES0000001 /* AppErrorPresenter.swift */; };
 		A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTPRESENTER000001 /* ToastPresenter.swift */; };
+		A1PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift */; };
+		A1RECORDTOASTVIEW0000001 /* RecordToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECORDTOASTVIEW0000001 /* RecordToastView.swift */; };
+		A1WEEKSUMMARYREFRESH0001 /* WeekSummaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2WEEKSUMMARYREFRESH0001 /* WeekSummaryRefresh.swift */; };
+		A1PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift */; };
 		A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */; };
 		A1TOASTVIEW00000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TOASTVIEW00000000001 /* ToastView.swift */; };
 		A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPROFILE00000001 /* VehicleProfile.swift */; };
@@ -753,6 +757,10 @@
 		A2LAPUBPOLICYTEST001 /* LiveActivityDashboardPublishPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Recording/LiveActivityDashboardPublishPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		A2APPERRORPRES0000001 /* AppErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorPresenter.swift; sourceTree = "<group>"; };
 		A2TOASTPRESENTER000001 /* ToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastPresenter.swift; sourceTree = "<group>"; };
+		A2PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecordEvaluator.swift; sourceTree = "<group>"; };
+		A2RECORDTOASTVIEW0000001 /* RecordToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordToastView.swift; sourceTree = "<group>"; };
+		A2WEEKSUMMARYREFRESH0001 /* WeekSummaryRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSummaryRefresh.swift; sourceTree = "<group>"; };
+		A2PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/PersonalRecordEvaluatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteConfirmPresenter.swift; sourceTree = "<group>"; };
 		A2TOASTVIEW00000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B20000000000000000000023 /* TrailhoundLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLockScreenWidget.swift; sourceTree = "<group>"; };
@@ -968,6 +976,7 @@
 				A2FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift */,
 				A2ACHIEVECAT000000001 /* AchievementCatalog.swift */,
 				A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */,
+				A2PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift */,
 				A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
 				4B6254BADAB2452485AC086C /* TripMergeService.swift */,
@@ -1130,6 +1139,7 @@
 				A2MAILCOMPOSE00000001 /* MailComposeView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
 				A2TOASTVIEW00000000001 /* ToastView.swift */,
+				A2RECORDTOASTVIEW0000001 /* RecordToastView.swift */,
 				A2RECCARDSTYLE00000001 /* RecordingCardStyle.swift */,
 				A5VCAREGRP000000000001 /* VehicleCare */,
 				A5PAIRINGGRP00000000001 /* Pairing */,
@@ -1151,6 +1161,7 @@
 				A2SCHEMAMIG0000000000001 /* TrailhoundSchemaMigration.swift */,
 				A2APPERRORPRES0000001 /* AppErrorPresenter.swift */,
 				A2TOASTPRESENTER000001 /* ToastPresenter.swift */,
+				A2WEEKSUMMARYREFRESH0001 /* WeekSummaryRefresh.swift */,
 				A2DELETECONFPRES000001 /* DeleteConfirmPresenter.swift */,
 				A20000000000000000000018 /* DistanceCalculator.swift */,
 				A2TRAVELJOURNALSUG0001 /* TravelJournalSuggester.swift */,
@@ -1303,6 +1314,7 @@
 				6996CCEAB74C48E588E9BCC3 /* TripCategorySuggesterTests.swift */,
 				0F522128C2A8428A9F29352F /* TripMergeServiceTests.swift */,
 				DC9C492887764166B97747AC /* TripPostProcessorTests.swift */,
+				A2PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift */,
 				87991671D44840E8B8E37C84 /* SharedUtilityTests.swift */,
 				89194A972A9D445CA328EC8B /* AsyncTestHelpers.swift */,
 				CD488383E993421084D17FEB /* DeviceTestChecklist.swift */,
@@ -1559,6 +1571,7 @@
 				9CF2B5E0BAE445DBAF588529 /* TripCategorySuggesterTests.swift in Sources */,
 				EEB93D176AC04A399D62976C /* TripMergeServiceTests.swift in Sources */,
 				A0521629B6B1436EAD50C50D /* TripPostProcessorTests.swift in Sources */,
+				A1PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift in Sources */,
 				1D9267C59ACB415A91AEDE29 /* SharedUtilityTests.swift in Sources */,
 				99589AB9DEC14224BFA11E93 /* AsyncTestHelpers.swift in Sources */,
 				A97D083820FA41BDAA20AFFA /* DeviceTestChecklist.swift in Sources */,
@@ -1785,6 +1798,7 @@
 				A1LOCALITYBACKFILL001 /* TripLocalityBackfillService.swift in Sources */,
 				A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */,
 				A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */,
+				A1PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift in Sources */,
 				A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */,
 				A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */,
 				A1FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift in Sources */,
@@ -1800,6 +1814,8 @@
 				A1LAOCCLUSION0000001 /* LiveActivityDashboardOcclusionMonitor.swift in Sources */,
 				A1APPERRORPRES0000001 /* AppErrorPresenter.swift in Sources */,
 				A1TOASTPRESENTER000001 /* ToastPresenter.swift in Sources */,
+				A1WEEKSUMMARYREFRESH0001 /* WeekSummaryRefresh.swift in Sources */,
+				A1RECORDTOASTVIEW0000001 /* RecordToastView.swift in Sources */,
 				A1DELETECONFPRES000001 /* DeleteConfirmPresenter.swift in Sources */,
 				A1TOASTVIEW00000000001 /* ToastView.swift in Sources */,
 				A1VEHICLEPROFILE00000001 /* VehicleProfile.swift in Sources */,

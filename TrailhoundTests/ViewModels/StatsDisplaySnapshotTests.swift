@@ -7,7 +7,7 @@ final class StatsDisplaySnapshotTests: XCTestCase {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-        let interval = DateInterval(start: yesterday, end: Date())
+        let interval = DateInterval(start: yesterday, end: today.addingTimeInterval(86_399))
         let goalMonth = StatsViewModel.goalMonth(
             for: .custom,
             selectedMonth: today,

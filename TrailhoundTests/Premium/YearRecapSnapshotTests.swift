@@ -160,12 +160,13 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertEqual(first.estimatedFuelCost, 40, accuracy: 0.1)
 
         context.insert(VehicleExpense(category: .service, amount: 250, occurredAt: inYear))
+        context.insert(VehicleExpense(category: .fuel, amount: 80, occurredAt: inYear))
         try context.save()
         YearRecapCache.invalidate(yearContaining: inYear)
         let second = await loader.snapshot(year: 2026, storeVersion: 2, now: inYear)
-        XCTAssertEqual(second.paidExpenses, 250, accuracy: 0.1)
+        XCTAssertEqual(second.paidExpenses, 80, accuracy: 0.1)
         XCTAssertEqual(second.estimatedFuelCost, 40, accuracy: 0.1)
-        XCTAssertEqual(second.estimatedFuelCost + second.paidExpenses, 290, accuracy: 0.1)
+        XCTAssertEqual(second.estimatedFuelCost + second.paidExpenses, 120, accuracy: 0.1)
     }
 
     func testYearScopedRouteCountIgnoresLifetimeAggregate() async throws {

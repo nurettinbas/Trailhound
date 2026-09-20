@@ -12139,31 +12139,31 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مصروفات المركبة المسجّلة"
+            "value" : "وقود مسجَّل"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erfasste Fahrzeugkosten"
+            "value" : "Erfasster Kraftstoff"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logged vehicle expenses"
+            "value" : "Logged fuel"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spese veicolo registrate"
+            "value" : "Carburante registrato"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kayıtlı araç giderleri"
+            "value" : "Kayıtlı yakıt"
           }
         }
       }
@@ -17068,13 +17068,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Full year — ignores filters"
+            "value" : "Full year"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm yıl — filtreler yok sayılır"
+            "value" : "Tüm yıl"
           }
         }
       }
@@ -19656,6 +19656,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yer kaydı tamamlandı"
+          }
+        }
+      }
+    },
+    "toast.record.fastest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastest cruise · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En hızlı cruise · %@"
+          }
+        }
+      }
+    },
+    "toast.record.kicker" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NEW RECORD"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YENİ REKOR"
+          }
+        }
+      }
+    },
+    "toast.record.longest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longest trip · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En uzun yolculuk · %@"
           }
         }
       }

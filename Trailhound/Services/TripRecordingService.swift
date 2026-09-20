@@ -1160,6 +1160,11 @@ final class TripRecordingService {
                 syncExternalState()
                 return
             }
+            PersonalRecordToast.presentIfNeeded(
+                for: trip,
+                in: modelContext,
+                timing: .afterRecordingCredits
+            )
             if !UITestSupport.isUnitTesting {
                 TripNotificationService.refreshTripStartedBody(
                     tripID: trip.id,

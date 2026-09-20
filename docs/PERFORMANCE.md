@@ -309,7 +309,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
 - **Year recap.** `YearRecapSnapshotLoader` reads that year's `TripDailyRollup` rows plus trip
   *endpoint* fields (locality, start/end place names and coordinates, category). GPS `points`
   are never faulted and `invalidatePointCaches` is not called. JSON cache in Application Support
-  is stamped with `YearRecapCache.schemaVersion` (currently 5); a `storeVersion` change skips disk and rebuilds.
+  is stamped with `YearRecapCache.schemaVersion` (currently 6); a `storeVersion` change skips disk and rebuilds.
   Story pages are built before the cover appears; the snapshot is frozen at open; there is no fetch
   on page turn. Scene loops and segment fill each have a `TimelineView` so the Instagram tap overlay
   is not rebuilt every frame (Low Power 12 fps). Recap badges compact card wraps unlocked medals

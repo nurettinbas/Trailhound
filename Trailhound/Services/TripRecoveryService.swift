@@ -75,6 +75,11 @@ enum TripRecoveryService {
         do {
             try context.save()
             if saveTrip {
+                PersonalRecordToast.presentIfNeeded(
+                    for: trip,
+                    in: context,
+                    timing: .followingCurrent
+                )
                 let tripUUID = trip.id
                 let container = context.container
                 Task { @MainActor in

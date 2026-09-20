@@ -50,7 +50,7 @@ enum StatsSegmentTokens {
     }
 }
 
-/// Recap cost page + forecast mix: estimated fuel is stop 0, logged expenses are stop 1.
+/// Recap cost page + forecast mix: estimated fuel is stop 0, logged fuel is stop 1.
 enum RecapSpendInk {
     static let fuelStop = 0
     static let expensesStop = 1
