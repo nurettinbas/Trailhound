@@ -17051,13 +17051,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Full year — ignores filters"
+            "value" : "Full year"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm yıl — filtreler yok sayılır"
+            "value" : "Tüm yıl"
           }
         }
       }
