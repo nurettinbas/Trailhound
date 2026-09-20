@@ -274,4 +274,70 @@ final class StatsDisplaySnapshotTests: XCTestCase {
             StatsViewModel.calendarMonthInterval(containing: customEnd).start
         )
     }
+
+    func testSnapshotAddsTripCountNightWeekdayAndMixFlags() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let interval = DateInterval(start: yesterday, end: Date())
+        let goalMonth = StatsViewModel.goalMonth(
+            for: .custom,
+            selectedMonth: today,
+            customStart: interval.start,
+            customEnd: interval.end
+        )
+
+        let peak = Trip(
+            startedAt: today.addingTimeInterval(3600),
+            endedAt: today.addingTimeInterval(7200),
+            distanceMeters: 8_000
+        )
+        peak.stopDurationSeconds = 300
+        peak.nightDistanceMeters = 2_000
+        peak.trackedDistanceMeters = 8_000
+        peak.fuelIdleVolume = 0.25
+        peak.dynamicFuelVolume = 1.0
+
+        let quiet = Trip(
+            startedAt: yesterday.addingTimeInterval(3600),
+            endedAt: yesterday.addingTimeInterval(5400),
+            distanceMeters: 1_000
+        )
+        quiet.stopDurationSeconds = 60
+        quiet.nightDistanceMeters = 0
+        quiet.trackedDistanceMeters = 1_000
+
+        let snapshot = StatsDisplaySnapshotBuilder.build(
+            completedTrips: [peak, quiet],
+            categories: [],
+            vehicles: [],
+            selectedPeriod: .custom,
+            customStart: interval.start,
+            customEnd: interval.end,
+            selectedMonth: today,
+            selectedCategoryID: nil,
+            selectedVehicleID: nil,
+            goalMonth: goalMonth
+        )
+
+        XCTAssertEqual(snapshot.dailyTripCount.last?.count, 1)
+        XCTAssertEqual(snapshot.dailyNightDistance.last?.distanceMeters ?? 0, 2_000, accuracy: 0.1)
+        XCTAssertTrue(snapshot.hasNightDailyChart)
+        XCTAssertTrue(snapshot.hasWeekdayCharts)
+        XCTAssertTrue(snapshot.hasMixCharts)
+        XCTAssertEqual(snapshot.drivingDayCount, 2)
+        XCTAssertEqual(snapshot.busiestDay, today)
+        XCTAssertEqual(snapshot.busiestDayMeters, 8_000, accuracy: 0.1)
+        XCTAssertEqual(snapshot.stats.averageDistanceMeters, 4_500, accuracy: 0.1)
+        XCTAssertFalse(snapshot.stats.fuelFactorShares.isEmpty)
+        XCTAssertEqual(snapshot.weekdayDistance.count, 7)
+    }
+
+    func testEmptyPeriodHidesWeekdayAndMixCards() {
+        XCTAssertFalse(StatsDisplaySnapshot.empty.hasWeekdayCharts)
+        XCTAssertFalse(StatsDisplaySnapshot.empty.hasMixCharts)
+        XCTAssertFalse(StatsDisplaySnapshot.empty.hasNightDailyChart)
+        XCTAssertEqual(StatsDisplaySnapshot.empty.drivingDayCount, 0)
+        XCTAssertNil(StatsDisplaySnapshot.empty.busiestDay)
+    }
 }

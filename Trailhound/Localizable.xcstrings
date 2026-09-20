@@ -16807,6 +16807,23 @@
         }
       }
     },
+    "stats.average_distance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avg trip"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ort. yolculuk"
+          }
+        }
+      }
+    },
     "stats.average_duration" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17079,6 +17096,23 @@
         }
       }
     },
+    "stats.busiest_day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Busiest day"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En yoğun gün"
+          }
+        }
+      }
+    },
     "stats.chart.categories" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17266,6 +17300,23 @@
         }
       }
     },
+    "stats.chart.daily_night" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily night km"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük gece km"
+          }
+        }
+      }
+    },
     "stats.chart.daily_section" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17296,6 +17347,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Günlük durma süresi"
+          }
+        }
+      }
+    },
+    "stats.chart.daily_trips" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily trips"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Günlük yolculuk"
           }
         }
       }
@@ -17402,6 +17470,74 @@
         }
       }
     },
+    "stats.chart.mix_fuel_factors" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuel factors"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yakıt etkenleri"
+          }
+        }
+      }
+    },
+    "stats.chart.mix_moving_stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moving vs stopped"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hareket ve durma"
+          }
+        }
+      }
+    },
+    "stats.chart.mix_night_day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Night vs day"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gece ve gündüz"
+          }
+        }
+      }
+    },
+    "stats.chart.mix_section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Split"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dağılım"
+          }
+        }
+      }
+    },
     "stats.chart.next_a11y" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17466,6 +17602,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "km/s"
+          }
+        }
+      }
+    },
+    "stats.chart.trips_count" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trips"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuk"
           }
         }
       }
@@ -17551,6 +17704,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Araca göre"
+          }
+        }
+      }
+    },
+    "stats.chart.weekday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekday"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gün"
+          }
+        }
+      }
+    },
+    "stats.chart.weekday_distance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distance by weekday"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güne göre mesafe"
+          }
+        }
+      }
+    },
+    "stats.chart.weekday_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driving time by weekday"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güne göre süre"
+          }
+        }
+      }
+    },
+    "stats.chart.weekday_section" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By weekday"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haftanın günü"
           }
         }
       }
@@ -18065,6 +18286,91 @@
         }
       }
     },
+    "stats.daytime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gündüz"
+          }
+        }
+      }
+    },
+    "stats.driving_days" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driving days"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sürüş günü"
+          }
+        }
+      }
+    },
+    "stats.driving_days.format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d / %d"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d / %d"
+          }
+        }
+      }
+    },
+    "stats.driving_days.help.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Days in this period with at least one trip, out of the calendar days shown on the charts."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu aralıkta en az bir yolculuk yapılan gün sayısı / grafiklerdeki takvim günü."
+          }
+        }
+      }
+    },
+    "stats.driving_days.help.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driving days"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sürüş günü"
+          }
+        }
+      }
+    },
     "stats.dynamic_cost_per_km" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -18524,6 +18830,23 @@
         }
       }
     },
+    "stats.moving_duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moving"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hareket"
+          }
+        }
+      }
+    },
     "stats.night_driving" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -18554,6 +18877,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mesafenin %d%%'i"
+          }
+        }
+      }
+    },
+    "stats.night_km" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Night km"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gece km"
           }
         }
       }

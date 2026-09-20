@@ -274,6 +274,14 @@ enum TripRollupService {
         })
         let mixedUnits = unitKeys.count > 1
 
+        let factorShares = StatsViewModel.fuelFactorShares(
+            idle: idleVolume,
+            transient: transientVolume,
+            cold: coldVolume,
+            speed: speedAbsVolume,
+            mixedUnits: mixedUnits
+        )
+
         return TripStats(
             tripCount: count,
             totalDistanceMeters: totalDistance,
@@ -290,6 +298,8 @@ enum TripRollupService {
             estimatedFuelCost: totalFuel,
             dynamicFuelCost: totalDynamicFuel,
             nightDrivingRatio: trackedMeters > 0 ? nightMeters / trackedMeters : 0,
+            nightDistanceMeters: nightMeters,
+            trackedDistanceMeters: trackedMeters,
             dynamicFuelVolume: mixedUnits ? 0 : totalDynamicVolume,
             dynamicFuelVolumeDistanceMeters: mixedUnits ? 0 : volumeDistance,
             fuelEfficiencyScore: mixedUnits || efficiencyWeight <= 0
@@ -297,31 +307,9 @@ enum TripRollupService {
                 : efficiencyProduct / efficiencyWeight,
             hasMixedFuelUnits: mixedUnits,
             fuelUnitIsElectric: !mixedUnits && unitKeys.contains("electric"),
-            topFuelFactors: mixedUnits ? [] : Self.topFactors(
-                idle: idleVolume,
-                transient: transientVolume,
-                cold: coldVolume,
-                speed: speedAbsVolume
-            )
+            fuelFactorShares: factorShares,
+            topFuelFactors: StatsViewModel.topFuelFactors(from: factorShares)
         )
-    }
-
-    private static func topFactors(
-        idle: Double,
-        transient: Double,
-        cold: Double,
-        speed: Double
-    ) -> [FuelFactorKind] {
-        [
-            (FuelFactorKind.idleTraffic, idle),
-            (.transientAcceleration, transient),
-            (.coldStart, cold),
-            (.highSpeed, speed)
-        ]
-        .filter { $0.1 > 0.01 }
-        .sorted { $0.1 > $1.1 }
-        .prefix(3)
-        .map(\.0)
     }
 }
 

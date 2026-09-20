@@ -81,6 +81,42 @@ enum StatsChartTheme {
         endPoint: .bottom
     )
 
+    static let tripCountBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.42, green: 0.72, blue: 0.98),
+            Color(red: 0.34, green: 0.82, blue: 0.58)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let nightDistanceBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.38, green: 0.32, blue: 0.78),
+            Color(red: 0.62, green: 0.42, blue: 0.95)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let weekdayDistanceBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.28, green: 0.78, blue: 0.86),
+            Color(red: 0.98, green: 0.58, blue: 0.24)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let weekdayDurationBarFill = LinearGradient(
+        colors: [
+            Color(red: 0.95, green: 0.40, blue: 0.52),
+            Color(red: 0.72, green: 0.48, blue: 0.95)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     // MARK: - Donut slice palettes
 
     private static let distanceSliceColors: [Color] = [
