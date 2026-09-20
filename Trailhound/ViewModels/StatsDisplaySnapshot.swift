@@ -12,6 +12,10 @@ struct StatsDisplaySnapshot: Sendable {
     let dailyMostCommonSpeed: [DailyMostCommonSpeed]
     let dailyStopDuration: [DailyStopDuration]
     let dailyFuelCost: [DailyFuelCost]
+    let dailyTripCount: [DailyTripCount]
+    let dailyNightDistance: [DailyNightDistance]
+    let weekdayDistance: [WeekdayDistance]
+    let weekdayDuration: [WeekdayDuration]
     let categoryDistance: [CategoryDistance]
     let categoryDuration: [CategoryDuration]
     let categoryFuelCost: [CategoryFuelCost]
@@ -21,6 +25,12 @@ struct StatsDisplaySnapshot: Sendable {
     let showsVehicleBreakdownCharts: Bool
     /// Distance driven in the goal calendar month (no category/vehicle/place filter). Drives the goal ring.
     let goalDistanceMeters: Double
+    let drivingDayCount: Int
+    let periodDayCount: Int
+    let previousDrivingDayCount: Int
+    let previousPeriodDayCount: Int
+    let busiestDay: Date?
+    let busiestDayMeters: Double
 
     var hasAnyDailyChart: Bool {
         !dailyDistance.isEmpty || !dailyDuration.isEmpty
@@ -28,10 +38,27 @@ struct StatsDisplaySnapshot: Sendable {
             || !dailyCruiseSpeed.isEmpty || !dailyMostCommonSpeed.isEmpty
             || !dailyStopDuration.isEmpty
             || !dailyFuelCost.isEmpty
+            || !dailyTripCount.isEmpty
+            || dailyNightDistance.contains(where: { $0.distanceMeters > 0 })
     }
 
     var hasCategoryCharts: Bool {
         !categoryDistance.isEmpty || !categoryDuration.isEmpty || !categoryFuelCost.isEmpty
+    }
+
+    var hasWeekdayCharts: Bool {
+        weekdayDistance.contains(where: { $0.distanceMeters > 0 })
+            || weekdayDuration.contains(where: { $0.duration > 0 })
+    }
+
+    var hasMixCharts: Bool {
+        stats.trackedDistanceMeters > 0
+            || stats.totalDuration > 0
+            || !stats.fuelFactorShares.isEmpty
+    }
+
+    var hasNightDailyChart: Bool {
+        dailyNightDistance.contains(where: { $0.distanceMeters > 0 })
     }
 
     static let empty = StatsDisplaySnapshot(
@@ -57,6 +84,10 @@ struct StatsDisplaySnapshot: Sendable {
         dailyMostCommonSpeed: [],
         dailyStopDuration: [],
         dailyFuelCost: [],
+        dailyTripCount: [],
+        dailyNightDistance: [],
+        weekdayDistance: [],
+        weekdayDuration: [],
         categoryDistance: [],
         categoryDuration: [],
         categoryFuelCost: [],
@@ -64,7 +95,13 @@ struct StatsDisplaySnapshot: Sendable {
         vehicleDuration: [],
         vehicleFuelCost: [],
         showsVehicleBreakdownCharts: false,
-        goalDistanceMeters: 0
+        goalDistanceMeters: 0,
+        drivingDayCount: 0,
+        periodDayCount: 0,
+        previousDrivingDayCount: 0,
+        previousPeriodDayCount: 0,
+        busiestDay: nil,
+        busiestDayMeters: 0
     )
 
     var tripCountTrend: StatsTrend? {
@@ -144,6 +181,38 @@ struct StatsDisplaySnapshot: Sendable {
             current: stats.dynamicFuelCost,
             previous: previousStats.dynamicFuelCost,
             polarity: .lowerIsBetter
+        )
+    }
+
+    var averageDistanceTrend: StatsTrend? {
+        StatsTrend.make(
+            current: stats.averageDistanceMeters,
+            previous: previousStats.averageDistanceMeters,
+            polarity: .higherIsBetter
+        )
+    }
+
+    var drivingDayTrend: StatsTrend? {
+        StatsTrend.make(
+            current: Double(drivingDayCount),
+            previous: Double(previousDrivingDayCount),
+            polarity: .higherIsBetter
+        )
+    }
+
+    var movingDurationTrend: StatsTrend? {
+        StatsTrend.make(
+            current: stats.movingDuration,
+            previous: previousStats.movingDuration,
+            polarity: .neutral
+        )
+    }
+
+    var nightDistanceTrend: StatsTrend? {
+        StatsTrend.make(
+            current: stats.nightDistanceMeters,
+            previous: previousStats.nightDistanceMeters,
+            polarity: .neutral
         )
     }
 
@@ -281,10 +350,16 @@ enum StatsDisplaySnapshotBuilder {
             includeNightRatio: false
         ).totalDistanceMeters
 
+        let dailyDistance = StatsViewModel.dailyDistances(in: selectedInterval, from: scopedTrips)
+        let busiest = StatsViewModel.busiestDay(from: dailyDistance)
+        let dailyTripCount = StatsViewModel.dailyTripCounts(in: selectedInterval, from: scopedTrips)
+        let weekdayDistance = StatsViewModel.weekdayDistances(from: periodTrips)
+        let weekdayDuration = StatsViewModel.weekdayDurations(from: periodTrips)
+
         return StatsDisplaySnapshot(
             stats: stats,
             previousStats: previousStats,
-            dailyDistance: StatsViewModel.dailyDistances(in: selectedInterval, from: scopedTrips),
+            dailyDistance: dailyDistance,
             dailyDuration: StatsViewModel.dailyDurations(in: selectedInterval, from: scopedTrips),
             dailyAverageSpeed: StatsViewModel.dailyAverageSpeeds(in: selectedInterval, from: scopedTrips),
             dailyMaxSpeed: StatsViewModel.dailyMaxSpeeds(in: selectedInterval, from: scopedTrips),
@@ -292,6 +367,10 @@ enum StatsDisplaySnapshotBuilder {
             dailyMostCommonSpeed: StatsViewModel.dailyMostCommonSpeeds(in: selectedInterval, from: scopedTrips),
             dailyStopDuration: StatsViewModel.dailyStopDurations(in: selectedInterval, from: scopedTrips),
             dailyFuelCost: StatsViewModel.dailyFuelCosts(in: selectedInterval, from: scopedTrips),
+            dailyTripCount: dailyTripCount,
+            dailyNightDistance: StatsViewModel.dailyNightDistances(in: selectedInterval, from: scopedTrips),
+            weekdayDistance: weekdayDistance,
+            weekdayDuration: weekdayDuration,
             categoryDistance: StatsViewModel.categoryBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryDuration: StatsViewModel.categoryDurationBreakdown(for: periodTrips, categoryNames: categoryNames),
             categoryFuelCost: StatsViewModel.categoryFuelBreakdown(for: periodTrips, categoryNames: categoryNames),
@@ -299,7 +378,13 @@ enum StatsDisplaySnapshotBuilder {
             vehicleDuration: vehicleDuration,
             vehicleFuelCost: vehicleFuelCost,
             showsVehicleBreakdownCharts: showsVehicle,
-            goalDistanceMeters: goalDistance
+            goalDistanceMeters: goalDistance,
+            drivingDayCount: StatsViewModel.drivingDayCount(in: selectedInterval, from: scopedTrips),
+            periodDayCount: max(StatsViewModel.calendarDayCount(in: selectedInterval), 1),
+            previousDrivingDayCount: StatsViewModel.drivingDayCount(in: previousInterval, from: scopedTrips),
+            previousPeriodDayCount: max(StatsViewModel.calendarDayCount(in: previousInterval), 1),
+            busiestDay: busiest?.day,
+            busiestDayMeters: busiest?.meters ?? 0
         )
     }
 }

@@ -197,6 +197,12 @@ enum L10n {
     static var statsFuelRateHelpBody: String { string("stats.fuel_rate.help.body") }
     static var statsFuelEfficiency: String { string("stats.fuel_efficiency") }
     static var statsMixedFuelUnits: String { string("stats.fuel_mixed_units") }
+    static var statsDrivingDaysHelpTitle: String { string("stats.driving_days.help.title") }
+    static var statsDrivingDaysHelpBody: String { string("stats.driving_days.help.body") }
+
+    static func statsDrivingDays(_ count: Int, of total: Int) -> String {
+        String(format: string("stats.driving_days.format"), count, total)
+    }
     static var statsDynamicCostPerKmHelpTitle: String { string("stats.dynamic_cost_per_km.help.title") }
     static var statsDynamicCostPerKmHelpBody: String { string("stats.dynamic_cost_per_km.help.body") }
     static var statsDynamicCostPerTripHelpTitle: String { string("stats.dynamic_cost_per_trip.help.title") }

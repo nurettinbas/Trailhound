@@ -595,6 +595,67 @@ final class StatsViewModelTests: XCTestCase {
         XCTAssertEqual(calendar.component(.day, from: interval.end), 1)
     }
 
+    func testWeekIntervalSpansSevenCalendarDaysIncludingToday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 13, minute: 10))!
+        let interval = StatsViewModel.interval(
+            for: .week,
+            customStart: now,
+            customEnd: now,
+            now: now,
+            calendar: calendar
+        )
+        let expectedStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 14))!
+        XCTAssertEqual(calendar.startOfDay(for: interval.start), expectedStart)
+        XCTAssertEqual(interval.end, now)
+        XCTAssertEqual(StatsViewModel.calendarDays(in: interval, calendar: calendar).count, 7)
+
+        let previous = StatsViewModel.alignedPreviousInterval(
+            for: .week,
+            selectedInterval: interval,
+            selectedMonth: now,
+            now: now,
+            calendar: calendar
+        )
+        XCTAssertEqual(StatsViewModel.calendarDays(in: previous, calendar: calendar).count, 7)
+        XCTAssertEqual(calendar.startOfDay(for: previous.start), calendar.date(from: DateComponents(year: 2026, month: 9, day: 7)))
+        XCTAssertEqual(calendar.startOfDay(for: previous.end), expectedStart)
+    }
+
+    func testCalendarDaysExcludesExclusiveMidnightEnd() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let june = calendar.date(from: DateComponents(year: 2026, month: 6, day: 18))!
+        let interval = StatsViewModel.calendarMonthInterval(containing: june, calendar: calendar)
+        XCTAssertEqual(StatsViewModel.calendarDays(in: interval, calendar: calendar).count, 30)
+        XCTAssertEqual(StatsViewModel.calendarDayCount(in: interval, calendar: calendar), 30)
+    }
+
+    func testDrivingDayCountStaysInsidePeriodDays() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = calendar.date(from: DateComponents(year: 2026, month: 9, day: 14))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 13))!
+        let interval = DateInterval(start: start, end: now)
+        let outside = calendar.date(from: DateComponents(year: 2026, month: 9, day: 13, hour: 22))!
+        let inside = calendar.date(from: DateComponents(year: 2026, month: 9, day: 15, hour: 10))!
+        let overnight = Trip(
+            startedAt: outside,
+            endedAt: start.addingTimeInterval(3600),
+            distanceMeters: 4_000
+        )
+        let inRange = Trip(
+            startedAt: inside,
+            endedAt: inside.addingTimeInterval(1800),
+            distanceMeters: 2_000
+        )
+        XCTAssertEqual(
+            StatsViewModel.drivingDayCount(in: interval, from: [overnight, inRange], calendar: calendar),
+            1
+        )
+    }
+
     func testSelectableMonthsSpansFirstTripToNow() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -641,5 +702,156 @@ final class StatsViewModelTests: XCTestCase {
         let juneStart = StatsViewModel.calendarMonthInterval(containing: midJune, calendar: calendar).start
 
         XCTAssertEqual(clamped, juneStart)
+    }
+
+    func testAverageDistanceAndMovingDuration() {
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 10_000
+        )
+        trip.stopDurationSeconds = 600
+
+        let stats = StatsViewModel.stats(for: [trip])
+
+        XCTAssertEqual(stats.averageDistanceMeters, 10_000, accuracy: 0.1)
+        XCTAssertEqual(stats.movingDuration, 3000, accuracy: 0.1)
+        XCTAssertEqual(stats.stopDuration, 600, accuracy: 0.1)
+    }
+
+    func testNightDrivingTotalsFromStoredShare() {
+        let trip = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 8_000
+        )
+        trip.nightDistanceMeters = 2_000
+        trip.trackedDistanceMeters = 8_000
+
+        let stats = StatsViewModel.stats(for: [trip])
+
+        XCTAssertEqual(stats.nightDistanceMeters, 2_000, accuracy: 0.1)
+        XCTAssertEqual(stats.trackedDistanceMeters, 8_000, accuracy: 0.1)
+        XCTAssertEqual(stats.daytimeDistanceMeters, 6_000, accuracy: 0.1)
+        XCTAssertEqual(stats.nightDrivingRatio, 0.25, accuracy: 0.001)
+    }
+
+    func testFuelFactorSharesRankByVolumeAndSkipMixedUnits() {
+        let petrol = Trip(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date(),
+            distanceMeters: 5_000
+        )
+        petrol.fuelIdleVolume = 0.40
+        petrol.fuelColdStartVolume = 0.10
+        petrol.fuelTransientVolume = 0.20
+        petrol.fuelSpeedDeltaVolume = 0.05
+        petrol.dynamicFuelVolume = 1.2
+
+        let stats = StatsViewModel.stats(for: [petrol])
+        XCTAssertEqual(stats.fuelFactorShares.map(\.kind), [
+            .idleTraffic, .transientAcceleration, .coldStart, .highSpeed
+        ])
+        XCTAssertEqual(stats.topFuelFactors, [.idleTraffic, .transientAcceleration, .coldStart])
+
+        let electric = Trip(
+            startedAt: Date().addingTimeInterval(-1800),
+            endedAt: Date(),
+            distanceMeters: 4_000
+        )
+        electric.fuelTypeSnapshot = .electric
+        electric.fuelIdleVolume = 0.30
+        electric.dynamicFuelVolume = 2.0
+
+        let mixed = StatsViewModel.stats(for: [petrol, electric])
+        XCTAssertTrue(mixed.hasMixedFuelUnits)
+        XCTAssertTrue(mixed.fuelFactorShares.isEmpty)
+        XCTAssertTrue(mixed.topFuelFactors.isEmpty)
+    }
+
+    func testDailyTripCountsAndNightDistanceBucketByDay() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let interval = DateInterval(start: yesterday, end: Date())
+
+        let todayTrip = Trip(
+            startedAt: today.addingTimeInterval(3600),
+            endedAt: today.addingTimeInterval(7200),
+            distanceMeters: 4_000
+        )
+        todayTrip.nightDistanceMeters = 1_000
+        todayTrip.trackedDistanceMeters = 4_000
+
+        let yesterdayOne = Trip(
+            startedAt: yesterday.addingTimeInterval(3600),
+            endedAt: yesterday.addingTimeInterval(5400),
+            distanceMeters: 2_000
+        )
+        yesterdayOne.nightDistanceMeters = 0
+        yesterdayOne.trackedDistanceMeters = 2_000
+
+        let yesterdayTwo = Trip(
+            startedAt: yesterday.addingTimeInterval(8000),
+            endedAt: yesterday.addingTimeInterval(9000),
+            distanceMeters: 1_000
+        )
+        yesterdayTwo.nightDistanceMeters = 500
+        yesterdayTwo.trackedDistanceMeters = 1_000
+
+        let trips = [todayTrip, yesterdayOne, yesterdayTwo]
+        let counts = StatsViewModel.dailyTripCounts(in: interval, from: trips)
+        let nights = StatsViewModel.dailyNightDistances(in: interval, from: trips)
+
+        XCTAssertEqual(counts.first?.count, 2)
+        XCTAssertEqual(counts.last?.count, 1)
+        XCTAssertEqual(nights.first?.distanceMeters ?? 0, 500, accuracy: 0.1)
+        XCTAssertEqual(nights.last?.distanceMeters ?? 0, 1_000, accuracy: 0.1)
+    }
+
+    func testWeekdayDistancesFollowFirstWeekdayOrder() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        calendar.firstWeekday = 2
+        let monday = calendar.date(from: DateComponents(year: 2026, month: 6, day: 15, hour: 10))!
+        let saturday = calendar.date(from: DateComponents(year: 2026, month: 6, day: 20, hour: 10))!
+
+        let commute = Trip(
+            startedAt: monday,
+            endedAt: monday.addingTimeInterval(1800),
+            distanceMeters: 12_000
+        )
+        let weekend = Trip(
+            startedAt: saturday,
+            endedAt: saturday.addingTimeInterval(3600),
+            distanceMeters: 3_000
+        )
+
+        let distances = StatsViewModel.weekdayDistances(from: [commute, weekend], calendar: calendar)
+        XCTAssertEqual(distances.count, 7)
+        XCTAssertEqual(distances.map(\.weekday), [2, 3, 4, 5, 6, 7, 1])
+        XCTAssertEqual(distances.first?.distanceMeters ?? 0, 12_000, accuracy: 0.1)
+        XCTAssertEqual(distances[5].distanceMeters, 3_000, accuracy: 0.1)
+        XCTAssertEqual(StatsViewModel.drivingDayCount(
+            in: DateInterval(start: monday, end: saturday.addingTimeInterval(4000)),
+            from: [commute, weekend],
+            calendar: calendar
+        ), 2)
+    }
+
+    func testBusiestDayPicksThePeakAndIgnoresZeros() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let daily = [
+            DailyDistance(id: yesterday, day: yesterday, distanceMeters: 1_000),
+            DailyDistance(id: today, day: today, distanceMeters: 9_000)
+        ]
+        let peak = StatsViewModel.busiestDay(from: daily)
+        XCTAssertEqual(peak?.day, today)
+        XCTAssertEqual(peak?.meters ?? 0, 9_000, accuracy: 0.1)
+        XCTAssertNil(StatsViewModel.busiestDay(from: [
+            DailyDistance(id: today, day: today, distanceMeters: 0)
+        ]))
     }
 }

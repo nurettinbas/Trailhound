@@ -38,6 +38,8 @@ struct StatsView: View {
     @State private var costRefreshTask: Task<Void, Never>?
     @Bindable private var tabSelection = TabSelection.shared
     @State private var dailyChartPage = 0
+    @State private var weekdayChartPage = 0
+    @State private var mixChartPage = 0
     @State private var vehicleChartPage = 0
     @State private var categoryChartPage = 0
     @Namespace private var periodChipNamespace
@@ -231,10 +233,14 @@ struct StatsView: View {
             }
             .onChange(of: selectedCategoryID) { _, _ in
                 dailyChartPage = 0
+                weekdayChartPage = 0
+                mixChartPage = 0
                 categoryChartPage = 0
             }
             .onChange(of: selectedVehicleID) { _, _ in
                 dailyChartPage = 0
+                weekdayChartPage = 0
+                mixChartPage = 0
                 vehicleChartPage = 0
             }
             .onChange(of: selectedPlaceID) { _, _ in
@@ -279,6 +285,8 @@ struct StatsView: View {
 
     private func resetChartPages() {
         dailyChartPage = 0
+        weekdayChartPage = 0
+        mixChartPage = 0
         vehicleChartPage = 0
         categoryChartPage = 0
     }
@@ -323,6 +331,38 @@ struct StatsView: View {
                 }
                 .id("daily-\(statsFilterFingerprint)")
                 .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
+            }
+
+            if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
+                Section(titledWithScope("stats.chart.weekday_section", scope: statsTripChartScopeLabel)) {
+                    StatsChartPager(
+                        pageCount: weekdayChartKinds.count,
+                        contentHeight: StatsChartPagerMetrics.dailyContentHeight,
+                        selection: $weekdayChartPage,
+                        reduceMotion: reduceMotion
+                    ) { index in
+                        weekdayChartPageContent(kind: weekdayChartKinds[index], pageIndex: index)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .statsFullCard()
+                }
+                .id("weekday-\(statsFilterFingerprint)")
+            }
+
+            if snap.hasMixCharts, !mixChartKinds.isEmpty {
+                Section(titledWithScope("stats.chart.mix_section", scope: statsTripChartScopeLabel)) {
+                    StatsChartPager(
+                        pageCount: mixChartKinds.count,
+                        contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                        selection: $mixChartPage,
+                        reduceMotion: reduceMotion
+                    ) { index in
+                        mixChartPageContent(kind: mixChartKinds[index], pageIndex: index)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .statsFullCard()
+                }
+                .id("mix-\(statsFilterFingerprint)")
             }
 
             if showsVehicleCompareList {
@@ -1129,6 +1169,15 @@ struct StatsView: View {
                 value: snap.stats.averageDurationText
             ),
             StatsSummaryMetricItem(
+                id: "averageDistance",
+                title: L10n.string("stats.average_distance"),
+                value: snap.stats.averageDistanceText,
+                trend: snap.averageDistanceTrend,
+                previousText: snap.previousStats.averageDistanceMeters > 0
+                    ? snap.previousStats.averageDistanceText
+                    : nil
+            ),
+            StatsSummaryMetricItem(
                 id: "averageSpeed",
                 title: L10n.string("stats.average_speed"),
                 value: snap.stats.averageSpeedText,
@@ -1161,6 +1210,17 @@ struct StatsView: View {
                 title: L10n.string("stats.stop_duration"),
                 value: snap.stats.stopDurationText,
                 trend: snap.stopDurationTrend
+            ),
+            StatsSummaryMetricItem(
+                id: "movingDuration",
+                title: L10n.string("stats.moving_duration"),
+                value: snap.stats.movingDurationText,
+                trend: snap.movingDurationTrend,
+                previousText: snap.previousStats.movingDuration > 0
+                    ? snap.previousStats.movingDurationText
+                    : nil,
+                helpTitle: L10n.movingDurationHelpTitle,
+                helpBody: L10n.movingDurationHelpBody
             ),
             StatsSummaryMetricItem(
                 id: "estimatedFuel",
@@ -1253,9 +1313,41 @@ struct StatsView: View {
                 id: "nightDriving",
                 title: L10n.string("stats.night_driving"),
                 value: snap.stats.nightDrivingText
+            ),
+            StatsSummaryMetricItem(
+                id: "nightKm",
+                title: L10n.string("stats.night_km"),
+                value: snap.stats.nightDistanceText,
+                trend: snap.nightDistanceTrend,
+                previousText: snap.previousStats.nightDistanceMeters > 0
+                    ? snap.previousStats.nightDistanceText
+                    : nil
+            ),
+            StatsSummaryMetricItem(
+                id: "drivingDays",
+                title: L10n.string("stats.driving_days"),
+                value: L10n.statsDrivingDays(snap.drivingDayCount, of: snap.periodDayCount),
+                trend: snap.drivingDayTrend,
+                previousText: snap.previousDrivingDayCount > 0
+                    ? L10n.statsDrivingDays(snap.previousDrivingDayCount, of: snap.previousPeriodDayCount)
+                    : nil,
+                helpTitle: L10n.statsDrivingDaysHelpTitle,
+                helpBody: L10n.statsDrivingDaysHelpBody
+            ),
+            StatsSummaryMetricItem(
+                id: "busiestDay",
+                title: L10n.string("stats.busiest_day"),
+                value: busiestDayText
             )
         ])
         return items
+    }
+
+    private var busiestDayText: String {
+        guard let day = snap.busiestDay, snap.busiestDayMeters > 0 else { return "—" }
+        let date = DateFormatters.chartDay.string(from: day)
+        let distance = DateFormatters.formatDistance(snap.busiestDayMeters)
+        return "\(date) · \(distance)"
     }
 
     private func summaryMetricCard(
@@ -1343,6 +1435,8 @@ struct StatsView: View {
             snap.dailyMostCommonSpeed.count,
             snap.dailyStopDuration.count,
             snap.dailyFuelCost.count,
+            snap.dailyTripCount.count,
+            snap.dailyNightDistance.count,
             1
         )
     }
@@ -1397,8 +1491,21 @@ struct StatsView: View {
         case cruiseSpeed
         case mostCommonSpeed
         case stopDuration
+        case trips
+        case night
         case fuel
         case expenses
+    }
+
+    private enum WeekdayChartKind: Hashable {
+        case distance
+        case duration
+    }
+
+    private enum MixChartKind: Hashable {
+        case nightDay
+        case movingStop
+        case fuelFactors
     }
 
     private enum VehicleChartKind: Hashable {
@@ -1528,8 +1635,29 @@ struct StatsView: View {
         if !snap.dailyCruiseSpeed.isEmpty { kinds.append(.cruiseSpeed) }
         if !snap.dailyMostCommonSpeed.isEmpty { kinds.append(.mostCommonSpeed) }
         if !snap.dailyStopDuration.isEmpty { kinds.append(.stopDuration) }
+        if !snap.dailyTripCount.isEmpty { kinds.append(.trips) }
+        if snap.hasNightDailyChart { kinds.append(.night) }
         if !snap.dailyFuelCost.isEmpty { kinds.append(.fuel) }
         if costSnapshot.hasTimelineChart { kinds.append(.expenses) }
+        return kinds
+    }
+
+    private var weekdayChartKinds: [WeekdayChartKind] {
+        var kinds: [WeekdayChartKind] = []
+        if snap.weekdayDistance.contains(where: { $0.distanceMeters > 0 }) {
+            kinds.append(.distance)
+        }
+        if snap.weekdayDuration.contains(where: { $0.duration > 0 }) {
+            kinds.append(.duration)
+        }
+        return kinds
+    }
+
+    private var mixChartKinds: [MixChartKind] {
+        var kinds: [MixChartKind] = []
+        if snap.stats.trackedDistanceMeters > 0 { kinds.append(.nightDay) }
+        if snap.stats.totalDuration > 0 { kinds.append(.movingStop) }
+        if !snap.stats.fuelFactorShares.isEmpty { kinds.append(.fuelFactors) }
         return kinds
     }
 
@@ -1621,6 +1749,24 @@ struct StatsView: View {
             ) {
                 dailyStopDurationChartBody(snap.dailyStopDuration)
             }
+        case .trips:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.daily_trips", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                dailyTripCountChartBody(snap.dailyTripCount)
+            }
+        case .night:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.daily_night", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                dailyNightDistanceChartBody(snap.dailyNightDistance)
+            }
         case .fuel:
             StatsDeferredChart(
                 title: titledWithScope("stats.chart.daily_fuel", scope: statsTripChartScopeLabel),
@@ -1651,6 +1797,62 @@ struct StatsView: View {
                     periodEnd: costInterval.end,
                     currencyCode: fuelCurrencyCode
                 )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func weekdayChartPageContent(kind: WeekdayChartKind, pageIndex: Int) -> some View {
+        let isActive = pageIndex == weekdayChartPage
+        switch kind {
+        case .distance:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.weekday_distance", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                weekdayDistanceChartBody(snap.weekdayDistance)
+            }
+        case .duration:
+            StatsDeferredChart(
+                title: titledWithScope("stats.chart.weekday_duration", scope: statsTripChartScopeLabel),
+                chartHeight: 200,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                weekdayDurationChartBody(snap.weekdayDuration)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func mixChartPageContent(kind: MixChartKind, pageIndex: Int) -> some View {
+        let isActive = pageIndex == mixChartPage
+        switch kind {
+        case .nightDay:
+            StatsDeferredContent(
+                placeholderHeight: StatsChartPagerMetrics.donutContentHeight,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                nightDayDonut()
+            }
+        case .movingStop:
+            StatsDeferredContent(
+                placeholderHeight: StatsChartPagerMetrics.donutContentHeight,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                movingStopDonut()
+            }
+        case .fuelFactors:
+            StatsDeferredContent(
+                placeholderHeight: StatsChartPagerMetrics.donutContentHeight,
+                reduceMotion: reduceMotion,
+                isPageActive: isActive
+            ) {
+                fuelFactorsDonut()
             }
         }
     }
@@ -1852,6 +2054,96 @@ struct StatsView: View {
         .frame(height: 200)
     }
 
+    private func dailyTripCountChartBody(_ dailyTripCountChartData: [DailyTripCount]) -> some View {
+        let days = dailyTripCountChartData.map(\.day)
+        return Chart(dailyTripCountChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.trips_count"), item.count)
+            )
+            .foregroundStyle(StatsChartTheme.tripCountBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+        }
+        .chartBarValueHeadroom(maxValue: Double(dailyTripCountChartData.map(\.count).max() ?? 0))
+        .chartStatsQuietYAxisStyle()
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartStatsYAxisUnit(L10n.string("stats.chart.trips_count"))
+        .frame(height: 200)
+    }
+
+    private func dailyNightDistanceChartBody(_ dailyNightDistanceChartData: [DailyNightDistance]) -> some View {
+        let days = dailyNightDistanceChartData.map(\.day)
+        return Chart(dailyNightDistanceChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.day"), item.day, unit: .day),
+                y: .value(L10n.string("stats.chart.distance_km"), item.distanceKilometers)
+            )
+            .foregroundStyle(StatsChartTheme.nightDistanceBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+        }
+        .chartBarValueHeadroom(maxValue: dailyNightDistanceChartData.map(\.distanceKilometers).max() ?? 0)
+        .chartStatsQuietYAxisStyle()
+        .chartXAxis { dailyChartXAxis(days: days) }
+        .chartStatsYAxisUnit(L10n.string("stats.chart.distance_km"))
+        .frame(height: 200)
+    }
+
+    private func weekdayDistanceChartBody(_ weekdayChartData: [WeekdayDistance]) -> some View {
+        let labels = weekdayChartData.map(\.label)
+        return Chart(weekdayChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.weekday"), item.label),
+                y: .value(L10n.string("stats.chart.distance_km"), item.distanceKilometers)
+            )
+            .foregroundStyle(StatsChartTheme.weekdayDistanceBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+        }
+        .chartXScale(domain: labels)
+        .chartBarValueHeadroom(maxValue: weekdayChartData.map(\.distanceKilometers).max() ?? 0)
+        .chartStatsQuietYAxisStyle()
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    Text(value.as(String.self) ?? "")
+                        .font(.caption2)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+            }
+        }
+        .chartStatsYAxisUnit(L10n.string("stats.chart.distance_km"))
+        .frame(height: 200)
+    }
+
+    private func weekdayDurationChartBody(_ weekdayChartData: [WeekdayDuration]) -> some View {
+        let labels = weekdayChartData.map(\.label)
+        return Chart(weekdayChartData) { item in
+            BarMark(
+                x: .value(L10n.string("stats.chart.weekday"), item.label),
+                y: .value(L10n.string("stats.chart.duration_hours"), item.durationHours)
+            )
+            .foregroundStyle(StatsChartTheme.weekdayDurationBarFill)
+            .cornerRadius(StatsChartTheme.barCornerRadius)
+        }
+        .chartXScale(domain: labels)
+        .chartBarValueHeadroom(maxValue: weekdayChartData.map(\.durationHours).max() ?? 0)
+        .chartStatsQuietYAxisStyle()
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    Text(value.as(String.self) ?? "")
+                        .font(.caption2)
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+            }
+        }
+        .chartStatsYAxisUnit(L10n.string("stats.chart.duration_hours"))
+        .frame(height: 200)
+    }
+
     private func dailyFuelCostChartBody(_ dailyFuelCostChartData: [DailyFuelCost]) -> some View {
         let days = dailyFuelCostChartData.map(\.day)
         let avgLabel = L10n.string("stats.chart.fuel_avg")
@@ -1933,15 +2225,26 @@ struct StatsView: View {
         titleKey: StaticString,
         centerTotal: String,
         legendItems: [StatsDonutLegendItem],
+        helpTitle: String? = nil,
+        helpBody: String? = nil,
         @ViewBuilder chart: () -> ChartContent
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(titledWithScope(titleKey, scope: statsTripChartScopeLabel))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .center, spacing: 8) {
+                Text(titledWithScope(titleKey, scope: statsTripChartScopeLabel))
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let helpTitle, let helpBody {
+                    HelpPopoverButton(
+                        accessibilityLabel: helpTitle,
+                        message: helpBody,
+                        sheetHeight: 320
+                    )
+                }
+            }
 
             Spacer(minLength: 0)
 
@@ -1973,6 +2276,138 @@ struct StatsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         // Keep content above the pager clip / page dots.
         .padding(.bottom, 2)
+    }
+
+    private func fuelFactorTitle(_ kind: FuelFactorKind) -> String {
+        TripSummaryMetric.factorTitle(kind)
+    }
+
+    private func nightDayDonut() -> some View {
+        let slices = [
+            StatsMixSlice(
+                id: "night",
+                name: L10n.string("stats.night_driving"),
+                value: snap.stats.nightDistanceMeters
+            ),
+            StatsMixSlice(
+                id: "day",
+                name: L10n.string("stats.daytime"),
+                value: snap.stats.daytimeDistanceMeters
+            )
+        ].filter { $0.value > 0 }
+        let names = slices.map(\.name)
+        let keys = slices.map(\.id)
+        let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
+        let totalMeters = slices.reduce(0) { $0 + $1.value }
+        let legendItems = slices.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: DateFormatters.formatDistance(item.value)
+            )
+        }
+        return statsDonutPage(
+            titleKey: "stats.chart.mix_night_day",
+            centerTotal: DateFormatters.formatDistance(totalMeters),
+            legendItems: legendItems
+        ) {
+            Chart(slices) { item in
+                SectorMark(
+                    angle: .value(L10n.string("stats.chart.distance_km"), item.value / 1000),
+                    innerRadius: .ratio(StatsChartTheme.donutInnerRadius),
+                    angularInset: StatsChartTheme.donutAngularInset
+                )
+                .foregroundStyle(by: .value(L10n.string("stats.chart.mix_night_day"), item.name))
+            }
+            .chartForegroundStyleScale(domain: palette.0, range: palette.1)
+        }
+    }
+
+    private func movingStopDonut() -> some View {
+        let slices = [
+            StatsMixSlice(
+                id: "moving",
+                name: L10n.string("stats.moving_duration"),
+                value: snap.stats.movingDuration
+            ),
+            StatsMixSlice(
+                id: "stopped",
+                name: L10n.string("stats.stop_duration"),
+                value: snap.stats.stopDuration
+            )
+        ].filter { $0.value > 0 }
+        let names = slices.map(\.name)
+        let keys = slices.map(\.id)
+        let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: true)
+        let total = slices.reduce(0) { $0 + $1.value }
+        let legendItems = slices.map { item in
+            statsDonutLegendItem(
+                id: item.id,
+                name: item.name,
+                durationStyle: true,
+                domainKeys: keys,
+                value: DateFormatters.formatDuration(item.value)
+            )
+        }
+        return statsDonutPage(
+            titleKey: "stats.chart.mix_moving_stop",
+            centerTotal: DateFormatters.formatDuration(total),
+            legendItems: legendItems
+        ) {
+            Chart(slices) { item in
+                SectorMark(
+                    angle: .value(L10n.string("stats.chart.duration_hours"), item.value / 3600),
+                    innerRadius: .ratio(StatsChartTheme.donutInnerRadius),
+                    angularInset: StatsChartTheme.donutAngularInset
+                )
+                .foregroundStyle(by: .value(L10n.string("stats.chart.mix_moving_stop"), item.name))
+            }
+            .chartForegroundStyleScale(domain: palette.0, range: palette.1)
+        }
+    }
+
+    private func fuelFactorsDonut() -> some View {
+        let shares = snap.stats.fuelFactorShares
+        let names = shares.map { fuelFactorTitle($0.kind) }
+        let keys = shares.map(\.id)
+        let palette = chartSlicePalette(labels: names, stableKeys: keys, durationStyle: false)
+        let currencyElectric = snap.stats.fuelUnitIsElectric
+        let totalVolume = shares.reduce(0) { $0 + $1.volume }
+        let legendItems = zip(shares, names).map { item, name in
+            statsDonutLegendItem(
+                id: item.id,
+                name: name,
+                durationStyle: false,
+                domainKeys: keys,
+                value: FuelCostCalculator.formatVolumeAmount(
+                    item.volume,
+                    isElectric: currencyElectric
+                ) ?? "—"
+            )
+        }
+        let centerTotal = FuelCostCalculator.formatVolumeAmount(
+            totalVolume,
+            isElectric: currencyElectric
+        ) ?? "—"
+        return statsDonutPage(
+            titleKey: "stats.chart.mix_fuel_factors",
+            centerTotal: centerTotal,
+            legendItems: legendItems,
+            helpTitle: L10n.fuelFactorsHelpTitle,
+            helpBody: L10n.fuelFactorsHelpBody
+        ) {
+            Chart(shares) { item in
+                SectorMark(
+                    angle: .value(L10n.string("stats.chart.mix_fuel_factors"), item.volume),
+                    innerRadius: .ratio(StatsChartTheme.donutInnerRadius),
+                    angularInset: StatsChartTheme.donutAngularInset
+                )
+                .foregroundStyle(by: .value(L10n.string("stats.chart.mix_fuel_factors"), fuelFactorTitle(item.kind)))
+            }
+            .chartForegroundStyleScale(domain: palette.0, range: palette.1)
+        }
     }
 
     private func vehicleDistanceDonut(data vehicleChartData: [VehicleDistance]) -> some View {
@@ -2255,6 +2690,12 @@ private struct StatsSummaryMetricItem: Identifiable {
     var previousText: String? = nil
     var helpTitle: String? = nil
     var helpBody: String? = nil
+}
+
+private struct StatsMixSlice: Identifiable {
+    let id: String
+    let name: String
+    let value: Double
 }
 
 private struct StatsSummaryGridAccessibility: ViewModifier {

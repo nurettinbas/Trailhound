@@ -65,6 +65,45 @@ struct DailyFuelCost: Identifiable, Sendable {
     }
 }
 
+struct DailyTripCount: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let count: Int
+}
+
+struct DailyNightDistance: Identifiable, Sendable {
+    let id: Date
+    let day: Date
+    let distanceMeters: Double
+
+    var distanceKilometers: Double { distanceMeters / 1000 }
+}
+
+struct WeekdayDistance: Identifiable, Sendable {
+    let id: Int
+    let weekday: Int
+    let label: String
+    let distanceMeters: Double
+
+    var distanceKilometers: Double { distanceMeters / 1000 }
+}
+
+struct WeekdayDuration: Identifiable, Sendable {
+    let id: Int
+    let weekday: Int
+    let label: String
+    let duration: TimeInterval
+
+    var durationHours: Double { duration / 3600 }
+}
+
+struct FuelFactorShare: Identifiable, Sendable, Equatable {
+    let kind: FuelFactorKind
+    let volume: Double
+
+    var id: String { kind.rawValue }
+}
+
 struct CategoryDistance: Identifiable, Sendable {
     let id: String
     let name: String
@@ -185,7 +224,12 @@ struct StatsViewModel {
             .compactMap { TripSpeedSummary.believableStoredMaxSpeedMps($0.maxSpeedMps) }
             .map { $0 * 3.6 }
             .max() ?? 0
-        let nightRatio = includeNightRatio ? nightDrivingRatio(for: completed) : 0
+        let nightTotals = includeNightRatio
+            ? nightDrivingTotals(for: completed)
+            : (nightMeters: 0.0, trackedMeters: 0.0)
+        let nightRatio = nightTotals.trackedMeters > 0
+            ? nightTotals.nightMeters / nightTotals.trackedMeters
+            : 0
         var cruiseWeight = 0.0
         var cruiseProduct = 0.0
         var mostCommonWeight = 0.0
@@ -228,6 +272,13 @@ struct StatsViewModel {
             unitKeys.insert(trip.resolvedFuelUnitKey)
         }
         let mixedUnits = unitKeys.count > 1
+        let factorShares = fuelFactorShares(
+            idle: idleVolume,
+            transient: transientVolume,
+            cold: coldVolume,
+            speed: speedAbsVolume,
+            mixedUnits: mixedUnits
+        )
 
         return TripStats(
             tripCount: count,
@@ -242,6 +293,8 @@ struct StatsViewModel {
             estimatedFuelCost: totalFuel,
             dynamicFuelCost: totalDynamicFuel,
             nightDrivingRatio: nightRatio,
+            nightDistanceMeters: nightTotals.nightMeters,
+            trackedDistanceMeters: nightTotals.trackedMeters,
             dynamicFuelVolume: mixedUnits ? 0 : totalVolume,
             dynamicFuelVolumeDistanceMeters: mixedUnits ? 0 : volumeDistance,
             fuelEfficiencyScore: mixedUnits || volumeDistance <= 0
@@ -249,16 +302,8 @@ struct StatsViewModel {
                 : efficiencyProduct / max(volumeDistance, 1),
             hasMixedFuelUnits: mixedUnits,
             fuelUnitIsElectric: !mixedUnits && unitKeys.contains("electric"),
-            topFuelFactors: mixedUnits ? [] : [
-                (FuelFactorKind.idleTraffic, idleVolume),
-                (.transientAcceleration, transientVolume),
-                (.coldStart, coldVolume),
-                (.highSpeed, speedAbsVolume)
-            ]
-            .filter { $0.1 > 0.01 }
-            .sorted { $0.1 > $1.1 }
-            .prefix(3)
-            .map(\.0)
+            fuelFactorShares: factorShares,
+            topFuelFactors: topFuelFactors(from: factorShares)
         )
     }
 
@@ -291,14 +336,15 @@ struct StatsViewModel {
         for period: StatsPeriod,
         customStart: Date,
         customEnd: Date,
-        selectedMonth: Date = Date()
+        selectedMonth: Date = Date(),
+        now: Date = Date(),
+        calendar: Calendar = .current
     ) -> DateInterval {
-        let calendar = Calendar.current
-        let end = Date()
         switch period {
         case .week:
-            let start = calendar.date(byAdding: .day, value: -7, to: end) ?? end
-            return DateInterval(start: start, end: end)
+            let today = calendar.startOfDay(for: now)
+            let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+            return DateInterval(start: start, end: now)
         case .month:
             return calendarMonthInterval(containing: selectedMonth, calendar: calendar)
         case .custom:
@@ -319,15 +365,42 @@ struct StatsViewModel {
         return DateInterval(start: start, end: end)
     }
 
-    /// Calendar midnights crossed by `interval`, not `duration / 86400` (DST-safe).
+    /// Inclusive calendar days that overlap `interval` (DST-safe).
+    /// A half-open midnight end (`[1 Sep, 1 Oct)`) does not include the end day.
+    static func calendarDays(
+        in interval: DateInterval,
+        calendar: Calendar = .current
+    ) -> [Date] {
+        let start = calendar.startOfDay(for: interval.start)
+        var last = calendar.startOfDay(for: interval.end)
+        if interval.end <= last {
+            last = calendar.date(byAdding: .day, value: -1, to: last) ?? start
+        }
+        guard last >= start else { return [start] }
+        var days: [Date] = []
+        var day = start
+        while day <= last {
+            days.append(day)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return days
+    }
+
+    /// Calendar days overlapping `interval`, not `duration / 86400` (DST-safe).
     static func calendarDayCount(
         in interval: DateInterval,
         calendar: Calendar = .current
     ) -> Int {
-        let start = calendar.startOfDay(for: interval.start)
-        let end = calendar.startOfDay(for: interval.end)
-        let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
-        return max(days, 1)
+        max(calendarDays(in: interval, calendar: calendar).count, 1)
+    }
+
+    private static func emptyCalendarDayBuckets<Value>(
+        in interval: DateInterval,
+        calendar: Calendar = .current,
+        value: Value
+    ) -> [Date: Value] {
+        Dictionary(uniqueKeysWithValues: calendarDays(in: interval, calendar: calendar).map { ($0, value) })
     }
 
     static func calendarDaysInMonth(
@@ -441,7 +514,11 @@ struct StatsViewModel {
         calendar: Calendar = .current
     ) -> DateInterval {
         switch period {
-        case .week, .custom:
+        case .week:
+            let end = calendar.startOfDay(for: selectedInterval.start)
+            let start = calendar.date(byAdding: .day, value: -7, to: end) ?? end
+            return DateInterval(start: start, end: end)
+        case .custom:
             return previousInterval(for: selectedInterval)
         case .month:
             let previousFull = previousMonthInterval(containing: selectedMonth, calendar: calendar)
@@ -538,18 +615,11 @@ struct StatsViewModel {
     ) -> [DailyDistance] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += trip.distanceMeters
         }
 
@@ -564,19 +634,12 @@ struct StatsViewModel {
     ) -> [DailyDuration] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             guard let duration = trip.duration, duration > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += duration
         }
 
@@ -591,20 +654,12 @@ struct StatsViewModel {
     ) -> [DailyAverageSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var distanceBuckets: [Date: Double] = [:]
-        var durationBuckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            distanceBuckets[day] = 0
-            durationBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var distanceBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var durationBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard distanceBuckets[tripDay] != nil else { continue }
             distanceBuckets[tripDay, default: 0] += trip.distanceMeters
             if let duration = trip.duration, duration > 0 {
                 durationBuckets[tripDay, default: 0] += duration
@@ -626,21 +681,14 @@ struct StatsViewModel {
     ) -> [DailyMaxSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             guard let maxSpeedMps = TripSpeedSummary.believableStoredMaxSpeedMps(trip.maxSpeedMps) else {
                 continue
             }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] = max(buckets[tripDay, default: 0], maxSpeedMps * 3.6)
         }
 
@@ -655,23 +703,15 @@ struct StatsViewModel {
     ) -> [DailyCruiseSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var weightBuckets: [Date: Double] = [:]
-        var productBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            weightBuckets[day] = 0
-            productBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var weightBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var productBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let weight = trip.resolvedCruiseDurationSeconds
             let speed = trip.resolvedCruiseSpeedKmh
             guard weight > 0, speed > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard weightBuckets[tripDay] != nil else { continue }
             weightBuckets[tripDay, default: 0] += weight
             productBuckets[tripDay, default: 0] += speed * weight
         }
@@ -689,23 +729,15 @@ struct StatsViewModel {
     ) -> [DailyMostCommonSpeed] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var weightBuckets: [Date: Double] = [:]
-        var productBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            weightBuckets[day] = 0
-            productBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var weightBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var productBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let weight = trip.resolvedCruiseDurationSeconds
             let speed = trip.resolvedMostCommonSpeedKmh
             guard weight > 0, speed > 0 else { continue }
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard weightBuckets[tripDay] != nil else { continue }
             weightBuckets[tripDay, default: 0] += weight
             productBuckets[tripDay, default: 0] += speed * weight
         }
@@ -723,18 +755,11 @@ struct StatsViewModel {
     ) -> [DailyStopDuration] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var buckets: [Date: TimeInterval] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            buckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
             buckets[tripDay, default: 0] += trip.resolvedStopDurationSeconds
         }
 
@@ -749,20 +774,12 @@ struct StatsViewModel {
     ) -> [DailyFuelCost] {
         let calendar = Calendar.current
         let filtered = Self.trips(in: interval, from: trips)
-        var avgBuckets: [Date: Double] = [:]
-        var dynamicBuckets: [Date: Double] = [:]
-
-        var day = calendar.startOfDay(for: interval.start)
-        let endDay = calendar.startOfDay(for: interval.end)
-        while day <= endDay {
-            avgBuckets[day] = 0
-            dynamicBuckets[day] = 0
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
+        var avgBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+        var dynamicBuckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
 
         for trip in filtered {
             let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard avgBuckets[tripDay] != nil else { continue }
             avgBuckets[tripDay, default: 0] += trip.resolvedFuelCost
             dynamicBuckets[tripDay, default: 0] += trip.resolvedDynamicFuelCost
         }
@@ -775,6 +792,153 @@ struct StatsViewModel {
                 dynamicCost: dynamicBuckets[day] ?? 0
             )
         }
+    }
+
+    static func dailyTripCounts<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyTripCount] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0)
+
+        for trip in filtered {
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
+            buckets[tripDay, default: 0] += trip.tripCount
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyTripCount(id: day, day: day, count: buckets[day] ?? 0)
+        }
+    }
+
+    static func dailyNightDistances<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T]
+    ) -> [DailyNightDistance] {
+        let calendar = Calendar.current
+        let filtered = Self.trips(in: interval, from: trips)
+        var buckets = emptyCalendarDayBuckets(in: interval, calendar: calendar, value: 0.0)
+
+        for trip in filtered {
+            guard let share = trip.nightDistanceShare else { continue }
+            let tripDay = calendar.startOfDay(for: trip.startedAt)
+            guard buckets[tripDay] != nil else { continue }
+            buckets[tripDay, default: 0] += share.nightMeters
+        }
+
+        return buckets.keys.sorted().map { day in
+            DailyNightDistance(id: day, day: day, distanceMeters: buckets[day] ?? 0)
+        }
+    }
+
+    static func orderedWeekdays(calendar: Calendar = .current) -> [Int] {
+        let first = calendar.firstWeekday
+        return (0..<7).map { ((first - 1 + $0) % 7) + 1 }
+    }
+
+    static func weekdayLabel(_ weekday: Int, calendar: Calendar = .current) -> String {
+        let symbols = calendar.shortWeekdaySymbols
+        let index = weekday - 1
+        guard symbols.indices.contains(index) else { return "" }
+        return symbols[index]
+    }
+
+    static func weekdayDistances<T: TripStatsAggregable>(
+        from trips: [T],
+        calendar: Calendar = .current
+    ) -> [WeekdayDistance] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var buckets: [Int: Double] = [:]
+        let order = orderedWeekdays(calendar: calendar)
+        for weekday in order {
+            buckets[weekday] = 0
+        }
+        for trip in filtered {
+            let weekday = calendar.component(.weekday, from: trip.startedAt)
+            buckets[weekday, default: 0] += trip.distanceMeters
+        }
+        return order.map { weekday in
+            WeekdayDistance(
+                id: weekday,
+                weekday: weekday,
+                label: weekdayLabel(weekday, calendar: calendar),
+                distanceMeters: buckets[weekday] ?? 0
+            )
+        }
+    }
+
+    static func weekdayDurations<T: TripStatsAggregable>(
+        from trips: [T],
+        calendar: Calendar = .current
+    ) -> [WeekdayDuration] {
+        let filtered = trips.filter { $0.endedAt != nil }
+        var buckets: [Int: TimeInterval] = [:]
+        let order = orderedWeekdays(calendar: calendar)
+        for weekday in order {
+            buckets[weekday] = 0
+        }
+        for trip in filtered {
+            guard let duration = trip.duration, duration > 0 else { continue }
+            let weekday = calendar.component(.weekday, from: trip.startedAt)
+            buckets[weekday, default: 0] += duration
+        }
+        return order.map { weekday in
+            WeekdayDuration(
+                id: weekday,
+                weekday: weekday,
+                label: weekdayLabel(weekday, calendar: calendar),
+                duration: buckets[weekday] ?? 0
+            )
+        }
+    }
+
+    static func drivingDayCount<T: TripStatsAggregable>(
+        in interval: DateInterval,
+        from trips: [T],
+        calendar: Calendar = .current
+    ) -> Int {
+        let filtered = Self.trips(in: interval, from: trips)
+        let periodDays = Set(calendarDays(in: interval, calendar: calendar))
+        var days = Set<Date>()
+        for trip in filtered {
+            let day = calendar.startOfDay(for: trip.startedAt)
+            if periodDays.contains(day) {
+                days.insert(day)
+            }
+        }
+        return days.count
+    }
+
+    static func busiestDay(from daily: [DailyDistance]) -> (day: Date, meters: Double)? {
+        guard let best = daily.max(by: { $0.distanceMeters < $1.distanceMeters }),
+              best.distanceMeters > 0 else {
+            return nil
+        }
+        return (best.day, best.distanceMeters)
+    }
+
+    static func fuelFactorShares(
+        idle: Double,
+        transient: Double,
+        cold: Double,
+        speed: Double,
+        mixedUnits: Bool
+    ) -> [FuelFactorShare] {
+        guard !mixedUnits else { return [] }
+        return [
+            FuelFactorShare(kind: .idleTraffic, volume: idle),
+            FuelFactorShare(kind: .transientAcceleration, volume: transient),
+            FuelFactorShare(kind: .coldStart, volume: cold),
+            FuelFactorShare(kind: .highSpeed, volume: speed)
+        ]
+        .filter { $0.volume > 0.01 }
+        .sorted { $0.volume > $1.volume }
+    }
+
+    static func topFuelFactors(from shares: [FuelFactorShare]) -> [FuelFactorKind] {
+        Array(shares.prefix(3).map(\.kind))
     }
 
     /// Display names for every category key, resolved up front so the breakdowns can run away
@@ -948,18 +1112,25 @@ struct StatsViewModel {
         vehicleFuelBreakdown(for: trips, vehicleNames: vehicleNameMap(for: vehicles))
     }
 
-    static func nightDrivingRatio<T: TripStatsAggregable>(for trips: [T]) -> Double {
+    static func nightDrivingTotals<T: TripStatsAggregable>(
+        for trips: [T]
+    ) -> (nightMeters: Double, trackedMeters: Double) {
         var nightMeters = 0.0
-        var totalMeters = 0.0
+        var trackedMeters = 0.0
 
         for trip in trips {
             guard let share = trip.nightDistanceShare else { continue }
             nightMeters += share.nightMeters
-            totalMeters += share.trackedMeters
+            trackedMeters += share.trackedMeters
         }
 
-        guard totalMeters > 0 else { return 0 }
-        return nightMeters / totalMeters
+        return (nightMeters, trackedMeters)
+    }
+
+    static func nightDrivingRatio<T: TripStatsAggregable>(for trips: [T]) -> Double {
+        let totals = nightDrivingTotals(for: trips)
+        guard totals.trackedMeters > 0 else { return 0 }
+        return totals.nightMeters / totals.trackedMeters
     }
 
     /// Fallback for trips whose derived split has not been backfilled yet. Walks every GPS
@@ -1044,11 +1215,14 @@ struct TripStats: Sendable {
     let estimatedFuelCost: Double
     let dynamicFuelCost: Double
     let nightDrivingRatio: Double
+    let nightDistanceMeters: Double
+    let trackedDistanceMeters: Double
     let dynamicFuelVolume: Double
     let dynamicFuelVolumeDistanceMeters: Double
     let fuelEfficiencyScore: Double
     let hasMixedFuelUnits: Bool
     let fuelUnitIsElectric: Bool
+    let fuelFactorShares: [FuelFactorShare]
     let topFuelFactors: [FuelFactorKind]
 
     init(
@@ -1064,11 +1238,14 @@ struct TripStats: Sendable {
         estimatedFuelCost: Double,
         dynamicFuelCost: Double = 0,
         nightDrivingRatio: Double = 0,
+        nightDistanceMeters: Double = 0,
+        trackedDistanceMeters: Double = 0,
         dynamicFuelVolume: Double = 0,
         dynamicFuelVolumeDistanceMeters: Double = 0,
         fuelEfficiencyScore: Double = 0,
         hasMixedFuelUnits: Bool = false,
         fuelUnitIsElectric: Bool = false,
+        fuelFactorShares: [FuelFactorShare] = [],
         topFuelFactors: [FuelFactorKind] = []
     ) {
         self.tripCount = tripCount
@@ -1083,17 +1260,43 @@ struct TripStats: Sendable {
         self.estimatedFuelCost = estimatedFuelCost
         self.dynamicFuelCost = dynamicFuelCost
         self.nightDrivingRatio = nightDrivingRatio
+        self.nightDistanceMeters = nightDistanceMeters
+        self.trackedDistanceMeters = trackedDistanceMeters
         self.dynamicFuelVolume = dynamicFuelVolume
         self.dynamicFuelVolumeDistanceMeters = dynamicFuelVolumeDistanceMeters
         self.fuelEfficiencyScore = fuelEfficiencyScore
         self.hasMixedFuelUnits = hasMixedFuelUnits
         self.fuelUnitIsElectric = fuelUnitIsElectric
-        self.topFuelFactors = topFuelFactors
+        self.fuelFactorShares = fuelFactorShares
+        self.topFuelFactors = topFuelFactors.isEmpty
+            ? StatsViewModel.topFuelFactors(from: fuelFactorShares)
+            : topFuelFactors
+    }
+
+    var averageDistanceMeters: Double {
+        tripCount > 0 ? totalDistanceMeters / Double(tripCount) : 0
+    }
+
+    var movingDuration: TimeInterval {
+        max(0, totalDuration - stopDuration)
+    }
+
+    var daytimeDistanceMeters: Double {
+        max(0, trackedDistanceMeters - nightDistanceMeters)
     }
 
     var totalDistanceText: String { DateFormatters.formatDistance(totalDistanceMeters) }
+    var averageDistanceText: String {
+        averageDistanceMeters > 0 ? DateFormatters.formatDistance(averageDistanceMeters) : "—"
+    }
     var totalDurationText: String { DateFormatters.formatDuration(totalDuration) }
     var averageDurationText: String { DateFormatters.formatDuration(averageDuration) }
+    var movingDurationText: String {
+        movingDuration > 0 ? DateFormatters.formatDuration(movingDuration) : "—"
+    }
+    var nightDistanceText: String {
+        nightDistanceMeters > 0 ? DateFormatters.formatDistance(nightDistanceMeters) : "—"
+    }
     var averageSpeedText: String {
         averageSpeedKmh > 0 ? L10n.formatSpeedKmh(averageSpeedKmh) : "—"
     }

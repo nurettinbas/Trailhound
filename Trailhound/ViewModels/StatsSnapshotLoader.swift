@@ -113,9 +113,19 @@ actor StatsSnapshotLoader {
             customEnd: request.customEnd,
             selectedMonth: request.selectedMonth
         )
-        let previous = request.selectedPeriod == .month
-            ? StatsViewModel.previousMonthInterval(containing: request.selectedMonth)
-            : StatsViewModel.previousInterval(for: selected)
+        let previous: DateInterval
+        switch request.selectedPeriod {
+        case .month:
+            previous = StatsViewModel.previousMonthInterval(containing: request.selectedMonth)
+        case .week:
+            previous = StatsViewModel.alignedPreviousInterval(
+                for: .week,
+                selectedInterval: selected,
+                selectedMonth: request.selectedMonth
+            )
+        case .custom:
+            previous = StatsViewModel.previousInterval(for: selected)
+        }
         let goalMonthInterval = StatsViewModel.calendarMonthInterval(containing: request.goalMonth)
         let interval = DateInterval(
             start: min(selected.start, previous.start, goalMonthInterval.start),

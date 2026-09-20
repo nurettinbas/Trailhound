@@ -36,7 +36,16 @@ VoiceOver reads each field’s title and current value. Identifiers: `stats.filt
 
 Filter changes can move tiles between the hero and the summary grid (trips vs expenses). Until `StatsSnapshotLoader` returns, the summary card shows packed nested-tile skeletons (`StatsSummaryTileSkeleton`) at the destination count — no empty grid holes, no extra fetch. Reduce Motion keeps the bars static. VoiceOver reads **Loading summary**.
 
-Previous-period values from comparison live on the hero and on tiles that have a `StatsPeriodCompareRow` (trips, distance, duration, expenses, estimated fuel). The old spreadsheet strip is not a separate card.
+Previous-period values from comparison live on the hero and on tiles that have a `StatsPeriodCompareRow` (trips, distance, duration, expenses, estimated fuel) plus extra nested tiles (average trip distance, moving time, night km, driving days). The old spreadsheet strip is not a separate card.
+
+Summary nested tiles also include average trip distance (beside average duration), moving time (beside total stop), night km (beside the night-distance percent), driving days (`12 / 30`), and busiest day (`14 Sep · 42 km`). Driving days counts calendar days with at least one trip over the days shown on the daily charts. Last 7 days is today plus the previous six calendar days — not a 7×24h window (which spans eight dates).
+
+Daily pager pages include trip count and, when the period has any night km, a night-distance bar. Two more full-width pagers sit after Daily trends, before vehicle compare:
+
+- **By weekday** — Mon–Sun distance and duration bars (`firstWeekday` order). Hidden when every weekday is zero.
+- **Split** — night vs day km, moving vs stopped time, and fuel-factor volume donuts (same `statsDonutPage` chrome as vehicle/category). Hidden when the period has no tracked km, duration, or fuel-factor volumes. Mixed litre+kWh filters hide the fuel-factor page.
+
+Hour-of-day heatmaps and single-trip “longest trip” are out of scope: daily rollups have no hour or per-trip identity. Frequent routes stay on Recap.
 
 Estimated fuel on the summary tile and the daily dual Avg / Est. chart is the GPS-adjusted `dynamicFuelCost` (see [Fuel estimation](FUEL_ESTIMATION.md)). After a formula change, launch backfill rewrites stored trip values first; daily rollups rebuild only when that walk has finished. Avg fuel, month forecast, and year recap stay on catalog `estimatedFuelCost`.
 
@@ -47,6 +56,6 @@ Logged vehicle expenses (Capsule bars, not Swift Charts) is its **own** full-wid
 ## What stays deferred
 
 - `StatsSnapshotLoader` / `VehicleCostSnapshotLoader` on `@ModelActor`. Fetch window remains `selected ∪ previous ∪ goalMonth`.
-- `StatsDeferredChart` / `StatsDeferredContent` + `isPageActive` — only the visible pager slide mounts Swift Charts.
+- `StatsDeferredChart` / `StatsDeferredContent` + `isPageActive` — only the visible pager slide mounts Swift Charts (daily, weekday, split, vehicle, category).
 
 See [PERFORMANCE.md](PERFORMANCE.md) Stats tab section.
