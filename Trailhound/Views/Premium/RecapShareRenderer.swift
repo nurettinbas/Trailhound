@@ -1,18 +1,11 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import UIKit
 
-struct RecapShareItem: Transferable {
+struct RecapShareItem {
     let image: UIImage
     let caption: String
 
     static let empty = RecapShareItem(image: UIImage(), caption: "Trailhound")
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .png) { item in
-            item.image.pngData() ?? Data()
-        }
-    }
 }
 
 @MainActor

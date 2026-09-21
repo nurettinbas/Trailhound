@@ -290,8 +290,7 @@ struct TripDetailView: View {
             pendingSystemShare = false
         }) {
             if let shareImage {
-                let items: [Any] = shareCaption.map { [shareImage, $0] } ?? [shareImage]
-                ActivityShareSheet(items: items)
+                SocialImageShareSheet(image: shareImage, caption: shareCaption)
                     .ignoresSafeArea()
             }
         }
@@ -902,7 +901,6 @@ private struct TripSharePreviewSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                     .trailhoundProminentButton()
-                    .tint(TrailhoundBrandColors.brandBottom)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 12)
                 }
@@ -921,16 +919,6 @@ private struct TripSharePreviewSheet: View {
             }
         }
     }
-}
-
-private struct ActivityShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Speed chart route draw

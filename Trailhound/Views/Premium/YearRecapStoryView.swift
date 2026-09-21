@@ -16,6 +16,7 @@ struct YearRecapStoryView: View {
     @State private var displayedDistance: Double = 0
     @State private var advanceTask: Task<Void, Never>?
     @State private var shareItem = RecapShareItem.empty
+    @State private var showShareSheet = false
     @State private var routeImage: UIImage?
     @State private var clockStartedAt = Date()
     @State private var remainingAtClock = RecapStoryPlayback.pageDuration
@@ -139,6 +140,12 @@ struct YearRecapStoryView: View {
                 routeImage: routeImage
             )
         }
+        .sheet(isPresented: $showShareSheet, onDismiss: resumePlayback) {
+            if shareItem.image.size.width >= 2 {
+                SocialImageShareSheet(image: shareItem.image, caption: shareItem.caption)
+                    .ignoresSafeArea()
+            }
+        }
         .accessibilityIdentifier("stats.premium.recap.story")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
@@ -250,16 +257,13 @@ struct YearRecapStoryView: View {
                 Spacer(minLength: 0)
                     .allowsHitTesting(false)
                 GlassToolbarCluster {
-                    ShareLink(
-                        item: shareItem,
-                        subject: Text(shareItem.caption),
-                        message: Text(shareItem.caption),
-                        preview: SharePreview(shareItem.caption, image: Image(uiImage: shareItem.image))
-                    ) {
+                    Button {
+                        pausePlayback()
+                        showShareSheet = true
+                    } label: {
                         GlassNavCircleIcon(systemName: "square.and.arrow.up")
                     }
                     .buttonStyle(.glassPlainHit)
-                    .labelStyle(.iconOnly)
                     .disabled(shareItem.image.size.width < 2)
                     .accessibilityIdentifier("stats.premium.recap.share")
                     .accessibilityLabel(L10n.share)

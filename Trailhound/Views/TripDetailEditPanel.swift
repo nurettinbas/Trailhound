@@ -3,11 +3,57 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-private enum TripSummaryMetricCardLayout {
+enum TripSummaryMetricCardLayout {
     static let titleRowHeight: CGFloat = 16
     static let titleValueSpacing: CGFloat = 4
     static let helpButtonSide: CGFloat = 16
     static let minHeight: CGFloat = 52
+}
+
+/// Same glass metric tile as trip detail. Share rasters use `frozen` / no help.
+struct TripSummaryMetricTile: View {
+    let metric: TripSummaryMetric
+    var progress: Double = 1
+    var frozen: Bool = true
+    var showsHelp: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: TripSummaryMetricCardLayout.titleValueSpacing) {
+            HStack(alignment: .center, spacing: 4) {
+                Label(metric.title, systemImage: metric.icon)
+                    .font(.system(size: 10, weight: .medium))
+                    .glassSecondaryInk()
+                    .labelStyle(.titleAndIcon)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if showsHelp, metric.showsHelp, let helpTitle = metric.helpTitle, let helpBody = metric.helpBody {
+                    HelpPopoverButton(
+                        accessibilityLabel: helpTitle,
+                        message: helpBody,
+                        side: TripSummaryMetricCardLayout.helpButtonSide,
+                        sheetHeight: 320
+                    )
+                }
+            }
+            .frame(height: TripSummaryMetricCardLayout.titleRowHeight)
+
+            Text(metric.formatted(progress: progress))
+                .font(.caption.weight(.semibold))
+                .glassPrimaryInk()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: TripSummaryMetricCardLayout.minHeight,
+            alignment: .topLeading
+        )
+        .glassChrome(cornerRadius: 10, frozen: frozen)
+    }
 }
 
 private enum JournalPickerValue: Hashable {
@@ -689,42 +735,14 @@ struct TripDetailEditPanel: View {
 
     private func statsMetricCard(for metric: TripSummaryMetric) -> some View {
         let progress = statCountProgress[metric.id] ?? (panelRisen ? 1 : 0)
-        return VStack(alignment: .leading, spacing: TripSummaryMetricCardLayout.titleValueSpacing) {
-            HStack(alignment: .center, spacing: 4) {
-                Label(metric.title, systemImage: metric.icon)
-                    .font(.system(size: 10, weight: .medium))
-                    .glassSecondaryInk()
-                    .labelStyle(.titleAndIcon)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if metric.showsHelp, let helpTitle = metric.helpTitle, let helpBody = metric.helpBody {
-                    HelpPopoverButton(
-                        accessibilityLabel: helpTitle,
-                        message: helpBody,
-                        side: TripSummaryMetricCardLayout.helpButtonSide,
-                        sheetHeight: 320
-                    )
-                }
-            }
-            .frame(height: TripSummaryMetricCardLayout.titleRowHeight)
-
-            Text(metric.formatted(progress: progress))
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentTransition(.numericText())
-                .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: progress)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .frame(
-            maxWidth: .infinity,
-            minHeight: TripSummaryMetricCardLayout.minHeight,
-            alignment: .topLeading
+        return TripSummaryMetricTile(
+            metric: metric,
+            progress: progress,
+            frozen: glassFrozen,
+            showsHelp: true
         )
-        .glassChrome(cornerRadius: 10, frozen: glassFrozen)
+        .contentTransition(.numericText())
+        .animation(reduceMotion ? nil : TrailhoundMotion.snappy, value: progress)
         .opacity(progress > 0.01 || reduceMotion ? 1 : 0.35)
         .scaleEffect(progress > 0.01 || reduceMotion ? 1 : 0.94)
     }

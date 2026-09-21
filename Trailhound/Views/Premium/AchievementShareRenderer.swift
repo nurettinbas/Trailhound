@@ -1,26 +1,5 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import UIKit
-
-/// Lightweight share payload — PNG is rasterized only on export, not while the gallery ticks.
-struct AchievementSharePayload: Transferable, Sendable {
-    let display: AchievementDisplay
-    let palette: ShellPalette
-    let scheme: ColorScheme
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .png) { payload in
-            let image = await MainActor.run {
-                AchievementShareRenderer.image(
-                    for: payload.display,
-                    palette: payload.palette,
-                    scheme: payload.scheme
-                )
-            }
-            return image.pngData() ?? Data()
-        }
-    }
-}
 
 @MainActor
 enum AchievementShareRenderer {

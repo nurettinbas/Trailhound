@@ -82,6 +82,15 @@ final class TripShareCaptionTests: XCTestCase {
         XCTAssertTrue(line.contains(DateFormatters.tripTime.string(from: started)), line)
     }
 
+    func testShareCardIsStorySized() {
+        XCTAssertEqual(TripShareCardRenderer.defaultSize, RecapShareRenderer.pixelSize)
+        XCTAssertEqual(
+            TripShareCardRenderer.defaultSize.width / TripShareCardRenderer.defaultSize.height,
+            9.0 / 16.0,
+            accuracy: 0.001
+        )
+    }
+
     func testShareCardThemeFollowsPaletteInsteadOfFixedCharcoal() {
         let sand = TripShareCardTheme(palette: .sand, scheme: .light)
         let skyDark = TripShareCardTheme(palette: .sky, scheme: .dark)

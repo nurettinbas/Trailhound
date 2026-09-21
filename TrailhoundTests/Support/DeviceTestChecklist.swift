@@ -21,7 +21,7 @@ enum DeviceTestChecklist {
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",
         "Second open of the same long trip is instant (memory cache)",
         "App kill → reopen → long trip detail still fast (disk cache)",
-        "Share card: Light/Dark + palette wash (not fixed charcoal); app icon matches Appearance hue",
+        "Share card: 9:16 story JPEG; Light/Dark + palette wash; metric tiles match trip detail 3-column glass; Instagram Stories fills edge-to-edge without caption text; WhatsApp / Messages keep the caption",
         "Settings palette change: exactly one iOS icon confirmation; alert chrome follows selected Light/Dark Appearance",
         "After GPS trim, map updates (cache invalidation)",
         "After merge, combined route draws correctly",

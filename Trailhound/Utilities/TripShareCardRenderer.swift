@@ -4,7 +4,13 @@ import UIKit
 
 @MainActor
 enum TripShareCardRenderer {
-    static let defaultSize = CGSize(width: 1080, height: 1480)
+    /// Same 9:16 canvas as recap / badge share so Instagram Stories fills edge-to-edge.
+    static let defaultSize = RecapShareRenderer.pixelSize
+
+    private enum Layout {
+        /// Snapshot is taller than the flexible map slot so `scaledToFill` stays sharp.
+        static let mapHeightFraction: CGFloat = 0.45
+    }
 
     static func render(
         trip: Trip,
@@ -29,7 +35,7 @@ enum TripShareCardRenderer {
             )
         }.value
 
-        let mapHeight = size.height * 0.55
+        let mapHeight = size.height * Layout.mapHeightFraction
         let mapSize = CGSize(width: size.width, height: mapHeight)
         let coordinates = prep.strokes.flatMap(\.coordinates)
 
@@ -56,10 +62,9 @@ enum TripShareCardRenderer {
             trip: trip,
             places: places,
             privacyRadius: privacyRadius,
-            chartSamples: prep.chartSeries,
-            chartMaxKmh: prep.chartMaxKmh,
             size: size,
-            theme: TripShareCardTheme(palette: palette, scheme: scheme)
+            palette: palette,
+            scheme: scheme
         )
     }
 
@@ -242,350 +247,25 @@ enum TripShareCardRenderer {
         trip: Trip,
         places: [SavedPlace],
         privacyRadius: Double,
-        chartSamples: SpeedChartSeries.Series,
-        chartMaxKmh: Double,
         size: CGSize,
-        theme: TripShareCardTheme
+        palette: ShellPalette,
+        scheme: ColorScheme
     ) -> UIImage {
         let viewModel = TripDetailViewModel(trip: trip, places: places, privacyRadius: privacyRadius)
-        let metrics = viewModel.summaryMetrics
-        let route = viewModel.routeSummary
-        let whenLine = TripShareCaption.whenLine(for: trip)
-
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { context in
-            let rect = CGRect(origin: .zero, size: size)
-            fillAtmosphere(theme.atmosphere, in: rect, context: context.cgContext)
-
-            let mapHeight = size.height * 0.55
-            let mapRect = CGRect(x: 0, y: 0, width: size.width, height: mapHeight)
-            if mapImage.size.width > 0 {
-                mapImage.draw(in: mapRect)
-            } else {
-                theme.atmosphere.mid.uiColor.setFill()
-                context.fill(mapRect)
-            }
-
-            let contentX: CGFloat = 40
-            let contentWidth = size.width - contentX * 2
-            var y = mapHeight + 36
-
-            let titleAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 36, weight: .bold),
-                .foregroundColor: theme.title
-            ]
-            let bodyAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 24, weight: .regular),
-                .foregroundColor: theme.secondary
-            ]
-
-            (route as NSString).draw(
-                in: CGRect(x: contentX, y: y, width: contentWidth, height: 48),
-                withAttributes: titleAttributes
-            )
-            y += 52
-            (whenLine as NSString).draw(
-                in: CGRect(x: contentX, y: y, width: contentWidth, height: 32),
-                withAttributes: bodyAttributes
-            )
-            y += 48
-
-            y = drawMetrics(
-                metrics,
-                origin: CGPoint(x: contentX, y: y),
-                width: contentWidth,
-                theme: theme
-            )
-
-            if !chartSamples.samples.isEmpty {
-                y += 28
-                y = drawSpeedChart(
-                    series: chartSamples,
-                    trip: trip,
-                    maxKmh: chartMaxKmh,
-                    origin: CGPoint(x: contentX, y: y),
-                    width: contentWidth,
-                    theme: theme
-                )
-            }
-
-            drawBrandMark(
-                in: rect,
-                contentX: contentX,
-                contentWidth: contentWidth,
-                theme: theme
-            )
-        }
-    }
-
-    private static func fillAtmosphere(
-        _ atmosphere: ShellAtmosphere,
-        in rect: CGRect,
-        context: CGContext
-    ) {
-        let colors = [
-            atmosphere.top.uiColor.cgColor,
-            atmosphere.mid.uiColor.cgColor,
-            atmosphere.bottom.uiColor.cgColor
-        ]
-        guard let gradient = CGGradient(
-            colorsSpace: CGColorSpaceCreateDeviceRGB(),
-            colors: colors as CFArray,
-            locations: [0, 0.5, 1]
-        ) else {
-            atmosphere.mid.uiColor.setFill()
-            context.fill(rect)
-            return
-        }
-        context.saveGState()
-        context.addRect(rect)
-        context.clip()
-        context.drawLinearGradient(
-            gradient,
-            start: CGPoint(x: rect.midX, y: rect.minY),
-            end: CGPoint(x: rect.midX, y: rect.maxY),
-            options: []
+        let layout = RecapShareRenderer.layoutSize
+        let poster = TripShareStoryPoster(
+            mapImage: mapImage,
+            viewModel: viewModel
         )
-        context.restoreGState()
-    }
+        .frame(width: layout.width, height: layout.height)
+        .environment(\.shellPalette, palette)
+        .environment(\.colorScheme, scheme)
+        .preferredColorScheme(scheme)
 
-    private static func drawBrandMark(
-        in bounds: CGRect,
-        contentX: CGFloat,
-        contentWidth: CGFloat,
-        theme: TripShareCardTheme
-    ) {
-        let logoSize: CGFloat = 44
-        let wordmark = "Trailhound" as NSString
-        let wordAttributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 22, weight: .bold),
-            .foregroundColor: theme.title.withAlphaComponent(0.92)
-        ]
-        let wordSize = wordmark.size(withAttributes: wordAttributes)
-        let gap: CGFloat = 12
-        let logo = TrailhoundThemedLogo.image(palette: theme.palette, scheme: theme.scheme)
-        let hasLogo = logo != nil
-        let rowWidth = (hasLogo ? logoSize + gap : 0) + wordSize.width
-        let originX = contentX + max(0, (contentWidth - rowWidth) / 2)
-        let originY = bounds.height - 56 - logoSize
-
-        if let logo, let context = UIGraphicsGetCurrentContext() {
-            let logoRect = CGRect(x: originX, y: originY, width: logoSize, height: logoSize)
-            context.saveGState()
-            UIBezierPath(roundedRect: logoRect, cornerRadius: logoSize * 0.22).addClip()
-            logo.draw(in: logoRect)
-            context.restoreGState()
-        }
-
-        let textX = hasLogo ? originX + logoSize + gap : originX
-        wordmark.draw(
-            at: CGPoint(
-                x: textX,
-                y: originY + (logoSize - wordSize.height) / 2
-            ),
-            withAttributes: wordAttributes
-        )
-    }
-
-    private static func drawMetrics(
-        _ metrics: [TripSummaryMetric],
-        origin: CGPoint,
-        width: CGFloat,
-        theme: TripShareCardTheme
-    ) -> CGFloat {
-        let primaryIDs: Set<String> = ["duration", "movingDuration", "distance", "maxSpeed"]
-        let primary = metrics.filter { primaryIDs.contains($0.id) }
-        let secondary = metrics.filter { !primaryIDs.contains($0.id) }
-
-        var y = origin.y
-        if !primary.isEmpty {
-            y = drawMetricRow(
-                primary,
-                origin: CGPoint(x: origin.x, y: y),
-                width: width,
-                columns: primary.count,
-                theme: theme
-            )
-            y += 16
-        }
-        if !secondary.isEmpty {
-            y = drawMetricRow(
-                secondary,
-                origin: CGPoint(x: origin.x, y: y),
-                width: width,
-                columns: secondary.count,
-                theme: theme
-            )
-        }
-        return y
-    }
-
-    private static func drawMetricRow(
-        _ metrics: [TripSummaryMetric],
-        origin: CGPoint,
-        width: CGFloat,
-        columns: Int,
-        theme: TripShareCardTheme
-    ) -> CGFloat {
-        let spacing: CGFloat = 14
-        let cardWidth = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
-        let cardHeight: CGFloat = 100
-        let titleFont = UIFont.systemFont(ofSize: 18, weight: .medium)
-        let valueFont = UIFont.systemFont(ofSize: 28, weight: .semibold)
-
-        for (index, metric) in metrics.enumerated() {
-            let x = origin.x + CGFloat(index) * (cardWidth + spacing)
-            let cardRect = CGRect(x: x, y: origin.y, width: cardWidth, height: cardHeight)
-            let path = UIBezierPath(roundedRect: cardRect, cornerRadius: 18)
-            theme.tileFill.setFill()
-            path.fill()
-
-            let titleAttributes: [NSAttributedString.Key: Any] = [
-                .font: titleFont,
-                .foregroundColor: theme.secondary
-            ]
-            let valueAttributes: [NSAttributedString.Key: Any] = [
-                .font: valueFont,
-                .foregroundColor: theme.title
-            ]
-
-            (metric.title as NSString).draw(
-                in: CGRect(x: cardRect.minX + 16, y: cardRect.minY + 16, width: cardWidth - 32, height: 28),
-                withAttributes: titleAttributes
-            )
-            (metric.formatted(progress: 1) as NSString).draw(
-                in: CGRect(x: cardRect.minX + 16, y: cardRect.minY + 48, width: cardWidth - 32, height: 36),
-                withAttributes: valueAttributes
-            )
-        }
-
-        return origin.y + cardHeight
-    }
-
-    private static func drawSpeedChart(
-        series: SpeedChartSeries.Series,
-        trip: Trip,
-        maxKmh: Double,
-        origin: CGPoint,
-        width: CGFloat,
-        theme: TripShareCardTheme
-    ) -> CGFloat {
-        let titleHeight: CGFloat = 36
-        let chartHeight: CGFloat = 160
-        let cardHeight = titleHeight + chartHeight + 40
-        let cardRect = CGRect(x: origin.x, y: origin.y, width: width, height: cardHeight)
-        let path = UIBezierPath(roundedRect: cardRect, cornerRadius: 20)
-        theme.tileFill.setFill()
-        path.fill()
-
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
-            .foregroundColor: theme.title
-        ]
-        (L10n.tripSpeedChart as NSString).draw(
-            at: CGPoint(x: cardRect.minX + 20, y: cardRect.minY + 16),
-            withAttributes: titleAttributes
-        )
-
-        let axisFont = UIFont.systemFont(ofSize: 16, weight: .regular)
-        let axisAttributes: [NSAttributedString.Key: Any] = [
-            .font: axisFont,
-            .foregroundColor: theme.secondary
-        ]
-        let topLabel = L10n.formatSpeedKmh(maxKmh)
-        let bottomLabel = L10n.formatSpeedKmh(0)
-        let labelWidth: CGFloat = 70
-        (topLabel as NSString).draw(
-            in: CGRect(x: cardRect.minX + 12, y: cardRect.minY + titleHeight + 12, width: labelWidth, height: 22),
-            withAttributes: axisAttributes
-        )
-        (bottomLabel as NSString).draw(
-            in: CGRect(
-                x: cardRect.minX + 12,
-                y: cardRect.maxY - 36,
-                width: labelWidth,
-                height: 22
-            ),
-            withAttributes: axisAttributes
-        )
-
-        let plotRect = CGRect(
-            x: cardRect.minX + labelWidth + 8,
-            y: cardRect.minY + titleHeight + 12,
-            width: cardRect.width - labelWidth - 36,
-            height: chartHeight
-        )
-        // Span the clipped series so the chart matches the privacy-trimmed map, not full trip times.
-        let chartStart = series.samples.first?.date ?? trip.startedAt
-        let chartEnd = series.samples.last?.date ?? trip.endedAt ?? trip.startedAt
-        drawChartPath(
-            samples: series.samples,
-            medianInterval: series.medianIntervalSeconds,
-            tripStartedAt: chartStart,
-            tripEndedAt: chartEnd,
-            maxKmh: maxKmh,
-            in: plotRect,
-            brand: theme.chart
-        )
-
-        return cardRect.maxY
-    }
-
-    private static func drawChartPath(
-        samples: [SpeedChartSeries.Sample],
-        medianInterval: TimeInterval,
-        tripStartedAt: Date,
-        tripEndedAt: Date,
-        maxKmh: Double,
-        in rect: CGRect,
-        brand: UIColor
-    ) {
-        guard !samples.isEmpty else { return }
-
-        let gapBreak = SpeedChartSeries.gapBreakSeconds(medianIntervalSeconds: medianInterval)
-        let dateSpan = max(tripEndedAt.timeIntervalSince(tripStartedAt), 1)
-        let speedMax = max(maxKmh, 1)
-        let points = SpeedChartSeries.strokePoints(
-            samples: samples.map { ($0.date, $0.speedKmh) },
-            gapBreakSeconds: gapBreak,
-            project: { date, speedKmh in
-                let xFraction = date.timeIntervalSince(tripStartedAt) / dateSpan
-                let yFraction = min(1, max(0, speedKmh / speedMax))
-                return CGPoint(
-                    x: rect.minX + CGFloat(xFraction) * rect.width,
-                    y: rect.maxY - CGFloat(yFraction) * rect.height
-                )
-            },
-            baselineY: rect.maxY
-        )
-        guard points.count >= 2 else { return }
-
-        let line = UIBezierPath()
-        line.move(to: points[0])
-        for point in points.dropFirst() {
-            line.addLine(to: point)
-        }
-
-        let area = UIBezierPath()
-        area.move(to: CGPoint(x: points[0].x, y: rect.maxY))
-        area.addLine(to: points[0])
-        for point in points.dropFirst() {
-            area.addLine(to: point)
-        }
-        area.addLine(to: CGPoint(x: points[points.count - 1].x, y: rect.maxY))
-        area.close()
-        brand.withAlphaComponent(0.22).setFill()
-        area.fill()
-
-        brand.withAlphaComponent(0.35).setStroke()
-        line.lineWidth = 6
-        line.lineCapStyle = .round
-        line.lineJoinStyle = .round
-        line.stroke()
-
-        brand.setStroke()
-        line.lineWidth = 2.5
-        line.stroke()
+        let renderer = ImageRenderer(content: poster)
+        renderer.proposedSize = ProposedViewSize(width: layout.width, height: layout.height)
+        renderer.scale = size.width / layout.width
+        return renderer.uiImage ?? UIImage()
     }
 
     // MARK: - Helpers
@@ -621,6 +301,86 @@ enum TripShareCardRenderer {
         )
         return MKCoordinateRegion(center: center, span: span)
     }
+}
+
+private struct TripShareStoryPoster: View {
+    let mapImage: UIImage
+    let viewModel: TripDetailViewModel
+
+    private var metrics: [TripSummaryMetric] { viewModel.summaryMetrics }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            mapSlot
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(viewModel.routeSummary)
+                        .font(.headline)
+                        .glassPrimaryInk()
+                        .lineLimit(2)
+                    Text(viewModel.dateText)
+                        .font(.caption)
+                        .glassSecondaryInk()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                metricGrid
+            }
+            .padding(.horizontal, GlassTokens.listContentHorizontalInset)
+            .padding(.top, 14)
+
+            Spacer(minLength: 8)
+
+            TrailhoundBrandMark(showsWordmark: true, symbolSize: 36)
+                .padding(.bottom, TripShareCardRendererStoryMetrics.bottomReserve)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { AtmosphericBackground() }
+        .onGlassShell()
+        .clipped()
+    }
+
+    private var mapSlot: some View {
+        Group {
+            if mapImage.size.width > 2 {
+                Image(uiImage: mapImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Color.clear
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 160, maxHeight: .infinity)
+        .clipped()
+    }
+
+    private var metricGrid: some View {
+        let rowCount = (metrics.count + 2) / 3
+        return Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 8) {
+            ForEach(0..<rowCount, id: \.self) { row in
+                GridRow {
+                    ForEach(0..<3, id: \.self) { column in
+                        let index = row * 3 + column
+                        if index < metrics.count {
+                            TripSummaryMetricTile(
+                                metric: metrics[index],
+                                progress: 1,
+                                frozen: true,
+                                showsHelp: false
+                            )
+                        } else {
+                            Color.clear
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private enum TripShareCardRendererStoryMetrics {
+    static let bottomReserve = RecapShareRenderer.layoutWidth * 200 / RecapShareRenderer.pixelSize.width
 }
 
 // MARK: - Theme

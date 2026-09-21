@@ -591,7 +591,7 @@ final class YearRecapSnapshotTests: XCTestCase {
         let pages = RecapStoryPagePolicy.pages(for: snapshot)
         XCTAssertGreaterThanOrEqual(pages.count, RecapStoryPage.allCases.count - 1)
 
-        var pngs: [Data] = []
+        var rasters: [Data] = []
         for page in pages {
             let image = RecapShareRenderer.image(
                 for: snapshot,
@@ -609,16 +609,17 @@ final class YearRecapSnapshotTests: XCTestCase {
                 RecapShareRenderer.pixelSize.height,
                 accuracy: 2
             )
-            let data = try XCTUnwrap(image.pngData())
+            let data = try XCTUnwrap(SocialImageShare.jpegData(from: image))
             XCTAssertGreaterThan(data.count, 4_000)
-            pngs.append(data)
+            XCTAssertEqual(Array(data.prefix(3)), [0xFF, 0xD8, 0xFF])
+            rasters.append(data)
         }
-        for index in 0..<pngs.count {
-            for other in (index + 1)..<pngs.count {
+        for index in 0..<rasters.count {
+            for other in (index + 1)..<rasters.count {
                 XCTAssertNotEqual(
-                    pngs[index],
-                    pngs[other],
-                    "share PNG for \(pages[index]) matched \(pages[other])"
+                    rasters[index],
+                    rasters[other],
+                    "share JPEG for \(pages[index]) matched \(pages[other])"
                 )
             }
         }

@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class AchievementShareRendererTests: XCTestCase {
-    func testSharePNGIsStorySizedAndDiffersByBadge() throws {
+    func testSharePosterIsStorySizedAndDiffersByBadge() throws {
         let unlocked = Date(timeIntervalSince1970: 1_700_000_000)
         let first = AchievementDisplay(
             id: .firstTrip,
@@ -30,9 +30,10 @@ final class AchievementShareRendererTests: XCTestCase {
             AchievementShareRenderer.pixelSize.height,
             accuracy: 2
         )
-        let firstData = try XCTUnwrap(firstImage.pngData())
-        let kmData = try XCTUnwrap(kmImage.pngData())
+        let firstData = try XCTUnwrap(SocialImageShare.jpegData(from: firstImage))
+        let kmData = try XCTUnwrap(SocialImageShare.jpegData(from: kmImage))
         XCTAssertGreaterThan(firstData.count, 4_000)
+        XCTAssertEqual(Array(firstData.prefix(3)), [0xFF, 0xD8, 0xFF])
         XCTAssertNotEqual(firstData, kmData)
     }
 

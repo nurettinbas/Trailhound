@@ -515,6 +515,7 @@ struct AchievementGalleryCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @State private var sharePreview: UIImage?
+    @State private var showShareSheet = false
 
     var body: some View {
         VStack(spacing: 5) {
@@ -565,6 +566,15 @@ struct AchievementGalleryCard: View {
                 scheme: colorScheme
             )
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let image = shareImageForExport {
+                SocialImageShareSheet(
+                    image: image,
+                    caption: AchievementShareRenderer.caption(for: item)
+                )
+                .ignoresSafeArea()
+            }
+        }
     }
 
     private var shareRenderKey: String {
@@ -598,13 +608,7 @@ struct AchievementGalleryCard: View {
     @ViewBuilder
     private var shareSlot: some View {
         if item.isUnlocked {
-            ShareLink(
-                item: AchievementSharePayload(display: item, palette: shellPalette, scheme: colorScheme),
-                preview: SharePreview(
-                    AchievementShareRenderer.caption(for: item),
-                    image: sharePreviewImage
-                )
-            ) {
+            Button(action: presentShare) {
                 HStack(spacing: 6) {
                     Image(systemName: "square.and.arrow.up")
                     Text(L10n.share)
@@ -623,11 +627,28 @@ struct AchievementGalleryCard: View {
         }
     }
 
-    private var sharePreviewImage: Image {
+    private var shareImageForExport: UIImage? {
         if let sharePreview, sharePreview.size.width > 2 {
-            return Image(uiImage: sharePreview)
+            return sharePreview
         }
-        return Image(systemName: item.id.systemImage)
+        let rendered = AchievementShareRenderer.image(
+            for: item,
+            palette: shellPalette,
+            scheme: colorScheme
+        )
+        return rendered.size.width > 2 ? rendered : nil
+    }
+
+    private func presentShare() {
+        if sharePreview == nil || (sharePreview?.size.width ?? 0) < 2 {
+            sharePreview = AchievementShareRenderer.image(
+                for: item,
+                palette: shellPalette,
+                scheme: colorScheme
+            )
+        }
+        guard shareImageForExport != nil else { return }
+        showShareSheet = true
     }
 }
 

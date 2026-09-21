@@ -87,7 +87,7 @@ Optional smoke:
 
 ## Share card
 
-- [ ] **Share from trip detail** — preview then system share; card + icon follow Appearance palette (not a fixed dark poster); home/work privacy radius clips the route (no raw GPS at saved places)
+- [ ] **Share from trip detail** — preview then system share; 9:16 JPEG fills Instagram Stories; metric tiles match trip detail (3-column glass, not tiny squares); Share capsule follows Appearance palette (not a fixed sky blue); icon follows Appearance palette; home/work privacy radius clips the route; Instagram Stories gets the image without caption text; WhatsApp / Messages keep the caption
 
 ## Smart category (V20)
 
@@ -96,7 +96,8 @@ Optional smoke:
 ## Premium Stats (V21)
 
 - [ ] **Year recap** — Recap tab: year awards first, badges, frequent-routes map, month cost forecast, recap poster last + Play story (pump fuel on its own line)
-- [ ] **Badge share** — unlocked gallery chip is a compact palette-tint Share control; the sheet gets a 9:16 medal poster (icon + glass card + Trailhound mark), not title text
+- [ ] **Year recap share** — story Share circle exports the visible 9:16 JPEG; Instagram Stories opens the page image; WhatsApp / Messages keep the page title caption
+- [ ] **Badge share** — unlocked gallery chip is a compact palette-tint Share control; the sheet gets a 9:16 medal JPEG (icon + glass card + Trailhound mark), not title text; Instagram Stories gets the image without caption text
 - [ ] **Widgets** — goal ring, last trip, cost summary; Last Trip route preview toggle under Settings → Privacy
 - [ ] **Schema upgrade** — existing journal + smart-category data survive; locality/caches backfill without store reset
 

@@ -6,17 +6,13 @@ private struct TrailhoundProminentButtonModifier: ViewModifier {
     @Environment(\.shellPalette) private var shellPalette
 
     func body(content: Content) -> some View {
-        if colorScheme == .dark {
-            content.buttonStyle(.borderedProminent)
-        } else {
-            content.buttonStyle(
-                LightChromeProminentButtonStyle(
-                    chrome: shellPalette.glassReadabilityTint(for: .light),
-                    tint: shellPalette.tintColor(for: .light),
-                    reduceMotion: reduceMotion
-                )
+        content.buttonStyle(
+            LightChromeProminentButtonStyle(
+                chrome: shellPalette.glassReadabilityTint(for: colorScheme),
+                tint: shellPalette.tintColor(for: colorScheme),
+                reduceMotion: reduceMotion
             )
-        }
+        )
     }
 }
 

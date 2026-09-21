@@ -101,7 +101,7 @@ While the in-place expand/collapse runs, panel glass uses a solid fill (`glassCh
 
 ## Share card
 
-- One `MKMapSnapshotter` + compose per share; preview sheet then system share sheet.
+- One `MKMapSnapshotter` + SwiftUI `ImageRenderer` compose per share (9:16, trip-detail metric tiles); preview sheet then system share sheet.
 - Path prep (`TripShareRoutePrep`: privacy clip → decimate → chart series → `SpeedColoredSegmentBuilder`) runs off the main actor; points are faulted once before the hop. Map strokes and the speed chart share the same clipped samples.
 - Preparing overlay is glass chrome (same pattern as Settings export) — do not drive multi-second prep through `ToastPresenter`.
 - Brand logo is drawn into the raster at compose time (palette-tinted `TrailhoundLogo`, same fill as the Home Screen icon); map snapshot follows Light/Dark. No ActivityKit / widget images.
@@ -326,7 +326,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
   atmosphere layer). The cost page is that same Canvas (dual-hue pumps + pad, hose sway) with frozen `glassCard` amount plates — no extra clock.   Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is 44pt Liquid Glass circles (`GlassNavCircleIcon` / `.glassCircleChrome()` — Close + Share under the
   segment bars), native `glassEffect` in Light and Dark.
-  Share PNG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
+  Share JPEG is an `ImageRenderer` still of the **current story page** (same Canvas + copy, frozen `t`), after first frame and again on page change, then `SocialImageShare` writes a temp `.jpg`. Instagram / Facebook omit the caption; WhatsApp / Messages / Mail keep it. Not a separate Core Graphics km poster. Reduce Motion and UI tests disable autoplay.
   The last page keeps the same clock; when the segment fills, the cover dismisses.
 - **Frequent-route map.** Stored cap is **40** pairs; the map draws at most **8 habit corridors**
   (count ≥ 2, same metro as the top run). Strokes are **driving polylines** from `MKDirections`,
@@ -373,7 +373,7 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - Stats expand collapse, Year recap Share/Close, and Trip/Travel toolbar icon actions are 44pt Liquid Glass circles (`.glassCircleChrome()` / `GlassNavCircleIcon` / `GlassToolbarCircleButton`) — native `glassEffect(.regular.interactive())` in `Circle()` in Light and Dark. Do not route this through `GlassEngineResolver` in Dark (that paints an opaque Material plate). Compact `.frozen` 36pt is unused on these screens.
 - Overlay controls (`GlassToolbarControlBackground` on camera, photo grid, delete / merge confirm) keep `allowsNative` off. Native glass on a camera preview is the same resample trap as the recording hero.
 - Nested tiles, field wells, and skeletons are tint fills — never a second `Material`.
-- The **Badges gallery** idle cells use native `glassCard` (same Light plate as Stats). The Stats strip **morphs** into that gallery with a frozen outer plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `CADisplayLink`, not `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car hill-cruises on that clock (offset + nose pitch, opacity stays 1). Badge share rasters a 9:16 poster (`AchievementShareRenderer`) after the gallery settles (or on export); do not call `ImageRenderer` from the idle-clock `body`.
+- The **Badges gallery** idle cells use native `glassCard` (same Light plate as Stats). The Stats strip **morphs** into that gallery with a frozen outer plate (`frozen: true`) so Material does not resample during the expand. Medal chrome lives only on the round medals (km metals / family enamel). Compact-strip and gallery idle is `achievementIdleClock` (12 fps `CADisplayLink`, not `Task.sleep`). Gallery `playsMotion` stays off until the card-grow spring finishes so idle does not cancel `badgeCardExpand`. The overlay compact snapshot does not play idle. The 100 km one-trip car hill-cruises on that clock (offset + nose pitch, opacity stays 1). Badge share rasters a 9:16 poster (`AchievementShareRenderer`) after the gallery settles (or on tap); `SocialImageShare` exports JPEG (Instagram / Facebook image-only). Do not call `ImageRenderer` from the idle-clock `body`.
 - Instruments baseline for this work could not be captured in CI (needs a physical device). Re-run Time Profiler + Core Animation after shipping and compare against the previous session.
 
 ## Profiling checklist
