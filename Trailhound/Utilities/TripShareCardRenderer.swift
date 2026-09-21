@@ -7,9 +7,13 @@ enum TripShareCardRenderer {
     /// Same 9:16 canvas as recap / badge share so Instagram Stories fills edge-to-edge.
     static let defaultSize = RecapShareRenderer.pixelSize
 
-    private enum Layout {
+    fileprivate enum Layout {
         /// Snapshot is taller than the flexible map slot so `scaledToFill` stays sharp.
         static let mapHeightFraction: CGFloat = 0.45
+        /// Keep the brand mark above Instagram’s story chrome (~200 px at 1080).
+        static var bottomReserve: CGFloat {
+            RecapShareRenderer.layoutWidth * 200 / RecapShareRenderer.pixelSize.width
+        }
     }
 
     static func render(
@@ -332,7 +336,7 @@ private struct TripShareStoryPoster: View {
             Spacer(minLength: 8)
 
             TrailhoundBrandMark(showsWordmark: true, symbolSize: 36)
-                .padding(.bottom, TripShareCardRendererStoryMetrics.bottomReserve)
+                .padding(.bottom, TripShareCardRenderer.Layout.bottomReserve)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { AtmosphericBackground() }
@@ -377,10 +381,6 @@ private struct TripShareStoryPoster: View {
             }
         }
     }
-}
-
-private enum TripShareCardRendererStoryMetrics {
-    static let bottomReserve = RecapShareRenderer.layoutWidth * 200 / RecapShareRenderer.pixelSize.width
 }
 
 // MARK: - Theme
