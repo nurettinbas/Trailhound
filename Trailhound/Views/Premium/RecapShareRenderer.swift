@@ -10,9 +10,9 @@ struct RecapShareItem {
 
 @MainActor
 enum RecapShareRenderer {
-    static let pixelSize = CGSize(width: 1080, height: 1920)
-    static let layoutWidth: CGFloat = 390
-    static var layoutSize: CGSize {
+    nonisolated static let pixelSize = CGSize(width: 1080, height: 1920)
+    nonisolated static let layoutWidth: CGFloat = 390
+    nonisolated static var layoutSize: CGSize {
         CGSize(width: layoutWidth, height: layoutWidth * pixelSize.height / pixelSize.width)
     }
 
