@@ -28,7 +28,328 @@ enum RecapHubTeaserMetrics {
     static let posterHeight: CGFloat = 148
     static let stackedHeight: CGFloat = 88
     static let emptyHeight: CGFloat = 72
+    static let promoHeight: CGFloat = 320
     static let idleInterval: TimeInterval = 1.0 / 8.0
+}
+
+/// Compact chapter-rail art: one glyph per story page, no Canvas scene, no copy on the emblem.
+enum RecapChapterEmblem {
+    static func systemName(for page: RecapStoryPage) -> String {
+        switch page {
+        case .intro: "sparkles"
+        case .distance: "road.lanes"
+        case .cities: "building.2.fill"
+        case .route: "map.fill"
+        case .time: "moon.stars.fill"
+        case .categories: "steeringwheel"
+        case .cost: "fuelpump.fill"
+        case .badges: "medal.fill"
+        case .closing: "flag.checkered"
+        }
+    }
+}
+
+struct RecapChapterEmblemScene: View {
+    let page: RecapStoryPage
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        let ink = RecapChapterBackdrop.glyphInk(page: page, palette: shellPalette, scheme: colorScheme)
+        ZStack {
+            Canvas { context, size in
+                RecapChapterBackdrop.draw(
+                    page: page,
+                    context: &context,
+                    size: size,
+                    palette: shellPalette,
+                    scheme: colorScheme
+                )
+            }
+            Image(systemName: RecapChapterEmblem.systemName(for: page))
+                .font(.system(size: RecapChapterRailTokens.emblemPointSize, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(ink)
+                .shadow(color: ink.opacity(0.35), radius: 12, y: 5)
+                .offset(y: -RecapChapterRailTokens.emblemLift)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Frozen chapter-rail backdrops. Same shell atmosphere as the Recap poster (Light wash / Dark wrap).
+enum RecapChapterBackdrop {
+    static func glyphInk(page: RecapStoryPage, palette: ShellPalette, scheme: ColorScheme) -> Color {
+        if scheme == .light {
+            return Color.white.opacity(0.95)
+        }
+        switch page {
+        case .time:
+            return Color.white.opacity(0.92)
+        case .cost:
+            return RecapSpendInk.fuel(scheme: scheme, palette: palette)
+        default:
+            return palette.tintColor(for: scheme)
+        }
+    }
+
+    static func draw(
+        page: RecapStoryPage,
+        context: inout GraphicsContext,
+        size: CGSize,
+        palette: ShellPalette,
+        scheme: ColorScheme
+    ) {
+        let plate = palette.atmosphere(for: scheme)
+        let tint = plate.tint.color
+        let glow = plate.glow.color
+        if page == .time, scheme == .dark {
+            let night = nightSkyColors()
+            fillSky(context: &context, size: size, top: night.0, bottom: night.1)
+        } else {
+            fillSky(context: &context, size: size, top: plate.top.color, bottom: plate.bottom.color)
+        }
+        let cool = StatsSegmentTokens.fill(index: 1, scheme: scheme, palette: palette)
+        let fuel = RecapSpendInk.fuel(scheme: scheme, palette: palette)
+        let cityTone = plate.tint.rotatedInk(degrees: 24, for: scheme).color
+        switch page {
+        case .intro:
+            drawHorizonRoad(context: &context, size: size, tint: tint, glow: glow)
+        case .distance:
+            drawDistanceRings(context: &context, size: size, tint: tint, glow: glow)
+        case .cities:
+            drawSkyline(context: &context, size: size, tint: cityTone)
+        case .route:
+            drawRouteArc(context: &context, size: size, tint: tint, glow: glow)
+        case .time:
+            drawNightStars(context: &context, size: size, glow: glow)
+        case .categories:
+            drawPurposeRibbon(context: &context, size: size, tint: tint, rest: cool)
+        case .cost:
+            drawFuelPad(context: &context, size: size, fuel: fuel)
+        case .badges:
+            drawMedalHalo(context: &context, size: size, glow: glow, tint: tint)
+        case .closing:
+            drawClosingRoad(context: &context, size: size, tint: tint)
+        }
+    }
+
+    /// Same shell atmosphere as the Recap poster on every chapter. Dark Time keeps night navy.
+    private static func fillSky(
+        context: inout GraphicsContext,
+        size: CGSize,
+        top: Color,
+        bottom: Color
+    ) {
+        let rect = CGRect(origin: .zero, size: size)
+        let start = CGPoint(x: size.width / 2, y: 0)
+        let end = CGPoint(x: size.width / 2, y: size.height)
+        context.fill(
+            Path(rect),
+            with: .linearGradient(Gradient(colors: [top, bottom]), startPoint: start, endPoint: end)
+        )
+    }
+
+    private static func nightSkyColors() -> (Color, Color) {
+        (
+            Color(red: 0.06, green: 0.08, blue: 0.18),
+            Color(red: 0.04, green: 0.05, blue: 0.1)
+        )
+    }
+
+    private static func drawHorizonRoad(
+        context: inout GraphicsContext,
+        size: CGSize,
+        tint: Color,
+        glow: Color
+    ) {
+        let horizon = CGPoint(x: size.width / 2, y: size.height * 0.38)
+        let bloom = min(size.width, size.height) * 0.42
+        let bloomRect = CGRect(
+            x: horizon.x - bloom,
+            y: horizon.y - bloom * 0.7,
+            width: bloom * 2,
+            height: bloom * 1.4
+        )
+        context.fill(
+            Path(ellipseIn: bloomRect),
+            with: .radialGradient(
+                Gradient(colors: [glow.opacity(0.45), .clear]),
+                center: horizon,
+                startRadius: 4,
+                endRadius: bloom
+            )
+        )
+        var left = Path()
+        left.move(to: horizon)
+        left.addLine(to: CGPoint(x: size.width * 0.12, y: size.height))
+        var right = Path()
+        right.move(to: horizon)
+        right.addLine(to: CGPoint(x: size.width * 0.88, y: size.height))
+        context.stroke(left, with: .color(tint.opacity(0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+        context.stroke(right, with: .color(tint.opacity(0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+    }
+
+    private static func drawDistanceRings(
+        context: inout GraphicsContext,
+        size: CGSize,
+        tint: Color,
+        glow: Color
+    ) {
+        let center = CGPoint(x: size.width / 2, y: size.height * 0.42)
+        let radii: [CGFloat] = [28, 46, 64]
+        for (index, radius) in radii.enumerated() {
+            let rect = CGRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            )
+            let ring = index == 1 ? glow : tint
+            let width: CGFloat = index == 1 ? 3 : 1.5
+            context.stroke(Path(ellipseIn: rect), with: .color(ring.opacity(0.28)), lineWidth: width)
+        }
+    }
+
+    private static func drawSkyline(context: inout GraphicsContext, size: CGSize, tint: Color) {
+        let base = size.height * 0.72
+        let blocks: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.08, 0.10, 0.18),
+            (0.20, 0.14, 0.28),
+            (0.36, 0.11, 0.22),
+            (0.50, 0.16, 0.34),
+            (0.68, 0.12, 0.20),
+            (0.82, 0.10, 0.26)
+        ]
+        var silhouette = Path()
+        silhouette.move(to: CGPoint(x: 0, y: size.height))
+        silhouette.addLine(to: CGPoint(x: 0, y: base))
+        for (xRatio, widthRatio, heightRatio) in blocks {
+            let x = size.width * xRatio
+            let w = size.width * widthRatio
+            let h = size.height * heightRatio
+            silhouette.addLine(to: CGPoint(x: x, y: base))
+            silhouette.addLine(to: CGPoint(x: x, y: base - h))
+            silhouette.addLine(to: CGPoint(x: x + w, y: base - h))
+            silhouette.addLine(to: CGPoint(x: x + w, y: base))
+        }
+        silhouette.addLine(to: CGPoint(x: size.width, y: base))
+        silhouette.addLine(to: CGPoint(x: size.width, y: size.height))
+        silhouette.closeSubpath()
+        context.fill(silhouette, with: .color(tint.opacity(0.22)))
+    }
+
+    private static func drawRouteArc(
+        context: inout GraphicsContext,
+        size: CGSize,
+        tint: Color,
+        glow: Color
+    ) {
+        let start = CGPoint(x: size.width * 0.14, y: size.height * 0.62)
+        let end = CGPoint(x: size.width * 0.86, y: size.height * 0.46)
+        let control = CGPoint(x: size.width * 0.48, y: size.height * 0.18)
+        var arc = Path()
+        arc.move(to: start)
+        arc.addQuadCurve(to: end, control: control)
+        context.stroke(arc, with: .color(.white.opacity(0.22)), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+        context.stroke(arc, with: .color(tint.opacity(0.9)), style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+        context.fill(Path(ellipseIn: CGRect(x: start.x - 5, y: start.y - 5, width: 10, height: 10)), with: .color(glow))
+        context.fill(Path(ellipseIn: CGRect(x: end.x - 5, y: end.y - 5, width: 10, height: 10)), with: .color(tint))
+    }
+
+    private static func drawNightStars(context: inout GraphicsContext, size: CGSize, glow: Color) {
+        let seeds: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.16, 0.14, 2.2),
+            (0.34, 0.22, 1.6),
+            (0.72, 0.12, 2.4),
+            (0.84, 0.28, 1.8),
+            (0.22, 0.36, 1.4),
+            (0.58, 0.18, 2.0)
+        ]
+        for (x, y, r) in seeds {
+            context.fill(
+                Path(ellipseIn: CGRect(x: size.width * x - r, y: size.height * y - r, width: r * 2, height: r * 2)),
+                with: .color(glow.opacity(0.85))
+            )
+        }
+    }
+
+    private static func drawPurposeRibbon(
+        context: inout GraphicsContext,
+        size: CGSize,
+        tint: Color,
+        rest: Color
+    ) {
+        var ribbon = Path()
+        ribbon.move(to: CGPoint(x: 0, y: size.height * 0.58))
+        ribbon.addLine(to: CGPoint(x: size.width * 0.62, y: size.height * 0.42))
+        ribbon.addLine(to: CGPoint(x: size.width, y: size.height * 0.5))
+        ribbon.addLine(to: CGPoint(x: size.width, y: size.height))
+        ribbon.addLine(to: CGPoint(x: 0, y: size.height))
+        ribbon.closeSubpath()
+        context.fill(ribbon, with: .color(tint.opacity(0.34)))
+        var restBand = Path()
+        restBand.move(to: CGPoint(x: size.width * 0.62, y: size.height * 0.42))
+        restBand.addLine(to: CGPoint(x: size.width, y: size.height * 0.36))
+        restBand.addLine(to: CGPoint(x: size.width, y: size.height * 0.5))
+        restBand.closeSubpath()
+        context.fill(restBand, with: .color(rest.opacity(0.4)))
+    }
+
+    private static func drawFuelPad(context: inout GraphicsContext, size: CGSize, fuel: Color) {
+        let pad = CGRect(x: size.width * 0.18, y: size.height * 0.68, width: size.width * 0.64, height: 18)
+        context.fill(Path(ellipseIn: pad), with: .color(fuel.opacity(0.35)))
+        context.fill(
+            Path(ellipseIn: CGRect(x: size.width * 0.28, y: size.height * 0.22, width: size.width * 0.44, height: size.width * 0.44)),
+            with: .radialGradient(
+                Gradient(colors: [fuel.opacity(0.4), .clear]),
+                center: CGPoint(x: size.width / 2, y: size.height * 0.4),
+                startRadius: 8,
+                endRadius: size.width * 0.38
+            )
+        )
+    }
+
+    private static func drawMedalHalo(
+        context: inout GraphicsContext,
+        size: CGSize,
+        glow: Color,
+        tint: Color
+    ) {
+        let center = CGPoint(x: size.width / 2, y: size.height * 0.4)
+        context.fill(
+            Path(ellipseIn: CGRect(x: center.x - 52, y: center.y - 52, width: 104, height: 104)),
+            with: .radialGradient(
+                Gradient(colors: [glow.opacity(0.2), tint.opacity(0.08), .clear]),
+                center: center,
+                startRadius: 8,
+                endRadius: 56
+            )
+        )
+    }
+
+    private static func drawClosingRoad(context: inout GraphicsContext, size: CGSize, tint: Color) {
+        let horizon = CGPoint(x: size.width / 2, y: size.height * 0.28)
+        var left = Path()
+        left.move(to: horizon)
+        left.addLine(to: CGPoint(x: size.width * 0.18, y: size.height))
+        var right = Path()
+        right.move(to: horizon)
+        right.addLine(to: CGPoint(x: size.width * 0.82, y: size.height))
+        context.stroke(left, with: .color(tint.opacity(0.4)), lineWidth: 2)
+        context.stroke(right, with: .color(tint.opacity(0.4)), lineWidth: 2)
+        for index in 0..<5 {
+            let t = 0.35 + CGFloat(index) * 0.12
+            let y = horizon.y + (size.height - horizon.y) * t
+            let w = 3 + CGFloat(index) * 2.2
+            context.fill(
+                Path(roundedRect: CGRect(x: horizon.x - w / 2, y: y, width: w, height: 7 + CGFloat(index)), cornerRadius: 1),
+                with: .color(.white.opacity(0.35 + 0.08 * Double(index)))
+            )
+        }
+    }
 }
 
 struct RecapHubTeaserScene: View {
@@ -837,24 +1158,7 @@ private struct RecapStoryCanvas: View {
                     endPoint: CGPoint(x: size.width / 2, y: size.height)
                 )
             )
-        if kind != .badges && kind != .intro && kind != .categories {
-            let sunY = kind == .time ? size.height * 0.2 : size.height * 0.16
-            let sunSize: CGFloat = kind == .time ? 52 : 44
-            let breathe = RecapSceneMotion.phase(6, at: motion)
-            let sunRect = CGRect(x: size.width * 0.68, y: sunY, width: sunSize, height: sunSize)
-            let sunColor = kind == .time ? Color.white.opacity(0.88) : glow
-            context.fill(
-                Path(ellipseIn: sunRect.insetBy(dx: -28, dy: -28)),
-                with: .radialGradient(
-                    Gradient(colors: [sunColor.opacity(0.28 + 0.32 * Double(breathe)), .clear]),
-                    center: CGPoint(x: sunRect.midX, y: sunRect.midY),
-                    startRadius: 6,
-                    endRadius: 64 + 22 * breathe
-                )
-            )
-            context.fill(Path(ellipseIn: sunRect), with: .color(sunColor.opacity(kind == .time ? 0.92 : 0.8)))
-        }
-        let compact = size.height <= RecapHubTeaserMetrics.posterHeight + 1
+        let compact = size.height <= RecapChapterRailTokens.cardHeight + 1
         if !compact && kind != .intro && kind != .categories {
             drawAmbientSparkles(context: &context, size: size, glow: glow)
         }

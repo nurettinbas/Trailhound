@@ -28,7 +28,9 @@ struct YearView: View {
     @State private var routesCardFrame: CGRect = .zero
     @State private var frozenRoutesCardFrame: CGRect = .zero
     @State private var pendingRecapPlay = false
+    @State private var pendingRecapPlayAfterPromo = false
     @State private var recapStorySession: RecapStorySession?
+    @State private var recapPromoSession: RecapStorySession?
     @State private var unlockQueue: [AchievementDisplay] = []
     @State private var yearAwardsLoader: StatsYearAwardsLoader?
     @State private var yearAwards: StatsYearAwardsSnapshot?
@@ -92,11 +94,28 @@ struct YearView: View {
                 .ignoresSafeArea()
             }
             .fullScreenCover(item: $recapStorySession) { session in
-                YearRecapStoryView(snapshot: session.snapshot) {
+                YearRecapStoryView(snapshot: session.snapshot, startPage: session.startPage) {
                     markRecapSeen()
                     recapStorySession = nil
                 }
                 .interactiveDismissDisabled()
+            }
+            .fullScreenCover(item: $recapPromoSession) { session in
+                YearRecapPromoView(
+                    snapshot: session.snapshot,
+                    onPlay: { playRecapAfterPromo(session.snapshot) },
+                    onClose: { dismissRecapPromo(year: session.snapshot.year) }
+                )
+                .presentationBackground(.clear)
+                .interactiveDismissDisabled()
+            }
+            .onChange(of: recapPromoSession?.id) { _, newID in
+                guard newID == nil, pendingRecapPlayAfterPromo else { return }
+                pendingRecapPlayAfterPromo = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(80))
+                    openRecapStory()
+                }
             }
             .overlay {
                 achievementUnlockOverlay
@@ -172,9 +191,10 @@ struct YearView: View {
 
                 YearRecapHubCard(
                     snapshot: recapSnapshot ?? .empty(year: RecapYearPolicy.displayYear()),
-                    onPlay: { openRecapStory() }
+                    onPlay: { openRecapStory() },
+                    onPlayPage: { openRecapStory(at: $0) }
                 )
-                .statsFullCard(contentInset: 0)
+                .statsCardListRow()
             }
         }
     }
@@ -264,7 +284,7 @@ struct YearView: View {
                         recapStorySession = RecapStorySession(snapshot: builtRecap)
                     }
                 } else {
-                    maybeAutoplayRecap()
+                    maybePresentRecapPromo()
                 }
             }
         }
@@ -467,13 +487,9 @@ struct YearView: View {
         schedulePremiumRefresh()
     }
 
-    private func openRecapStory() {
+    private func openRecapStory(at page: RecapStoryPage? = nil) {
         guard let recapSnapshot, recapSnapshot.hasData else { return }
-        recapStorySession = RecapStorySession(snapshot: recapSnapshot)
-    }
-
-    private func recapSeenKey(for year: Int) -> String {
-        RecapYearPolicy.seenKey(for: year)
+        recapStorySession = RecapStorySession(snapshot: recapSnapshot, startPage: page)
     }
 
     private func markRecapSeen() {
@@ -481,16 +497,35 @@ struct YearView: View {
         RecapNotificationScheduler.noteRecapConsumed(year: year)
     }
 
-    private func maybeAutoplayRecap() {
-        guard recapStorySession == nil else { return }
+    private func dismissRecapPromo(year: Int) {
+        RecapPromoPolicy.noteDismissed(year: year)
+        recapPromoSession = nil
+    }
+
+    private func playRecapAfterPromo(_ snapshot: YearRecapSnapshot) {
+        RecapPromoPolicy.noteDismissed(year: snapshot.year)
+        pendingRecapPlayAfterPromo = true
+        recapPromoSession = nil
+    }
+
+    private func maybePresentRecapPromo() {
+        guard recapStorySession == nil, recapPromoSession == nil else { return }
         guard !UITestSupport.isEnabled, !UITestSupport.isUnitTesting else { return }
+        guard RecapYearPolicy.shouldPresent(recapSnapshot), let recapSnapshot else { return }
         let year = RecapYearPolicy.displayYear()
-        let month = Calendar.current.component(.month, from: Date())
-        guard month == 12 || month == 1 else { return }
-        guard RecapYearPolicy.shouldPresent(recapSnapshot) else { return }
-        guard !UserDefaults.standard.bool(forKey: recapSeenKey(for: year)) else { return }
-        openRecapStory()
-        markRecapSeen()
+        let defaults = UserDefaults.standard
+        let dismissed = defaults.bool(forKey: RecapPromoPolicy.dismissedKey(for: year))
+        let catchUpPresented = defaults.bool(forKey: RecapPromoPolicy.catchUpPresentedKey(for: year))
+        guard RecapPromoPolicy.shouldPresent(
+            hasData: true,
+            dismissed: dismissed,
+            catchUpPresented: catchUpPresented,
+            recapYear: year
+        ) else { return }
+        if !RecapPromoPolicy.isWithinWindow(recapYear: year) {
+            RecapPromoPolicy.noteCatchUpPresented(year: year)
+        }
+        recapPromoSession = RecapStorySession(snapshot: recapSnapshot)
     }
 
     private func advanceUnlockQueue(from item: AchievementDisplay) {

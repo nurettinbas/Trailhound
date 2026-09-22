@@ -35,4 +35,18 @@ enum RecapStoryPagePolicy {
             }
         }
     }
+
+    static func chapterTitleKey(for page: RecapStoryPage) -> String {
+        switch page {
+        case .intro: "premium.recap.chapter.summary"
+        case .distance: "premium.recap.chapter.distance"
+        case .cities: "premium.recap.chapter.cities"
+        case .route: "premium.recap.chapter.routes"
+        case .time: "premium.recap.chapter.time"
+        case .categories: "premium.recap.chapter.purpose"
+        case .cost: "premium.recap.chapter.cost"
+        case .badges: "premium.recap.chapter.badges"
+        case .closing: "premium.recap.chapter.wrap"
+        }
+    }
 }

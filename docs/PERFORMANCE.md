@@ -322,7 +322,7 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   (not inside a List) still use `TrailhoundIndependentClock.periodic`.
   Reduce Motion and UI tests skip idle. Hold / background / Reduce Motion / UI tests freeze `t`. The Recap hub
   teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,
-  background, and UI tests). Page changes use
+  background, and UI tests). Chapter cards under the hub are `RecapChapterEmblemScene` with frozen `RecapChapterBackdrop` — do not add a TimelineView per card. Page changes use
   `TrailhoundMotion.recapPage` (scene push + copy settle). One full-bleed Canvas is the background (no second
   atmosphere layer). The cost page is that same Canvas (dual-hue pumps + pad, hose sway) with frozen `glassCard` amount plates — no extra clock.   Badge orbs and sparkles stay on that Canvas; medals overlay with the same slot frames. Toolbar chrome is 44pt Liquid Glass circles (`GlassNavCircleIcon` / `.glassCircleChrome()` — Close + Share under the
   segment bars), native `glassEffect` in Light and Dark.

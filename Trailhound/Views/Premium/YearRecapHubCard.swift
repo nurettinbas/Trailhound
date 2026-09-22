@@ -3,6 +3,7 @@ import SwiftUI
 struct YearRecapHubCard: View {
     let snapshot: YearRecapSnapshot
     var onPlay: () -> Void
+    var onPlayPage: (RecapStoryPage) -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -16,33 +17,49 @@ struct YearRecapHubCard: View {
         !reduceMotion && !UITestSupport.isEnabled
     }
 
+    private var chapterPages: [RecapStoryPage] {
+        RecapStoryPagePolicy.pages(for: snapshot)
+    }
+
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
+            playSurface
+                .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
             if snapshot.hasData {
-                Button(action: onPlay) {
-                    Group {
-                        if usesOverlay {
-                            overlayPoster
-                        } else {
-                            stackedContent(allowsIdleMotion: true)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.trailhoundCardPress)
-                .glassEntranceGlint(cornerRadius: StatsCardTokens.radius, id: "stats.premium.recap")
-                .accessibilityElement(children: .ignore)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("stats.premium.recap.play")
-                .accessibilityLabel(L10n.string("premium.recap.play"))
-                .accessibilityValue(DateFormatters.formatDistance(snapshot.distanceMeters))
-            } else {
-                stackedContent(allowsIdleMotion: false)
+                RecapChapterRail(
+                    pages: chapterPages,
+                    onPlayPage: onPlayPage
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("stats.premium.recap")
+    }
+
+    @ViewBuilder
+    private var playSurface: some View {
+        if snapshot.hasData {
+            Button(action: onPlay) {
+                Group {
+                    if usesOverlay {
+                        overlayPoster
+                    } else {
+                        stackedContent(allowsIdleMotion: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.trailhoundCardPress)
+            .glassEntranceGlint(cornerRadius: StatsCardTokens.radius, id: "stats.premium.recap")
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("stats.premium.recap.play")
+            .accessibilityLabel(L10n.string("premium.recap.play"))
+            .accessibilityValue(DateFormatters.formatDistance(snapshot.distanceMeters))
+        } else {
+            stackedContent(allowsIdleMotion: false)
+        }
     }
 
     private var overlayPoster: some View {
@@ -148,5 +165,58 @@ struct YearRecapHubCard: View {
         .trailhoundCompactProminentButton()
         .layoutPriority(1)
         .accessibilityHidden(true)
+    }
+}
+
+private struct RecapChapterRail: View {
+    let pages: [RecapStoryPage]
+    var onPlayPage: (RecapStoryPage) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: RecapChapterRailTokens.spacing) {
+                ForEach(pages, id: \.self) { page in
+                    RecapChapterCard(
+                        page: page,
+                        onPlay: { onPlayPage(page) }
+                    )
+                }
+            }
+            .padding(.trailing, RecapChapterRailTokens.peek)
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("stats.premium.recap.chapters")
+    }
+}
+
+private struct RecapChapterCard: View {
+    let page: RecapStoryPage
+    var onPlay: () -> Void
+
+    private var title: String {
+        L10n.string(RecapStoryPagePolicy.chapterTitleKey(for: page))
+    }
+
+    var body: some View {
+        Button(action: onPlay) {
+            ZStack(alignment: .bottom) {
+                RecapChapterEmblemScene(page: page)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .statsThemeChip()
+                    .padding(.bottom, RecapChapterRailTokens.titleInset)
+            }
+            .frame(width: RecapChapterRailTokens.cardWidth, height: RecapChapterRailTokens.cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: StatsCardTokens.radius, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: StatsCardTokens.radius, style: .continuous))
+        }
+        .buttonStyle(.trailhoundCardPress)
+        .accessibilityIdentifier("stats.premium.recap.chapter.\(page.rawValue)")
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
     }
 }

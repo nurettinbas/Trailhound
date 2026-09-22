@@ -95,7 +95,7 @@ Optional smoke:
 
 ## Premium Stats (V21)
 
-- [ ] **Year recap** — Recap tab: year awards first, badges, frequent-routes map, month cost forecast, recap poster last + Play story (pump fuel on its own line)
+- [ ] **Year recap** — Recap tab: year awards first, badges, frequent-routes map, month cost forecast, recap poster last + Get your Recap + chapter rail (pump fuel on its own line). January invitation overlay for 7 days.
 - [ ] **Year recap share** — story Share circle exports the visible 9:16 JPEG; Instagram Stories opens the page image; WhatsApp / Messages keep the page title caption
 - [ ] **Badge share** — unlocked gallery chip is a compact palette-tint Share control; the sheet gets a 9:16 medal JPEG (icon + glass card + Trailhound mark), not title text; Instagram Stories gets the image without caption text
 - [ ] **Widgets** — goal ring, last trip, cost summary; Last Trip route preview toggle under Settings → Privacy

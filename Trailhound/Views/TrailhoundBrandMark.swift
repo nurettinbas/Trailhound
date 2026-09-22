@@ -74,40 +74,63 @@ enum TrailhoundThemedLogo {
 struct TrailhoundBrandMark: View {
     var showsWordmark: Bool = true
     var symbolSize: CGFloat = 88
+    var axis: Axis = .vertical
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
 
     var body: some View {
-        VStack(spacing: 14) {
-            Group {
-                if let logo = TrailhoundThemedLogo.image(palette: shellPalette, scheme: colorScheme) {
-                    Image(uiImage: logo)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    Image("TrailhoundLogo")
-                        .resizable()
-                        .scaledToFit()
+        Group {
+            if axis == .horizontal {
+                HStack(spacing: 10) {
+                    logo
+                    wordmark(font: .headline.weight(.bold))
                 }
-            }
-            .frame(width: symbolSize, height: symbolSize)
-            .clipShape(RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-            }
-            .shadow(color: shellPalette.tintColor(for: colorScheme).opacity(0.28), radius: 16, y: 8)
-            .accessibilityHidden(true)
-
-            if showsWordmark {
-                Text("Trailhound")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(GlassText.primary(for: colorScheme))
+            } else {
+                VStack(spacing: 14) {
+                    logo
+                    wordmark(font: .title2.weight(.bold))
+                }
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Trailhound")
+    }
+
+    @ViewBuilder
+    private var logo: some View {
+        Group {
+            if let logo = TrailhoundThemedLogo.image(palette: shellPalette, scheme: colorScheme) {
+                Image(uiImage: logo)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image("TrailhoundLogo")
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+        .frame(width: symbolSize, height: symbolSize)
+        .clipShape(RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: symbolSize * 0.22, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(
+            color: shellPalette.tintColor(for: colorScheme).opacity(axis == .horizontal ? 0.18 : 0.28),
+            radius: axis == .horizontal ? 8 : 16,
+            y: axis == .horizontal ? 4 : 8
+        )
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func wordmark(font: Font) -> some View {
+        if showsWordmark {
+            Text("Trailhound")
+                .font(font)
+                .foregroundStyle(GlassText.primary(for: colorScheme))
+        }
     }
 }
 

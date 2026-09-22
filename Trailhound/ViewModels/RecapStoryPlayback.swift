@@ -16,10 +16,10 @@ struct RecapStoryPlayback: Equatable, Sendable {
     private(set) var remaining: TimeInterval
     let autoplayEnabled: Bool
 
-    init(pageCount: Int, autoplayEnabled: Bool) {
+    init(pageCount: Int, autoplayEnabled: Bool, startIndex: Int = 0) {
         let count = max(1, pageCount)
         self.pageCount = count
-        self.pageIndex = 0
+        self.pageIndex = min(max(0, startIndex), count - 1)
         self.autoplayEnabled = autoplayEnabled
         self.remaining = Self.pageDuration
         self.isPaused = !autoplayEnabled

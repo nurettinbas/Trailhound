@@ -30,6 +30,18 @@ enum StatsCardTokens {
     static let posterStackedArtworkHeight: CGFloat = 88
 }
 
+/// Portrait chapter cards under the Recap hub Play chip. Frozen Canvas — no extra TimelineView.
+enum RecapChapterRailTokens {
+    static let cardWidth: CGFloat = 140
+    static let cardHeight: CGFloat = 200
+    static let peek: CGFloat = 24
+    static let spacing: CGFloat = 10
+    static let titleInset: CGFloat = 10
+    /// Centered chapter glyph — not the story scene.
+    static let emblemPointSize: CGFloat = 64
+    static let emblemLift: CGFloat = 18
+}
+
 /// Distinct mix-bar hues. Stop 0 is the selected shell tint; later stops rotate that hue.
 /// Not expense-category colors and not the same tint at lower opacity.
 enum StatsSegmentTokens {
@@ -190,6 +202,27 @@ private struct StatsFrostChipModifier: ViewModifier {
                             reduceTransparency: reduceTransparency
                         )
                     )
+            }
+    }
+}
+
+/// Palette-tint capsule + white type. Same fill as compact Play — not frost, not a second Material.
+private struct StatsThemeChipModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(shellPalette.tintColor(for: colorScheme))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
+                    }
             }
     }
 }
@@ -367,6 +400,11 @@ extension View {
     /// Nested-tile frost capsule for trend / confidence labels inside a Stats card.
     func statsFrostChip() -> some View {
         modifier(StatsFrostChipModifier())
+    }
+
+    /// Palette-tint capsule + white type for labels on dark Recap chapter plates.
+    func statsThemeChip() -> some View {
+        modifier(StatsThemeChipModifier())
     }
 
     /// Variable-height nested frost panel (expand overlays). Same fill as `statsNestedTile`, not a second Material.

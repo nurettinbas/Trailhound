@@ -93,6 +93,21 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertEqual(StatsCardTokens.posterOverlayInsets.top, 8)
         XCTAssertEqual(StatsCardTokens.posterOverlayInsets.leading, 10)
         XCTAssertEqual(RecapHubTeaserMetrics.emptyHeight, 72)
+        XCTAssertEqual(RecapHubTeaserMetrics.promoHeight, 320)
+        XCTAssertEqual(RecapChapterRailTokens.cardWidth, 140)
+        XCTAssertEqual(RecapChapterRailTokens.cardHeight, 200)
+        XCTAssertEqual(RecapChapterRailTokens.peek, 24)
+        XCTAssertEqual(RecapChapterRailTokens.emblemPointSize, 64)
+        XCTAssertEqual(RecapChapterRailTokens.emblemLift, 18)
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .intro), "sparkles")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .distance), "road.lanes")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .cities), "building.2.fill")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .route), "map.fill")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .time), "moon.stars.fill")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .categories), "steeringwheel")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .cost), "fuelpump.fill")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .badges), "medal.fill")
+        XCTAssertEqual(RecapChapterEmblem.systemName(for: .closing), "flag.checkered")
         XCTAssertEqual(RecapSceneMotion.phase(0, at: 12), 0)
     }
 
@@ -124,6 +139,110 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertFalse(RecapNotificationPolicy.shouldNotify(hasData: false, seen: false, alreadyNotified: false))
         XCTAssertFalse(RecapNotificationPolicy.shouldNotify(hasData: true, seen: true, alreadyNotified: false))
         XCTAssertFalse(RecapNotificationPolicy.shouldNotify(hasData: true, seen: false, alreadyNotified: true))
+    }
+
+    func testRecapPromoPolicyIsJanuaryWindowThenCatchUpOnce() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let jan3 = calendar.date(from: DateComponents(year: 2027, month: 1, day: 3, hour: 12))!
+        let jan8 = calendar.date(from: DateComponents(year: 2027, month: 1, day: 8, hour: 9))!
+        let february = calendar.date(from: DateComponents(year: 2027, month: 2, day: 1, hour: 9))!
+        let december = calendar.date(from: DateComponents(year: 2026, month: 12, day: 20, hour: 12))!
+        XCTAssertTrue(RecapPromoPolicy.isWithinWindow(now: jan3, recapYear: 2026, calendar: calendar))
+        XCTAssertFalse(RecapPromoPolicy.isWithinWindow(now: jan8, recapYear: 2026, calendar: calendar))
+        XCTAssertTrue(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: false,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: jan3,
+                calendar: calendar
+            )
+        )
+        XCTAssertFalse(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: true,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: jan3,
+                calendar: calendar
+            )
+        )
+        XCTAssertTrue(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: false,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: jan8,
+                calendar: calendar
+            )
+        )
+        XCTAssertFalse(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: false,
+                catchUpPresented: true,
+                recapYear: 2026,
+                now: jan8,
+                calendar: calendar
+            )
+        )
+        XCTAssertFalse(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: false,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: february,
+                calendar: calendar
+            )
+        )
+        XCTAssertFalse(
+            RecapPromoPolicy.shouldPresent(
+                hasData: true,
+                dismissed: false,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: december,
+                calendar: calendar
+            )
+        )
+        XCTAssertFalse(
+            RecapPromoPolicy.shouldPresent(
+                hasData: false,
+                dismissed: false,
+                catchUpPresented: false,
+                recapYear: 2026,
+                now: jan3,
+                calendar: calendar
+            )
+        )
+        XCTAssertEqual(RecapPromoPolicy.dismissedKey(for: 2026), "recap.promo.dismissed.2026")
+        XCTAssertEqual(RecapPromoPolicy.windowDays, 7)
+    }
+
+    func testChapterRailFollowsStoryPagesAndTitleKeys() {
+        var empty = YearRecapSnapshot.empty(year: 2026)
+        empty.tripCount = 2
+        empty.distanceMeters = 12_000
+        let pages = RecapStoryPagePolicy.pages(for: empty)
+        XCTAssertEqual(pages, [.intro, .distance, .closing])
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .intro), "premium.recap.chapter.summary")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .distance), "premium.recap.chapter.distance")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .cities), "premium.recap.chapter.cities")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .route), "premium.recap.chapter.routes")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .time), "premium.recap.chapter.time")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .categories), "premium.recap.chapter.purpose")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .cost), "premium.recap.chapter.cost")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .badges), "premium.recap.chapter.badges")
+        XCTAssertEqual(RecapStoryPagePolicy.chapterTitleKey(for: .closing), "premium.recap.chapter.wrap")
+        var session = RecapStorySession(snapshot: empty, startPage: .distance)
+        XCTAssertEqual(session.startPage, .distance)
+        session = RecapStorySession(snapshot: empty)
+        XCTAssertNil(session.startPage)
     }
 
     func testDiskCacheRejectsUnstampedPayload() throws {
@@ -412,6 +531,14 @@ final class YearRecapSnapshotTests: XCTestCase {
         timed.pause()
         XCTAssertEqual(timed.consume(RecapStoryPlayback.pageDuration), .stay)
         XCTAssertEqual(timed.pageIndex, 2)
+
+        let jumped = RecapStoryPlayback(pageCount: 5, autoplayEnabled: true, startIndex: 3)
+        XCTAssertEqual(jumped.pageIndex, 3)
+        XCTAssertFalse(jumped.isFirstPage)
+        XCTAssertFalse(jumped.isLastPage)
+        let clamped = RecapStoryPlayback(pageCount: 3, autoplayEnabled: false, startIndex: 99)
+        XCTAssertEqual(clamped.pageIndex, 2)
+        XCTAssertTrue(clamped.isLastPage)
     }
 
     func testStoryTapUsesLeftThirdForBack() {

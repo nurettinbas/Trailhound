@@ -321,6 +321,7 @@
 		A1FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */; };
 		A1FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */; };
 		A1YEARRECAPHUB0000001 /* YearRecapHubCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */; };
+		A1YEARRECAPPROMO00001 /* YearRecapPromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPPROMO00001 /* YearRecapPromoView.swift */; };
 		A1VCAREENUMS000000001 /* VehicleCareEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREENUMS000000001 /* VehicleCareEnums.swift */; };
 		A1VSCHEDULE0000000001 /* VehicleSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDULE0000000001 /* VehicleSchedule.swift */; };
 		A1VEXPENSE00000000001 /* VehicleExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPENSE00000000001 /* VehicleExpense.swift */; };
@@ -713,6 +714,7 @@
 		A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/FrequentRoutesMapKitView.swift; sourceTree = "<group>"; };
 		A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/FrequentRoutesMapView.swift; sourceTree = "<group>"; };
 		A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapHubCard.swift; sourceTree = "<group>"; };
+		A2YEARRECAPPROMO00001 /* YearRecapPromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapPromoView.swift; sourceTree = "<group>"; };
 		A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapScenes.swift; sourceTree = "<group>"; };
 		A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/YearRecapStoryView.swift; sourceTree = "<group>"; };
 		A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Premium/RecapShareRenderer.swift; sourceTree = "<group>"; };
@@ -1112,6 +1114,7 @@
 				A2FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift */,
 				A2FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift */,
 				A2YEARRECAPHUB0000001 /* YearRecapHubCard.swift */,
+				A2YEARRECAPPROMO00001 /* YearRecapPromoView.swift */,
 				A2YEARRECAPSCENES00001 /* YearRecapScenes.swift */,
 				A2YEARRECAPSTORY00001 /* YearRecapStoryView.swift */,
 				A2RECAPSHARERENDER001 /* RecapShareRenderer.swift */,
@@ -1783,6 +1786,7 @@
 				A1TRIPROLLUPSERVICE00001 /* TripRollupService.swift in Sources */,
 				A1TRIPDAILYROLLUP0000001 /* TripDailyRollup.swift in Sources */,
 				A1YEARRECAPHUB0000001 /* YearRecapHubCard.swift in Sources */,
+				A1YEARRECAPPROMO00001 /* YearRecapPromoView.swift in Sources */,
 				A1FREQMAPVIEW00000001 /* FrequentRoutesMapView.swift in Sources */,
 				A1FREQMAPKITVIEW00001 /* FrequentRoutesMapKitView.swift in Sources */,
 				A1STATACHIEVESTRIP001 /* StatsAchievementsStrip.swift in Sources */,

@@ -24,15 +24,17 @@ struct YearRecapStoryView: View {
     @State private var motionTickAnchor = Date()
     @State private var pageAdvancing = true
 
-    init(snapshot: YearRecapSnapshot, onClose: @escaping () -> Void) {
+    init(snapshot: YearRecapSnapshot, startPage: RecapStoryPage? = nil, onClose: @escaping () -> Void) {
         self.onClose = onClose
         let pages = RecapStoryPagePolicy.pages(for: snapshot)
+        let startIndex = startPage.flatMap { pages.firstIndex(of: $0) } ?? 0
         _frozen = State(initialValue: snapshot)
         _pages = State(initialValue: pages)
         _playback = State(
             initialValue: RecapStoryPlayback(
                 pageCount: max(1, pages.count),
-                autoplayEnabled: !UITestSupport.isEnabled
+                autoplayEnabled: !UITestSupport.isEnabled,
+                startIndex: startIndex
             )
         )
     }
