@@ -4,8 +4,6 @@ import Foundation
 /// Caps how many polyline vertices a travel-journal map may draw.
 enum TravelJournalMapBudget {
     static let totalCap = 4000
-    /// Beyond this many members, draw a bounding polyline instead of every route.
-    static let overviewTripCount = 20
 
     /// Allocates a per-trip vertex budget that sums to at most `totalCap`.
     /// Endpoints are preserved: a path with at least two points never drops below 2.
@@ -63,28 +61,5 @@ enum TravelJournalMapBudget {
                 : Int((Double(step) * Double(last) / Double(maxCount - 1)).rounded())
             return coordinates[index]
         }
-    }
-
-    /// Axis-aligned bounding ring for far-zoom overview (not GPS-point clustering).
-    static func boundingPolyline(from pieces: [[CLLocationCoordinate2D]]) -> [CLLocationCoordinate2D] {
-        let flat = pieces.flatMap { $0 }
-        guard let first = flat.first else { return [] }
-        var minLat = first.latitude
-        var maxLat = first.latitude
-        var minLon = first.longitude
-        var maxLon = first.longitude
-        for coordinate in flat.dropFirst() {
-            minLat = min(minLat, coordinate.latitude)
-            maxLat = max(maxLat, coordinate.latitude)
-            minLon = min(minLon, coordinate.longitude)
-            maxLon = max(maxLon, coordinate.longitude)
-        }
-        return [
-            CLLocationCoordinate2D(latitude: minLat, longitude: minLon),
-            CLLocationCoordinate2D(latitude: minLat, longitude: maxLon),
-            CLLocationCoordinate2D(latitude: maxLat, longitude: maxLon),
-            CLLocationCoordinate2D(latitude: maxLat, longitude: minLon),
-            CLLocationCoordinate2D(latitude: minLat, longitude: minLon)
-        ]
     }
 }

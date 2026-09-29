@@ -1,5 +1,10 @@
 import SwiftData
 import SwiftUI
+import UIKit
+
+private enum YearListAnchor {
+    static let badges = "year.badges.card"
+}
 
 struct YearView: View {
     @Environment(\.modelContext) private var modelContext
@@ -36,6 +41,7 @@ struct YearView: View {
     @State private var yearAwards: StatsYearAwardsSnapshot?
     @State private var selectedAwardsYear = Calendar.current.component(.year, from: Date())
     @State private var yearAwardsRefreshTask: Task<Void, Never>?
+    @State private var badgeScrollRequest = 0
 
     var body: some View {
         yearList(currencyCode: settings.fuelCurrency.rawValue)
@@ -57,6 +63,14 @@ struct YearView: View {
                 consumeYearDeepLink()
             }
             .onPreferenceChange(AchievementCardGlobalFrameKey.self) { badgesCardFrame = $0 }
+            .onChange(of: badgesCardFrame) { _, frame in
+                guard showAchievements, achievementsExpanded, morphSourceIsOnScreen(frame) else { return }
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    frozenBadgesCardFrame = frame
+                }
+            }
             .onPreferenceChange(FrequentRoutesCardGlobalFrameKey.self) { routesCardFrame = $0 }
             .onPreferenceChange(StatsForecastCardGlobalFrameKey.self) { forecastCardFrame = $0 }
             .fullScreenCover(isPresented: $showAchievements) {
@@ -124,7 +138,8 @@ struct YearView: View {
 
     @ViewBuilder
     private func yearList(currencyCode: String) -> some View {
-        List {
+        ScrollViewReader { proxy in
+            List {
             Section {
                 StatsYearAwardsCard(
                     snapshot: yearAwards,
@@ -145,6 +160,7 @@ struct YearView: View {
                     isExpanded: showAchievements,
                     onOpen: openAchievements
                 )
+                .id(YearListAnchor.badges)
                 .statsFullCard()
                 .opacity(showAchievements ? 0 : 1)
                 .background {
@@ -195,6 +211,14 @@ struct YearView: View {
                     onPlayPage: { openRecapStory(at: $0) }
                 )
                 .statsCardListRow()
+            }
+            }
+            .onChange(of: badgeScrollRequest) { _, _ in
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(YearListAnchor.badges, anchor: .center)
+                }
             }
         }
     }
@@ -349,6 +373,21 @@ struct YearView: View {
         }
     }
 
+    /// Notification opens the badges page immediately. The Recap card is only
+    /// positioned underneath so close can still shrink onto it.
+    private func openAchievementsFromNotification() {
+        guard !showAchievements else { return }
+        TrailhoundHaptics.selection()
+        frozenBadgesCardFrame = badgesCardFrame
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showAchievements = true
+            achievementsExpanded = true
+        }
+        badgeScrollRequest += 1
+    }
+
     private func closeAchievements() {
         TrailhoundHaptics.selection()
         if reduceMotion {
@@ -360,15 +399,43 @@ struct YearView: View {
             }
             return
         }
-        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-            achievementsExpanded = false
-        } completion: {
+        // The frame captured at open can still be a one-row layout. Shrink to the
+        // card as it is now, or the closing panel clips short of the medals.
+        if morphSourceIsOnScreen(badgesCardFrame) {
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
-                showAchievements = false
+                frozenBadgesCardFrame = badgesCardFrame
             }
         }
+        Task { @MainActor in
+            await Task.yield()
+            guard showAchievements else { return }
+            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
+                achievementsExpanded = false
+            } completion: {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    showAchievements = false
+                }
+            }
+        }
+    }
+
+    private func morphSourceIsOnScreen(_ source: CGRect) -> Bool {
+        guard let window = Self.keyWindow else { return false }
+        return AchievementGalleryExpandLayout.isOnScreenCard(
+            source,
+            windowBounds: window.bounds,
+            topInset: window.safeAreaInsets.top
+        )
+    }
+
+    private static var keyWindow: UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first
     }
 
     private func openRoutesMap() {
@@ -474,7 +541,7 @@ struct YearView: View {
         case .routes:
             openRoutesMap()
         case .achievements:
-            openAchievements()
+            openAchievementsFromNotification()
         }
     }
 

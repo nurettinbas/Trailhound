@@ -47,6 +47,22 @@ enum AchievementGalleryExpandLayout {
     static func hasUsableSource(_ source: CGRect) -> Bool {
         source.width >= minimumSourceLength && source.height >= minimumSourceLength
     }
+
+    /// Hidden Recap tab reports a real-sized frame under the status bar.
+    /// That is not the card the expand spring should grow from.
+    static func isOnScreenCard(
+        _ source: CGRect,
+        windowBounds: CGRect,
+        topInset: CGFloat
+    ) -> Bool {
+        guard hasUsableSource(source) else { return false }
+        guard windowBounds.width > 1, windowBounds.height > 1 else { return false }
+        guard source.minY >= windowBounds.minY + topInset else { return false }
+        let visible = source.intersection(windowBounds)
+        guard visible.width >= minimumSourceLength else { return false }
+        let needed = min(source.height, 88)
+        return visible.height >= needed * 0.5
+    }
 }
 
 /// Shell-independent family colors for round medals only — cards stay glass.

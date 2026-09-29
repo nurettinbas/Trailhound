@@ -109,6 +109,11 @@ struct GlassToolbarSymbol: View {
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(tint)
                 .tint(tint)
+                // Map expand/collapse rides a 1.1–1.4s transaction. Default SF
+                // Symbol replace interpolates this pair through unreadable frames
+                // for the whole curve. Snap the glyph; keep the glass circle identity.
+                .contentTransition(.identity)
+                .transaction(value: systemName) { $0.animation = nil }
         }
     }
 }

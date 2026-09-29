@@ -334,4 +334,24 @@ final class AchievementThemeTests: XCTestCase {
         XCTAssertNil(TrailhoundMotion.badgeCardExpand(reduceMotion: true))
         XCTAssertNotNil(TrailhoundMotion.badgeCardExpand(reduceMotion: false))
     }
+
+    func testGalleryExpandRejectsCardUnderTheStatusBar() {
+        let window = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let stranded = CGRect(x: 16, y: 4, width: 358, height: 120)
+        XCTAssertFalse(
+            AchievementGalleryExpandLayout.isOnScreenCard(stranded, windowBounds: window, topInset: 59)
+        )
+        let onScreen = CGRect(x: 16, y: 240, width: 358, height: 96)
+        XCTAssertTrue(
+            AchievementGalleryExpandLayout.isOnScreenCard(onScreen, windowBounds: window, topInset: 59)
+        )
+        let belowFold = CGRect(x: 16, y: 820, width: 358, height: 96)
+        XCTAssertFalse(
+            AchievementGalleryExpandLayout.isOnScreenCard(belowFold, windowBounds: window, topInset: 59)
+        )
+        let tallCard = CGRect(x: 16, y: 180, width: 358, height: 900)
+        XCTAssertTrue(
+            AchievementGalleryExpandLayout.isOnScreenCard(tallCard, windowBounds: window, topInset: 59)
+        )
+    }
 }

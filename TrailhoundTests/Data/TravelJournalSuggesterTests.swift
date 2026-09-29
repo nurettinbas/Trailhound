@@ -50,10 +50,10 @@ final class TravelJournalPanelLayoutTests: XCTestCase {
 }
 
 final class TravelJournalMapBudgetTests: XCTestCase {
-    func testTwelveTripsStayAtOrBelowCap() {
-        let counts = Array(repeating: 1500, count: 12)
+    func testSixtyThreeTripsStayAtOrBelowCap() {
+        let counts = Array(repeating: 400, count: 63)
         let allocated = TravelJournalMapBudget.allocate(pointCounts: counts, totalCap: 4000)
-        XCTAssertEqual(allocated.count, 12)
+        XCTAssertEqual(allocated.count, 63)
         XCTAssertLessThanOrEqual(allocated.reduce(0, +), 4000)
         XCTAssertTrue(allocated.allSatisfy { $0 >= 2 })
     }

@@ -174,11 +174,10 @@ Multi-route is heavier than trip-detail reveal. Hard rules:
 | **Journal draw budget** | **≤ 4000 points total** on screen | Long weekends stay independent of library size |
 | Speed-colored overlays | **Selected trip only**, ≤ 60 segments | 12 trips × 60 overlays would hitch |
 | Unselected trips | 1 `MKPolyline` each | Constant overlay count ≈ trip count |
-| Far zoom (20+ members) | Replace individuals with a **convex hull or bounding polyline** (pure geometry, not point clustering) | Overlay count stays bounded |
 | First paint | Do not fault `sortedPoints` | Async `path(...)` memory → disk → build, same as trip detail |
 | List mosaic | `TripMapSnapshotCache` only (appearance-aware) | No MapKit in `List` |
 
-**Adaptive decimation:** if `sum(displayPointCount)` exceeds 4000, raise per-trip tolerance until the cap holds; always keep each path’s endpoints. Pure function `TravelJournalMapBudget.allocate(pointCounts:totalCap:)` — unit-test with 12 trips.
+**Adaptive decimation:** if `sum(displayPointCount)` exceeds 4000, raise per-trip tolerance until the cap holds; always keep each path’s endpoints. Pure function `TravelJournalMapBudget.allocate(pointCounts:totalCap:)` — unit-test with 12 and 63 trips. Do **not** replace routes with a bounding rectangle when the journal is large.
 
 **Overlay churn:** swapping selection rebuilds **one** speed-colored set and restyles the previous trip to a muted stroke. Do not `removeOverlay`/`addOverlay` the whole journal. `TravelJournalMapLayer` should be `Equatable` and ignore panel height (copy `TripDetailMapLayer`).
 

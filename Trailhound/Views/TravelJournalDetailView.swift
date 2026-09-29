@@ -373,28 +373,19 @@ struct TravelJournalDetailView: View {
         for trip in trips {
             let pieces = await TripRoutePathCache.shared.path(for: trip, container: modelContext.container)
             let coordinates = pieces.flatMap { $0.map(\.coordinate) }
+            guard coordinates.count >= 2 else { continue }
             raw.append((trip, coordinates, pieces))
         }
 
-        let counts = raw.map(\.coordinates.count)
-        let useOverview = raw.count >= TravelJournalMapBudget.overviewTripCount
-        let allocated = TravelJournalMapBudget.allocate(pointCounts: counts)
-
-        if useOverview {
-            let hull = TravelJournalMapBudget.boundingPolyline(from: raw.map(\.coordinates))
-            overlays = [
-                TravelJournalRouteOverlay(
-                    id: journal.id,
-                    coordinates: hull,
-                    color: TrailhoundBrandColors.brandBottom.opacity(0.55),
-                    isSelected: false
-                )
-            ]
+        guard !raw.isEmpty else {
+            overlays = []
             selectedSegments = []
-            fitCoordinates = hull
-            applyFittedCamera(animated: false)
+            fitCoordinates = []
             return
         }
+
+        let counts = raw.map(\.coordinates.count)
+        let allocated = TravelJournalMapBudget.allocate(pointCounts: counts)
 
         let domainKeys = raw.map { $0.trip.id.uuidString }
         var nextOverlays: [TravelJournalRouteOverlay] = []
