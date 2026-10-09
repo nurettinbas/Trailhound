@@ -27,6 +27,21 @@ enum GlassTokens {
     /// Width of a glyph inside a shared platter. Height stays `toolbarControlCircleSide`.
     static let toolbarClusterGlyphWidth: CGFloat = 32
 
+    /// Wide-layout tokens. Phone portrait does not read these.
+    static let railWidthFraction: CGFloat = 0.36
+    static let hingeGutter: CGFloat = 24
+    static let padLandscapeGap: CGFloat = 48
+    static let floatingPanelWidth: CGFloat = 380
+    static let paneCardMaxWidth: CGFloat = 440
+    static let paneVerticalRhythm: CGFloat = 22
+    static let moduleMinHalf: CGFloat = 160
+    static let moduleMaxHalf: CGFloat = 300
+    static let featureHeight: CGFloat = 320
+    static let readableTextWidth: CGFloat = 440
+    static let heroFigureFont = Font.system(size: 44, weight: .light, design: .rounded)
+    /// Narrow iPad Split View / Slide Over stays the phone column.
+    static let compactWidthCeiling: CGFloat = 520
+
     static func fieldFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         if scheme == .dark {
             return Color.white.opacity(0.10)
@@ -1210,7 +1225,8 @@ private struct GlassNavigationChromeModifier: ViewModifier {
             content
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                .scrollEdgeEffectHidden(true, for: [.top, .bottom])
+                .scrollEdgeEffectStyle(.hard, for: .all)
+                .scrollEdgeEffectHidden(true, for: .all)
                 .background(GlassNavigationBarEdgeHider())
         } else if #available(iOS 18.0, *) {
             content
@@ -1251,7 +1267,10 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
 
         override func viewWillAppear(_ animated: Bool) {
             super.viewWillAppear(animated)
-            apply()
+            edgePassCount = 0
+            UIView.performWithoutAnimation {
+                apply()
+            }
         }
 
         override func viewDidAppear(_ animated: Bool) {
@@ -1300,16 +1319,25 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
 
         private func hideScrollEdgeEffects() {
             guard #available(iOS 26.0, *) else { return }
-            hideScrollEdgeEffects(in: parent?.view)
-            hideScrollEdgeEffects(in: navigationController?.view)
+            UIView.performWithoutAnimation {
+                hideScrollEdgeEffects(in: parent?.view)
+                hideScrollEdgeEffects(in: navigationController?.view)
+            }
         }
 
         @available(iOS 26.0, *)
         private func hideScrollEdgeEffects(in view: UIView?) {
             guard let view else { return }
             if let scrollView = view as? UIScrollView {
-                scrollView.topEdgeEffect.isHidden = true
-                scrollView.bottomEdgeEffect.isHidden = true
+                let effects = [
+                    scrollView.topEdgeEffect,
+                    scrollView.bottomEdgeEffect,
+                    scrollView.leftEdgeEffect,
+                    scrollView.rightEdgeEffect
+                ]
+                for effect in effects where !effect.isHidden {
+                    effect.isHidden = true
+                }
             }
             for subview in view.subviews {
                 hideScrollEdgeEffects(in: subview)
@@ -1426,11 +1454,13 @@ extension View {
             .mask(Rectangle())
     }
 
-    func glassListChrome() -> some View {
+    func glassListChrome(showsAtmosphere: Bool = true) -> some View {
         scrollContentBackground(.hidden)
             .background {
-                AtmosphericBackground(style: .full)
-                    .ignoresSafeArea()
+                if showsAtmosphere {
+                    AtmosphericBackground(style: .full)
+                        .ignoresSafeArea()
+                }
             }
             .listSectionSpacing(GlassTokens.sectionSpacing)
             .glassNavigationChrome()

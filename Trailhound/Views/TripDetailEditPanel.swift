@@ -17,11 +17,18 @@ struct TripSummaryMetricTile: View {
     var frozen: Bool = true
     var showsHelp: Bool = false
 
+    @Environment(\.trailhoundLayout) private var layout
+
+    /// Upright Duo sheet is much wider than a phone. The phone point size reads large there.
+    private var duoSheet: Bool {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: TripSummaryMetricCardLayout.titleValueSpacing) {
             HStack(alignment: .center, spacing: 4) {
                 Label(metric.title, systemImage: metric.icon)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: duoSheet ? 8 : 10, weight: .medium))
                     .glassSecondaryInk()
                     .labelStyle(.titleAndIcon)
                     .lineLimit(1)
@@ -107,6 +114,8 @@ struct TripDetailEditPanel: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
@@ -292,6 +301,28 @@ struct TripDetailEditPanel: View {
         .onChange(of: trip.id) { _, _ in
             loadEditStateFromTrip()
         }
+        .environment(\.dynamicTypeSize, duoSheetTypeSize)
+    }
+
+    private var duoSheet: Bool {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay
+    }
+
+    /// Section labels such as Trip times. Subheadline is too heavy on the wide Duo card.
+    private var sectionTitleFont: Font {
+        duoSheet ? .caption.weight(.semibold) : .subheadline.weight(.semibold)
+    }
+
+    /// Two steps under the reader's size, only on the upright Duo sheet.
+    /// The phone point size reads large on that wide card. Accessibility sizes stay put.
+    private var duoSheetTypeSize: DynamicTypeSize {
+        guard layout.layoutClass == .duoOpen, layout.tripDetailStyle == .overlay else {
+            return dynamicTypeSize
+        }
+        guard !dynamicTypeSize.isAccessibilitySize else { return dynamicTypeSize }
+        let sizes = Array(DynamicTypeSize.allCases)
+        guard let index = sizes.firstIndex(of: dynamicTypeSize) else { return dynamicTypeSize }
+        return sizes[max(0, index - 2)]
     }
 
     private var panelHeightAnimation: Animation? {
@@ -578,7 +609,7 @@ struct TripDetailEditPanel: View {
     private var tripHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(viewModel.routeSummary)
-                .font(.headline)
+                .font(duoSheet ? .subheadline.weight(.semibold) : .headline)
                 .lineLimit(2)
 
             Text(viewModel.dateText)
@@ -643,11 +674,13 @@ struct TripDetailEditPanel: View {
                 return .journal(journalID)
             },
             set: { newValue in
+                // Resigning first responder here runs while the menu is closing and
+                // pulls the sheet down with the keyboard. Assign without that.
                 switch newValue {
                 case .none:
-                    journalSelection.wrappedValue = nil
+                    assignJournal(nil)
                 case .journal(let id):
-                    journalSelection.wrappedValue = id
+                    assignJournal(id)
                 case .createNew:
                     openNewTravelEditor()
                 }
@@ -665,17 +698,15 @@ struct TripDetailEditPanel: View {
         }
     }
 
-    private var journalSelection: Binding<UUID?> {
-        Binding(
-            get: { trip.journalID },
-            set: { newValue in
-                dismissKeyboard()
-                let journal = newValue.flatMap { id in journals.first { $0.id == id } }
-                TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
-                try? modelContext.save()
-                TrailhoundHaptics.selection()
-            }
-        )
+    private func assignJournal(_ journalID: UUID?) {
+        let journal = journalID.flatMap { id in journals.first { $0.id == id } }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+            try? modelContext.save()
+        }
+        TrailhoundHaptics.selection()
     }
 
     @ViewBuilder
@@ -752,7 +783,7 @@ struct TripDetailEditPanel: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(L10n.tripSpeedChart)
-                .font(.subheadline.weight(.semibold))
+                .font(sectionTitleFont)
 
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .trailing, spacing: 0) {
@@ -793,10 +824,12 @@ struct TripDetailEditPanel: View {
 
             DatePicker(title, selection: selection, displayedComponents: .date)
                 .glassDatePicker()
+                .scaleEffect(0.75, anchor: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
                 .glassDatePicker()
+                .scaleEffect(0.75, anchor: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -822,7 +855,7 @@ struct TripDetailEditPanel: View {
                 .disabled(value.wrappedValue <= range.lowerBound)
 
                 Text("\(value.wrappedValue)")
-                    .font(.body.weight(.semibold))
+                    .font(duoSheet ? .callout.weight(.semibold) : .body.weight(.semibold))
                     .foregroundStyle(fieldInk)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity)
@@ -894,6 +927,7 @@ struct TripDetailEditPanel: View {
                             .minimumScaleFactor(0.6)
                             .truncationMode(.tail)
                             .allowsTightening(true)
+                            .animation(nil, value: value)
                         Spacer(minLength: 2)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 8, weight: .bold))
@@ -942,7 +976,7 @@ struct TripDetailEditPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 4) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(sectionTitleFont)
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
@@ -1040,7 +1074,7 @@ struct TripDetailEditPanel: View {
                     existing == nil ? L10n.tripAddToFavorites : L10n.placeAlreadySaved,
                     systemImage: existing == nil ? "star" : "star.fill"
                 )
-                .font(.subheadline.weight(.medium))
+                .font(duoSheet ? .caption.weight(.medium) : .subheadline.weight(.medium))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderless)
@@ -1314,10 +1348,12 @@ private struct TripStopEditRow: View {
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .date)
                         .glassDatePicker()
+                        .scaleEffect(0.75, anchor: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
                         .glassDatePicker()
+                        .scaleEffect(0.75, anchor: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)

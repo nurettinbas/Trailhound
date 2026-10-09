@@ -454,28 +454,42 @@ struct AchievementGalleryView: View {
     var onClose: () -> Void
     var playsIdleClock: Bool = true
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.trailhoundLayout) private var layout
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
+                if closeLeadsTitle {
+                    galleryCloseButton
+                }
                 Text(L10n.string("premium.achievements.title"))
                     .font(.headline)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                GlassToolbarCollapseButton(
-                    accessibilityIdentifier: "stats.achievement.expanded.close",
-                    action: onClose
-                )
+                if !closeLeadsTitle {
+                    galleryCloseButton
+                }
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 12)
+            .padding(.leading, closeLeadsTitle ? 12 : 16)
+            .padding(.trailing, closeLeadsTitle ? 16 : 12)
             .padding(.top, topInset)
             .padding(.bottom, 8)
             galleryScroll
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGlassShell()
+    }
+
+    /// Phone and Duo put the camera and status cluster in the trailing corner.
+    private var closeLeadsTitle: Bool {
+        layout.pinsOverlayCloseLeading
+    }
+
+    private var galleryCloseButton: some View {
+        GlassToolbarCollapseButton(
+            accessibilityIdentifier: "stats.achievement.expanded.close",
+            action: onClose
+        )
     }
 
     /// Catalog order so the km ladder stays together (100k after 10k), not buried after other locked families.
@@ -502,7 +516,11 @@ struct AchievementGalleryView: View {
         if dynamicTypeSize.isAccessibilitySize {
             return [GridItem(.flexible(), spacing: spacing, alignment: .top)]
         }
-        let count = sizeClass == .regular ? 3 : 2
+        let count = TrailhoundLayoutResolver.badgeColumnCount(
+            layout: layout.layoutClass,
+            isLandscape: layout.isLandscape,
+            accessibility: false
+        )
         return Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: .top), count: count)
     }
 }

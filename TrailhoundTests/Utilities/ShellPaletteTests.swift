@@ -215,18 +215,25 @@ final class ShellPaletteTests: XCTestCase {
         )
     }
 
-    func testTabBarUnselectedIsWhiteInLight() {
-        let gold = TrailhoundTabBarTheme.unselectedUIColor(palette: .gold, scheme: .light)
+    func testTabBarUnselectedMatchesDoneTintInLightAndStaysWhiteInDark() {
         let sky = TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .light)
-        XCTAssertEqual(gold, sky)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        sky.getRed(&r, green: &g, blue: &b, alpha: &a)
-        XCTAssertEqual(r, 1, accuracy: 0.01)
-        XCTAssertEqual(g, 1, accuracy: 0.01)
-        XCTAssertEqual(b, 1, accuracy: 0.01)
-        XCTAssertEqual(a, 1, accuracy: 0.01)
+        XCTAssertEqual(
+            sky,
+            TrailhoundTabBarTheme.uiColor(ShellPalette.sky.atmosphere(for: .light).tint)
+        )
+        let gold = TrailhoundTabBarTheme.unselectedUIColor(palette: .gold, scheme: .light)
+        XCTAssertEqual(
+            gold,
+            TrailhoundTabBarTheme.uiColor(ShellPalette.gold.atmosphere(for: .light).tint)
+        )
+        XCTAssertNotEqual(gold, sky)
+        XCTAssertNotEqual(sky, UIColor.white)
         XCTAssertEqual(
             TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .dark),
+            UIColor.white
+        )
+        XCTAssertEqual(
+            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
             UIColor.white
         )
     }

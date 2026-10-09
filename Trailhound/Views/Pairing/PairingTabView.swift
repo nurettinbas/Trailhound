@@ -17,6 +17,8 @@ struct PairingTabView: View {
     @State private var navigationPath = NavigationPath()
     @State private var showShortcutsAutomationGuide = false
     @State private var shortcutsGuideEntry: ShortcutsWizardEntry = .start
+    @Environment(\.trailhoundLayout) private var layout
+    @State private var focusedVehicleID: UUID?
 
     private var sortedVehicles: [VehicleProfile] {
         vehicles.sorted { lhs, rhs in
@@ -27,7 +29,23 @@ struct PairingTabView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            pairingList
+            Group {
+                if layout.layoutClass == .phone {
+                    pairingList
+                } else if layout.layoutClass == .duoOpen || layout.showsHeroRail {
+                    TrailhoundPaneSplit {
+                        pairingList
+                    } focus: {
+                        vehicleFocus
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        vehicleFocus
+                            .frame(maxHeight: 220)
+                        pairingList
+                    }
+                }
+            }
                 .navigationDestination(for: VehicleNavDestination.self) { destination in
                     switch destination {
                     case .detail(let id):
@@ -51,6 +69,30 @@ struct PairingTabView: View {
         sortedVehicles
             .map { "\($0.id.uuidString):\($0.photoFileName ?? "")" }
             .joined(separator: "|")
+    }
+
+    private var vehicleFocus: some View {
+        let vehicle = sortedVehicles.first { $0.id == focusedVehicleID } ?? sortedVehicles.first
+        return VStack(alignment: .leading, spacing: 8) {
+            if let vehicle {
+                TrailhoundHeroRail(collapsed: false) {
+                    Text(L10n.string("vehicles.tab.title"))
+                } figure: {
+                    Text(vehicle.name)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                } detail: {
+                    Text(vehicle.isDefault ? L10n.string("vehicles.tab.title") : vehicle.name)
+                }
+                Button(L10n.string("vehicles.care.detail.title")) {
+                    navigationPath.append(VehicleNavDestination.detail(vehicle.id))
+                }
+                .trailhoundProminentButton()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var pairingList: some View {
@@ -101,6 +143,7 @@ struct PairingTabView: View {
         .glassListChrome()
         .navigationTitle(L10n.string("vehicles.tab.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .trailhoundShellToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 LocationPermissionBadge(state: locationService.authorizationState)

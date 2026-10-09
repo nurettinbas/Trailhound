@@ -4192,13 +4192,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mark all as read"
+            "value" : "Mark all read"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tümünü okundu işaretle"
+            "value" : "Tümünü okundu yap"
+          }
+        }
+      }
+    },
+    "notifications.open" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aç"
           }
         }
       }

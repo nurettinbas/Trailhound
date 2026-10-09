@@ -429,6 +429,62 @@ struct StatsCardPair<Left: View, Right: View>: View {
     }
 }
 
+/// Two already-chromed cards in one list row. Does not add a second glass plate.
+/// On the open fold the gap sits on the window hinge, not on half the row:
+/// the side tab makes the trailing card narrower.
+struct StatsCardPairRow<Left: View, Right: View>: View {
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
+    @ViewBuilder var left: () -> Left
+    @ViewBuilder var right: () -> Right
+
+    @State private var contentInWindow: CGRect = .zero
+    @State private var measuredWindowWidth: CGFloat = 0
+
+    private var alignsToHinge: Bool {
+        layout.layoutClass == .duoOpen && layout.isLandscape
+    }
+
+    private var gap: CGFloat {
+        alignsToHinge ? GlassTokens.hingeGutter : StatsCardTokens.pairSpacing
+    }
+
+    private var leadingWidth: CGFloat? {
+        guard alignsToHinge else { return nil }
+        let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
+        let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : layout.size.width
+        let origin = contentInWindow.width > 1 ? contentInWindow.minX : 0
+        guard contentWidth > 1, windowWidth > 1 else { return nil }
+        return TrailhoundLayoutResolver.duoLeadingPaneWidth(
+            contentOriginX: origin,
+            contentWidth: contentWidth,
+            windowWidth: windowWidth,
+            gutter: gap,
+            listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection)
+        )
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: gap) {
+            left()
+                .frame(width: leadingWidth, alignment: .top)
+                .frame(maxWidth: leadingWidth == nil ? .infinity : nil, maxHeight: .infinity, alignment: .top)
+            right()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .statsCardListRow()
+        .background {
+            if alignsToHinge {
+                TrailhoundWindowFrameReader { frame, windowSize in
+                    guard frame != contentInWindow || windowSize.width != measuredWindowWidth else { return }
+                    contentInWindow = frame
+                    measuredWindowWidth = windowSize.width
+                }
+            }
+        }
+    }
+}
+
 /// Placeholder nested tile so the summary grid stays packed while a snapshot loads.
 struct StatsSummaryTileSkeleton: View {
     var reduceMotion: Bool

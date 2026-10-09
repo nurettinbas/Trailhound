@@ -11,10 +11,121 @@ struct NotificationsListView: View {
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
     @Bindable private var store = AppNotificationStore.shared
+    @Bindable private var tabSelection = TabSelection.shared
+    @Environment(\.trailhoundLayout) private var layout
     @State private var roadVehiclePhoto: UIImage?
-    @State private var openedTripID: UUID?
+    @State private var selectedNotificationID: UUID?
 
     var body: some View {
+        inboxRoot
+            .navigationTitle(L10n.notificationsTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    GlassToolbarCircleButton(systemName: "xmark") {
+                        tabSelection.closeNotifications()
+                    }
+                    .accessibilityLabel(L10n.cancel)
+                }
+                .hideSharedToolbarBackgroundIfAvailable()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(L10n.notificationsMarkAllRead) {
+                            store.markAllRead()
+                        }
+                        .disabled(store.unreadCount == 0)
+                        Button(L10n.notificationsClearAll, role: .destructive) {
+                            DeleteConfirmPresenter.shared.confirm(.notificationsAll) {
+                                store.clearAll()
+                            }
+                        }
+                        .disabled(store.items.isEmpty)
+                    } label: {
+                        GlassToolbarSymbol(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+            .onAppear {
+                store.reload()
+                if selectedNotificationID == nil {
+                    selectedNotificationID = store.items.first?.id
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var inboxRoot: some View {
+        switch layout.layoutClass {
+        case .phone:
+            inboxList
+        case .duoOpen:
+            TrailhoundPaneSplit {
+                inboxList
+            } focus: {
+                notificationPreview
+            }
+        case .phoneLandscape, .pad:
+            HStack(spacing: GlassTokens.hingeGutter) {
+                notificationRail
+                    .frame(width: layout.layoutClass == .pad && !layout.isLandscape ? 280 : nil)
+                    .frame(maxWidth: layout.showsHeroRail ? nil : 320)
+                inboxList
+            }
+        }
+    }
+
+    private var notificationRail: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            TrailhoundHeroRail(collapsed: false) {
+                Text(L10n.notificationsTitle)
+            } figure: {
+                Text("\(store.unreadCount)")
+            } detail: {
+                Text(L10n.notificationsEmptyMessage)
+            }
+            Button(L10n.notificationsMarkAllRead) {
+                store.markAllRead()
+            }
+            .trailhoundGlassButton()
+            .disabled(store.unreadCount == 0)
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .trailhoundPaneCard()
+    }
+
+    private var notificationPreview: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let item = store.items.first(where: { $0.id == selectedNotificationID }) ?? store.items.first {
+                Text(item.title)
+                    .font(.title3.weight(.semibold))
+                    .glassPrimaryInk()
+                Text(item.body)
+                    .font(.body)
+                    .glassSecondaryInk()
+                if store.route(for: item).opensDestination || resolvedTrip(for: item)?.endedAt != nil {
+                    Button(L10n.notificationsOpen) {
+                        open(item)
+                    }
+                    .trailhoundProminentButton()
+                }
+            } else {
+                GlassEmptyState(
+                    title: L10n.notificationsEmptyTitle,
+                    systemImage: "bell.slash",
+                    message: L10n.notificationsEmptyMessage
+                )
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .glassCard()
+        .padding(16)
+    }
+
+    @ViewBuilder
+    private var inboxList: some View {
         Group {
             if store.items.isEmpty && !recordingService.state.isActiveSession {
                 GlassEmptyState(
@@ -57,34 +168,6 @@ struct NotificationsListView: View {
                 .listStyle(.plain)
                 .glassListChrome()
             }
-        }
-        .navigationTitle(L10n.notificationsTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button(L10n.notificationsClearAll, role: .destructive) {
-                        DeleteConfirmPresenter.shared.confirm(.notificationsAll) {
-                            store.clearAll()
-                        }
-                    }
-                    .disabled(store.items.isEmpty)
-                } label: {
-                    GlassToolbarSymbol(systemName: "ellipsis.circle")
-                }
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { openedTripID != nil },
-            set: { if !$0 { openedTripID = nil } }
-        )) {
-            if let openedTripID,
-               let trip = trips.first(where: { $0.id == openedTripID }) {
-                TripDetailView(trip: trip)
-            }
-        }
-        .onAppear {
-            store.reload()
         }
     }
 
@@ -130,6 +213,25 @@ struct NotificationsListView: View {
         return "\(duration) · \(distance) · \(speed)"
     }
 
+    private func leaveInbox(_ action: () -> Void) {
+        tabSelection.closeNotifications()
+        action()
+    }
+
+    private func open(_ item: StoredAppNotification) {
+        store.markRead(item.id)
+        if let trip = resolvedTrip(for: item), trip.endedAt != nil {
+            leaveInbox {
+                tabSelection.openTrip(id: trip.id)
+            }
+            return
+        }
+        let route = store.route(for: item)
+        leaveInbox {
+            route.perform()
+        }
+    }
+
     private func loadRoadVehiclePhoto() async {
         let fileName = recordingVehicle?.photoFileName
         guard let fileName, !fileName.isEmpty else {
@@ -164,14 +266,26 @@ struct NotificationsListView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         store.markRead(item.id)
-                        openedTripID = trip.id
+                        selectedNotificationID = item.id
+                        if layout.layoutClass == .duoOpen {
+                            return
+                        }
+                        leaveInbox {
+                            tabSelection.openTrip(id: trip.id)
+                        }
                     }
             } else if opensRoute {
                 rowContent(item: item, kind: kind, showsChevron: true)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         store.markRead(item.id)
-                        route.perform()
+                        selectedNotificationID = item.id
+                        if layout.layoutClass == .duoOpen {
+                            return
+                        }
+                        leaveInbox {
+                            route.perform()
+                        }
                     }
             } else {
                 rowContent(item: item, kind: kind, showsChevron: false)

@@ -450,9 +450,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
             case .recording:
                 return Color.white.opacity(isPaused ? 0.45 : 0.85)
             case .atmosphere:
-                return colorScheme == .dark
-                    ? Color.white.opacity(isPaused ? 0.28 : 0.42)
-                    : atmosphereAccent.opacity(isPaused ? 0.28 : 0.4)
+                return Color.white.opacity(isPaused ? 0.7 : 1)
             }
         }()
         let dashHeight: CGFloat = palette == .atmosphere ? 2.5 : 3
@@ -471,10 +469,17 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                         && dashTrailing > carLeading
                         && dashLeading < carTrailing
                     if !underCar {
-                        Capsule()
-                            .fill(dashColor)
-                            .frame(width: dashWidth, height: dashHeight)
-                            .offset(x: x)
+                        if palette == .atmosphere {
+                            Capsule()
+                                .fill(dashColor)
+                                .frame(width: dashWidth, height: dashHeight)
+                                .offset(x: x)
+                        } else {
+                            Capsule()
+                                .fill(dashColor)
+                                .frame(width: dashWidth, height: dashHeight)
+                                .offset(x: x)
+                        }
                     }
                 }
             }
@@ -511,8 +516,7 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
             case .recording:
                 return .white.opacity(isPaused ? 0.75 : opacity)
             case .atmosphere:
-                // Same accent as onboarding feature icons — blends into light/dark shells.
-                return atmosphereAccent.opacity(isPaused ? 0.7 : max(0.65, opacity))
+                return Color.white.opacity(isPaused ? 0.75 : 1)
             }
         }()
         let shadowColor: Color = palette == .atmosphere
@@ -528,11 +532,17 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                     .frame(width: markSize, height: markSize)
                     .opacity(isPaused ? 0.75 : 1)
                     .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+            } else if palette == .atmosphere {
+                Image(systemName: systemImage ?? "car.side.fill")
+                    .font(.system(size: metrics.carSize, weight: .semibold))
+                    .foregroundStyle(carColor)
+                    .symbolRenderingMode(.monochrome)
+                    .scaleEffect(x: symbolScaleX, y: 1)
             } else {
                 Image(systemName: systemImage ?? "car.side.fill")
                     .font(.system(size: metrics.carSize, weight: .semibold))
                     .foregroundStyle(carColor)
-                    .symbolRenderingMode(palette == .atmosphere ? .hierarchical : .monochrome)
+                    .symbolRenderingMode(.monochrome)
                     // Face right — symbols only; never mirror a photo.
                     .scaleEffect(x: symbolScaleX, y: 1)
                     .shadow(color: shadowColor, radius: shadowRadius, y: 2)

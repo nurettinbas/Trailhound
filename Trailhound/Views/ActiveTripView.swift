@@ -263,6 +263,7 @@ struct ActiveTripView: View {
     @Query private var schedules: [VehicleSchedule]
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.trailhoundLayout) private var screenLayout
 
     @State private var cardReveal: CGFloat = 1
     @State private var carDriveIn: CGFloat = 1
@@ -343,6 +344,82 @@ struct ActiveTripView: View {
     }
 
     private var recordingCard: some View {
+        arrangedRecordingStack
+        .padding(14)
+        .frame(
+            maxWidth: screenLayout.recordingCardArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
+            maxHeight: screenLayout.recordingCardArrangement == .pane ? .infinity : nil,
+            alignment: .leading
+        )
+        .frame(maxWidth: .infinity, maxHeight: screenLayout.recordingCardArrangement == .pane ? .infinity : nil)
+        .background {
+            RecordingCardStyle.glassSurface(isPaused: isPaused)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+        }
+        .padding(.horizontal)
+        .opacity(cardReveal)
+        .offset(y: (1 - cardReveal) * 22)
+        .scaleEffect(0.96 + 0.04 * cardReveal, anchor: .top)
+        .background {
+            GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { updateCardAnchor(frame) }
+                    .onChange(of: frame.origin.y) { _, _ in updateCardAnchor(frame) }
+                    .onChange(of: frame.size.width) { _, _ in updateCardAnchor(frame) }
+                    .onChange(of: frame.size.height) { _, _ in updateCardAnchor(frame) }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .modifier(RecordingCardAccessibilityLabel(statusText: statusText))
+        .accessibilityHidden(!cardVisible)
+        .task(id: morphID) {
+            await runEntranceIfNeeded()
+            await playLiveMapHintIfNeeded()
+        }
+        .task(id: roadPhotoIdentity) {
+            await loadRoadVehiclePhoto()
+        }
+        .task(id: vehiclePhotoPrefetchID) {
+            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
+        }
+        .onAppear {
+            displayedPaused = recordingService.state == .paused
+        }
+        .onChange(of: recordingService.state) { _, newState in
+            if newState.isActiveSession {
+                applyRecordingPauseChrome(newState == .paused, animate: true)
+            } else {
+                displayedPaused = false
+            }
+        }
+        .onChange(of: playEntranceReveal) { wasPlaying, shouldPlay in
+            guard shouldPlay, !wasPlaying else { return }
+            prepareEntranceReplay()
+            Task {
+                await runEntranceIfNeeded()
+                await playLiveMapHintIfNeeded()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var arrangedRecordingStack: some View {
+        switch screenLayout.recordingCardArrangement {
+        case .list:
+            listRecordingStack
+        case .pane:
+            paneRecordingStack
+        case .banner:
+            bannerRecordingStack
+        }
+    }
+
+    private var listRecordingStack: some View {
         VStack(alignment: .leading, spacing: 10) {
             statusRow
 
@@ -399,60 +476,63 @@ struct ActiveTripView: View {
                 .opacity(detailsReveal)
                 .offset(y: (1 - detailsReveal) * 8)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RecordingCardStyle.glassSurface(isPaused: isPaused)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: RecordingCardStyle.cornerRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
-        }
-        .padding(.horizontal)
-        .opacity(cardReveal)
-        .offset(y: (1 - cardReveal) * 22)
-        .scaleEffect(0.96 + 0.04 * cardReveal, anchor: .top)
-        .background {
-            GeometryReader { geo in
-                let frame = geo.frame(in: .global)
-                Color.clear
-                    .onAppear { updateCardAnchor(frame) }
-                    .onChange(of: frame.origin.y) { _, _ in updateCardAnchor(frame) }
-                    .onChange(of: frame.size.width) { _, _ in updateCardAnchor(frame) }
-                    .onChange(of: frame.size.height) { _, _ in updateCardAnchor(frame) }
+    }
+
+    private var roadScene: some View {
+        RecordingCarAnimationView(
+            compact: screenLayout.layoutClass == .phoneLandscape || screenLayout.recordingCardArrangement == .list,
+            isAnimating: shouldRunRoadClock,
+            isPaused: isPaused,
+            driveInProgress: carDriveIn,
+            systemImage: VehicleIconOption.default.rawValue,
+            vehiclePhoto: roadVehiclePhoto,
+            symbolScaleX: -1,
+            allowsVerticalBounce: true
+        ) { carLayout in
+            if let serviceDue = urgentServiceDue {
+                RecordingVehicleServiceBadge(
+                    carSize: carLayout.carSize,
+                    isOverdue: serviceDue.state.isOverdue
+                )
+                .recordingVehicleServiceBadgePosition(layout: carLayout)
             }
         }
-        .accessibilityElement(children: .combine)
-        .modifier(RecordingCardAccessibilityLabel(statusText: statusText))
-        .accessibilityHidden(!cardVisible)
-        .task(id: morphID) {
-            await runEntranceIfNeeded()
-            await playLiveMapHintIfNeeded()
+        .matchedGeometryEffectIfAvailable(
+            stringID: RecordingMorphID.car,
+            namespace: morphNamespace,
+            isSource: true
+        )
+        .matchedGeometryEffectIfAvailable(
+            id: morphID,
+            namespace: morphNamespace,
+            isSource: screenLayout.recordingCardArrangement != .pane
+        )
+    }
+
+    private var paneRecordingStack: some View {
+        VStack(alignment: .leading, spacing: GlassTokens.paneVerticalRhythm) {
+            statusRow
+            roadScene
+                .frame(maxWidth: .infinity)
+                .frame(height: screenLayout.layoutClass == .phoneLandscape ? 72 : 140)
+            ActiveTripLiveStats(arrangement: .grid)
+            Spacer(minLength: GlassTokens.paneVerticalRhythm)
+            actionsRow
         }
-        .task(id: roadPhotoIdentity) {
-            await loadRoadVehiclePhoto()
-        }
-        .task(id: vehiclePhotoPrefetchID) {
-            await VehiclePhotoStore.shared.prefetch(vehicles: vehicles)
-        }
-        .onAppear {
-            displayedPaused = recordingService.state == .paused
-        }
-        .onChange(of: recordingService.state) { _, newState in
-            if newState.isActiveSession {
-                applyRecordingPauseChrome(newState == .paused, animate: true)
-            } else {
-                displayedPaused = false
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var bannerRecordingStack: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                statusRow
+                roadScene
+                    .frame(height: 72)
+                ActiveTripLiveStats()
             }
-        }
-        .onChange(of: playEntranceReveal) { wasPlaying, shouldPlay in
-            guard shouldPlay, !wasPlaying else { return }
-            prepareEntranceReplay()
-            Task {
-                await runEntranceIfNeeded()
-                await playLiveMapHintIfNeeded()
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            actionsRow
+                .frame(maxWidth: 280)
         }
     }
 
@@ -803,9 +883,15 @@ private struct RecordingLocationChromeRow: View {
 }
 
 /// Live duration / speed / distance — only this subtree tracks display sampler (~4 Hz).
+enum ActiveTripStatsArrangement {
+    case inline
+    case grid
+}
+
 struct ActiveTripLiveStats: View {
     /// Tighter pills for the live-follow HUD (more room for outer padding).
     var compact: Bool = false
+    var arrangement: ActiveTripStatsArrangement = .inline
 
     @Environment(TripRecordingService.self) private var recordingService
 
@@ -821,11 +907,30 @@ struct ActiveTripLiveStats: View {
         DateFormatters.formatDistance(recordingService.displayDistanceMeters)
     }
 
+    private var averageText: String {
+        let elapsed = recordingService.displayElapsedTime
+        guard elapsed > 1 else { return "—" }
+        let kmh = recordingService.displayDistanceMeters / elapsed * 3.6
+        return L10n.formatSpeedKmh(kmh)
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: compact ? 4 : 6) {
-            statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
-            statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
-            statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+        if arrangement == .grid {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                spacing: 8
+            ) {
+                statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
+                statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+                statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
+                statPill(icon: "gauge.with.dots.needle.33percent", label: L10n.averageSpeed, text: averageText)
+            }
+        } else {
+            HStack(alignment: .top, spacing: compact ? 4 : 6) {
+                statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
+                statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
+                statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+            }
         }
     }
 

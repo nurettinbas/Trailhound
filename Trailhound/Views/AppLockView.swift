@@ -2,12 +2,29 @@ import SwiftUI
 
 struct AppLockView: View {
     @Environment(AppLockService.self) private var appLockService
+    @Environment(\.trailhoundLayout) private var layout
     @Bindable private var settings = AppSettings.shared
 
     var body: some View {
         ZStack {
             AtmosphericBackground()
 
+            if layout.layoutClass == .duoOpen {
+                TrailhoundPaneSplit {
+                    TrailhoundBrandMark(showsWordmark: true, symbolSize: 96)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } focus: {
+                    lockCard
+                        .trailhoundPaneCard()
+                }
+            } else {
+                lockCard
+                    .trailhoundPaneCard()
+            }
+        }
+    }
+
+    private var lockCard: some View {
             VStack(spacing: 16) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 48))
@@ -31,6 +48,5 @@ struct AppLockView: View {
             .padding(28)
             .glassCard(contentInset: 0)
             .padding(.horizontal, 32)
-        }
     }
 }

@@ -201,6 +201,15 @@ enum TrailhoundMotion {
         reduceMotion ? nil : .spring(response: 0.76, dampingFraction: 0.90)
     }
 
+    /// Fold, rotate, and pane changes. Same spring as the badge card.
+    /// Reduce Motion uses a short fade instead of a flight.
+    static func layoutReflow(reduceMotion: Bool) -> Animation? {
+        if reduceMotion {
+            return .easeOut(duration: 0.12)
+        }
+        return badgeCardExpand(reduceMotion: false)
+    }
+
     /// Gallery content fade after the card has grown — no vertical offset.
     static func badgeGalleryAppear(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeOut(duration: 0.22)

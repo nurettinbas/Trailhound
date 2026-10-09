@@ -12,6 +12,8 @@ struct LiveFollowMapView: View {
     var vehicleSystemImage: String = "car.fill"
     /// Card + road-vehicle frames for close morph / open hero flight.
     var cardAnchor: RecordingCardAnchor
+    /// Split / fold pane. The map fills that pane; the HUD stays inside it.
+    var fillsPane: Bool = false
     var onClose: () -> Void
     var onStop: (RecordingCardAnchor) -> Void
 
@@ -21,6 +23,7 @@ struct LiveFollowMapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.trailhoundLayout) private var layout
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -139,6 +142,7 @@ struct LiveFollowMapView: View {
 
                 if mapMounted {
                     mapLayer
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
                         .opacity(mapClarity)
 
@@ -155,7 +159,11 @@ struct LiveFollowMapView: View {
             // Chrome + hero above MapKit (Map often ignores sibling z-order).
             .overlay {
                 ZStack {
-                    settledChromeStack(topInset: topInset, bottomInset: bottomInset)
+                    settledChromeStack(
+                        topInset: topInset,
+                        bottomInset: bottomInset,
+                        width: geo.size.width
+                    )
 
                     if showHeroFlight {
                         LiveFollowVehicleHero(
@@ -176,7 +184,8 @@ struct LiveFollowMapView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .ignoresSafeArea()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(edges: fillsPane ? .vertical : .all)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isPaused)
         .statusBarHidden(false)
         .onAppear {
@@ -233,8 +242,11 @@ struct LiveFollowMapView: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    private func settledChromeStack(topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        VStack(spacing: 0) {
+    private func settledChromeStack(topInset: CGFloat, bottomInset: CGFloat, width: CGFloat) -> some View {
+        let hudWidth = fillsPane
+            ? max(0, width - 24)
+            : min(width * 8 / 12, max(0, width - 24))
+        return VStack(spacing: 0) {
             topChrome
                 .padding(.horizontal, GlassTokens.panelHorizontalInset)
                 .padding(.top, topInset + 10)
@@ -244,13 +256,7 @@ struct LiveFollowMapView: View {
             Spacer(minLength: 0)
 
             bottomHUD(useGlass: true)
-                .containerRelativeFrame(
-                    .horizontal,
-                    count: 12,
-                    span: 8,
-                    spacing: 0,
-                    alignment: .center
-                )
+                .frame(width: hudWidth)
                 .padding(.bottom, LiveFollowPresentation.settledBottomPadding + bottomInset)
                 .opacity(chromeReveal)
                 .background {
@@ -388,6 +394,9 @@ struct LiveFollowMapView: View {
     /// 2D/3D, overview/follow switch, and close — chips on the palette-tinted recording HUD.
     private var mapToolsRail: some View {
         HStack(spacing: 8) {
+            if layout.pinsOverlayCloseLeading {
+                liveMapCloseButton
+            }
             mapDimensionToggle
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.38 : 1)
@@ -399,21 +408,27 @@ struct LiveFollowMapView: View {
 
             Spacer(minLength: 8)
 
-            Button {
-                TrailhoundHaptics.selection()
-                beginClose()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 33, height: 33)
-                    .background(GlassSemantic.notificationBadge, in: Capsule())
-                    .compositingGroup()
+            if !layout.pinsOverlayCloseLeading {
+                liveMapCloseButton
             }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityLabel(L10n.string("recording.live_map.close"))
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var liveMapCloseButton: some View {
+        Button {
+            TrailhoundHaptics.selection()
+            beginClose()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 33, height: 33)
+                .background(GlassSemantic.notificationBadge, in: Capsule())
+                .compositingGroup()
+        }
+        .buttonStyle(.glassPlainHit)
+        .accessibilityLabel(L10n.string("recording.live_map.close"))
     }
 
     private var mapDimensionToggle: some View {
@@ -539,7 +554,10 @@ struct LiveFollowMapView: View {
                 .fill(.white.opacity(0.16))
                 .frame(height: 1)
 
-            ActiveTripLiveStats(compact: true)
+            ActiveTripLiveStats(
+                compact: true,
+                arrangement: fillsPane ? .grid : .inline
+            )
 
             HStack(spacing: 8) {
                 Button {

@@ -10,6 +10,8 @@ struct TripListFiltersBar: View {
     @Binding var selectedVehicleFilter: TripListPage.VehicleFilter?
     @Binding var selectedPlaceID: UUID?
     @Binding var listMode: TripsTabListMode
+    /// Wide layouts show both libraries, so the segment is only the phone switch.
+    var showsModePicker: Bool = true
     var isSearchBusy: Bool = false
     var vehicles: [VehicleProfile] = []
     var places: [SavedPlace] = []
@@ -61,7 +63,12 @@ struct TripListFiltersBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            listModePicker
+            if showsModePicker {
+                listModePicker
+            } else {
+                GlassSectionHeader(title: listMode.title)
+                    .accessibilityIdentifier(listMode == .travels ? "trips.library.travels" : "trips.library.trips")
+            }
 
             if showsWeekSummary && listMode == .trips {
                 weekSummaryRow

@@ -1,11 +1,16 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @Environment(AppLockService.self) private var appLockService
     @Environment(TripRecordingService.self) private var tripRecordingService
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable private var settings = AppSettings.shared
     @Bindable private var tabSelection = TabSelection.shared
+    @State private var windowSize: CGSize = .zero
 
     var body: some View {
         Group {
@@ -15,6 +20,10 @@ struct ContentView: View {
                 AppLockView()
             } else {
                 mainTabs
+                    .animation(
+                        TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion),
+                        value: layoutSnapshot.layoutClass
+                    )
             }
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
@@ -22,15 +31,64 @@ struct ContentView: View {
         .toastHost()
         .deleteConfirmHost()
         .environment(\.shellPalette, settings.shellPalette)
-        .onAppear { AppIconSync.syncWindowStyle(settings.appearanceMode) }
-        .onChange(of: settings.appearanceMode) { _, mode in
-            AppIconSync.syncWindowStyle(mode)
+        .environment(\.trailhoundLayout, layoutSnapshot)
+        .coordinateSpace(name: TrailhoundWindowSpace.name)
+        .background {
+            ZStack {
+                WindowRotationFill()
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { publishWindowSize(geo.size) }
+                        .onChange(of: geo.size) { _, size in
+                            publishWindowSize(size)
+                        }
+                }
+            }
+            .allowsHitTesting(false)
         }
+        .fullScreenCover(isPresented: $tabSelection.showNotificationsCover) {
+            NavigationStack {
+                NotificationsListView()
+            }
+            .glassNavigationChrome()
+            .coordinateSpace(name: TrailhoundWindowSpace.name)
+            .environment(\.trailhoundLayout, layoutSnapshot)
+            .environment(\.shellPalette, settings.shellPalette)
+            .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
+            .onGlassShell()
+        }
+        .onAppear { syncWindowFill() }
+        .onChange(of: settings.appearanceMode) { _, _ in syncWindowFill() }
+        .onChange(of: settings.shellPalette) { _, _ in syncWindowFill() }
+        .onChange(of: windowSize) { _, _ in syncWindowFill() }
     }
 
     private var isRecordingSession: Bool {
-        
         tripRecordingService.state.isActiveSession
+    }
+
+    private var layoutSnapshot: TrailhoundLayoutSnapshot {
+        let size = windowSize == .zero ? CGSize(width: 390, height: 844) : windowSize
+        return TrailhoundLayoutResolver.snapshot(
+            horizontal: horizontalSizeClass,
+            vertical: verticalSizeClass,
+            size: size,
+            idiom: UIDevice.current.userInterfaceIdiom
+        )
+    }
+
+    private func syncWindowFill() {
+        AppIconSync.syncWindowStyle(settings.appearanceMode, palette: settings.shellPalette)
+    }
+
+    private func publishWindowSize(_ size: CGSize) {
+        guard size != windowSize else { return }
+        let previous = layoutSnapshot.layoutClass
+        windowSize = size
+        let next = layoutSnapshot.layoutClass
+        guard previous != next else { return }
+        let state = PerformanceSignposts.signposter.beginInterval("layout.reflow")
+        PerformanceSignposts.signposter.endInterval("layout.reflow", state)
     }
 
     private var mainTabs: some View {
@@ -76,6 +134,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .stats {
                         StatsView()
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -95,6 +154,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .year {
                         YearView()
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -115,6 +175,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .settings {
                         SettingsView()
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -294,17 +355,17 @@ private struct TabBarItemLabel: View {
                     scheme: .dark
                 )
             )
+        let unselectedInk: Color = colorScheme == .light
+            ? shellPalette.tintColor(for: .light)
+            : .white
+        let ink = isSelected ? selectedInk : unselectedInk
         let selectedName = selectedSystemImage ?? "\(systemImage).fill"
         Label {
-            if isSelected {
-                Text(title).foregroundStyle(selectedInk)
-            } else {
-                Text(title)
-            }
+            Text(title).foregroundStyle(ink)
         } icon: {
             Image(systemName: isSelected ? selectedName : systemImage)
                 .environment(\.symbolVariants, .none)
-                .foregroundStyle(isSelected ? selectedInk : Color.primary)
+                .foregroundStyle(ink)
                 .font(.system(size: 22, weight: isSelected ? .bold : .medium))
         }
     }

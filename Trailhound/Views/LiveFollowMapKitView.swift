@@ -24,8 +24,43 @@ enum LiveFollowRouteStrokeStyle {
     }
 }
 
+/// Forwards bounds changes so live-follow can stop writing the camera while the
+/// window rotates. A camera write in that window cancels the orientation change.
+private final class RotationPassthroughMapView: MKMapView {
+    var onBoundsChange: ((CGSize) -> Void)?
+    private var isApplyingSpeedLimitInset = false
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onBoundsChange?(bounds.size)
+        guard !isApplyingSpeedLimitInset else { return }
+        isApplyingSpeedLimitInset = true
+        pullSpeedLimitOffCamera()
+        isApplyingSpeedLimitInset = false
+    }
+
+    /// MapKit pins the speed-limit chip to the trailing corner. On a landscape
+    /// fold that corner is the camera housing, so the chip slides left of it.
+    private func pullSpeedLimitOffCamera() {
+        guard let window else { return }
+        let safe = window.safeAreaInsets
+        let cameraOnTrailing = safe.right >= safe.left && safe.right > 20
+        let cameraOnLeading = safe.left > safe.right && safe.left > 20
+        guard cameraOnTrailing || cameraOnLeading else { return }
+        var margins = directionalLayoutMargins
+        if cameraOnTrailing {
+            let next = safe.right + 12
+            guard margins.trailing < next - 0.5 else { return }
+            margins.trailing = next
+        } else {
+            let next = safe.left + 12
+            guard margins.leading < next - 0.5 else { return }
+            margins.leading = next
+        }
+        directionalLayoutMargins = margins
+    }
+}
 /// MapKit host for live follow — display-link camera, GPS history + growing tail tip, pins + puck.
-///
 /// Route geometry is pulled by the coordinator from the session on display ticks
 /// (see `syncRouteIfNeeded`), not passed through SwiftUI: a 1 Hz breadcrumb append
 /// used to trigger a body re-render + `updateUIView` + history-overlay swap every
@@ -67,7 +102,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> MKMapView {
-        let map = MKMapView(frame: .zero)
+        let map = RotationPassthroughMapView(frame: .zero)
+        map.onBoundsChange = { [weak coordinator = context.coordinator] size in
+            coordinator?.noteMapBounds(size)
+        }
         map.delegate = context.coordinator
         map.showsUserLocation = false
         map.showsCompass = false
@@ -193,6 +231,25 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private var cameraEaseUntil: CFTimeInterval = 0
         private var cameraEase: CameraEase?
         private let easeClock = DisplayLinkClock()
+        /// Device rotation swaps the map bounds. Writing `camera` in that window
+        /// cancels the orientation change and the Duo stays landscape.
+        private var lastMapBounds: CGSize = .zero
+        private var suppressCameraUntil: CFTimeInterval = 0
+
+        private var cameraWritesPaused: Bool {
+            CACurrentMediaTime() < suppressCameraUntil
+        }
+
+        func noteMapBounds(_ size: CGSize) {
+            let previous = lastMapBounds
+            lastMapBounds = size
+            guard previous != .zero else { return }
+            let jumped = abs(size.width - previous.width) > 48
+                || abs(size.height - previous.height) > 48
+            if jumped {
+                suppressCameraUntil = CACurrentMediaTime() + 0.75
+            }
+        }
 
         /// Ease-in-out camera flight. `setCamera(animated:)` jumps heading in the model
         /// and then starts the pan a beat later — that's the "appears from nowhere" hitch.
@@ -270,7 +327,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                if following, CACurrentMediaTime() >= self.cameraEaseUntil {
+                if following, CACurrentMediaTime() >= self.cameraEaseUntil, !self.cameraWritesPaused {
                     self.applyCamera(pose, on: map, withinTransaction: true)
                 }
                 if let vehicle, let puck = self.puckAnnotation {

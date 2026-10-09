@@ -11,7 +11,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ## Features
 
 ### Recording
-- Manual start/stop, pause/resume
+- Manual start/stop, pause/resume. **Start** (with the vehicle picker) sits on every tab and returns to the Trips recording card. It hides while a trip is already recording or paused. Once the recording card scrolls off screen, the steering-wheel control stays in the Trips bar and returns to that card
 - **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). The **Pairing** setup wizard remembers the trigger and vehicle, shows every Shortcuts step (including Run Shortcut), tests that Trailhound handles an external start, and includes a not-working checklist. Apple cannot let Trailhound create the automation for you. See [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md)
 - Vehicle profiles with fuel/EV cost per trip
 - **Avg fuel**: catalog cost from `distance × consumption × price`, shown as currency · litres (or kWh) like Estimated fuel. Trip detail **Avg fuel calculate** (with ?) edits consumption and unit price; the live line is **Avg fuel estimate**. Defaults from the vehicle and Settings
@@ -52,7 +52,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 ### Appearance
 - Settings → **Appearance**: **System** (default, follows the iPhone), **Light**, or **Dark**, plus a **20-color shell palette** (Sky, Ocean, Teal, Mint, Forest, Lime, Gold, Sunset, Orange, Coral, Rose, Pink, Magenta, Purple, Violet, Indigo, Slate, Graphite, Sand, Ember). Default color is Sky
-- **Liquid Glass** (iOS 26 native `glassEffect`, Material fallback on iOS 17/18): frosted cards over the selected hue so the atmosphere shows through. Light uses native glass with a mid-family tint — not a dark chrome plate or milky white card. The glass plate clips to the card; labels in the corners are not sliced. Reduce Transparency uses an opaque mid-family fill. Dark is a deep shade of the same color. The live recording card, follow path, and vehicle puck use the same hue; **Stop** stays solid red. The tab bar is the system iOS 26 Liquid Glass bar. Light selected is white on a dark glass blob; Dark keeps unselected white and a palette selected tint. Map toolbars stay frozen circles so MapKit is not resampled
+- **Liquid Glass** (iOS 26 native `glassEffect`, Material fallback on iOS 17/18): frosted cards over the selected hue so the atmosphere shows through. Light uses native glass with a mid-family tint — not a dark chrome plate or milky white card. The glass plate clips to the card; labels in the corners are not sliced. Reduce Transparency uses an opaque mid-family fill. Dark is a deep shade of the same color. The live recording card, follow path, and vehicle puck use the same hue; **Stop** stays solid red. The tab bar is the system iOS 26 Liquid Glass bar. Light unselected icons use the palette tint (same ink as Done); selected stays white on a dark glass blob. Dark keeps unselected white and a palette selected tint. Map toolbars stay frozen circles so MapKit is not resampled
 - The **Home Screen icon** follows the selected color (Sky keeps the Liquid Glass icon; other hues use a matching light/dark pair). iOS shows one confirmation when the icon changes. Home Screen light/dark still follows the iPhone, not the in-app Light/Dark picker. See [Design system](docs/DESIGN_SYSTEM.md) and [Appearance (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Appearance)
 
 ### Maps & analytics
@@ -81,9 +81,9 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Organization
 - Personal / business categories (+ custom)
 - **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
-- **Travel journal** — Trips tab segment **Trips | Travels**; group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
+- **Travel journal** — phone portrait uses the Trips tab segment **Trips | Travels**. On a wide screen (open fold, iPhone landscape, iPad landscape) both libraries sit side by side: Trips leading, Travels trailing. Group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
-- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap); tap opens the matching screen
+- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap) opens as its own page from the bell on every tab. Choosing a row closes the inbox first, then opens the matching screen. A trip opens on the Trips tab, not inside the inbox
 - Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
 ---
@@ -92,8 +92,9 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 
 | Platform | Minimum version | Status |
 |----------|-----------------|--------|
-| **iPhone (iOS)** | **17.0** | ✅ Primary target |
-| **iPadOS** | 17.0 | ⚠️ Runs as iPhone app (not optimized for iPad) |
+| **iPhone (iOS)** | **17.0** | ✅ Portrait and landscape. Phone portrait keeps the single column |
+| **iPhone Duo** | 17.0 | ✅ Closed and open: Badges, Frequent routes, and month-forecast close circles sit on the leading side so they clear the camera and status cluster. Open landscape: the Badges gallery is four columns, and Recap cards break on the fold rather than in equal halves, so the side tab does not pull the seam off the notch. Trips on one half, Travels on the other; while recording, the live surface takes the trailing half. Open portrait: the recording card sits on the horizontal fold and the trip list stays below it. Upright trip detail matches the phone: the map fills the screen and the info sheet sits below it. With the fold vertical, one half is the detail cards and the other half is the route map. Statistics chart dates shrink to fit each half. The fold gutter stays empty |
+| **iPadOS** | 17.0 | ✅ Landscape Trips shows Trips and Travels side by side. Lists, stats, and settings use the wide canvas. Maps use a side panel. Narrow Split View and portrait stay the phone layout |
 | **Widget (Home / Lock)** | iOS 17.0+ | ✅ Home Screen & Lock Screen widgets |
 | **Live Activity + CarPlay tile** | iOS 18.0+ | ✅ Lock Screen, Dynamic Island, CarPlay Dashboard (icon + duration, distance, speed) |
 | **Siri / Shortcuts** | iOS 17.0+ | ✅ App Intents + Personal Automations |

@@ -112,6 +112,16 @@ final class AppSettings {
         let resolvedDefaults = userDefaults ?? RecordingControlBridge.sharedDefaults()
         defaults = resolvedDefaults
         hasCompletedOnboarding = resolvedDefaults.bool(forKey: Key.hasCompletedOnboarding)
+        #if DEBUG
+        if userDefaults == nil {
+            let replayKey = "debug.onboardingReplay.layoutCheck"
+            if !resolvedDefaults.bool(forKey: replayKey) {
+                resolvedDefaults.set(false, forKey: Key.hasCompletedOnboarding)
+                hasCompletedOnboarding = false
+                resolvedDefaults.set(true, forKey: replayKey)
+            }
+        }
+        #endif
         hasCompletedCarSetup = resolvedDefaults.bool(forKey: Key.hasCompletedCarSetup)
         hasCompletedShortcutsGuide = resolvedDefaults.bool(forKey: Key.hasCompletedShortcutsGuide)
         resolvedDefaults.removeObject(forKey: Key.preferredLanguageCode)

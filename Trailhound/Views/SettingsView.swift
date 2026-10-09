@@ -5,6 +5,28 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+private enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
+    case recording
+    case fuel
+    case privacy
+    case permissions
+    case backup
+    case about
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .recording: L10n.settingsRecordingSection
+        case .fuel: L10n.settingsFuelSection
+        case .privacy: L10n.settingsPrivacySection
+        case .permissions: L10n.settingsPermissionsSection
+        case .backup: L10n.settingsBackupSection
+        case .about: L10n.settingsAboutSection
+        }
+    }
+}
+
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
@@ -31,8 +53,65 @@ struct SettingsView: View {
 
     @State private var notificationAuthorization: UNAuthorizationStatus = .notDetermined
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.trailhoundLayout) private var layout
+    @State private var settingsPane: SettingsPane = .recording
 
     var body: some View {
+        switch layout.settingsChrome {
+        case .form:
+            settingsForm
+        case .split:
+            TrailhoundPaneSplit {
+                settingsIndex
+            } focus: {
+                settingsForm
+            }
+        case .grid:
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(SettingsPane.allCases) { pane in
+                        Button {
+                            settingsPane = pane
+                        } label: {
+                            Text(pane.title)
+                                .font(.headline)
+                                .glassPrimaryInk()
+                                .frame(maxWidth: .infinity, minHeight: 88)
+                        }
+                        .buttonStyle(.glassPlainHit)
+                        .glassCard()
+                    }
+                }
+                .padding(16)
+                settingsForm
+            }
+        }
+    }
+
+    private var settingsIndex: some View {
+        List {
+            ForEach(SettingsPane.allCases) { pane in
+                Button {
+                    settingsPane = pane
+                } label: {
+                    HStack {
+                        Text(pane.title)
+                            .glassPrimaryInk()
+                        Spacer()
+                        if settingsPane == pane {
+                            Image(systemName: "checkmark")
+                                .glassAccentForeground()
+                        }
+                    }
+                }
+                .buttonStyle(.glassPlainHit)
+            }
+        }
+        .glassListChrome()
+    }
+
+    private var settingsForm: some View {
+        ScrollViewReader { proxy in
         Form {
             Section {
                 LocationPermissionBanner()
@@ -41,6 +120,7 @@ struct SettingsView: View {
             .listRowSeparator(.hidden)
 
             Section(L10n.settingsRecordingSection) {
+                EmptyView().id(SettingsPane.recording)
                 Toggle(L10n.settingsRecordingSounds, isOn: $settings.recordingSoundsEnabled)
                     .glassToggleStyle()
                     .accessibilityIdentifier("settings.recordingSounds")
@@ -190,6 +270,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsFuelSection) {
+                EmptyView().id(SettingsPane.fuel)
                 LabeledContent(L10n.settingsFuelPrice) {
                     HStack(spacing: 8) {
                         Spacer(minLength: 0)
@@ -218,6 +299,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPrivacySection) {
+                EmptyView().id(SettingsPane.privacy)
                 Toggle(L10n.settingsAppLock, isOn: appLockEnabledBinding)
                     .glassToggleStyle()
                     .glassRow(position: .first)
@@ -254,6 +336,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPermissionsSection) {
+                EmptyView().id(SettingsPane.permissions)
                 LabeledContent(L10n.settingsLocationPermission) {
                     LocationPermissionBadge(state: locationService.authorizationState)
                 }
@@ -291,6 +374,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsBackupSection) {
+                EmptyView().id(SettingsPane.backup)
                 Button(L10n.settingsExportJSON) { export(format: .json) }
                     .disabled(isExporting)
                     .glassRow(position: .first)
@@ -306,6 +390,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsAboutSection) {
+                EmptyView().id(SettingsPane.about)
                 LabeledContent(L10n.settingsVersion, value: "1.1.0")
                     .glassRow(position: .first)
                 Button(L10n.settingsReportProblem) {
@@ -323,6 +408,10 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(L10n.settingsTitle)
+        .onChange(of: settingsPane) { _, pane in
+            proxy.scrollTo(pane, anchor: .top)
+        }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showAddPlacePicker) {
             PlacePickerView()

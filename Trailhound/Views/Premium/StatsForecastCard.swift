@@ -518,21 +518,24 @@ struct StatsForecastDetailSheet: View {
     var bottomInset: CGFloat = 34
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.trailhoundLayout) private var layout
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
+                if layout.pinsOverlayCloseLeading {
+                    forecastCloseButton
+                }
                 Text(L10n.string("premium.forecast.detail.title"))
                     .font(.headline)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                GlassToolbarCollapseButton(
-                    accessibilityIdentifier: "stats.premium.forecast.expanded.close",
-                    action: onClose
-                )
+                if !layout.pinsOverlayCloseLeading {
+                    forecastCloseButton
+                }
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 12)
+            .padding(.leading, layout.pinsOverlayCloseLeading ? 12 : 16)
+            .padding(.trailing, layout.pinsOverlayCloseLeading ? 16 : 12)
             .padding(.top, topInset)
             .padding(.bottom, 8)
             ScrollView {
@@ -557,6 +560,13 @@ struct StatsForecastDetailSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGlassShell()
+    }
+
+    private var forecastCloseButton: some View {
+        GlassToolbarCollapseButton(
+            accessibilityIdentifier: "stats.premium.forecast.expanded.close",
+            action: onClose
+        )
     }
 
     private var compositionPanel: some View {

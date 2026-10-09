@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 
 /// Selected-tab icon, label, and iOS 26 pill colors from `ShellPalette`.
-/// Light selected is white on a dark-atmosphere glass blob. Dark selected is palette tint.
+/// Light selected is white on a dark-atmosphere glass blob. Light unselected
+/// uses the same palette tint as Done (`tintColor`). Dark selected is palette tint.
 enum TrailhoundTabBarTheme {
     static func selectedUIColor(palette: ShellPalette, scheme: ColorScheme) -> UIColor {
         let hue = scheme == .light
@@ -11,8 +12,10 @@ enum TrailhoundTabBarTheme {
         return uiColor(hue)
     }
 
-    static func unselectedUIColor(palette _: ShellPalette, scheme _: ColorScheme) -> UIColor {
-        .white
+    /// Light unselected matches Done (`tintColor` for light). Dark unselected stays white.
+    static func unselectedUIColor(palette: ShellPalette, scheme: ColorScheme) -> UIColor {
+        if scheme == .dark { return .white }
+        return uiColor(palette.atmosphere(for: .light).tint)
     }
 
     /// Light selected is white. Dark selected uses the palette tint.
@@ -86,58 +89,82 @@ enum TrailhoundTabBarCompact {
             tabBar.overrideUserInterfaceStyle = .unspecified
         }
         guard let superview = tabBar.superview else { return }
-        let barFrame = tabBar.frame
         for sibling in superview.subviews where sibling !== tabBar {
-            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
-                && sibling.frame.height <= barFrame.height + 120
-            guard isChromeBand else { continue }
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
             if sibling.overrideUserInterfaceStyle != .unspecified {
                 sibling.overrideUserInterfaceStyle = .unspecified
             }
         }
     }
 
-    /// Selected icon + title are white. The ice blob is dark-atmosphere glass so
-    /// white reads — never accent blue, never palette tint.
+    /// Selected icon + title stay white on a dark-atmosphere blob. Unselected
+    /// icon + title use the light palette tint — the same ink as Done.
     static func applyLightSelectedWhite(to tabBar: UITabBar, palette: ShellPalette) {
+        let unselected = TrailhoundTabBarTheme.unselectedUIColor(palette: palette, scheme: .light)
         if tabBar.tintColor != .white {
             tabBar.tintColor = .white
         }
+        if tabBar.unselectedItemTintColor != unselected {
+            tabBar.unselectedItemTintColor = unselected
+        }
         let symbols = TrailhoundTabBarTheme.itemSymbols
         if let items = tabBar.items, items.count == symbols.count {
-            let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .bold)
+            let selectedConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .bold)
+            let normalConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
             for (item, symbol) in zip(items, symbols) {
+                item.image = UIImage(systemName: symbol.outline, withConfiguration: normalConfig)?
+                    .withTintColor(unselected, renderingMode: .alwaysOriginal)
                 let name = UIImage(systemName: symbol.fill) == nil ? symbol.outline : symbol.fill
-                item.selectedImage = UIImage(systemName: name, withConfiguration: config)?
+                item.selectedImage = UIImage(systemName: name, withConfiguration: selectedConfig)?
                     .withTintColor(.white, renderingMode: .alwaysOriginal)
+                item.setTitleTextAttributes([.foregroundColor: unselected], for: .normal)
                 item.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
             }
         }
-        paintLightSelectedTitle(in: tabBar, ink: .white)
+        paintLightSelectedTitle(in: tabBar, ink: .white, unselected: unselected)
         pinSelectedItemDarkGlass(in: tabBar)
         tintLightSelectedBlob(on: tabBar, palette: palette)
     }
 
     /// iOS 26 title vibrancy remaps the selected label to accent blue. Lift
-    /// vibrancy on the title only — never `UIGlassEffect`.
-    static func paintLightSelectedTitle(in tabBar: UITabBar, ink: UIColor) {
+    /// vibrancy on the title only — never `UIGlassEffect`. Unselected titles
+    /// are stamped with the Done tint so they do not fall back to black.
+    static func paintLightSelectedTitle(in tabBar: UITabBar, ink: UIColor, unselected: UIColor) {
         let selectedTitle = tabBar.selectedItem?.title?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        paintLightSelectedTitleChrome(in: tabBar, selectedTitle: selectedTitle, ink: ink)
+        let titles = Set(
+            (tabBar.items ?? []).compactMap { item -> String? in
+                let title = item.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let title, !title.isEmpty else { return nil }
+                return title
+            }
+        )
+        paintLightSelectedTitleChrome(
+            in: tabBar,
+            selectedTitle: selectedTitle,
+            titles: titles,
+            ink: ink,
+            unselected: unselected
+        )
         guard let superview = tabBar.superview else { return }
-        let barFrame = tabBar.frame
         for sibling in superview.subviews where sibling !== tabBar {
-            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
-                && sibling.frame.height <= barFrame.height + 120
-            guard isChromeBand else { continue }
-            paintLightSelectedTitleChrome(in: sibling, selectedTitle: selectedTitle, ink: ink)
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
+            paintLightSelectedTitleChrome(
+                in: sibling,
+                selectedTitle: selectedTitle,
+                titles: titles,
+                ink: ink,
+                unselected: unselected
+            )
         }
     }
 
     private static func paintLightSelectedTitleChrome(
         in view: UIView,
         selectedTitle: String?,
-        ink: UIColor
+        titles: Set<String>,
+        ink: UIColor,
+        unselected: UIColor
     ) {
         if let effectView = view as? UIVisualEffectView {
             let isTitleVibrancy: Bool
@@ -161,10 +188,14 @@ enum TrailhoundTabBarCompact {
             }
         }
 
-        if let imageView = view as? UIImageView, isInSelectedTabItem(imageView) {
-            imageView.tintColor = ink
+        if let imageView = view as? UIImageView, let itemInk = tabItemInk(
+            for: imageView,
+            selected: ink,
+            unselected: unselected
+        ) {
+            imageView.tintColor = itemInk
             if let image = imageView.image {
-                imageView.image = image.withTintColor(ink, renderingMode: .alwaysOriginal)
+                imageView.image = image.withTintColor(itemInk, renderingMode: .alwaysOriginal)
             }
         }
 
@@ -172,43 +203,89 @@ enum TrailhoundTabBarCompact {
             let text = (label.text ?? label.attributedText?.string ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if isLightSelectedTitle(text, selectedTitle: selectedTitle, in: label) {
-                label.textColor = ink
-                label.tintColor = ink
-                if !text.isEmpty {
-                    var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: ink]
-                    if let font = label.font { attributes[.font] = font }
-                    label.attributedText = NSAttributedString(string: text, attributes: attributes)
-                }
+                applyLabelInk(label, text: text, ink: ink)
+            } else if titles.contains(text), tabItemControl(containing: label)?.isSelected == false {
+                applyLabelInk(label, text: text, ink: unselected)
             }
         }
 
-        if let button = view as? UIButton, button.isSelected {
+        if let button = view as? UIButton {
             let text = (button.currentTitle
                 ?? button.configuration?.title
                 ?? button.titleLabel?.text
-                ?? selectedTitle
                 ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            button.setTitleColor(ink, for: .selected)
-            button.setTitleColor(ink, for: .normal)
-            button.titleLabel?.textColor = ink
-            if var config = button.configuration {
-                config.baseForegroundColor = ink
-                if !text.isEmpty {
-                    var title = AttributedString(text)
-                    title.foregroundColor = Color(uiColor: ink)
-                    config.attributedTitle = title
+            let buttonInk: UIColor?
+            if button.isSelected {
+                buttonInk = ink
+            } else if titles.contains(text) {
+                buttonInk = unselected
+            } else {
+                buttonInk = nil
+            }
+            if let buttonInk {
+                button.setTitleColor(buttonInk, for: button.isSelected ? .selected : .normal)
+                if button.isSelected {
+                    button.setTitleColor(buttonInk, for: .normal)
                 }
-                button.configuration = config
+                button.titleLabel?.textColor = buttonInk
+                if var config = button.configuration {
+                    config.baseForegroundColor = buttonInk
+                    let titleText = text.isEmpty && button.isSelected ? (selectedTitle ?? "") : text
+                    if !titleText.isEmpty {
+                        var title = AttributedString(titleText)
+                        title.foregroundColor = Color(uiColor: buttonInk)
+                        config.attributedTitle = title
+                    }
+                    button.configuration = config
+                }
             }
         }
 
         if let effectView = view as? UIVisualEffectView {
-            paintLightSelectedTitleChrome(in: effectView.contentView, selectedTitle: selectedTitle, ink: ink)
+            paintLightSelectedTitleChrome(
+                in: effectView.contentView,
+                selectedTitle: selectedTitle,
+                titles: titles,
+                ink: ink,
+                unselected: unselected
+            )
         }
         for subview in view.subviews {
-            paintLightSelectedTitleChrome(in: subview, selectedTitle: selectedTitle, ink: ink)
+            paintLightSelectedTitleChrome(
+                in: subview,
+                selectedTitle: selectedTitle,
+                titles: titles,
+                ink: ink,
+                unselected: unselected
+            )
         }
+    }
+
+    private static func applyLabelInk(_ label: UILabel, text: String, ink: UIColor) {
+        label.textColor = ink
+        label.tintColor = ink
+        guard !text.isEmpty else { return }
+        var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: ink]
+        if let font = label.font { attributes[.font] = font }
+        label.attributedText = NSAttributedString(string: text, attributes: attributes)
+    }
+
+    /// Selected items stay white. Unselected tab glyphs use the Done tint.
+    private static func tabItemInk(for view: UIView, selected: UIColor, unselected: UIColor) -> UIColor? {
+        guard let control = tabItemControl(containing: view) else { return nil }
+        return control.isSelected ? selected : unselected
+    }
+
+    private static func tabItemControl(containing view: UIView) -> UIControl? {
+        var node: UIView? = view
+        while let current = node {
+            if let control = current as? UIControl, !(current is UITabBar) {
+                return control
+            }
+            node = current.superview
+        }
+        return nil
     }
 
     private static func isLightSelectedTitle(
@@ -222,17 +299,6 @@ enum TrailhoundTabBarCompact {
         while let current = node {
             if let control = current as? UIControl {
                 return control.isSelected && text.count <= 24
-            }
-            node = current.superview
-        }
-        return false
-    }
-
-    private static func isInSelectedTabItem(_ view: UIView) -> Bool {
-        var node: UIView? = view
-        while let current = node {
-            if let control = current as? UIControl, !(current is UITabBar) {
-                return control.isSelected
             }
             node = current.superview
         }
@@ -262,17 +328,46 @@ enum TrailhoundTabBarCompact {
         }
     }
 
+    /// The side/bottom platter exists before the selection circle. Launch styling
+    /// that runs too early leaves the system capsule until the next tab change.
+    static func lightSelectionBlobIsReady(_ tabBar: UITabBar) -> Bool {
+        guard #available(iOS 26.0, *) else { return true }
+        guard tabBar.bounds.width > 8, tabBar.bounds.height > 8 else { return false }
+        if containsSelectionBlob(in: tabBar, matching: tabBar) { return true }
+        guard let superview = tabBar.superview else { return false }
+        for sibling in superview.subviews where sibling !== tabBar {
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
+            if containsSelectionBlob(in: sibling, matching: tabBar) { return true }
+        }
+        return false
+    }
+
+    @available(iOS 26.0, *)
+    private static func containsSelectionBlob(in view: UIView, matching tabBar: UITabBar) -> Bool {
+        if let effectView = view as? UIVisualEffectView,
+           effectView.effect is UIGlassEffect,
+           effectView.bounds.width > 8,
+           !isFloatingCapsule(effectView, matching: tabBar) {
+            return true
+        }
+        if let effectView = view as? UIVisualEffectView,
+           containsSelectionBlob(in: effectView.contentView, matching: tabBar) {
+            return true
+        }
+        for subview in view.subviews {
+            if containsSelectionBlob(in: subview, matching: tabBar) { return true }
+        }
+        return false
+    }
+
     /// Tint every non-capsule `UIGlassEffect` in the bar with dark mid — the selection blob.
     static func tintLightSelectedBlob(on tabBar: UITabBar, palette: ShellPalette) {
         guard #available(iOS 26.0, *) else { return }
         let tint = TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: palette)
         tintSelectedBlob(in: tabBar, matching: tabBar, tint: tint)
         guard let superview = tabBar.superview else { return }
-        let barFrame = tabBar.frame
         for sibling in superview.subviews where sibling !== tabBar {
-            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
-                && sibling.frame.height <= barFrame.height + 120
-            guard isChromeBand else { continue }
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
             tintSelectedBlob(in: sibling, matching: tabBar, tint: tint)
         }
     }
@@ -311,11 +406,8 @@ enum TrailhoundTabBarCompact {
         guard #available(iOS 26.0, *) else { return }
         clearGlassTint(in: tabBar, matching: tabBar)
         guard let superview = tabBar.superview else { return }
-        let barFrame = tabBar.frame
         for sibling in superview.subviews where sibling !== tabBar {
-            let isChromeBand = sibling.frame.maxY >= barFrame.minY - 40
-                && sibling.frame.height <= barFrame.height + 120
-            guard isChromeBand else { continue }
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
             clearGlassTint(in: sibling, matching: tabBar)
         }
     }
@@ -336,16 +428,38 @@ enum TrailhoundTabBarCompact {
         }
     }
 
+    /// Bottom platter is wide and short. A side bar's platter is tall. A selection
+    /// circle on that side bar is almost as wide as the bar, so width alone must
+    /// not treat it as the platter — that left the selected tab on system blue.
     private static func isFloatingCapsule(_ effectView: UIView, matching tabBar: UITabBar) -> Bool {
         let width = effectView.bounds.width
         let height = effectView.bounds.height
         let barWidth = tabBar.bounds.width
-        guard width > 8, barWidth > 8 else { return false }
+        let barHeight = tabBar.bounds.height
+        guard width > 8, barWidth > 8, barHeight > 8 else { return false }
+        if barHeight > barWidth * 1.4 {
+            return height > barHeight * 0.72 && width > barWidth * 0.55
+        }
         return width > barWidth * 0.45 && height >= 44 && height <= 96
     }
 
+    /// Bottom chrome sits under the bar. Side chrome sits in the leading column.
+    private static func isTabChromeSibling(_ sibling: UIView, of tabBar: UITabBar) -> Bool {
+        let bar = tabBar.frame
+        let frame = sibling.frame
+        if bar.height > bar.width * 1.4 {
+            let overlapsY = frame.maxY > bar.minY - 24 && frame.minY < bar.maxY + 24
+            let nearX = abs(frame.midX - bar.midX) < max(bar.width, 80) + 48
+            let notContent = frame.width < bar.width + 180
+            return overlapsY && nearX && notContent
+        }
+        return frame.maxY >= bar.minY - 40 && frame.height <= bar.height + 120
+    }
+
     /// Undo a leftover narrow frame from the old compact hack. Skip once the bar is full width.
+    /// A side tab bar is supposed to be narrow — stretching it wipes the liquid glass column.
     static func restoreSystemWidthIfNeeded(_ tabBar: UITabBar) {
+        guard tabBar.bounds.width >= tabBar.bounds.height else { return }
         guard let superview = tabBar.superview else { return }
         let fullWidth = superview.bounds.width
         guard fullWidth > 0, tabBar.bounds.width > 0, tabBar.bounds.width < fullWidth * 0.92 else { return }
@@ -421,6 +535,8 @@ struct TrailhoundTabBarCompactInstaller: UIViewControllerRepresentable {
 final class TrailhoundTabBarCompactController: UIViewController {
     var palette: ShellPalette = .sky
     var colorScheme: ColorScheme = .light
+    private var glassRetryCount = 0
+    private var glassRetryScheduled = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -430,6 +546,7 @@ final class TrailhoundTabBarCompactController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        glassRetryCount = 0
         apply()
     }
 
@@ -437,19 +554,37 @@ final class TrailhoundTabBarCompactController: UIViewController {
         super.viewDidLayoutSubviews()
         guard let tabBar = resolveTabBar() else { return }
         TrailhoundTabBarCompact.restoreSystemWidthIfNeeded(tabBar)
-        if colorScheme == .light {
-            TrailhoundTabBarCompact.applyLightSelectedWhite(to: tabBar, palette: palette)
+        guard colorScheme == .light else { return }
+        TrailhoundTabBarCompact.applyLightSelectedWhite(to: tabBar, palette: palette)
+        if !TrailhoundTabBarCompact.lightSelectionBlobIsReady(tabBar) {
+            scheduleGlassRetry()
         }
     }
 
     func apply() {
-        guard let tabBar = resolveTabBar() else { return }
+        guard let tabBar = resolveTabBar() else {
+            scheduleGlassRetry()
+            return
+        }
         TrailhoundTabBarCompact.apply(to: tabBar, palette: palette, scheme: colorScheme)
-        if colorScheme == .light {
-            DispatchQueue.main.async { [weak self] in
-                guard let self, let tabBar = self.resolveTabBar() else { return }
-                TrailhoundTabBarCompact.applyLightSelectedWhite(to: tabBar, palette: self.palette)
-            }
+        guard colorScheme == .light else { return }
+        if TrailhoundTabBarCompact.lightSelectionBlobIsReady(tabBar) {
+            glassRetryCount = 0
+        } else {
+            scheduleGlassRetry()
+        }
+    }
+
+    /// iOS 26 builds the selection circle after the first layout. Until it exists,
+    /// styling hits only the platter and the bar stays the system capsule.
+    private func scheduleGlassRetry() {
+        guard glassRetryCount < 24, !glassRetryScheduled else { return }
+        glassRetryCount += 1
+        glassRetryScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self else { return }
+            self.glassRetryScheduled = false
+            self.apply()
         }
     }
 

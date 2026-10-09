@@ -350,7 +350,8 @@
 		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
 		A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */; };
 		A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */; };
-		A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+				A1TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */; };
 		A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */; };
 		A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */; };
 		A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */; };
@@ -388,7 +389,9 @@
 		A1PAIRINGTAB000000001 /* PairingTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGTAB000000001 /* PairingTabView.swift */; };
 		A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */; };
 		A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */; };
-		A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
+				A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
+				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */; };
+				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */; };
 		A1PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */; };
 		A1SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */; };
 		A1SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */; };
@@ -748,6 +751,7 @@
 		A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/YearRecapSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementEvaluatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementThemeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/TrailhoundLayoutTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementShareRendererTests.swift; sourceTree = SOURCE_ROOT; };
 		A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/MonthCostForecastTests.swift; sourceTree = SOURCE_ROOT; };
 		A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/FrequentRouteAggregateTests.swift; sourceTree = SOURCE_ROOT; };
@@ -812,6 +816,8 @@
 		A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingEmptyState.swift; sourceTree = "<group>"; };
 		A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingVehicleEditorView.swift; sourceTree = "<group>"; };
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
+		A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLayout.swift; sourceTree = "<group>"; };
+		A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundShellToolbar.swift; sourceTree = "<group>"; };
 		A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingShortcutsAutomationGuideView.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSetupStore.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/ShortcutsSetupStoreTests.swift; sourceTree = SOURCE_ROOT; };
@@ -1215,6 +1221,8 @@
 				A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */,
 				A20000000000000000000021 /* PreviewData.swift */,
 				A2TABSELECTION000001 /* TabSelection.swift */,
+				A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */,
+				A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
 				A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */,
 				A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */,
@@ -1370,6 +1378,7 @@
 				A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */,
 				A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */,
 				A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */,
+				A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */,
 				A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */,
 				A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */,
 				A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */,
@@ -1628,6 +1637,7 @@
 				A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */,
 				A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */,
 				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */,
+				A1TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift in Sources */,
 				A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */,
 				A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */,
 				A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */,
@@ -1899,6 +1909,8 @@
 				A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */,
 				A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */,
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
+				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */,
+				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */,
 				A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */,
 				B10000000000000000000004 /* TripRecordingAttributes.swift in Sources */,
 				B1LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift in Sources */,
@@ -2099,7 +2111,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2114,7 +2126,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2144,7 +2156,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2159,7 +2171,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

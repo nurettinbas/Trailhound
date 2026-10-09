@@ -6,6 +6,10 @@ final class TabSelection {
     static let shared = TabSelection()
 
     var selectedTab: AppTab = .trips
+    /// Inbox is a root cover, not a page on the Trips stack.
+    var showNotificationsCover = false
+    /// Bumped when Start should reveal the recording card on Trips.
+    private(set) var scrollToRecordingToken = 0
     /// Set by care notification deep link; consumed by PairingTabView.
     private(set) var pendingVehicleCareID: UUID?
     private(set) var pendingStatsAnchor: StatsPremiumAnchor?
@@ -17,6 +21,20 @@ final class TabSelection {
 
     func openTrips() {
         selectedTab = .trips
+    }
+
+    func openNotifications() {
+        showNotificationsCover = true
+    }
+
+    func closeNotifications() {
+        showNotificationsCover = false
+    }
+
+    /// Switch to Trips and ask the list to show the recording card.
+    func focusRecordingCard() {
+        openTrips()
+        scrollToRecordingToken += 1
     }
 
     func openVehicleCare(vehicleID: UUID) {

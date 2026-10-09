@@ -13,6 +13,7 @@ struct OnboardingView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.trailhoundLayout) private var layout
     @Bindable private var settings = AppSettings.shared
 
     @State private var page = OnboardingStep.welcome.rawValue
@@ -38,32 +39,21 @@ struct OnboardingView: View {
         ZStack {
             AtmosphericBackground(style: .canvas)
 
-            VStack(spacing: 0) {
-                TabView(selection: $page) {
-                    welcomePage
-                        .tag(OnboardingStep.welcome.rawValue)
-                    locationPage
-                        .tag(OnboardingStep.location.rawValue)
-                    vehicleCarePage
-                        .tag(OnboardingStep.vehicleCare.rawValue)
-                    shortcutsPage
-                        .tag(OnboardingStep.shortcuts.rawValue)
+            Group {
+                if layout.layoutClass == .phone || layout.centersOnboardingColumn {
+                    portraitOnboarding
+                } else if layout.layoutClass == .pad, !layout.isLandscape {
+                    padPortraitOnboarding
+                } else {
+                    wideOnboarding
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(TrailhoundMotion.gentle, value: page)
-
-                pageIndicator
-                    .padding(.top, 8)
-
-                bottomBar
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
-                    .opacity(detailsReveal)
-                    .offset(y: (1 - detailsReveal) * 12)
             }
+            .transaction { $0.disablesAnimations = true }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $showShortcutsAutomationGuide) {
             PairingShortcutsAutomationGuideView()
+                .trailhoundAdaptiveSheet()
         }
         .task(id: entranceToken) {
             await runEntrance(for: currentStep)
@@ -71,6 +61,134 @@ struct OnboardingView: View {
         .onChange(of: page) { _, _ in
             prepareEntrance()
             entranceToken &+= 1
+        }
+    }
+
+    private var onboardingPager: some View {
+        TabView(selection: $page) {
+            welcomePage
+                .tag(OnboardingStep.welcome.rawValue)
+            locationPage
+                .tag(OnboardingStep.location.rawValue)
+            vehicleCarePage
+                .tag(OnboardingStep.vehicleCare.rawValue)
+            shortcutsPage
+                .tag(OnboardingStep.shortcuts.rawValue)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .animation(TrailhoundMotion.gentle, value: page)
+    }
+
+    private var portraitOnboarding: some View {
+        VStack(spacing: 0) {
+            onboardingPager
+            pageIndicator
+                .padding(.top, layout.centersOnboardingColumn ? 6 : 8)
+            bottomBar
+                .padding(.horizontal, layout.centersOnboardingColumn ? 20 : 24)
+                .padding(.bottom, layout.centersOnboardingColumn ? 16 : 32)
+                .opacity(detailsReveal)
+                .offset(y: (1 - detailsReveal) * 12)
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: layout.centersOnboardingColumn ? .center : .top
+        )
+    }
+
+    private var padPortraitOnboarding: some View {
+        VStack(spacing: 0) {
+            onboardingPager
+            pageIndicator
+                .padding(.top, 8)
+            bottomBar
+                .trailhoundReadableColumn()
+                .padding(.bottom, 32)
+                .opacity(detailsReveal)
+        }
+    }
+
+    /// Landscape and open-fold slice: the scene sits beside the copy.
+    private var usesWideOnboarding: Bool {
+        if layout.layoutClass == .phone || layout.centersOnboardingColumn { return false }
+        if layout.layoutClass == .pad, !layout.isLandscape { return false }
+        return true
+    }
+
+    private var wideOnboarding: some View {
+        let gap = layout.layoutClass == .pad ? GlassTokens.padLandscapeGap : GlassTokens.hingeGutter
+        return GeometryReader { geo in
+            let sceneWidth = wideSceneWidth(in: geo, gap: gap)
+            HStack(spacing: gap) {
+                onboardingSceneColumn
+                    .scaleEffect(shrinksWideScene ? 0.82 : 1, anchor: .center)
+                    .frame(width: sceneWidth)
+                    .frame(maxHeight: .infinity)
+                VStack(spacing: 10) {
+                    onboardingPager
+                    pageIndicator
+                    bottomBar
+                        .opacity(detailsReveal)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .padding(.vertical, 4)
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// Closed landscape keeps a narrower scene. Open book mode splits on the hinge.
+    private var shrinksWideScene: Bool { layout.layoutClass == .phoneLandscape }
+
+    /// Five columns for the scene, seven for the copy, when the fold is closed.
+    /// Open book mode puts the seam on the window midpoint.
+    /// The leading camera already sits in the scene side, so that inset comes out of the scene.
+    private func wideSceneWidth(in geo: GeometryProxy, gap: CGFloat) -> CGFloat {
+        let inner = max(geo.size.width - 32 - gap, 1)
+        if layout.layoutClass == .pad {
+            return inner * 0.36
+        }
+        let full = geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
+        if layout.layoutClass == .duoOpen, layout.isLandscape {
+            return TrailhoundLayoutResolver.duoLeadingPaneWidth(
+                contentOriginX: geo.safeAreaInsets.leading + 16,
+                contentWidth: max(geo.size.width - 32, 1),
+                windowWidth: full,
+                gutter: gap,
+                listOnVisualLeft: true
+            )
+        }
+        let scene = full * 5 / 12 - geo.safeAreaInsets.leading - 16
+        return min(max(scene, 120), inner * 0.46)
+    }
+
+    private var onboardingSceneColumn: some View {
+        ZStack {
+            if page == OnboardingStep.welcome.rawValue {
+                TrailhoundBrandMark(showsWordmark: true, symbolSize: 96)
+                    .opacity(Double(brandReveal) * Double(1 - heroReveal))
+                    .allowsHitTesting(false)
+            }
+            OnboardingHeroScene(
+                kind: heroKind(for: currentStep),
+                driveInProgress: driveInProgress,
+                beatProgress: beatProgress,
+                isAnimating: sceneIsLive && !showShortcutsAutomationGuide
+            )
+            .opacity(heroReveal)
+        }
+        .frame(height: TrailhoundRoadSceneMetrics.hero.sceneHeight)
+        .frame(maxHeight: .infinity)
+    }
+
+    private func heroKind(for step: OnboardingStep) -> OnboardingHeroKind {
+        switch step {
+        case .welcome: .welcomeDrive
+        case .location: .locationPin
+        case .vehicleCare: .vehicleCare
+        case .shortcuts: .shortcutsLink
         }
     }
 
@@ -83,7 +201,7 @@ struct OnboardingView: View {
             message: L10n.string("onboarding.welcome.message"),
             showsBrandColdOpen: true
         ) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: featureSpacing) {
                 onboardingFeatureRow(
                     icon: "point.topleft.down.curvedto.point.bottomright.up",
                     text: L10n.string("onboarding.features.routes")
@@ -117,6 +235,7 @@ struct OnboardingView: View {
 
                 locationPermissionActions
             }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -126,7 +245,7 @@ struct OnboardingView: View {
             title: L10n.string("onboarding.vehicle_care.title"),
             message: L10n.string("onboarding.vehicle_care.message")
         ) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: featureSpacing) {
                 onboardingFeatureRow(
                     icon: "calendar.badge.clock",
                     text: L10n.string("onboarding.vehicle_care.reminders")
@@ -160,10 +279,11 @@ struct OnboardingView: View {
                     Image(systemName: "arrow.up.right")
                         .font(.caption.weight(.semibold))
                 }
-                .font(.body.weight(.semibold))
+                .font(featureLinkFont)
             }
             .glassAccentForeground()
             .padding(.top, 4)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -176,38 +296,86 @@ struct OnboardingView: View {
         showsBrandColdOpen: Bool = false,
         @ViewBuilder extra: () -> Extra = { EmptyView() }
     ) -> some View {
-        VStack(spacing: 22) {
-            Spacer(minLength: 12)
-
-            ZStack {
-                if showsBrandColdOpen {
-                    TrailhoundBrandMark(showsWordmark: true, symbolSize: 96)
-                        .opacity(Double(brandReveal) * Double(1 - heroReveal))
-                        .scaleEffect(0.92 + 0.08 * brandReveal)
-                        .allowsHitTesting(false)
+        let column = onboardingHeroColumn(
+            kind: kind,
+            title: title,
+            message: message,
+            showsBrandColdOpen: showsBrandColdOpen,
+            extra: extra
+        )
+        return Group {
+            if layout.centersOnboardingColumn {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 12)
+                    column
+                    Spacer(minLength: 12)
                 }
-
-                OnboardingHeroScene(
-                    kind: kind,
-                    driveInProgress: driveInProgress,
-                    beatProgress: beatProgress,
-                    isAnimating: sceneIsLive && page == stepRawValue(for: kind) && !showShortcutsAutomationGuide
-                )
-                .opacity(heroReveal)
-                .offset(y: (1 - heroReveal) * 18)
-                .scaleEffect(0.96 + 0.04 * heroReveal, anchor: .center)
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    if showsBrandColdOpen {
+                        TrailhoundBrandMark(showsWordmark: true, symbolSize: 72)
+                            .opacity(Double(brandReveal) * Double(1 - heroReveal))
+                            .scaleEffect(0.92 + 0.08 * brandReveal)
+                            .allowsHitTesting(false)
+                    }
+                }
+            } else if usesWideOnboarding {
+                WideOnboardingTextFit(content: column.padding(.horizontal, 4))
+            } else {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 12)
+                    column
+                    Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal, 28)
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: TrailhoundRoadSceneMetrics.hero.sceneHeight)
+        }
+        .frame(maxWidth: usesWideOnboarding ? .infinity : GlassTokens.readableTextWidth)
+        .frame(maxWidth: .infinity)
+    }
 
-            VStack(spacing: 12) {
+    private func onboardingHeroColumn<Extra: View>(
+        kind: OnboardingHeroKind,
+        title: String,
+        message: String?,
+        showsBrandColdOpen: Bool,
+        @ViewBuilder extra: () -> Extra
+    ) -> some View {
+        VStack(spacing: usesWideOnboarding ? 6 : 22) {
+            if showsInlineHero {
+                ZStack {
+                    if showsBrandColdOpen, !layout.centersOnboardingColumn {
+                        TrailhoundBrandMark(showsWordmark: true, symbolSize: 96)
+                            .opacity(Double(brandReveal) * Double(1 - heroReveal))
+                            .scaleEffect(0.92 + 0.08 * brandReveal)
+                            .allowsHitTesting(false)
+                    }
+
+                    OnboardingHeroScene(
+                        kind: kind,
+                        driveInProgress: driveInProgress,
+                        beatProgress: beatProgress,
+                        isAnimating: sceneIsLive && page == stepRawValue(for: kind) && !showShortcutsAutomationGuide
+                    )
+                    .opacity(heroReveal)
+                    .offset(y: (1 - heroReveal) * 18)
+                    .scaleEffect(0.96 + 0.04 * heroReveal, anchor: .center)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: TrailhoundRoadSceneMetrics.hero.sceneHeight)
+            }
+
+            VStack(spacing: usesWideOnboarding ? 4 : 12) {
                 Text(title)
-                    .font(.title2.bold())
+                    .font(titleFont)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let message {
                     Text(message)
-                        .font(.body)
+                        .font(messageFont)
                         .glassSecondaryInk()
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -218,13 +386,10 @@ struct OnboardingView: View {
             .offset(y: (1 - detailsReveal) * 10)
 
             extra()
+                .frame(maxWidth: .infinity, alignment: .center)
                 .opacity(detailsReveal)
                 .offset(y: (1 - detailsReveal) * 8)
-
-            Spacer()
-            Spacer()
         }
-        .padding(.horizontal, 28)
     }
 
     private func stepRawValue(for kind: OnboardingHeroKind) -> Int {
@@ -236,17 +401,50 @@ struct OnboardingView: View {
         }
     }
 
+    private var showsInlineHero: Bool {
+        layout.layoutClass == .phone
+            || layout.centersOnboardingColumn
+            || (layout.layoutClass == .pad && !layout.isLandscape)
+    }
+
+    private var titleFont: Font {
+        if usesWideOnboarding { return .headline.bold() }
+        if layout.centersOnboardingColumn { return .headline.bold() }
+        return .title2.bold()
+    }
+
+    private var messageFont: Font {
+        if usesWideOnboarding || layout.centersOnboardingColumn { return .footnote }
+        return .body
+    }
+
+    private var featureFont: Font {
+        if usesWideOnboarding || layout.centersOnboardingColumn { return .caption }
+        return .subheadline
+    }
+
+    private var featureLinkFont: Font {
+        if layout.centersOnboardingColumn { return .footnote.weight(.semibold) }
+        if usesWideOnboarding { return .subheadline.weight(.semibold) }
+        return .body.weight(.semibold)
+    }
+
+    private var featureSpacing: CGFloat { usesWideOnboarding ? 6 : 14 }
+
     private func onboardingFeatureRow(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: usesWideOnboarding ? 8 : 12) {
             Image(systemName: icon)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: usesWideOnboarding ? 15 : 20, weight: .semibold))
                 .glassAccentForeground()
-                .frame(width: 28, alignment: .center)
+                .frame(width: usesWideOnboarding ? 20 : 28, alignment: .center)
 
             Text(text)
-                .font(.subheadline)
+                .font(featureFont)
+                .lineSpacing(layout.centersOnboardingColumn ? 1 : 0)
                 .glassSecondaryInk()
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
         }
     }
 
@@ -255,8 +453,10 @@ struct OnboardingView: View {
         switch locationService.authorizationState {
         case .authorizedAlways:
             Text(L10n.string("onboarding.permission.granted"))
-                .font(.subheadline.weight(.semibold))
+                .font(layout.centersOnboardingColumn ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
                 .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
         case .denied, .restricted:
             Button(L10n.locationBannerSettings) {
                 openAppSettings()
@@ -360,7 +560,8 @@ struct OnboardingView: View {
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
                 brandReveal = 1
             }
-            try? await Task.sleep(for: .milliseconds(420))
+            let brandHold: Duration = layout.centersOnboardingColumn ? .milliseconds(900) : .milliseconds(420)
+            try? await Task.sleep(for: brandHold)
             guard !Task.isCancelled else {
                 settleEntrance()
                 return
@@ -414,6 +615,44 @@ struct OnboardingView: View {
         settings.completeOnboarding()
         settings.skipCarSetup()
         TrailhoundHaptics.pairingSucceeded()
+    }
+}
+
+/// Landscape copy. Shrinks only when the block is taller than the page, so the title and last line stay on screen.
+private struct WideOnboardingTextFit<Content: View>: View {
+    var content: Content
+    @State private var scale: CGFloat = 1
+
+    var body: some View {
+        GeometryReader { geo in
+            content
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { inner in
+                        Color.clear.preference(key: WideOnboardingTextHeightKey.self, value: inner.size.height)
+                    }
+                }
+                .scaleEffect(scale, anchor: .center)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                .onPreferenceChange(WideOnboardingTextHeightKey.self) { height in
+                    guard height > 1, geo.size.height > 1 else { return }
+                    let next = min(1, (geo.size.height - 4) / height)
+                    guard abs(next - scale) > 0.02 else { return }
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        scale = next
+                    }
+                }
+        }
+        .clipped()
+    }
+}
+
+private struct WideOnboardingTextHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

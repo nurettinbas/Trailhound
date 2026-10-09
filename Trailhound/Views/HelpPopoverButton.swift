@@ -28,31 +28,52 @@ struct HelpPopoverButton: View {
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(accessibilityLabel)
         .sheet(isPresented: $isPresented) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(accessibilityLabel)
-                        .font(.headline)
-                    Spacer(minLength: 8)
-                    Button(L10n.ok) { isPresented = false }
-                        .fontWeight(.semibold)
+            helpCard
+                .presentationBackground {
+                    AtmosphericBackground(style: .full)
                 }
-                ScrollView {
-                    Text(message)
-                        .font(.body)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .presentationBackground {
-                AtmosphericBackground(style: .full)
-            }
-            .onGlassShell()
-            .presentationDetents([.height(sheetHeight), .medium])
-            .presentationDragIndicator(.visible)
+                .onGlassShell()
+                .modifier(HelpPopoverSheetSizing(fallbackHeight: sheetHeight))
+        }
+    }
+
+    /// Width follows the copy. OK sits in the top trailing corner, not in the title row.
+    private var helpCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(accessibilityLabel)
+                .font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.trailing, 56)
+            Text(message)
+                .font(.body)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 280, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: true)
+        .overlay(alignment: .topTrailing) {
+            Button(L10n.ok) { isPresented = false }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.glassPlainHit)
+                .padding(8)
+        }
+    }
+}
+
+/// Fitted sheet on iOS 18 so the card is only as wide as the text. Older systems keep a height detent.
+private struct HelpPopoverSheetSizing: ViewModifier {
+    var fallbackHeight: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content
+                .presentationSizing(.fitted)
+                .presentationDragIndicator(.visible)
+        } else {
+            content
+                .presentationDetents([.height(fallbackHeight), .medium])
+                .presentationDragIndicator(.visible)
         }
     }
 }

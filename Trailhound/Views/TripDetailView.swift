@@ -36,6 +36,9 @@ struct TripDetailView: View {
     @State private var mapCameraBox = TripDetailMapCameraBox()
     /// Used so camera fit spans match the portrait map aspect.
     @State private var mapViewportSize: CGSize = CGSize(width: 390, height: 844)
+    /// Last map size. A jump here is a turn; writing the camera then cancels it.
+    @State private var laidOutMapSize: CGSize = .zero
+    @State private var suppressMapCameraUntil: Date = .distantPast
     /// Status + transparent nav overlay height in points (not a fraction of a stale size).
     @State private var mapTopChromePoints: CGFloat = 96
     /// Tab bar + home-indicator band the map draws under (`.ignoresSafeArea(.bottom)`).
@@ -97,7 +100,89 @@ struct TripDetailView: View {
         trip.stops.sorted { $0.startedAt < $1.startedAt }
     }
 
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.tripDetailRegion) private var tripDetailRegion
+    @State private var widePanelCollapsed = false
+
     var body: some View {
+        Group {
+            if tripDetailRegion == .details {
+                detailsPage
+            } else if tripDetailRegion == .map {
+                tripDetailMapLayer(interactive: true)
+            } else if layout.tripDetailStyle == .overlay {
+                phoneBody
+            } else {
+                wideBody
+            }
+        }
+        .animation(TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion), value: layout.layoutClass)
+    }
+
+    @ViewBuilder
+    private var wideBody: some View {
+        switch layout.tripDetailStyle {
+        case .overlay:
+            phoneBody
+        case .split:
+            TrailhoundPaneSplit {
+                detailsPage
+            } focus: {
+                tripDetailMapLayer(interactive: true)
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear
+                                .onAppear { adoptPaneMapSize(geo.size) }
+                                .onChange(of: geo.size) { _, size in
+                                    adoptPaneMapSize(size)
+                                }
+                        }
+                        .allowsHitTesting(false)
+                    }
+            }
+        case .floatingPanel:
+            TrailhoundMapCanvas(panelCollapsed: $widePanelCollapsed) {
+                tripDetailMapLayer(interactive: true)
+            } panel: {
+                detailsPage
+            }
+        case .stacked:
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    tripDetailMapLayer(interactive: true)
+                        .frame(height: geo.size.height * 0.55)
+                    detailsPage
+                        .frame(maxHeight: .infinity)
+                }
+            }
+        }
+    }
+
+    private var detailsPage: some View {
+        GeometryReader { geo in
+            TripDetailEditPanel(
+                trip: trip,
+                viewModel: resolvedViewModel,
+                glassFrozen: glassFrozen,
+                panelRisen: true,
+                restHeight: geo.size.height,
+                mapPeek: 24,
+                reduceMotion: reduceMotion,
+                statCountProgress: statCountProgress,
+                speedChartRevealProgress: speedChartRevealProgress,
+                recordedPointCount: $recordedPointCount,
+                keyboardDismissSignal: $keyboardDismissSignal,
+                onDisplayRefresh: { refreshTripDetailViewModel() },
+                onRouteInvalidated: { reloadRouteAfterTrim() }
+            )
+        }
+        .background {
+            AtmosphericBackground(style: .lightweight)
+        }
+    }
+
+    private var phoneBody: some View {
         ZStack {
             AtmosphericBackground()
 
@@ -105,10 +190,14 @@ struct TripDetailView: View {
                 let containerHeight = geometry.size.height
                 let panelHeight = livePanelHeight(containerHeight: containerHeight)
                 let mapPeek = mapTopChromePoints + 24
-                // Expanded: keep the speed chips sitting on the tab bar, not under it.
-                // GeometryReader is under `.ignoresSafeArea(.bottom)`, so inset 0 buries them.
+                // Full screen: the reader ignores the bottom safe area. The chips sit under
+                // the tab, on the home indicator — not a tab-height above it.
                 // Always rest height — editing growth is owned by TripDetailEditPanel.
-                let chromeBottomInset = panelVisible ? panelHeight : mapBottomChromePoints
+                let expandedLegendInset = max(mapBottomChromePoints - 49, 8)
+                let chromeBottomInset = isMapExpanded
+                    ? expandedLegendInset
+                    : (panelVisible ? panelHeight : mapBottomChromePoints)
+                let sheetLeadingInset = sheetLeadingInset(in: geometry)
                 ZStack(alignment: .bottom) {
                     // Full-screen map — never resized by the panel (Apple Maps pattern).
                     // Keep interactive from first paint so toggling modes does not rebuild MapKit.
@@ -151,21 +240,27 @@ struct TripDetailView: View {
                     )
                     .allowsHitTesting(false)
 
-                    TripDetailEditPanel(
-                        trip: trip,
-                        viewModel: resolvedViewModel,
-                        glassFrozen: glassFrozen,
-                        panelRisen: panelRisen,
-                        restHeight: panelHeight,
-                        mapPeek: mapPeek,
-                        reduceMotion: reduceMotion,
-                        statCountProgress: statCountProgress,
-                        speedChartRevealProgress: speedChartRevealProgress,
-                        recordedPointCount: $recordedPointCount,
-                        keyboardDismissSignal: $keyboardDismissSignal,
-                        onDisplayRefresh: { refreshTripDetailViewModel() },
-                        onRouteInvalidated: { reloadRouteAfterTrim() }
-                    )
+                    HStack(alignment: .bottom, spacing: 0) {
+                        if sheetLeadingInset > 0 {
+                            Color.clear
+                                .frame(width: sheetLeadingInset, height: 0)
+                                .allowsHitTesting(false)
+                        }
+                        TripDetailEditPanel(
+                            trip: trip,
+                            viewModel: resolvedViewModel,
+                            glassFrozen: glassFrozen,
+                            panelRisen: panelRisen,
+                            restHeight: panelHeight,
+                            mapPeek: mapPeek,
+                            reduceMotion: reduceMotion,
+                            statCountProgress: statCountProgress,
+                            speedChartRevealProgress: speedChartRevealProgress,
+                            recordedPointCount: $recordedPointCount,
+                            keyboardDismissSignal: $keyboardDismissSignal,
+                            onDisplayRefresh: { refreshTripDetailViewModel() },
+                            onRouteInvalidated: { reloadRouteAfterTrim() }
+                        )
                         .frame(maxWidth: .infinity)
                         .background {
                             // Opaque wash — glass cards and the translucent tab bar never sample the map.
@@ -176,12 +271,13 @@ struct TripDetailView: View {
                         .clipShape(
                             UnevenRoundedRectangle(
                                 topLeadingRadius: 18,
-                                bottomLeadingRadius: 0,
-                                bottomTrailingRadius: 0,
+                                bottomLeadingRadius: sheetLeadingInset > 0 ? 18 : 0,
+                                bottomTrailingRadius: sheetLeadingInset > 0 ? 18 : 0,
                                 topTrailingRadius: 18,
                                 style: .continuous
                             )
                         )
+                    }
                         .offset(y: panelVisible ? 0 : panelHeight + 24)
                         .opacity(panelVisible ? 1 : 0)
                         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
@@ -207,9 +303,15 @@ struct TripDetailView: View {
                     lastLivePanelHeight = panelHeight
                 }
                 .onChange(of: geometry.size) { _, newSize in
+                    let previous = laidOutMapSize
+                    laidOutMapSize = newSize
                     refreshMapChromeInsets(from: geometry)
                     if !isMapExpanded {
                         lastLivePanelHeight = livePanelHeight(containerHeight: newSize.height)
+                    }
+                    if TrailhoundLayoutResolver.viewportChangeCancelsRotation(from: previous, to: newSize) {
+                        pauseMapCameraForRotation()
+                        return
                     }
                     if panelRisen, didStartDetailReveal {
                         refitMapToVisibleGap(
@@ -314,6 +416,7 @@ struct TripDetailView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isRenderingShareCard)
         .onAppear {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
             if tripDetailViewModel == nil {
                 tripDetailViewModel = TripDetailViewModel(
                     trip: trip,
@@ -346,7 +449,12 @@ struct TripDetailView: View {
         .onStoreSave {
             refreshTripDetailViewModel()
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            guard UIDevice.current.orientation.isValidInterfaceOrientation else { return }
+            pauseMapCameraForRotation()
+        }
         .onDisappear {
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
             logTripDetailDiagnostics(context: "disappear")
             if routeRevealProgress >= 0.95 {
                 TripDetailRevealSession.markCompleted(trip.id)
@@ -520,8 +628,39 @@ struct TripDetailView: View {
     }
 
     private func setMapCamera(_ position: MapCameraPosition) {
+        // A camera write while the window is turning cancels the orientation change.
+        guard Date() >= suppressMapCameraUntil else { return }
         // Update binding only — remounting Map (e.g. via .id) blanks tiles and flashes black.
         mapCameraBox.position = position
+    }
+
+    /// Half-screen map on a landscape fold. Fit the route into this pane, not the portrait sheet.
+    private func adoptPaneMapSize(_ size: CGSize) {
+        guard size.width > 1, size.height > 1 else { return }
+        let previous = laidOutMapSize
+        let jumped = TrailhoundLayoutResolver.viewportChangeCancelsRotation(from: previous, to: size)
+        laidOutMapSize = size
+        mapViewportSize = size
+        if jumped {
+            pauseMapCameraForRotation(panelHeight: 0)
+            return
+        }
+        guard previous == .zero
+            || abs(size.width - previous.width) > 2
+            || abs(size.height - previous.height) > 2
+        else { return }
+        guard didStartDetailReveal || routeRevealProgress >= 0.95 else { return }
+        scheduleMapRefit(panelHeight: 0, animated: false, delayMilliseconds: 80)
+    }
+
+    private func pauseMapCameraForRotation(panelHeight: CGFloat? = nil) {
+        suppressMapCameraUntil = Date().addingTimeInterval(0.75)
+        let height = panelHeight ?? (layout.tripDetailStyle == .split
+            ? 0
+            : (lastLivePanelHeight > 0
+                ? lastLivePanelHeight
+                : mapViewportSize.height * TripDetailPanelLayout.heightFraction))
+        scheduleMapRefit(panelHeight: height, animated: false, delayMilliseconds: 800)
     }
 
     private func livePanelHeight(containerHeight: CGFloat) -> CGFloat {
@@ -537,6 +676,12 @@ struct TripDetailView: View {
         mapTopChromePoints = topSafe + 44
         // 49 = standard UITabBar content height above the home indicator.
         mapBottomChromePoints = max(window.bottom, 34) + 49
+    }
+
+    /// Side-tab column on this Duo sheet. The leading gap copies that trailing inset.
+    private func sheetLeadingInset(in geometry: GeometryProxy) -> CGFloat {
+        let trailing = TrailhoundSideTabGap.trailing(in: geometry, layoutDirection: layoutDirection)
+        return layout.duoSheetLeadingInset(matchingTrailingSafeArea: trailing)
     }
 
     private var windowSafeInsets: UIEdgeInsets {
@@ -706,14 +851,19 @@ struct TripDetailView: View {
         .glassChrome(cornerRadius: 10, frozen: glassFrozen)
     }
 
+    /// Upright Duo map: the phone caption reads large on the wide sheet.
+    private var duoOverlaySheet: Bool {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay
+    }
+
     private var compactSpeedLegend: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: duoOverlaySheet ? 6 : 8) {
             legendChip(color: .green, text: L10n.speedLegendSlow)
             legendChip(color: .yellow, text: L10n.speedLegendMedium)
             legendChip(color: .red, text: L10n.speedLegendFast)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, duoOverlaySheet ? 8 : 10)
+        .padding(.vertical, duoOverlaySheet ? 4 : 6)
         .foregroundStyle(legendInk)
         .glassChrome(cornerRadius: 14, frozen: glassFrozen)
     }
@@ -730,6 +880,7 @@ struct TripDetailView: View {
                 .frame(width: 6, height: 6)
             Text(text)
                 .font(.caption2)
+                .scaleEffect(0.75)
         }
     }
 

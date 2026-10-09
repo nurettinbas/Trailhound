@@ -17,11 +17,15 @@ enum TravelJournalPanelLayout {
     static let compactMinimum: CGFloat = 292
     static let rubberBand: CGFloat = 28
 
-    static func compactHeight(containerHeight: CGFloat) -> CGFloat {
+    static func compactHeight(
+        containerHeight: CGFloat,
+        fraction: CGFloat = compactHeightFraction,
+        minimum: CGFloat = compactMinimum
+    ) -> CGFloat {
         guard containerHeight > 0 else { return 0 }
-        let preferred = containerHeight * compactHeightFraction
+        let preferred = containerHeight * fraction
         let ceiling = containerHeight * 0.40
-        return min(max(preferred, compactMinimum), ceiling)
+        return min(max(preferred, minimum), ceiling)
     }
 
     static func expandedHeight(containerHeight: CGFloat, mapPeek: CGFloat) -> CGFloat {
@@ -34,11 +38,17 @@ enum TravelJournalPanelLayout {
     static func height(
         for detent: TravelJournalPanelDetent,
         containerHeight: CGFloat,
-        mapPeek: CGFloat
+        mapPeek: CGFloat,
+        compactFraction: CGFloat = compactHeightFraction,
+        compactFloor: CGFloat = compactMinimum
     ) -> CGFloat {
         switch detent {
         case .compact:
-            return compactHeight(containerHeight: containerHeight)
+            return compactHeight(
+                containerHeight: containerHeight,
+                fraction: compactFraction,
+                minimum: compactFloor
+            )
         case .expanded:
             return expandedHeight(containerHeight: containerHeight, mapPeek: mapPeek)
         }
@@ -49,11 +59,23 @@ enum TravelJournalPanelLayout {
         detent: TravelJournalPanelDetent,
         translation: CGFloat,
         containerHeight: CGFloat,
-        mapPeek: CGFloat
+        mapPeek: CGFloat,
+        compactFraction: CGFloat = compactHeightFraction,
+        compactFloor: CGFloat = compactMinimum
     ) -> CGFloat {
-        let compact = compactHeight(containerHeight: containerHeight)
+        let compact = compactHeight(
+            containerHeight: containerHeight,
+            fraction: compactFraction,
+            minimum: compactFloor
+        )
         let expanded = expandedHeight(containerHeight: containerHeight, mapPeek: mapPeek)
-        let base = height(for: detent, containerHeight: containerHeight, mapPeek: mapPeek)
+        let base = height(
+            for: detent,
+            containerHeight: containerHeight,
+            mapPeek: mapPeek,
+            compactFraction: compactFraction,
+            compactFloor: compactFloor
+        )
         return clampedHeight(base - translation, compact: compact, expanded: expanded)
     }
 
@@ -65,11 +87,23 @@ enum TravelJournalPanelLayout {
         predictedTranslation: CGFloat,
         from detent: TravelJournalPanelDetent,
         containerHeight: CGFloat,
-        mapPeek: CGFloat
+        mapPeek: CGFloat,
+        compactFraction: CGFloat = compactHeightFraction,
+        compactFloor: CGFloat = compactMinimum
     ) -> TravelJournalPanelDetent {
-        let compact = compactHeight(containerHeight: containerHeight)
+        let compact = compactHeight(
+            containerHeight: containerHeight,
+            fraction: compactFraction,
+            minimum: compactFloor
+        )
         let expanded = expandedHeight(containerHeight: containerHeight, mapPeek: mapPeek)
-        let base = height(for: detent, containerHeight: containerHeight, mapPeek: mapPeek)
+        let base = height(
+            for: detent,
+            containerHeight: containerHeight,
+            mapPeek: mapPeek,
+            compactFraction: compactFraction,
+            compactFloor: compactFloor
+        )
         let projected = clampedHeight(base - predictedTranslation, compact: compact, expanded: expanded)
         let mid = (compact + expanded) / 2
         if predictedTranslation < -240 { return .expanded }
@@ -103,6 +137,9 @@ struct TravelJournalDetailView: View {
     @State private var mapTopChromePoints: CGFloat = 96
     @State private var mapBottomChromePoints: CGFloat = 83
     @State private var mapRefitTask: Task<Void, Never>?
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var journalPanelCollapsed = false
 
     private var members: [Trip] {
         journal.trips.filter { $0.endedAt != nil }.sorted { $0.startedAt > $1.startedAt }
@@ -198,83 +235,141 @@ struct TravelJournalDetailView: View {
         .hideSharedToolbarBackgroundIfAvailable()
     }
 
+    @ViewBuilder
     private func mapAndPanel(in geometry: GeometryProxy) -> some View {
         let mapPeek = mapTopChromePoints + 24
         let panelHeight = livePanelHeight(
             containerHeight: geometry.size.height,
             mapPeek: mapPeek
         )
-        return ZStack(alignment: .bottom) {
-            TravelJournalMapLayer(
-                style: mapStyle,
-                overlays: overlays,
-                selectedSegments: selectedSegments,
-                cameraBox: cameraBox
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        if layout.tripDetailStyle == .split {
+            TrailhoundPaneSplit {
+                editPanel(height: geometry.size.height, mapPeek: mapPeek, containerHeight: geometry.size.height, embedded: true)
+            } focus: {
+                TravelJournalMapLayer(
+                    style: mapStyle,
+                    overlays: overlays,
+                    selectedSegments: selectedSegments,
+                    cameraBox: cameraBox
+                )
+            }
+        } else if layout.tripDetailStyle == .floatingPanel {
+            TrailhoundMapCanvas(panelCollapsed: $journalPanelCollapsed) {
+                TravelJournalMapLayer(
+                    style: mapStyle,
+                    overlays: overlays,
+                    selectedSegments: selectedSegments,
+                    cameraBox: cameraBox
+                )
+            } panel: {
+                editPanel(height: geometry.size.height, mapPeek: mapPeek, containerHeight: geometry.size.height, embedded: true)
+            }
+        } else if layout.tripDetailStyle == .stacked {
+            VStack(spacing: 0) {
+                TravelJournalMapLayer(
+                    style: mapStyle,
+                    overlays: overlays,
+                    selectedSegments: selectedSegments,
+                    cameraBox: cameraBox
+                )
+                .frame(height: geometry.size.height * 0.55)
+                editPanel(
+                    height: geometry.size.height * 0.45,
+                    mapPeek: mapPeek,
+                    containerHeight: geometry.size.height,
+                    embedded: true
+                )
+            }
+        } else {
+            ZStack(alignment: .bottom) {
+                TravelJournalMapLayer(
+                    style: mapStyle,
+                    overlays: overlays,
+                    selectedSegments: selectedSegments,
+                    cameraBox: cameraBox
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            editPanel(
-                height: panelHeight,
-                mapPeek: mapPeek,
-                containerHeight: geometry.size.height
-            )
+                editPanel(
+                    height: panelHeight,
+                    mapPeek: mapPeek,
+                    containerHeight: geometry.size.height,
+                    leadingInset: sheetLeadingInset(in: geometry)
+                )
+            }
+            .onAppear {
+                refreshMapChromeInsets(from: geometry)
+            }
+            .onChange(of: geometry.size) { _, _ in
+                refreshMapChromeInsets(from: geometry)
+                scheduleMapRefit(animated: false)
+            }
         }
-        .onAppear {
-            refreshMapChromeInsets(from: geometry)
-        }
-        .onChange(of: geometry.size) { _, _ in
-            refreshMapChromeInsets(from: geometry)
-            scheduleMapRefit(animated: false)
-        }
+    }
+
+    /// Side-tab column on this Duo sheet. The leading gap copies that trailing inset.
+    private func sheetLeadingInset(in geometry: GeometryProxy) -> CGFloat {
+        let trailing = TrailhoundSideTabGap.trailing(in: geometry, layoutDirection: layoutDirection)
+        return layout.duoSheetLeadingInset(matchingTrailingSafeArea: trailing)
     }
 
     private func editPanel(
         height: CGFloat,
         mapPeek: CGFloat,
-        containerHeight: CGFloat
+        containerHeight: CGFloat,
+        embedded: Bool = false,
+        leadingInset: CGFloat = 0
     ) -> some View {
-        TravelJournalEditPanel(
-            journal: journal,
-            trips: members,
-            selectedTripID: selectedTripID,
-            places: places,
-            restHeight: height,
-            isExpanded: panelDetent == .expanded,
-            reduceMotion: reduceMotion,
-            onSelectTrip: { selectedTripID = $0 },
-            onOpenTrip: { openTrip = $0 },
-            onRemoveTrip: removeFromJournal,
-            onEdit: { editorDraft = .edit(journal) },
-            onToggleExpanded: { togglePanelDetent() },
-            onGrabberDragChanged: { translation in
-                dragTranslation = translation
-            },
-            onGrabberDragEnded: { predicted in
-                snapPanel(
-                    predictedTranslation: predicted,
-                    containerHeight: containerHeight,
-                    mapPeek: mapPeek
-                )
+        let resolvedLeading = embedded ? 0 : leadingInset
+        return HStack(alignment: .bottom, spacing: 0) {
+            if resolvedLeading > 0 {
+                Color.clear
+                    .frame(width: resolvedLeading, height: 0)
+                    .allowsHitTesting(false)
             }
-        )
-        .frame(maxWidth: .infinity)
-        .background {
-            AtmosphericBackground(style: .lightweight)
-        }
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 18,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 18,
-                style: .continuous
+            TravelJournalEditPanel(
+                journal: journal,
+                trips: members,
+                selectedTripID: selectedTripID,
+                places: places,
+                restHeight: height,
+                isExpanded: panelDetent == .expanded,
+                reduceMotion: reduceMotion,
+                onSelectTrip: { selectedTripID = $0 },
+                onOpenTrip: { openTrip = $0 },
+                onRemoveTrip: removeFromJournal,
+                onEdit: { editorDraft = .edit(journal) },
+                onToggleExpanded: { togglePanelDetent() },
+                onGrabberDragChanged: { translation in
+                    dragTranslation = translation
+                },
+                onGrabberDragEnded: { predicted in
+                    snapPanel(
+                        predictedTranslation: predicted,
+                        containerHeight: containerHeight,
+                        mapPeek: mapPeek
+                    )
+                }
             )
-        )
-        .offset(y: panelVisible ? 0 : height + 24)
-        .opacity(panelVisible ? 1 : 0)
+            .frame(maxWidth: .infinity)
+            .background {
+                AtmosphericBackground(style: .lightweight)
+            }
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: embedded ? GlassTokens.cardRadius : 18,
+                    bottomLeadingRadius: embedded ? GlassTokens.cardRadius : (resolvedLeading > 0 ? 18 : 0),
+                    bottomTrailingRadius: embedded ? GlassTokens.cardRadius : (resolvedLeading > 0 ? 18 : 0),
+                    topTrailingRadius: embedded ? GlassTokens.cardRadius : 18,
+                    style: .continuous
+                )
+            )
+        }
+        .offset(y: embedded || panelVisible ? 0 : height + 24)
+        .opacity(embedded || panelVisible ? 1 : 0)
         .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: panelRisen)
         .animation(reduceMotion ? nil : mapExpandAnimation, value: isMapExpanded)
-        .allowsHitTesting(panelVisible)
+        .allowsHitTesting(embedded || panelVisible)
     }
 
     private var mapExpandAnimation: Animation {
@@ -293,12 +388,23 @@ struct TravelJournalDetailView: View {
         scheduleMapRefit(delayMilliseconds: 80)
     }
 
+    /// Upright Duo card was a tall phone sheet, so the summary sat on a large empty band.
+    private var duoCompactFraction: CGFloat {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay ? 0.24 : TravelJournalPanelLayout.compactHeightFraction
+    }
+
+    private var duoCompactFloor: CGFloat {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay ? 220 : TravelJournalPanelLayout.compactMinimum
+    }
+
     private func livePanelHeight(containerHeight: CGFloat, mapPeek: CGFloat) -> CGFloat {
         TravelJournalPanelLayout.draggedHeight(
             detent: panelDetent,
             translation: dragTranslation,
             containerHeight: containerHeight,
-            mapPeek: mapPeek
+            mapPeek: mapPeek,
+            compactFraction: duoCompactFraction,
+            compactFloor: duoCompactFloor
         )
     }
 
@@ -319,7 +425,9 @@ struct TravelJournalDetailView: View {
             predictedTranslation: predictedTranslation,
             from: panelDetent,
             containerHeight: containerHeight,
-            mapPeek: mapPeek
+            mapPeek: mapPeek,
+            compactFraction: duoCompactFraction,
+            compactFloor: duoCompactFloor
         )
         if next != panelDetent {
             TrailhoundHaptics.selection()
@@ -473,7 +581,9 @@ struct TravelJournalDetailView: View {
             height = TravelJournalPanelLayout.height(
                 for: panelDetent,
                 containerHeight: mapViewportSize.height,
-                mapPeek: mapTopChromePoints + 24
+                mapPeek: mapTopChromePoints + 24,
+                compactFraction: duoCompactFraction,
+                compactFloor: duoCompactFloor
             )
         }
         guard let region = TripDetailViewModel.regionFitting(

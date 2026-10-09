@@ -7,6 +7,7 @@ struct FrequentRoutesMapLegend: View {
     var selected: FrequentRouteAggregate?
     var bottomInset: CGFloat = 34
     @Binding var isDark: Bool
+    var onSelect: (FrequentRouteAggregate) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -39,6 +40,23 @@ struct FrequentRoutesMapLegend: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if aggregates.count > 1 {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(aggregates) { route in
+                            Button {
+                                onSelect(route)
+                            } label: {
+                                Text("\(route.startDisplay) → \(route.endDisplay)")
+                                    .font(.caption)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.glassPlainHit)
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
         }
         .padding(16)
         .glassCard(cornerRadius: 20, frozen: true, allowsNative: false)
@@ -65,6 +83,7 @@ struct FrequentRoutesExpandOverlay: View {
     var onClose: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.trailhoundLayout) private var layout
     @State private var selected: FrequentRouteAggregate?
     @State private var isDark = false
 
@@ -116,9 +135,15 @@ struct FrequentRoutesExpandOverlay: View {
                     aggregates: aggregates,
                     selected: selected,
                     bottomInset: bottomInset,
-                    isDark: $isDark
+                    isDark: $isDark,
+                    onSelect: { selected = $0 }
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .frame(
+                    maxWidth: layout.layoutClass == .phone ? .infinity : GlassTokens.floatingPanelWidth,
+                    maxHeight: .infinity,
+                    alignment: layout.mapChrome == .bottomSheet ? .bottom : .leading
+                )
+                .padding(layout.layoutClass == .phone ? 0 : 16)
                 .opacity(isExpanded ? 1 : 0)
                 .allowsHitTesting(isExpanded)
                 .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
@@ -129,9 +154,13 @@ struct FrequentRoutesExpandOverlay: View {
                 .opacity(isExpanded ? 1 : 0)
                 .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
                 .allowsHitTesting(isExpanded)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: layout.pinsOverlayCloseLeading ? .topLeading : .topTrailing
+                )
                 .padding(.top, topInset)
-                .padding(.trailing, 12)
+                .padding(.horizontal, 12)
             }
             .onGlassShell()
             .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)

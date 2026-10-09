@@ -18,6 +18,7 @@ struct TravelJournalEditPanel: View {
     var onGrabberDragEnded: (CGFloat) -> Void
 
     @Bindable private var settings = AppSettings.shared
+    @State private var grabberHint = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,7 +75,12 @@ struct TravelJournalEditPanel: View {
                 .font(.system(size: 11, weight: .semibold))
                 .glassTertiaryInk()
                 .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                .offset(y: grabberNudge)
                 .padding(.top, 4)
+                .onAppear { startGrabberHint() }
+                .onChange(of: isExpanded) { _, _ in
+                    startGrabberHint()
+                }
         }
         .padding(.top, 10)
         .padding(.bottom, 6)
@@ -99,6 +105,23 @@ struct TravelJournalEditPanel: View {
         .accessibilityLabel(isExpanded
             ? L10n.string("journal.map.collapse")
             : L10n.journalTrips)
+    }
+
+    /// A short lift while the sheet is compact, so the chevron reads as “pull up”.
+    private var grabberNudge: CGFloat {
+        guard !reduceMotion, !isExpanded, grabberHint else { return 0 }
+        return -5
+    }
+
+    private func startGrabberHint() {
+        guard !reduceMotion, !isExpanded else {
+            grabberHint = false
+            return
+        }
+        grabberHint = false
+        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+            grabberHint = true
+        }
     }
 
     private var panelHeader: some View {
@@ -130,20 +153,7 @@ struct TravelJournalEditPanel: View {
                     .lineLimit(isExpanded ? 4 : 2)
             }
 
-            HStack(spacing: 8) {
-                Button(action: onToggleExpanded) {
-                    metric(L10n.journalTripCount(journal.tripCount), icon: "map")
-                }
-                .buttonStyle(.glassPlainHit)
-                .accessibilityHint(isExpanded
-                    ? L10n.string("journal.map.collapse")
-                    : L10n.string("journal.map.expand"))
-
-                metric(DateFormatters.formatDistance(journal.distanceMeters), icon: "road.lanes")
-                if journal.fuelCost > 0 {
-                    metric(FuelCostCalculator.formatCost(journal.fuelCost), icon: "fuelpump")
-                }
-            }
+            metricRow
         }
     }
 
@@ -197,16 +207,45 @@ struct TravelJournalEditPanel: View {
         }
     }
 
-    private func metric(_ text: String, icon: String) -> some View {
-        HStack(spacing: 4) {
+    /// Phone uses the caption chips. The upright Duo card is narrower, so the row
+    /// steps down until trips, distance, and cost sit on one line.
+    private var metricRow: some View {
+        ViewThatFits(in: .horizontal) {
+            metricLine(text: .caption.weight(.semibold), icon: .caption2.weight(.semibold), spacing: 8, horizontalPad: 8, verticalPad: 5)
+            metricLine(text: .caption2.weight(.semibold), icon: .caption2.weight(.semibold), spacing: 4, horizontalPad: 6, verticalPad: 4)
+            metricLine(text: .system(size: 10, weight: .semibold), icon: .system(size: 9, weight: .semibold), spacing: 3, horizontalPad: 5, verticalPad: 3)
+        }
+    }
+
+    private func metricLine(text: Font, icon: Font, spacing: CGFloat, horizontalPad: CGFloat, verticalPad: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            Button(action: onToggleExpanded) {
+                metric(L10n.journalTripCount(journal.tripCount), icon: "map", textFont: text, iconFont: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
+            }
+            .buttonStyle(.glassPlainHit)
+            .accessibilityHint(isExpanded
+                ? L10n.string("journal.map.collapse")
+                : L10n.string("journal.map.expand"))
+
+            metric(DateFormatters.formatDistance(journal.distanceMeters), icon: "road.lanes", textFont: text, iconFont: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
+            if journal.fuelCost > 0 {
+                metric(FuelCostCalculator.formatCost(journal.fuelCost), icon: "fuelpump", textFont: text, iconFont: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func metric(_ text: String, icon: String, textFont: Font, iconFont: Font, horizontalPad: CGFloat, verticalPad: CGFloat) -> some View {
+        HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.caption2.weight(.semibold))
+                .font(iconFont)
             Text(text)
-                .font(.caption.weight(.semibold))
+                .font(textFont)
+                .lineLimit(1)
         }
         .glassAccentForeground()
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, horizontalPad)
+        .padding(.vertical, verticalPad)
         .background {
             Capsule().fill(TrailhoundBrandColors.brandBottom.opacity(0.12))
         }

@@ -9,6 +9,7 @@ struct YearRecapStoryView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.trailhoundLayout) private var layout
 
     @State private var frozen: YearRecapSnapshot
     @State private var pages: [RecapStoryPage]
@@ -80,6 +81,18 @@ struct YearRecapStoryView: View {
     }
 
     var body: some View {
+        ZStack {
+            if layout.layoutClass != .phone {
+                AtmosphericBackground()
+            }
+            storyStage
+                .frame(maxWidth: layout.storyStageMaxWidth ?? .infinity)
+                .padding(.horizontal, layout.layoutClass == .duoOpen ? GlassTokens.hingeGutter : 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var storyStage: some View {
         ZStack(alignment: .top) {
             visualLayers
                 .allowsHitTesting(false)
