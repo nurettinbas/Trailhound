@@ -793,6 +793,9 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.layoutDirection) private var layoutDirection
     var gutter: CGFloat?
+    /// Live map column. It covers the vertical safe area so the shell blue does not show above and below the map.
+    var leadingFillsVertically: Bool = false
+    var focusFillsVertically: Bool = false
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var focus: () -> Focus
 
@@ -829,15 +832,23 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
 
     private func split(gap: CGFloat, leadingWidth: CGFloat?) -> some View {
         HStack(spacing: gap) {
-            leading()
-                .frame(width: leadingWidth)
-                .frame(maxWidth: leadingWidth == nil ? .infinity : nil, maxHeight: .infinity)
-                .clipShape(Rectangle())
-            focus()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipShape(Rectangle())
+            pane(leading(), width: leadingWidth, fillsVertically: leadingFillsVertically)
+            pane(focus(), width: nil, fillsVertically: focusFillsVertically)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func pane<Content: View>(_ content: Content, width: CGFloat?, fillsVertically: Bool) -> some View {
+        let framed = content
+            .frame(width: width)
+            .frame(maxWidth: width == nil ? .infinity : nil, maxHeight: .infinity)
+        return Group {
+            if fillsVertically {
+                framed.ignoresSafeArea(edges: .vertical)
+            } else {
+                framed.clipShape(Rectangle())
+            }
+        }
     }
 
     private var defaultGutter: CGFloat {

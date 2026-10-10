@@ -526,7 +526,7 @@ struct TripListView: View {
                 recordingPane
             }
         } else if layout.recordingCardLeads {
-            TrailhoundPaneSplit {
+            TrailhoundPaneSplit(leadingFillsVertically: live) {
                 if live {
                     liveFollowMap
                 } else {
@@ -536,7 +536,7 @@ struct TripListView: View {
                 tripList(scrollProxy: scrollProxy)
             }
         } else {
-            TrailhoundPaneSplit {
+            TrailhoundPaneSplit(focusFillsVertically: live) {
                 tripList(scrollProxy: scrollProxy)
             } focus: {
                 if live {
