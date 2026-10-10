@@ -259,9 +259,11 @@ struct TripListView: View {
         travelSuggestion = nil
     }
 
-    /// Wide idle shows both libraries. A recording, live map, or selected trip keeps the trailing pane for that surface.
+    /// Wide idle shows both libraries, except the Duo book: that list is one full-width column.
+    /// A recording, live map, or selected trip keeps the trailing pane for that surface.
     private var showsLibrarySplit: Bool {
         layout.splitsTrips
+            && !layout.isWideBook
             && !recordingService.state.isActiveSession
             && paneTripID == nil
             && !showLiveFollowMap
@@ -444,7 +446,7 @@ struct TripListView: View {
 
     private var liveMapCoverPresented: Binding<Bool> {
         Binding(
-            get: { showLiveFollowMap && !layout.splitsTrips && !layout.pinsRecordingCardToFold },
+            get: { showLiveFollowMap && !layout.splitsRecording && !layout.pinsRecordingCardToFold },
             set: { showLiveFollowMap = $0 }
         )
     }
@@ -479,8 +481,10 @@ struct TripListView: View {
                 } else if layout.pinsRecordingCardToFold,
                           recordingService.state.isActiveSession || showLiveFollowMap {
                     recordingFoldStack(scrollProxy: scrollProxy)
-                } else if layout.splitsTrips,
-                          recordingService.state.isActiveSession || paneTripID != nil || showLiveFollowMap {
+                } else if layout.splitsRecording,
+                          recordingService.state.isActiveSession || showLiveFollowMap {
+                    tripsSplit(scrollProxy: scrollProxy)
+                } else if layout.splitsTrips, paneTripID != nil {
                     tripsSplit(scrollProxy: scrollProxy)
                 } else if showsLibrarySplit {
                     librarySplit(scrollProxy: scrollProxy)
@@ -521,6 +525,16 @@ struct TripListView: View {
             } focus: {
                 recordingPane
             }
+        } else if layout.recordingCardLeads {
+            TrailhoundPaneSplit {
+                if live {
+                    liveFollowMap
+                } else {
+                    recordingPane
+                }
+            } focus: {
+                tripList(scrollProxy: scrollProxy)
+            }
         } else {
             TrailhoundPaneSplit {
                 tripList(scrollProxy: scrollProxy)
@@ -541,15 +555,15 @@ struct TripListView: View {
             if live {
                 liveFollowMap
             } else {
-                foldRecordingCard
+                foldRecordingCard(expands: true)
             }
         } bottom: {
             tripList(scrollProxy: scrollProxy, paintsAtmosphere: false)
         }
     }
 
-    /// Same recording card as the phone list, pinned so its bottom edge sits on the horizontal fold.
-    private var foldRecordingCard: some View {
+    /// Same recording card as the phone list, centered in the top half of the upright fold.
+    private func foldRecordingCard(expands: Bool) -> some View {
         ActiveTripView(
             morphNamespace: tripMorphNamespace,
             morphID: recordingService.activeTripID ?? UUID(),
@@ -569,8 +583,11 @@ struct TripListView: View {
             },
             isRecordingCardVisible: true
         )
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, 8)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: expands ? .infinity : nil,
+            alignment: expands ? .center : .top
+        )
     }
 
     private func librarySplit(scrollProxy: ScrollViewProxy) -> some View {
@@ -620,7 +637,7 @@ struct TripListView: View {
         )
         .glassListChrome()
         .listSectionSpacing(6)
-        .portraitPaneListWidth(layout.splitsTrips)
+        .portraitPaneListWidth(layout.splitsTrips || layout.isWideBook)
         .refreshable {
             await refreshFromPull()
         }
@@ -939,7 +956,7 @@ struct TripListView: View {
         .glassListChrome(showsAtmosphere: paintsAtmosphere)
         // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
         .listSectionSpacing(6)
-        .portraitPaneListWidth(layout.splitsTrips)
+        .portraitPaneListWidth(layout.splitsTrips || layout.isWideBook)
         .refreshable {
             await refreshFromPull()
         }

@@ -106,7 +106,7 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
 
     var recordingCardArrangement: RecordingCardArrangement {
         switch layoutClass {
-        case .phone:
+        case .phone, .phoneLandscape:
             return .list
         case .pad where !isLandscape:
             return .banner
@@ -117,9 +117,32 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         }
     }
 
-    /// Open fold held upright: the hinge runs across the middle. The recording card sits on it.
+    /// Open fold held upright: the hinge runs across the middle. The recording card is centered in the top half.
     var pinsRecordingCardToFold: Bool {
         layoutClass == .duoOpen && !isLandscape
+    }
+
+    /// Recording uses a side-by-side pane. Closed landscape keeps the card in the scrolling list.
+    var splitsRecording: Bool {
+        switch layoutClass {
+        case .duoOpen, .pad:
+            return isLandscape
+        case .phone, .phoneLandscape:
+            return false
+        }
+    }
+
+    /// Open book, landscape: the recording card takes the leading half, the trip list the trailing half.
+    var recordingCardLeads: Bool {
+        layoutClass == .duoOpen && isLandscape
+    }
+
+    /// Landscape phone and the open book. Idle trips are one full-width list, not Trips | Travels.
+    /// Width is not gated: the side tab shrinks the measured window under the fold span.
+    var isWideBook: Bool {
+        if layoutClass == .phoneLandscape { return true }
+        if layoutClass == .duoOpen, isLandscape { return true }
+        return false
     }
 
     /// Closed Duo cover, and the upright open fold when it is still shorter than a phone.
@@ -840,7 +863,7 @@ struct TrailhoundFoldStack<Top: View, Bottom: View>: View {
     var body: some View {
         VStack(spacing: gutter) {
             top()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .frame(height: topHeight)
                 .clipShape(Rectangle())
             bottom()

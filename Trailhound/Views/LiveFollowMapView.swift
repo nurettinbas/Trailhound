@@ -24,6 +24,7 @@ struct LiveFollowMapView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -162,7 +163,8 @@ struct LiveFollowMapView: View {
                     settledChromeStack(
                         topInset: topInset,
                         bottomInset: bottomInset,
-                        width: geo.size.width
+                        width: geo.size.width,
+                        gpsClearance: gpsCameraClearance(safe: safe)
                     )
 
                     if showHeroFlight {
@@ -242,12 +244,17 @@ struct LiveFollowMapView: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    private func settledChromeStack(topInset: CGFloat, bottomInset: CGFloat, width: CGFloat) -> some View {
+    private func settledChromeStack(
+        topInset: CGFloat,
+        bottomInset: CGFloat,
+        width: CGFloat,
+        gpsClearance: CGFloat
+    ) -> some View {
         let hudWidth = fillsPane
             ? max(0, width - 24)
             : min(width * 8 / 12, max(0, width - 24))
         return VStack(spacing: 0) {
-            topChrome
+            topChrome(gpsClearance: gpsClearance)
                 .padding(.horizontal, GlassTokens.panelHorizontalInset)
                 .padding(.top, topInset + 10)
                 .opacity(chromeReveal)
@@ -351,7 +358,7 @@ struct LiveFollowMapView: View {
         .accessibilityLabel(L10n.recordingPaused)
     }
 
-    private var topChrome: some View {
+    private func topChrome(gpsClearance: CGFloat) -> some View {
         HStack(spacing: 8) {
             if isPaused {
                 pauseStatusChip(font: .caption.weight(.bold), iconSize: 13, horizontal: 8, vertical: 6)
@@ -388,7 +395,17 @@ struct LiveFollowMapView: View {
             }
 
             GPSQualityBadge(quality: session.displayedGPSQuality, compact: true)
+                .padding(.trailing, gpsClearance)
         }
+    }
+
+    /// The punch-hole sits in the trailing corner, and the map ignores that inset.
+    /// Landscape reports it as the side safe area; portrait does not, so keep a fixed nudge.
+    private func gpsCameraClearance(safe: UIEdgeInsets) -> CGFloat {
+        let trailing = layoutDirection == .rightToLeft ? safe.left : safe.right
+        if trailing >= 20 { return trailing + 36 }
+        guard layout.pinsOverlayCloseLeading else { return 0 }
+        return layout.isLandscape ? 64 : 72
     }
 
     /// 2D/3D, overview/follow switch, and close — chips on the palette-tinted recording HUD.

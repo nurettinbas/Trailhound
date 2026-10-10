@@ -52,6 +52,52 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertEqual(compactWide.duoSheetLeadingInset(matchingTrailingSafeArea: 80), GlassTokens.panelHorizontalInset)
     }
 
+    func testClosedLandscapeKeepsTheRecordingCardInTheList() {
+        let book = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .compact,
+            size: CGSize(width: 1600, height: 402),
+            idiom: .phone
+        )
+        XCTAssertEqual(book.layoutClass, .phoneLandscape)
+        XCTAssertTrue(book.splitsTrips)
+        XCTAssertTrue(book.isWideBook)
+        XCTAssertFalse(book.splitsRecording)
+        XCTAssertFalse(book.recordingCardLeads)
+        XCTAssertFalse(book.pinsRecordingCardToFold)
+        XCTAssertEqual(book.recordingCardArrangement, .list)
+        XCTAssertFalse(book.hidesRecordingCardFromList)
+
+        let phoneLand = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .compact,
+            size: CGSize(width: 844, height: 390),
+            idiom: .phone
+        )
+        XCTAssertFalse(phoneLand.splitsRecording)
+        XCTAssertFalse(phoneLand.recordingCardLeads)
+        XCTAssertEqual(phoneLand.recordingCardArrangement, .list)
+        XCTAssertFalse(phoneLand.hidesRecordingCardFromList)
+    }
+
+    func testOpenBookLandscapePutsTheRecordingCardOnTheLeadingHalf() {
+        let openBook = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1600, height: 1100),
+            idiom: .phone
+        )
+        XCTAssertEqual(openBook.layoutClass, .duoOpen)
+        XCTAssertTrue(openBook.isLandscape)
+        XCTAssertTrue(openBook.splitsTrips)
+        XCTAssertTrue(openBook.isWideBook)
+        XCTAssertTrue(openBook.splitsRecording)
+        XCTAssertTrue(openBook.recordingCardLeads)
+        XCTAssertFalse(openBook.pinsRecordingCardToFold)
+        XCTAssertEqual(openBook.recordingCardArrangement, .pane)
+        XCTAssertTrue(openBook.hidesRecordingCardFromList)
+    }
+
     func testOpenFoldLandscapeIsHalfMapHalfDetails() {
         let book = TrailhoundLayoutResolver.snapshot(
             horizontal: .compact,
