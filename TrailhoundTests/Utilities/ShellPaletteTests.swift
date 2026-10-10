@@ -215,53 +215,32 @@ final class ShellPaletteTests: XCTestCase {
         )
     }
 
-    func testTabBarUnselectedMatchesDoneTintInLightAndStaysWhiteInDark() {
-        let sky = TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .light)
-        XCTAssertEqual(
-            sky,
-            TrailhoundTabBarTheme.uiColor(ShellPalette.sky.atmosphere(for: .light).tint)
-        )
-        let gold = TrailhoundTabBarTheme.unselectedUIColor(palette: .gold, scheme: .light)
-        XCTAssertEqual(
-            gold,
-            TrailhoundTabBarTheme.uiColor(ShellPalette.gold.atmosphere(for: .light).tint)
-        )
-        XCTAssertNotEqual(gold, sky)
-        XCTAssertNotEqual(sky, UIColor.white)
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .dark),
-            UIColor.white
-        )
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
-            UIColor.white
-        )
-    }
-
-    func testTabBarLightSelectedGlyphIsWhite() {
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
-            .white
-        )
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .light),
-            .white
-        )
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .dark),
-            TrailhoundTabBarTheme.selectedUIColor(palette: .lime, scheme: .dark)
-        )
-    }
-
-    func testTabBarSelectedBlobGlassIsDarkAtmosphereMid() {
-        let coral = TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral)
-        let expected = TrailhoundTabBarTheme.uiColor(ShellPalette.coral.atmosphere(for: .dark).mid)
-        XCTAssertEqual(coral, expected)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        coral.getRed(&r, green: &g, blue: &b, alpha: &a)
-        XCTAssertLessThan((r + g + b) / 3, 0.35)
+    func testTabBarSelectedGlyphMatchesAppearanceTint() {
+        for palette in ShellPalette.allCases {
+            for scheme in [ColorScheme.light, ColorScheme.dark] {
+                let expected = TrailhoundTabBarTheme.uiColor(palette.atmosphere(for: scheme).tint)
+                XCTAssertEqual(
+                    TrailhoundTabBarTheme.selectionTintUIColor(palette: palette, scheme: scheme),
+                    expected,
+                    "\(palette.rawValue) \(scheme)"
+                )
+                XCTAssertEqual(
+                    TrailhoundTabBarTheme.selectedGlyphUIColor(palette: palette, scheme: scheme),
+                    expected,
+                    "\(palette.rawValue) \(scheme)"
+                )
+            }
+        }
         XCTAssertNotEqual(
-            TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .ocean, scheme: .light),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .ocean, scheme: .dark)
+        )
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .forest, scheme: .light),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .sunset, scheme: .light)
+        )
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
             UIColor.white
         )
     }

@@ -333,6 +333,7 @@ struct TripDetailView: View {
         .accessibilityIdentifier("tripDetail.screen")
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .background(NavigationInteractivePopEnabler())
         .toolbar {

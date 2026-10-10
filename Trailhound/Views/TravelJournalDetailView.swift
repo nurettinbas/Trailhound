@@ -158,6 +158,7 @@ struct TravelJournalDetailView: View {
             .glassMapTopEdgeHidden()
             .navigationTitle(journal.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
             .navigationBarBackButtonHidden(true)
             .background(NavigationInteractivePopEnabler())
             .toolbar {

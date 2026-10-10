@@ -340,26 +340,42 @@ struct StatsView: View {
             }
             summaryMetricsGrid(currencyCode: currencyCode)
                 .statsFullCard(contentInset: StatsCardTokens.summaryGridInset)
-            if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
-                StatsChartPager(
-                    pageCount: dailyChartKinds.count,
-                    contentHeight: dailyChartKinds.contains(.expenses)
-                        ? StatsChartPagerMetrics.costContentHeight
-                        : StatsChartPagerMetrics.dailyContentHeight,
-                    selection: $dailyChartPage,
-                    reduceMotion: reduceMotion
-                ) { index in
-                    dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
-                }
-                .statsFullCard()
-                .moduleSpan(.feature)
+            if !placesDailyChartOnRight {
+                wideDailyChartCard
             }
+        }
+    }
+
+    /// Landscape book keeps Daily distance with the right-hand charts.
+    /// The upright fold still stacks it under the summary on the top pane.
+    private var placesDailyChartOnRight: Bool {
+        layout.isLandscape
+    }
+
+    @ViewBuilder
+    private var wideDailyChartCard: some View {
+        if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
+            StatsChartPager(
+                pageCount: dailyChartKinds.count,
+                contentHeight: dailyChartKinds.contains(.expenses)
+                    ? StatsChartPagerMetrics.costContentHeight
+                    : StatsChartPagerMetrics.dailyContentHeight,
+                selection: $dailyChartPage,
+                reduceMotion: reduceMotion
+            ) { index in
+                dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
+            }
+            .statsFullCard()
+            .moduleSpan(.feature)
         }
     }
 
     @ViewBuilder
     private func wideStatsDistributions(currencyCode: String) -> some View {
         VStack(spacing: 12) {
+            if placesDailyChartOnRight {
+                wideDailyChartCard
+            }
             if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
                 StatsChartPager(
                     pageCount: weekdayChartKinds.count,

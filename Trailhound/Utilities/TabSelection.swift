@@ -10,6 +10,11 @@ final class TabSelection {
     var showNotificationsCover = false
     /// Bumped when Start should reveal the recording card on Trips.
     private(set) var scrollToRecordingToken = 0
+    /// Wide book: bell and merge sit under the status cluster, not in the title row.
+    var wideBookTrailingVisible = false
+    var wideBookTrailingSymbol = "arrow.triangle.merge"
+    var wideBookTrailingLabel = ""
+    private(set) var wideBookTrailingToken = 0
     /// Set by care notification deep link; consumed by PairingTabView.
     private(set) var pendingVehicleCareID: UUID?
     private(set) var pendingStatsAnchor: StatsPremiumAnchor?
@@ -35,6 +40,10 @@ final class TabSelection {
     func focusRecordingCard() {
         openTrips()
         scrollToRecordingToken += 1
+    }
+
+    func triggerWideBookTrailing() {
+        wideBookTrailingToken += 1
     }
 
     func openVehicleCare(vehicleID: UUID) {

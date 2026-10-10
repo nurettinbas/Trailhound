@@ -435,7 +435,16 @@ struct TripListView: View {
               recordingService.activeTripID != nil
         else { return false }
 
+        // The upright fold and the wide book keep the recording surface on screen.
+        guard !layout.pinsRecordingCardToFold, !layout.isWideBook else { return false }
         return !isRecordingCardInViewport
+    }
+
+    /// Wide book while recording: the title row is an empty blur over the trip list.
+    private var hidesWideBookNavigationBar: Bool {
+        layout.isWideBook
+            && !isMergeMode
+            && (recordingService.state.isActiveSession || showLiveFollowMap)
     }
 
     private var shellPageOwnsLeading: Bool {
@@ -500,7 +509,18 @@ struct TripListView: View {
             .sheet(item: $journalEditor) { draft in
                 TravelJournalEditorSheet(draft: draft)
             }
-            .trailhoundShellToolbar(pageOwnsLeading: shellPageOwnsLeading)
+            .trailhoundShellToolbar(
+                pageOwnsLeading: shellPageOwnsLeading,
+                includesBell: !layout.placesChromeInSideColumn
+            )
+            .onAppear { syncWideBookStatusActions() }
+            .onChange(of: layout.placesChromeInSideColumn) { _, _ in syncWideBookStatusActions() }
+            .onChange(of: isMergeMode) { _, _ in syncWideBookStatusActions() }
+            .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
+            .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
+                performWideBookTrailing()
+            }
+            .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -551,7 +571,10 @@ struct TripListView: View {
     private func recordingFoldStack(scrollProxy: ScrollViewProxy) -> some View {
         let recording = recordingService.state.isActiveSession && endCredits == nil
         let live = showLiveFollowMap && recording
-        return TrailhoundFoldStack {
+        return TrailhoundFoldStack(
+            gutter: live ? 0 : GlassTokens.hingeGutter,
+            topFillsToEdge: live
+        ) {
             if live {
                 liveFollowMap
             } else {
@@ -683,6 +706,7 @@ struct TripListView: View {
             vehicleSystemImage: "car.fill",
             cardAnchor: liveFollowCardAnchor,
             fillsPane: true,
+            pinsAttributionToBottomCorner: layout.pinsRecordingCardToFold,
             onClose: {
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
@@ -706,6 +730,21 @@ struct TripListView: View {
         .environment(AppServices.runtime.locationService)
         .environment(NetworkMonitor.shared)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Wide book draws the bell and merge under the status cluster, above the side tab.
+    private func syncWideBookStatusActions() {
+        tabSelection.wideBookTrailingVisible = layout.placesChromeInSideColumn && !isMergeMode
+        tabSelection.wideBookTrailingSymbol = listMode == .travels ? "plus" : "arrow.triangle.merge"
+        tabSelection.wideBookTrailingLabel = listMode == .travels ? L10n.journalNew : L10n.actionMerge
+    }
+
+    private func performWideBookTrailing() {
+        if listMode == .travels {
+            journalEditor = .create()
+        } else {
+            isMergeMode = true
+        }
     }
 
     private func tripList(
@@ -976,7 +1015,7 @@ struct TripListView: View {
                 TripDetailView(trip: trip)
             }
         }
-        .navigationTitle("Trailhound")
+        .navigationTitle(layout.isWideBook ? "" : "Trailhound")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             refreshOrphans()
@@ -1119,8 +1158,8 @@ struct TripListView: View {
                     }
                     .hideSharedToolbarBackgroundIfAvailable()
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if showsLibrarySplit {
+                if !layout.placesChromeInSideColumn, showsLibrarySplit {
+                    ToolbarItem(placement: .topBarTrailing) {
                         GlassToolbarCluster(clustered: true) {
                             Button {
                                 journalEditor = .create()
@@ -1135,7 +1174,10 @@ struct TripListView: View {
                             }
                             .accessibilityLabel(L10n.actionMerge)
                         }
-                    } else {
+                    }
+                }
+                if !layout.placesChromeInSideColumn, !showsLibrarySplit {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             if listMode == .travels {
                                 journalEditor = .create()
@@ -1143,12 +1185,15 @@ struct TripListView: View {
                                 isMergeMode = true
                             }
                         } label: {
-                            GlassToolbarSymbol(
-                                systemName: listMode == .travels ? "plus" : "arrow.triangle.merge"
+                            GlassNavCircleIcon(
+                                systemName: listMode == .travels ? "plus" : "arrow.triangle.merge",
+                                pointSize: listMode == .travels ? nil : 15
                             )
                         }
+                        .buttonStyle(.glassPlainHit)
                         .accessibilityLabel(listMode == .travels ? L10n.journalNew : L10n.actionMerge)
                     }
+                    .hideSharedToolbarBackgroundIfAvailable()
                 }
             }
         }

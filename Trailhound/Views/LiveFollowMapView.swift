@@ -14,6 +14,8 @@ struct LiveFollowMapView: View {
     var cardAnchor: RecordingCardAnchor
     /// Split / fold pane. The map fills that pane; the HUD stays inside it.
     var fillsPane: Bool = false
+    /// Upright fold only. The Apple Maps mark sits in the pane's bottom corner, on the hinge.
+    var pinsAttributionToBottomCorner: Bool = false
     var onClose: () -> Void
     var onStop: (RecordingCardAnchor) -> Void
 
@@ -255,7 +257,17 @@ struct LiveFollowMapView: View {
             max(0, width - 32)
         )
         // A wide book half used to stretch the card edge to edge. Keep the phone card's size.
-        let hudWidth = fillsPane ? min(proportional, 320) : proportional
+        // Landscape Duo cover is wider still — keep a short card in the leading corner.
+        let hudWidth: CGFloat = if landscapeDuoCover {
+            min(proportional, 250)
+        } else if fillsPane {
+            min(proportional, 320)
+        } else {
+            proportional
+        }
+        let hudBottom = pinsHUDToLeadingCorner
+            ? LiveFollowPresentation.settledBottomPadding + (landscapeDuoCover ? 10 : 28)
+            : LiveFollowPresentation.settledBottomPadding + bottomInset
         return VStack(spacing: 0) {
             topChrome(gpsClearance: gpsClearance)
                 .padding(.horizontal, GlassTokens.panelHorizontalInset)
@@ -265,10 +277,8 @@ struct LiveFollowMapView: View {
 
             Spacer(minLength: 0)
 
-            bottomHUD(useGlass: true)
-                .frame(width: hudWidth)
-                .padding(.bottom, LiveFollowPresentation.settledBottomPadding + bottomInset)
-                .opacity(chromeReveal)
+            bottomHUD(useGlass: true, tight: landscapeDuoCover)
+                .frame(width: hudWidth, alignment: .leading)
                 .background {
                     GeometryReader { geo in
                         let frame = geo.frame(in: .global)
@@ -279,11 +289,17 @@ struct LiveFollowMapView: View {
                             .onChange(of: frame.size.height) { _, _ in updateHUDAnchor(frame) }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: pinsHUDToLeadingCorner ? .leading : .center)
+                .padding(.leading, pinsHUDToLeadingCorner ? 12 : 0)
+                .padding(.bottom, hudBottom)
+                .opacity(chromeReveal)
         }
     }
 
     private var mapLayer: some View {
         LiveFollowMapKitView(
+            pinsAttributionToBottomCorner: pinsAttributionToBottomCorner,
+            centersOnScreenMidpoint: true,
             session: session,
             isFollowing: isFollowing && !isClosing,
             isPaused: isPaused,
@@ -566,8 +582,17 @@ struct LiveFollowMapView: View {
         recenterRequestToken += 1
     }
 
-    private func bottomHUD(useGlass: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+    /// Closed landscape Duo. The cover is the whole screen, so the card stays small and leading.
+    private var landscapeDuoCover: Bool {
+        !fillsPane && layout.layoutClass == .phoneLandscape
+    }
+
+    private var pinsHUDToLeadingCorner: Bool {
+        pinsAttributionToBottomCorner || landscapeDuoCover
+    }
+
+    private func bottomHUD(useGlass: Bool, tight: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: tight ? 6 : 9) {
             mapToolsRail
 
             Rectangle()
@@ -622,7 +647,7 @@ struct LiveFollowMapView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(10)
+        .padding(tight ? 8 : 10)
         // Width fills the HUD slot; height stays intrinsic so settled layout does not
         // stretch into the Spacer (morphing phase applies an explicit height separately).
         .frame(maxWidth: .infinity, alignment: .topLeading)

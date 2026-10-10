@@ -5,12 +5,13 @@ import SwiftUI
 /// Start hides while a trip is already recording or paused.
 struct TrailhoundShellToolbar: ViewModifier {
     var pageOwnsLeading: Bool = false
+    /// Wide book: the bell leaves the title row and sits under the status cluster.
+    var includesBell: Bool = true
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \VehicleProfile.name) private var vehicles: [VehicleProfile]
     @Bindable private var tabSelection = TabSelection.shared
-    @Bindable private var notificationStore = AppNotificationStore.shared
 
     func body(content: Content) -> some View {
         content.toolbar {
@@ -19,10 +20,12 @@ struct TrailhoundShellToolbar: ViewModifier {
                     startCluster
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                bellButton
+            if includesBell {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TrailhoundNotificationBell()
+                }
+                .hideSharedToolbarBackgroundIfAvailable()
             }
-            .hideSharedToolbarBackgroundIfAvailable()
         }
     }
 
@@ -47,13 +50,38 @@ struct TrailhoundShellToolbar: ViewModifier {
         }
     }
 
-    private var bellButton: some View {
+    private func startOrFocusRecording() {
+        TrailhoundHaptics.selection()
+        if recordingService.state.isActiveSession {
+            tabSelection.focusRecordingCard()
+            return
+        }
+        tabSelection.openTrips()
+        if recordingService.startManualRecording() {
+            tabSelection.focusRecordingCard()
+        }
+    }
+}
+
+extension View {
+    func trailhoundShellToolbar(pageOwnsLeading: Bool = false, includesBell: Bool = true) -> some View {
+        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading, includesBell: includesBell))
+    }
+}
+
+/// Liquid Glass bell. On the wide book it stacks under the status cluster, above the side tab.
+struct TrailhoundNotificationBell: View {
+    @Bindable private var tabSelection = TabSelection.shared
+    @Bindable private var notificationStore = AppNotificationStore.shared
+
+    var body: some View {
         Button {
             notificationStore.markAllRead()
             tabSelection.openNotifications()
         } label: {
-            GlassToolbarSymbol(systemName: "bell")
+            GlassNavCircleIcon(systemName: "bell")
         }
+        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.notificationsTitle)
         .accessibilityValue(notificationStore.unreadCount > 0 ? "\(min(notificationStore.unreadCount, 99))" : "")
         .accessibilityIdentifier("trips.notifications")
@@ -74,23 +102,5 @@ struct TrailhoundShellToolbar: ViewModifier {
                     .accessibilityHidden(true)
             }
         }
-    }
-
-    private func startOrFocusRecording() {
-        TrailhoundHaptics.selection()
-        if recordingService.state.isActiveSession {
-            tabSelection.focusRecordingCard()
-            return
-        }
-        tabSelection.openTrips()
-        if recordingService.startManualRecording() {
-            tabSelection.focusRecordingCard()
-        }
-    }
-}
-
-extension View {
-    func trailhoundShellToolbar(pageOwnsLeading: Bool = false) -> some View {
-        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading))
     }
 }

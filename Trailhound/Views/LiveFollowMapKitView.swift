@@ -28,15 +28,78 @@ enum LiveFollowRouteStrokeStyle {
 /// window rotates. A camera write in that window cancels the orientation change.
 private final class RotationPassthroughMapView: MKMapView {
     var onBoundsChange: ((CGSize) -> Void)?
+    /// Upright fold: the legal mark belongs in the pane corner, not above the tab-bar inset.
+    var pinAttributionToBottomCorner = false
+    /// Follow point sits on this map view's midpoint. A window camera inset
+    /// (the other pane, or the side tab) must not slide it left.
+    var centersOnScreenMidpoint = false
     private var isApplyingSpeedLimitInset = false
+
+    override var safeAreaInsets: UIEdgeInsets {
+        guard centersOnScreenMidpoint else { return super.safeAreaInsets }
+        var insets = super.safeAreaInsets
+        insets.left = 0
+        insets.right = 0
+        return insets
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         onBoundsChange?(bounds.size)
         guard !isApplyingSpeedLimitInset else { return }
         isApplyingSpeedLimitInset = true
-        pullSpeedLimitOffCamera()
+        if !centersOnScreenMidpoint {
+            pullSpeedLimitOffCamera()
+        }
+        pinLegalMarkToBottomCorner()
+        if centersOnScreenMidpoint {
+            keepFollowPointOnScreenMidpoint()
+        }
         isApplyingSpeedLimitInset = false
+    }
+
+    /// Equal side margins. A wider trailing inset (the camera hole) otherwise
+    /// parks the followed route left of the screen midpoint.
+    private func keepFollowPointOnScreenMidpoint() {
+        insetsLayoutMarginsFromSafeArea = false
+        var margins = directionalLayoutMargins
+        guard margins.leading != 0 || margins.trailing != 0 else { return }
+        margins.leading = 0
+        margins.trailing = 0
+        directionalLayoutMargins = margins
+    }
+
+    /// The fold pane does not include the tab bar. Cancel that inset so "Maps" sits in the corner.
+    private func pinLegalMarkToBottomCorner() {
+        guard pinAttributionToBottomCorner else { return }
+        insetsLayoutMarginsFromSafeArea = false
+        var margins = directionalLayoutMargins
+        let leading: CGFloat = 8
+        let bottom: CGFloat = 6
+        if abs(margins.leading - leading) > 0.5
+            || abs(margins.bottom - bottom) > 0.5
+            || margins.top > 0.5
+        {
+            margins.top = 0
+            margins.leading = leading
+            margins.bottom = bottom
+            directionalLayoutMargins = margins
+        }
+        guard let label = attributionLabel(in: self), label.bounds.height > 1 else { return }
+        let x: CGFloat = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? bounds.width - label.bounds.width - leading
+            : leading
+        let y = bounds.height - label.bounds.height - bottom
+        guard abs(label.frame.minX - x) > 1 || abs(label.frame.minY - y) > 1 else { return }
+        label.frame.origin = CGPoint(x: x, y: y)
+    }
+
+    private func attributionLabel(in view: UIView) -> UIView? {
+        if NSStringFromClass(type(of: view)).contains("Attribution") { return view }
+        for child in view.subviews {
+            if let found = attributionLabel(in: child) { return found }
+        }
+        return nil
     }
 
     /// MapKit pins the speed-limit chip to the trailing corner. On a landscape
@@ -66,6 +129,8 @@ private final class RotationPassthroughMapView: MKMapView {
 /// used to trigger a body re-render + `updateUIView` + history-overlay swap every
 /// GPS fix, which dropped frames once a second at speed.
 struct LiveFollowMapKitView: UIViewRepresentable {
+    var pinsAttributionToBottomCorner: Bool = false
+    var centersOnScreenMidpoint: Bool = false
     var session: LiveFollowSession
     var isFollowing: Bool
     var isPaused: Bool
@@ -116,6 +181,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         if #available(iOS 16.0, *) {
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat)
         }
+        map.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
+        map.centersOnScreenMidpoint = centersOnScreenMidpoint
         context.coordinator.mapView = map
         context.coordinator.bindSession()
         context.coordinator.installGestureBreak(on: map)
@@ -127,6 +194,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        if let mapView = mapView as? RotationPassthroughMapView {
+            mapView.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
+            mapView.centersOnScreenMidpoint = centersOnScreenMidpoint
+        }
         let shouldRecenter = context.coordinator.lastRecenterRequestToken != recenterRequestToken
             && recenterRequestToken > 0
         if shouldRecenter {
