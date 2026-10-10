@@ -250,9 +250,12 @@ struct LiveFollowMapView: View {
         width: CGFloat,
         gpsClearance: CGFloat
     ) -> some View {
-        let hudWidth = fillsPane
-            ? max(0, width - 24)
-            : min(width * 8 / 12, max(0, width - 24))
+        let proportional = min(
+            width * LiveFollowPresentation.settledWidthSpan / LiveFollowPresentation.settledWidthCount,
+            max(0, width - 32)
+        )
+        // A wide book half used to stretch the card edge to edge. Keep the phone card's size.
+        let hudWidth = fillsPane ? min(proportional, 320) : proportional
         return VStack(spacing: 0) {
             topChrome(gpsClearance: gpsClearance)
                 .padding(.horizontal, GlassTokens.panelHorizontalInset)
@@ -571,10 +574,7 @@ struct LiveFollowMapView: View {
                 .fill(.white.opacity(0.16))
                 .frame(height: 1)
 
-            ActiveTripLiveStats(
-                compact: true,
-                arrangement: fillsPane ? .grid : .inline
-            )
+            ActiveTripLiveStats(compact: true, arrangement: .inline)
 
             HStack(spacing: 8) {
                 Button {
