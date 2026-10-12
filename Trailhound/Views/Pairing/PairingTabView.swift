@@ -143,7 +143,7 @@ struct PairingTabView: View {
         .glassListChrome()
         .navigationTitle(L10n.string("vehicles.tab.title"))
         .navigationBarTitleDisplayMode(.inline)
-        .trailhoundShellToolbar(includesBell: !layout.placesChromeInSideColumn)
+        .trailhoundShellToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 LocationPermissionBadge(state: locationService.authorizationState)

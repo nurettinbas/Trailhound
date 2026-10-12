@@ -8,29 +8,9 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.layoutDirection) private var layoutDirection
     @Bindable private var settings = AppSettings.shared
     @Bindable private var tabSelection = TabSelection.shared
     @State private var windowSize: CGSize = .zero
-    @State private var windowSafeTop: CGFloat = 0
-    @State private var windowSafeLeft: CGFloat = 0
-    @State private var windowSafeRight: CGFloat = 0
-    @State private var windowTrailingColumn: CGFloat = 0
-    /// Distance from the content's trailing edge to the window edge. Zero when the root is full bleed.
-    @State private var windowContentTrailingGap: CGFloat = 0
-    @State private var windowContentLeadingGap: CGFloat = 0
-    @State private var windowContentTop: CGFloat = 0
-    @State private var sideTabMidX: CGFloat = 0
-    @State private var sideTabWindowWidth: CGFloat = 0
-    /// Window Y of the top tab glyph. Chrome stacks above this.
-    @State private var sideTabFirstIconMinY: CGFloat = 0
-    /// Overlay top-leading in window coordinates. Safe-area inset makes this non-zero.
-    @State private var overlayOriginX: CGFloat = 0
-    @State private var overlayOriginY: CGFloat = 0
-    /// SwiftUI safe insets of the root. The wider one is the side-tab column.
-    @State private var columnLeadingInset: CGFloat = 0
-    @State private var columnTrailingInset: CGFloat = 0
-    @State private var overlayWidth: CGFloat = 0
 
     var body: some View {
         Group {
@@ -59,37 +39,14 @@ struct ContentView: View {
                 GeometryReader { geo in
                     Color.clear
                         .onAppear {
-                            publishWindowMetrics(geo)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                refreshSideColumn()
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                                refreshSideColumn()
-                            }
+                            publishWindowSize(geo.size)
                         }
-                        .onChange(of: geo.size) { _, _ in
-                            sideTabMidX = 0
-                            sideTabFirstIconMinY = 0
-                            publishWindowMetrics(geo)
-                        }
-                        .onChange(of: geo.safeAreaInsets.trailing) { _, _ in
-                            publishWindowMetrics(geo)
-                        }
-                        .onChange(of: geo.safeAreaInsets.leading) { _, _ in
-                            publishWindowMetrics(geo)
+                        .onChange(of: geo.size) { _, newSize in
+                            publishWindowSize(newSize)
                         }
                 }
             }
             .allowsHitTesting(false)
-        }
-        .overlay(alignment: .topLeading) {
-            if showsSideColumnBell,
-               settings.hasCompletedOnboarding,
-               !(settings.appLockEnabled && !appLockService.isUnlocked),
-               hasSideTabColumn {
-                wideBookStatusActions
-                    .offset(x: wideBookStatusX, y: wideBookStatusTop)
-            }
         }
         .fullScreenCover(isPresented: $tabSelection.showNotificationsCover) {
             NavigationStack {
@@ -126,92 +83,6 @@ struct ContentView: View {
         AppIconSync.syncWindowStyle(settings.appearanceMode, palette: settings.shellPalette)
     }
 
-    private func publishWindowMetrics(_ geo: GeometryProxy) {
-        publishWindowSize(geo.size)
-        let top = geo.safeAreaInsets.top
-        if top != windowSafeTop { windowSafeTop = top }
-        let column = TrailhoundSideTabGap.trailing(in: geo, layoutDirection: layoutDirection)
-        if abs(column - windowTrailingColumn) > 1 { windowTrailingColumn = column }
-        let gap = contentTrailingGap(in: geo)
-        if abs(gap - windowContentTrailingGap) > 1 { windowContentTrailingGap = gap }
-        let leadingGap = contentLeadingGap(in: geo)
-        if abs(leadingGap - windowContentLeadingGap) > 1 { windowContentLeadingGap = leadingGap }
-        let contentTop = geo.frame(in: .global).minY
-        if contentTop > 0, abs(contentTop - windowContentTop) > 1 { windowContentTop = contentTop }
-        let origin = geo.frame(in: .global)
-        if abs(origin.minX - overlayOriginX) > 0.5 { overlayOriginX = origin.minX }
-        if abs(origin.minY - overlayOriginY) > 0.5 { overlayOriginY = origin.minY }
-        let wasLeading = sideColumnIsLeading
-        if abs(geo.safeAreaInsets.leading - columnLeadingInset) > 0.5 {
-            columnLeadingInset = geo.safeAreaInsets.leading
-        }
-        if abs(geo.safeAreaInsets.trailing - columnTrailingInset) > 0.5 {
-            columnTrailingInset = geo.safeAreaInsets.trailing
-        }
-        if wasLeading != sideColumnIsLeading {
-            sideTabMidX = 0
-            sideTabFirstIconMinY = 0
-        }
-        if abs(geo.size.width - overlayWidth) > 0.5 { overlayWidth = geo.size.width }
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first
-        if let window {
-            if abs(window.bounds.width - sideTabWindowWidth) > 1 {
-                sideTabWindowWidth = window.bounds.width
-            }
-            if abs(window.safeAreaInsets.left - windowSafeLeft) > 1 {
-                windowSafeLeft = window.safeAreaInsets.left
-            }
-            if abs(window.safeAreaInsets.right - windowSafeRight) > 1 {
-                windowSafeRight = window.safeAreaInsets.right
-            }
-        }
-        refreshSideColumn()
-    }
-
-    private func refreshSideColumn() {
-        guard let side = sideTabColumn() else { return }
-        if abs(side.midX - sideTabMidX) > 1 { sideTabMidX = side.midX }
-        if abs(side.firstIconMinY - sideTabFirstIconMinY) > 1 {
-            sideTabFirstIconMinY = side.firstIconMinY
-        }
-        let width = side.width
-        if abs(width - windowTrailingColumn) > 1 { windowTrailingColumn = width }
-    }
-
-    private func contentLeadingGap(in geo: GeometryProxy) -> CGFloat {
-        let frame = geo.frame(in: .global)
-        guard frame.width > 1 else { return 0 }
-        return frame.minX > 1 ? frame.minX : 0
-    }
-
-    private func sideTabColumn() -> (
-        width: CGFloat,
-        isLeading: Bool,
-        top: CGFloat,
-        midX: CGFloat,
-        firstIconMinY: CGFloat
-    )? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first
-        guard let window else { return nil }
-        return TrailhoundSideTabGap.sideColumn(in: window)
-    }
-
-    private func contentTrailingGap(in geo: GeometryProxy) -> CGFloat {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first
-        let frame = geo.frame(in: .global)
-        guard let window, frame.width > 1 else { return 0 }
-        let raw = layoutDirection == .rightToLeft
-            ? frame.minX
-            : window.bounds.width - frame.maxX
-        return raw > 1 ? raw : 0
-    }
-
     private func publishWindowSize(_ size: CGSize) {
         guard size != windowSize else { return }
         let previous = layoutSnapshot.layoutClass
@@ -220,95 +91,6 @@ struct ContentView: View {
         guard previous != next else { return }
         let state = PerformanceSignposts.signposter.beginInterval("layout.reflow")
         PerformanceSignposts.signposter.endInterval("layout.reflow", state)
-    }
-
-    /// Side-column bell stays on every tab. Merge stays on Trips.
-    private var showsSideColumnBell: Bool {
-        hasSideTabColumn
-    }
-
-    private var showsWideBookMerge: Bool {
-        tabSelection.selectedTab == .trips && tabSelection.wideBookTrailingVisible
-    }
-
-    /// Wider horizontal inset is the side-tab column. Window and SwiftUI insets both count.
-    private var leadingColumnWidth: CGFloat {
-        max(columnLeadingInset, windowSafeLeft)
-    }
-
-    private var trailingColumnWidth: CGFloat {
-        max(columnTrailingInset, windowSafeRight)
-    }
-
-    /// Leading column when the left inset wins, trailing column when the right inset wins.
-    private var sideColumnIsLeading: Bool {
-        leadingColumnWidth > 20 && leadingColumnWidth >= trailingColumnWidth
-    }
-
-    private var hasSideTabColumn: Bool {
-        sideColumnIsLeading
-            || (trailingColumnWidth > 20 && overlayWidth > 1)
-            || sideTabMidX > 20
-    }
-
-    /// Center of the tab column, in the overlay's coordinates.
-    /// A stale glyph midX from the other rotation must not keep the buttons on the opposite edge.
-    /// The circles sit a few points left of the tab glyphs; nudge them onto that center.
-    private var wideBookStatusX: CGFloat {
-        wideBookStatusXRaw + 6
-    }
-
-    private var wideBookStatusXRaw: CGFloat {
-        let half: CGFloat = 22
-        let glyphX = sideTabMidX - overlayOriginX
-        if sideColumnIsLeading {
-            if glyphX > 8, glyphX < leadingColumnWidth + 12 {
-                return glyphX - half
-            }
-            return leadingColumnWidth / 2 - half - overlayOriginX
-        }
-        if trailingColumnWidth > 20, overlayWidth > 1 {
-            let columnStart = overlayWidth - trailingColumnWidth
-            if glyphX > columnStart - 12, glyphX < overlayWidth {
-                return glyphX - half
-            }
-            return overlayWidth - trailingColumnWidth / 2 - half
-        }
-        if sideTabMidX > 20 {
-            return glyphX - half
-        }
-        return 8
-    }
-
-    /// Bell and the button under it sit in the gap between the landscape camera
-    /// and the first tab, centered on the tab glyphs.
-    private var wideBookStatusTop: CGFloat {
-        let cameraDrop: CGFloat = 24
-        guard sideTabFirstIconMinY > 40 else { return max(windowSafeTop, 8) + cameraDrop }
-        let raw = sideTabFirstIconMinY - 28 + cameraDrop - wideBookStatusStackHeight
-        return raw - overlayOriginY
-    }
-
-    /// Positions the bell. The 14pt gap is the one the bell was tuned against;
-    /// the live stack is tighter so only the merge button moves up.
-    private var wideBookStatusStackHeight: CGFloat { 44 + 14 + 44 }
-
-    private var wideBookStatusActions: some View {
-        VStack(spacing: 4) {
-            TrailhoundNotificationBell()
-            if showsWideBookMerge {
-                Button {
-                    tabSelection.triggerWideBookTrailing()
-                } label: {
-                    GlassNavCircleIcon(systemName: tabSelection.wideBookTrailingSymbol)
-                }
-                .buttonStyle(.glassPlainHit)
-                .accessibilityLabel(tabSelection.wideBookTrailingLabel)
-            }
-        }
-        .background(WideBookStatusColumnMarker())
-        .accessibilityIdentifier(TrailhoundSideTabGap.statusColumnMarker)
-        .environment(\.shellPalette, settings.shellPalette)
     }
 
     private var mainTabs: some View {
@@ -354,7 +136,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .stats {
                         StatsView()
-                            .trailhoundShellToolbar(includesBell: !layoutSnapshot.placesChromeInSideColumn)
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -374,7 +156,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .year {
                         YearView()
-                            .trailhoundShellToolbar(includesBell: !layoutSnapshot.placesChromeInSideColumn)
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -395,7 +177,7 @@ struct ContentView: View {
                 NavigationStack {
                     if tabSelection.selectedTab == .settings {
                         SettingsView()
-                            .trailhoundShellToolbar(includesBell: !layoutSnapshot.placesChromeInSideColumn)
+                            .trailhoundShellToolbar()
                     } else {
                         AtmosphericBackground()
                     }
@@ -579,38 +361,6 @@ private struct TabBarItemLabel: View {
         } else {
             label
         }
-    }
-}
-
-/// Marks the bell/merge stack so its glyphs are not measured as tab icons.
-private struct WideBookStatusColumnMarker: UIViewRepresentable {
-    func makeUIView(context: Context) -> WideBookStatusColumnMarkerView {
-        let view = WideBookStatusColumnMarkerView()
-        view.isUserInteractionEnabled = false
-        view.backgroundColor = .clear
-        return view
-    }
-
-    func updateUIView(_ uiView: WideBookStatusColumnMarkerView, context: Context) {
-        uiView.tagHostIfCompact()
-    }
-}
-
-private final class WideBookStatusColumnMarkerView: UIView {
-    override func didMoveToSuperview() {
-        super.didMoveToSuperview()
-        tagHostIfCompact()
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        tagHostIfCompact()
-    }
-
-    func tagHostIfCompact() {
-        guard let host = superview else { return }
-        guard host.bounds.width < 180, host.bounds.height < 260, host.bounds.width > 1 else { return }
-        host.accessibilityIdentifier = TrailhoundSideTabGap.statusColumnMarker
     }
 }
 

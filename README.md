@@ -11,7 +11,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ## Features
 
 ### Recording
-- Manual start/stop, pause/resume. **Start** (with the vehicle picker) sits on every tab and returns to the Trips recording card. It hides while a trip is already recording or paused. Once the recording card scrolls off screen, the steering-wheel control stays in the Trips bar and returns to that card
+- Manual start/stop, pause/resume. **Start** (with the vehicle picker) sits on every tab and returns to the Trips recording card. It hides while a trip is already recording or paused. Once the recording card scrolls off screen, the steering-wheel control stays in the Trips bar and returns to that card, including landscape when the card scrolls with the list
 - **Shortcuts auto-start / auto-stop**: Create a named Shortcut per vehicle (*Start trip* + **Vehicle**), then a Personal Automation that **Run Shortcut**s it on Bluetooth / CarPlay / Wi‑Fi connect (automations often hide the Vehicle picker). The **Pairing** setup wizard remembers the trigger and vehicle, shows every Shortcuts step (including Run Shortcut), tests that Trailhound handles an external start, and includes a not-working checklist. Apple cannot let Trailhound create the automation for you. See [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md)
 - Vehicle profiles with fuel/EV cost per trip
 - **Avg fuel**: catalog cost from `distance × consumption × price`, shown as currency · litres (or kWh) like Estimated fuel. Trip detail **Avg fuel calculate** (with ?) edits consumption and unit price; the live line is **Avg fuel estimate**. Defaults from the vehicle and Settings
@@ -83,7 +83,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
 - **Travel journal** — phone portrait uses the Trips tab segment **Trips | Travels**. On a wide screen (open fold, iPhone landscape, iPad landscape) both libraries sit side by side: Trips leading, Travels trailing. Group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
 - Vehicle management (petrol, diesel, hybrid, EV)
-- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap) opens as its own page from the bell on every tab. Choosing a row closes the inbox first, then opens the matching screen. A trip opens on the Trips tab, not inside the inbox
+- In-app notifications inbox (trips, vehicle care, badge unlocks, January recap) opens as its own page from the bell on every tab. Choosing a row closes the inbox first, then opens the matching screen. A trip opens on the Trips tab, not inside the inbox. The bell and the Trips merge or new-travel button stay in their own trailing capsule, side by side, in every orientation. Start stays in its own leading capsule. Rotating does not stack them or show a second copy
 - Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
 ---

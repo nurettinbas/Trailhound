@@ -435,16 +435,19 @@ struct TripListView: View {
               recordingService.activeTripID != nil
         else { return false }
 
-        // The upright fold and the wide book keep the recording surface on screen.
-        guard !layout.pinsRecordingCardToFold, !layout.isWideBook else { return false }
+        // The upright fold and a split pane keep the recording surface on screen.
+        // Landscape with the card in the list does not: scrolling it away needs the steering control.
+        guard !layout.pinsRecordingCardToFold, !layout.splitsRecording else { return false }
         return !isRecordingCardInViewport
     }
 
-    /// Wide book while recording: the title row is an empty blur over the trip list.
+    /// Wide book while recording: the title row is an empty blur over the trip list,
+    /// until the steering control has to bring the card back.
     private var hidesWideBookNavigationBar: Bool {
         layout.isWideBook
             && !isMergeMode
             && (recordingService.state.isActiveSession || showLiveFollowMap)
+            && !showsActiveRecordingNavAffordance
     }
 
     private var shellPageOwnsLeading: Bool {
@@ -509,12 +512,8 @@ struct TripListView: View {
             .sheet(item: $journalEditor) { draft in
                 TravelJournalEditorSheet(draft: draft)
             }
-            .trailhoundShellToolbar(
-                pageOwnsLeading: shellPageOwnsLeading,
-                includesBell: !layout.placesChromeInSideColumn
-            )
+            .trailhoundShellToolbar(pageOwnsLeading: shellPageOwnsLeading)
             .onAppear { syncWideBookStatusActions() }
-            .onChange(of: layout.placesChromeInSideColumn) { _, _ in syncWideBookStatusActions() }
             .onChange(of: isMergeMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
@@ -732,9 +731,8 @@ struct TripListView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Wide book draws the bell and merge under the status cluster, above the side tab.
     private func syncWideBookStatusActions() {
-        tabSelection.wideBookTrailingVisible = layout.placesChromeInSideColumn && !isMergeMode
+        tabSelection.wideBookTrailingVisible = !isMergeMode && !showsLibrarySplit
         tabSelection.wideBookTrailingSymbol = listMode == .travels ? "plus" : "arrow.triangle.merge"
         tabSelection.wideBookTrailingLabel = listMode == .travels ? L10n.journalNew : L10n.actionMerge
     }
@@ -1158,7 +1156,7 @@ struct TripListView: View {
                     }
                     .hideSharedToolbarBackgroundIfAvailable()
                 }
-                if !layout.placesChromeInSideColumn, showsLibrarySplit {
+                if showsLibrarySplit {
                     ToolbarItem(placement: .topBarTrailing) {
                         GlassToolbarCluster(clustered: true) {
                             Button {
@@ -1167,33 +1165,16 @@ struct TripListView: View {
                                 GlassToolbarSymbol(systemName: "plus")
                             }
                             .accessibilityLabel(L10n.journalNew)
+                            .accessibilityIdentifier(SideColumnChromeID.newJournal)
                             Button {
                                 isMergeMode = true
                             } label: {
                                 GlassToolbarSymbol(systemName: "arrow.triangle.merge")
                             }
                             .accessibilityLabel(L10n.actionMerge)
+                            .accessibilityIdentifier(SideColumnChromeID.merge)
                         }
                     }
-                }
-                if !layout.placesChromeInSideColumn, !showsLibrarySplit {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            if listMode == .travels {
-                                journalEditor = .create()
-                            } else {
-                                isMergeMode = true
-                            }
-                        } label: {
-                            GlassNavCircleIcon(
-                                systemName: listMode == .travels ? "plus" : "arrow.triangle.merge",
-                                pointSize: listMode == .travels ? nil : 15
-                            )
-                        }
-                        .buttonStyle(.glassPlainHit)
-                        .accessibilityLabel(listMode == .travels ? L10n.journalNew : L10n.actionMerge)
-                    }
-                    .hideSharedToolbarBackgroundIfAvailable()
                 }
             }
         }

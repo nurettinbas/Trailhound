@@ -285,43 +285,4 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertNotNil(TrailhoundMotion.layoutReflow(reduceMotion: false))
         XCTAssertNotNil(TrailhoundMotion.layoutReflow(reduceMotion: true))
     }
-
-    func testVerticalTabClusterUsesTheLeadingIconColumn() {
-        let glyphs: [(midX: CGFloat, minY: CGFloat)] = [
-            (46, 210),
-            (46, 270),
-            (47, 330),
-            (46, 390),
-            (46, 450),
-            (400, 80)
-        ]
-        let cluster = TrailhoundSideTabGap.verticalTabCluster(glyphs, windowWidth: 900)
-        XCTAssertEqual(cluster?.midX ?? -1, 46.2, accuracy: 0.01)
-        XCTAssertEqual(cluster?.firstIconMinY, 210)
-        XCTAssertEqual(cluster?.isLeading, true)
-    }
-
-    func testVerticalTabClusterUsesTheTrailingIconColumn() {
-        let glyphs: [(midX: CGFloat, minY: CGFloat)] = [
-            (860, 180),
-            (861, 250),
-            (860, 320),
-            (859, 390),
-            (860, 460)
-        ]
-        let cluster = TrailhoundSideTabGap.verticalTabCluster(glyphs, windowWidth: 900)
-        XCTAssertEqual(cluster?.isLeading, false)
-        XCTAssertEqual(cluster?.firstIconMinY, 180)
-    }
-
-    func testBottomTabRowIsNotASideColumn() {
-        let glyphs: [(midX: CGFloat, minY: CGFloat)] = [
-            (80, 800),
-            (200, 800),
-            (320, 800),
-            (440, 800),
-            (560, 800)
-        ]
-        XCTAssertNil(TrailhoundSideTabGap.verticalTabCluster(glyphs, windowWidth: 900))
-    }
 }

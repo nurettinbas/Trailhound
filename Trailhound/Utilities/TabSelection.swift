@@ -10,7 +10,7 @@ final class TabSelection {
     var showNotificationsCover = false
     /// Bumped when Start should reveal the recording card on Trips.
     private(set) var scrollToRecordingToken = 0
-    /// Wide book: bell and merge sit under the status cluster, not in the title row.
+    /// Trips action sits with the bell in the trailing capsule. Hidden in merge mode and on the split library.
     var wideBookTrailingVisible = false
     var wideBookTrailingSymbol = "arrow.triangle.merge"
     var wideBookTrailingLabel = ""

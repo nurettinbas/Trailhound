@@ -246,6 +246,42 @@ enum TrailhoundTabBarCompact {
         return false
     }
 
+    /// Glass platter in window coordinates. Falls back to the `UITabBar` frame
+    /// when iOS has not built a separate platter view.
+    static func platterFrame(of tabBar: UITabBar, in window: UIWindow) -> CGRect {
+        if #available(iOS 26.0, *), let platter = glassPlatter(matching: tabBar) {
+            let frame = platter.convert(platter.bounds, to: window)
+            if frame.width > 8, frame.height > 8 { return frame }
+        }
+        return tabBar.convert(tabBar.bounds, to: window)
+    }
+
+    @available(iOS 26.0, *)
+    private static func glassPlatter(matching tabBar: UITabBar) -> UIView? {
+        if let found = findGlassPlatter(in: tabBar, matching: tabBar) { return found }
+        guard let superview = tabBar.superview else { return nil }
+        for sibling in superview.subviews where sibling !== tabBar {
+            guard isTabChromeSibling(sibling, of: tabBar) else { continue }
+            if let found = findGlassPlatter(in: sibling, matching: tabBar) { return found }
+        }
+        return nil
+    }
+
+    @available(iOS 26.0, *)
+    private static func findGlassPlatter(in view: UIView, matching tabBar: UITabBar) -> UIView? {
+        if let effectView = view as? UIVisualEffectView, isPlatter(effectView, matching: tabBar) {
+            return effectView
+        }
+        if let effectView = view as? UIVisualEffectView,
+           let found = findGlassPlatter(in: effectView.contentView, matching: tabBar) {
+            return found
+        }
+        for subview in view.subviews {
+            if let found = findGlassPlatter(in: subview, matching: tabBar) { return found }
+        }
+        return nil
+    }
+
     /// Bottom platter is wide. Side platter is tall. The selection capsule is neither.
     private static func isPlatter(_ effectView: UIView, matching tabBar: UITabBar) -> Bool {
         let width = effectView.bounds.width
@@ -383,6 +419,7 @@ struct TrailhoundTabBarCompactInstaller: UIViewControllerRepresentable {
         uiViewController.palette = shellPalette
         uiViewController.colorScheme = colorScheme
         uiViewController.apply()
+        uiViewController.publishChrome()
     }
 }
 
@@ -402,11 +439,81 @@ final class TrailhoundTabBarCompactController: UIViewController {
         super.viewDidAppear(animated)
         glassRetryCount = 0
         apply()
+        publishChrome()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         apply()
+        publishChrome()
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        let chrome = SideColumnChromeState.shared
+        chrome.beginTransition()
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            chrome.endTransition()
+            self?.publishChrome()
+        }
+    }
+
+    private var isPublishingChrome = false
+
+    /// Writes the platter frame the bell and merge stack share with the toolbar.
+    /// Skipped while a rotation is in flight so neither copy draws from a stale frame.
+    func publishChrome() {
+        guard !isPublishingChrome else { return }
+        isPublishingChrome = true
+        defer { isPublishingChrome = false }
+        let chrome = SideColumnChromeState.shared
+        guard !chrome.isTransitioning else { return }
+        guard let window = view.window ?? keyWindow() else { return }
+        let frame = primaryTabBar().map { TrailhoundTabBarCompact.platterFrame(of: $0, in: window) }
+        let direction: LayoutDirection = window.effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? .rightToLeft
+            : .leftToRight
+        chrome.update(
+            windowSize: window.bounds.size,
+            safeInsets: window.safeAreaInsets,
+            tabBarFrame: frame,
+            layoutDirection: direction
+        )
+    }
+
+    private func keyWindow() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.flatMap(\.windows).first
+    }
+
+    /// The root tab bar. A presented cover does not replace the column.
+    private func primaryTabBar() -> UITabBar? {
+        if let tabBar = tabBarController?.tabBar { return tabBar }
+        if let root = view.window?.rootViewController ?? keyWindow()?.rootViewController {
+            var found: UITabBar?
+            func walk(_ controller: UIViewController) {
+                if found != nil { return }
+                if let tab = controller as? UITabBarController {
+                    found = tab.tabBar
+                    return
+                }
+                for child in controller.children { walk(child) }
+            }
+            walk(root)
+            if let found { return found }
+        }
+        if let window = view.window ?? keyWindow() {
+            return Self.visibleTabBar(in: window)
+        }
+        return nil
+    }
+
+    private static func visibleTabBar(in view: UIView) -> UITabBar? {
+        if let bar = view as? UITabBar, !bar.isHidden, bar.bounds.width > 1 { return bar }
+        for child in view.subviews {
+            if let found = visibleTabBar(in: child) { return found }
+        }
+        return nil
     }
 
     func apply() {
@@ -426,6 +533,7 @@ final class TrailhoundTabBarCompactController: UIViewController {
         } else {
             scheduleGlassRetry()
         }
+        publishChrome()
     }
 
     /// iOS 26 builds the selection capsule after the first layout. Until it exists,

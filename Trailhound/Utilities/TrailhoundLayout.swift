@@ -145,12 +145,6 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         return false
     }
 
-    /// Landscape side tab. Duo often reports as iPad, so pad landscape is included.
-    /// Bell and merge leave the title row and sit under the wifi, on the tab column.
-    var placesChromeInSideColumn: Bool {
-        isLandscape
-    }
-
     /// Closed Duo cover, and the upright open fold when it is still shorter than a phone.
     /// The welcome column centers in that height instead of running off the top and bottom.
     var centersOnboardingColumn: Bool {
@@ -247,67 +241,6 @@ enum TrailhoundSideTabGap {
         }
         let windowEdge = layoutDirection == .rightToLeft ? window.safeAreaInsets.left : window.safeAreaInsets.right
         return max(safe, windowEdge, measured, sideColumnWidth(in: window))
-    }
-
-    /// Bell and merge must not be measured as tab icons.
-    static let statusColumnMarker = "wideBook.statusColumn"
-
-    /// Which screen edge the vertical tab icons occupy. A bottom bar returns nil.
-    /// `midX` is the tab glyphs' center. `firstIconMinY` is the top of the highest one.
-    static func sideColumn(in window: UIWindow) -> (
-        width: CGFloat,
-        isLeading: Bool,
-        top: CGFloat,
-        midX: CGFloat,
-        firstIconMinY: CGFloat
-    )? {
-        let icons = tabGlyphs(in: window)
-        guard let cluster = verticalTabCluster(icons, windowWidth: window.bounds.width) else { return nil }
-        return (56, cluster.isLeading, cluster.firstIconMinY, cluster.midX, cluster.firstIconMinY)
-    }
-
-    /// Tab item controls. Skips the bell/merge stack so those buttons cannot become the column.
-    private static func tabGlyphs(in window: UIWindow) -> [(midX: CGFloat, minY: CGFloat)] {
-        var glyphs: [(midX: CGFloat, minY: CGFloat)] = []
-        let width = window.bounds.width
-        func walk(_ view: UIView) {
-            if view.accessibilityIdentifier == statusColumnMarker { return }
-            if let control = view as? UIControl, !(view is UITabBar) {
-                let frame = control.convert(control.bounds, to: window)
-                let onEdge = frame.midX < width * 0.3 || frame.midX > width * 0.7
-                let square = frame.width >= 28 && frame.width <= 88
-                    && frame.height >= 28 && frame.height <= 88
-                if onEdge, square {
-                    glyphs.append((frame.midX, frame.minY))
-                }
-            }
-            for child in view.subviews { walk(child) }
-        }
-        walk(window)
-        return glyphs
-    }
-
-    /// Five tab glyphs share one X on the left or right edge. Bottom bars are a horizontal row.
-    nonisolated static func verticalTabCluster(
-        _ glyphs: [(midX: CGFloat, minY: CGFloat)],
-        windowWidth: CGFloat
-    ) -> (midX: CGFloat, firstIconMinY: CGFloat, isLeading: Bool)? {
-        guard windowWidth > 1, glyphs.count >= 4 else { return nil }
-        let buckets = Dictionary(grouping: glyphs) { glyph in
-            Int((glyph.midX / 12).rounded())
-        }
-        let vertical = buckets.values.filter { bucket in
-            guard bucket.count >= 4 else { return false }
-            let minY = bucket.map(\.minY).min() ?? 0
-            let maxY = bucket.map(\.minY).max() ?? 0
-            return maxY - minY > 80
-        }
-        guard let column = vertical.max(by: { $0.count < $1.count }) else { return nil }
-        let midX = column.map(\.midX).reduce(0, +) / CGFloat(column.count)
-        let onEdge = midX < windowWidth * 0.28 || midX > windowWidth * 0.72
-        guard onEdge else { return nil }
-        let firstIconMinY = column.map(\.minY).min() ?? 0
-        return (midX, firstIconMinY, midX < windowWidth * 0.5)
     }
 
     /// Vertical tab bar width. A bottom bar is wide and short, so it returns 0.

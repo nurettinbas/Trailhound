@@ -271,6 +271,47 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(week.waitForExistence(timeout: uiTimeout), "Last 7 days filter should remain after Light appearance")
         XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: uiTimeout))
     }
+
+    func testSideColumnChromeSurvivesRotation() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let orientations: [(UIDeviceOrientation, String)] = [
+            (.portrait, "portrait"),
+            (.landscapeLeft, "landscapeLeft"),
+            (.landscapeRight, "landscapeRight"),
+            (.portraitUpsideDown, "portraitUpsideDown"),
+            (.portrait, "portraitAgain")
+        ]
+        for (orientation, name) in orientations {
+            XCUIDevice.shared.orientation = orientation
+            let bells = app.buttons.matching(identifier: "trips.notifications")
+            XCTAssertTrue(bells.firstMatch.waitForExistence(timeout: uiTimeout), "Bell missing after \(name)")
+            XCTAssertEqual(bells.count, 1, "Bell duplicated after \(name)")
+
+            let merges = app.buttons.matching(identifier: "trips.merge")
+            if merges.firstMatch.waitForExistence(timeout: 2) {
+                XCTAssertEqual(merges.count, 1, "Merge duplicated after \(name)")
+            }
+
+            let bell = bells.firstMatch.frame
+            XCTAssertLessThan(bell.midY, app.frame.height * 0.28, "Bell is not on the top row after \(name)")
+            XCTAssertGreaterThan(bell.midX, app.frame.width * 0.45, "Bell is not on the trailing side after \(name)")
+            let start = app.buttons["shell.start"]
+            if start.exists {
+                XCTAssertLessThan(start.frame.maxX, bell.minX, "Start is joined to the bell after \(name)")
+            }
+            if merges.count == 1 {
+                let merge = merges.firstMatch.frame
+                XCTAssertEqual(merge.midY, bell.midY, accuracy: CGFloat(12), "Merge is not beside the bell after \(name)")
+                XCTAssertGreaterThan(merge.midX, bell.midX, "Merge is not to the right of the bell after \(name)")
+            }
+
+            let shot = XCUIScreen.main.screenshot()
+            let attachment = XCTAttachment(screenshot: shot)
+            attachment.name = "side-column-\(name)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
 }
 
 final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {

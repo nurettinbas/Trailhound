@@ -22,6 +22,8 @@ enum GlassTokens {
     static let toolbarControlCircleSide: CGFloat = 44
     /// Gap between independent 44pt toolbar circles (Trip detail Share/collapse, Year recap).
     static let toolbarCircleClusterSpacing: CGFloat = 16
+    /// Gap between side-column circles, and between that stack and the tab bar platter.
+    static let sideColumnChromeGap: CGFloat = 16
     /// Gap between glyphs that share one system platter (Trips merge+bell).
     static let toolbarSharedClusterSpacing: CGFloat = 8
     /// Width of a glyph inside a shared platter. Height stays `toolbarControlCircleSide`.

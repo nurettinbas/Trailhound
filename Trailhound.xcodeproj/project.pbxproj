@@ -392,6 +392,10 @@
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */; };
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */; };
+				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLCHROME000001 /* SideColumnChrome.swift */; };
+				A1SIDECOLTEST000000001 /* SideColumnChromeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */; };
+				A1SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */; };
+				XCBLDSNAPfw00000000001 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = XCDEPSSNAP000000000001 /* SnapshotTesting */; };
 		A1PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */; };
 		A1SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */; };
 		A1SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */; };
@@ -818,6 +822,9 @@
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLayout.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundShellToolbar.swift; sourceTree = "<group>"; };
+		A2SIDECOLCHROME000001 /* SideColumnChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideColumnChrome.swift; sourceTree = "<group>"; };
+		A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/SideColumnChromeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/SideColumnChromeSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingShortcutsAutomationGuideView.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSetupStore.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/ShortcutsSetupStoreTests.swift; sourceTree = SOURCE_ROOT; };
@@ -830,6 +837,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				XCBLDSNAPfw00000000001 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1223,6 +1231,7 @@
 				A2TABSELECTION000001 /* TabSelection.swift */,
 				A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */,
 				A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */,
+				A2SIDECOLCHROME000001 /* SideColumnChrome.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
 				A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */,
 				A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */,
@@ -1379,6 +1388,8 @@
 				A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */,
 				A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */,
 				A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */,
+				A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */,
+				A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */,
 				A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */,
 				A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */,
 				A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */,
@@ -1415,6 +1426,9 @@
 				B90000000000000000000002 /* PBXTargetDependency */,
 			);
 			name = TrailhoundTests;
+			packageProductDependencies = (
+				XCDEPSSNAP000000000001 /* SnapshotTesting */,
+			);
 			productName = TrailhoundTests;
 			productReference = 3C4D5673496049A7A905249D /* TrailhoundTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -1500,6 +1514,9 @@
 			productRefGroup = A50000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+			);
 			targets = (
 				A60000000000000000000001 /* Trailhound */,
 				B60000000000000000000001 /* TrailhoundWidgetExtension */,
@@ -1638,6 +1655,8 @@
 				A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */,
 				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */,
 				A1TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift in Sources */,
+				A1SIDECOLTEST000000001 /* SideColumnChromeTests.swift in Sources */,
+				A1SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift in Sources */,
 				A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */,
 				A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */,
 				A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */,
@@ -1911,6 +1930,7 @@
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */,
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */,
+				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */,
 				A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */,
 				B10000000000000000000004 /* TripRecordingAttributes.swift in Sources */,
 				B1LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift in Sources */,
@@ -2336,6 +2356,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		XCDEPSSNAP000000000001 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A90000000000000000000001 /* Project object */;
 }

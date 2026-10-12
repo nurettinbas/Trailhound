@@ -5,8 +5,6 @@ import SwiftUI
 /// Start hides while a trip is already recording or paused.
 struct TrailhoundShellToolbar: ViewModifier {
     var pageOwnsLeading: Bool = false
-    /// Wide book: the bell leaves the title row and sits under the status cluster.
-    var includesBell: Bool = true
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,11 +18,8 @@ struct TrailhoundShellToolbar: ViewModifier {
                     startCluster
                 }
             }
-            if includesBell {
-                ToolbarItem(placement: .topBarTrailing) {
-                    TrailhoundNotificationBell()
-                }
-                .hideSharedToolbarBackgroundIfAvailable()
+            ToolbarItem(placement: .topBarTrailing) {
+                statusPair
             }
         }
     }
@@ -50,6 +45,35 @@ struct TrailhoundShellToolbar: ViewModifier {
         }
     }
 
+    /// Bell and the Trips merge (or new-travel) button. Their own trailing capsule, horizontal, every orientation.
+    private var statusPair: some View {
+        GlassToolbarCluster(clustered: true) {
+            TrailhoundNotificationBell()
+            if showsTripsTrailing {
+                Button {
+                    tabSelection.triggerWideBookTrailing()
+                } label: {
+                    GlassToolbarSymbol(
+                        systemName: tabSelection.wideBookTrailingSymbol,
+                        pointSize: tabSelection.wideBookTrailingSymbol == "plus" ? nil : 15
+                    )
+                }
+                .accessibilityLabel(tabSelection.wideBookTrailingLabel)
+                .accessibilityIdentifier(tripsTrailingIdentifier)
+            }
+        }
+    }
+
+    private var showsTripsTrailing: Bool {
+        tabSelection.selectedTab == .trips && tabSelection.wideBookTrailingVisible
+    }
+
+    private var tripsTrailingIdentifier: String {
+        tabSelection.wideBookTrailingSymbol == "plus"
+            ? SideColumnChromeID.newJournal
+            : SideColumnChromeID.merge
+    }
+
     private func startOrFocusRecording() {
         TrailhoundHaptics.selection()
         if recordingService.state.isActiveSession {
@@ -64,12 +88,12 @@ struct TrailhoundShellToolbar: ViewModifier {
 }
 
 extension View {
-    func trailhoundShellToolbar(pageOwnsLeading: Bool = false, includesBell: Bool = true) -> some View {
-        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading, includesBell: includesBell))
+    func trailhoundShellToolbar(pageOwnsLeading: Bool = false) -> some View {
+        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading))
     }
 }
 
-/// Liquid Glass bell. On the wide book it stacks under the status cluster, above the side tab.
+/// Liquid Glass bell in the trailing toolbar capsule, beside merge.
 struct TrailhoundNotificationBell: View {
     @Bindable private var tabSelection = TabSelection.shared
     @Bindable private var notificationStore = AppNotificationStore.shared
@@ -79,12 +103,11 @@ struct TrailhoundNotificationBell: View {
             notificationStore.markAllRead()
             tabSelection.openNotifications()
         } label: {
-            GlassNavCircleIcon(systemName: "bell")
+            GlassToolbarSymbol(systemName: "bell")
         }
-        .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.notificationsTitle)
         .accessibilityValue(notificationStore.unreadCount > 0 ? "\(min(notificationStore.unreadCount, 99))" : "")
-        .accessibilityIdentifier("trips.notifications")
+        .accessibilityIdentifier(SideColumnChromeID.notifications)
         .overlay(alignment: .topTrailing) {
             if notificationStore.unreadCount > 0 {
                 Text("\(min(notificationStore.unreadCount, 99))")
