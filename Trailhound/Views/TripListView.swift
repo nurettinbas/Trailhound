@@ -62,6 +62,10 @@ struct TripListView: View {
     @State private var scrollToTopToken = 0
     @State private var scrollToTopRequest: TripListScrollToTopRequest?
     @State private var isRecordingCardInViewport = true
+    @State private var recordingCardViewportTask: Task<Void, Never>?
+    /// Rotation rebuilds the list and reports the card gone. Off-screen samples during this window are dropped.
+    @State private var recordingViewportSettling = false
+    @State private var recordingViewportSettleTask: Task<Void, Never>?
     @State private var showLiveFollowMap = false
     @State private var paneTripID: UUID?
     @State private var liveFollowCardAnchor = RecordingCardAnchor()
@@ -441,13 +445,47 @@ struct TripListView: View {
         return !isRecordingCardInViewport
     }
 
-    /// Wide book while recording: the title row is an empty blur over the trip list,
-    /// until the steering control has to bring the card back.
+    /// Live map on the wide book covers the title row. A recording keeps the row so the bell stays.
     private var hidesWideBookNavigationBar: Bool {
-        layout.isWideBook
-            && !isMergeMode
-            && (recordingService.state.isActiveSession || showLiveFollowMap)
-            && !showsActiveRecordingNavAffordance
+        layout.isWideBook && !isMergeMode && showLiveFollowMap
+    }
+
+    /// Off-screen has to last, and a turn does not count. The list is rebuilt while the
+    /// card is still at the top, which used to flash the steering control on and off.
+    private func noteRecordingCardOnScreen(_ onScreen: Bool) {
+        if onScreen {
+            recordingCardViewportTask?.cancel()
+            recordingCardViewportTask = nil
+            if !isRecordingCardInViewport { isRecordingCardInViewport = true }
+            return
+        }
+        guard !recordingViewportSettling, recordingCardViewportTask == nil else { return }
+        recordingCardViewportTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, !recordingViewportSettling else { return }
+            recordingCardViewportTask = nil
+            isRecordingCardInViewport = false
+        }
+    }
+
+    private func beginRecordingViewportSettle() {
+        recordingCardViewportTask?.cancel()
+        recordingCardViewportTask = nil
+        recordingViewportSettling = true
+        recordingViewportSettleTask?.cancel()
+        recordingViewportSettleTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1000))
+            guard !Task.isCancelled else { return }
+            recordingViewportSettling = false
+        }
+    }
+
+    private func resetRecordingCardViewport() {
+        recordingCardViewportTask?.cancel()
+        recordingCardViewportTask = nil
+        recordingViewportSettleTask?.cancel()
+        recordingViewportSettling = false
+        isRecordingCardInViewport = true
     }
 
     private var shellPageOwnsLeading: Bool {
@@ -518,6 +556,12 @@ struct TripListView: View {
             .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
                 performWideBookTrailing()
+            }
+            .onChange(of: layout.isLandscape) { _, _ in
+                beginRecordingViewportSettle()
+            }
+            .onChange(of: layout.layoutClass) { _, _ in
+                beginRecordingViewportSettle()
             }
             .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -696,7 +740,7 @@ struct TripListView: View {
         )
         .trailhoundPaneCard()
         .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     private var liveFollowMap: some View {
@@ -871,11 +915,9 @@ struct TripListView: View {
                     .id(activeTripID)
                     .background {
                         RecordingCardVisibilityProbe { onScreen in
-                            guard onScreen != isRecordingCardInViewport else { return }
-                            isRecordingCardInViewport = onScreen
+                            noteRecordingCardOnScreen(onScreen)
                         }
                     }
-                    .onDisappear { isRecordingCardInViewport = false }
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -1013,7 +1055,7 @@ struct TripListView: View {
                 TripDetailView(trip: trip)
             }
         }
-        .navigationTitle(layout.isWideBook ? "" : "Trailhound")
+        .navigationTitle("Trailhound")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             refreshOrphans()
@@ -1090,9 +1132,10 @@ struct TripListView: View {
                     ToastPresenter.shared.flushRecordingCreditsQueue()
                 }
             } else {
-                isRecordingCardInViewport = true
+                resetRecordingCardViewport()
             }
             if !wasActive, isActive, endCredits == nil {
+                resetRecordingCardViewport()
                 beginColdOpenIfNeeded()
                 requestScrollToTop()
             }
@@ -1766,7 +1809,8 @@ private struct OrphanRecoveryBanner: View {
 
 /// List cells move under UIKit during a scroll. SwiftUI’s frame preference stays
 /// stale until the scroll direction changes, so the steering button flickered.
-/// This reads the card’s window rect from the collection view’s offset instead.
+/// This reads the card against the collection view’s visible rect, and keeps
+/// sampling after a turn so a torn-down cell cannot leave the control stuck on.
 private struct RecordingCardVisibilityProbe: UIViewRepresentable {
     var onChange: (Bool) -> Void
 
@@ -1785,19 +1829,47 @@ private struct RecordingCardVisibilityProbe: UIViewRepresentable {
         private var observation: NSKeyValueObservation?
         private var lastOnScreen: Bool?
         private var scheduled: DispatchWorkItem?
+        private var poll: DispatchWorkItem?
+        private var settleUntil: CFTimeInterval = 0
+        private var lastBoundsSize: CGSize = .zero
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
+            beginSettle()
             attachScrollObservation()
             scheduleCheck()
+            schedulePoll()
+        }
+
+        override func willMove(toWindow newWindow: UIWindow?) {
+            super.willMove(toWindow: newWindow)
+            if newWindow == nil {
+                poll?.cancel()
+                poll = nil
+            }
         }
 
         override func layoutSubviews() {
             super.layoutSubviews()
+            let size = bounds.size
+            if lastBoundsSize.width > 1, lastBoundsSize.height > 1 {
+                let flipped = abs(size.width - lastBoundsSize.height) < 8
+                    && abs(size.height - lastBoundsSize.width) < 8
+                let jumped = abs(size.width - lastBoundsSize.width) > 48
+                    || abs(size.height - lastBoundsSize.height) > 48
+                if flipped || jumped {
+                    beginSettle()
+                }
+            }
+            lastBoundsSize = size
             if observation == nil {
                 attachScrollObservation()
             }
             scheduleCheck()
+        }
+
+        private func beginSettle() {
+            settleUntil = CACurrentMediaTime() + 0.9
         }
 
         private func attachScrollObservation() {
@@ -1820,11 +1892,25 @@ private struct RecordingCardVisibilityProbe: UIViewRepresentable {
             DispatchQueue.main.async(execute: work)
         }
 
+        /// An on-screen card must keep reporting. A rotation used to emit one false
+        /// sample and then go quiet, so the steering control stayed up at the top.
+        private func schedulePoll() {
+            poll?.cancel()
+            guard window != nil else { return }
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.check()
+                self.schedulePoll()
+            }
+            poll = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+        }
+
         private func check() {
-            guard let window else { return }
-            let frame = cardFrame(in: window)
+            guard window != nil, let scroll = enclosingScrollView() else { return }
+            let frame = cardFrame(in: scroll)
             guard frame.width > 1, frame.height > 40 else { return }
-            let overlap = frame.intersection(window.bounds).height
+            let overlap = frame.intersection(scroll.bounds).height
             let onScreen: Bool
             if let lastOnScreen {
                 if overlap < 36 {
@@ -1834,24 +1920,29 @@ private struct RecordingCardVisibilityProbe: UIViewRepresentable {
                 } else {
                     return
                 }
-                guard onScreen != lastOnScreen else { return }
             } else {
                 onScreen = overlap > 72
             }
+            if !onScreen, CACurrentMediaTime() < settleUntil {
+                return
+            }
+            let changed = onScreen != lastOnScreen
             lastOnScreen = onScreen
-            onChange?(onScreen)
+            if onScreen || changed {
+                onChange?(onScreen)
+            }
         }
 
-        private func cardFrame(in window: UIWindow) -> CGRect {
+        private func cardFrame(in scroll: UIScrollView) -> CGRect {
             var view: UIView? = self
             while let current = view {
                 if current is UICollectionViewCell || current is UITableViewCell {
-                    return current.convert(current.bounds, to: window)
+                    return current.convert(current.bounds, to: scroll)
                 }
                 if current is UIScrollView { break }
                 view = current.superview
             }
-            return convert(bounds, to: window)
+            return convert(bounds, to: scroll)
         }
 
         private func enclosingScrollView() -> UIScrollView? {
@@ -1865,6 +1956,8 @@ private struct RecordingCardVisibilityProbe: UIViewRepresentable {
 
         deinit {
             observation?.invalidate()
+            scheduled?.cancel()
+            poll?.cancel()
         }
     }
 }

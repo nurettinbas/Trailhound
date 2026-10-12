@@ -484,8 +484,8 @@ struct TrailhoundRoadDrivingScene<Overlay: View>: View {
                 }
             }
         }
-        .frame(height: roadHeight, alignment: .center)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .frame(width: width, height: roadHeight, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .offset(y: palette == .atmosphere ? -roadHeight * 0.15 : -roadHeight * 0.38)
         .mask {
             if palette == .atmosphere {

@@ -114,7 +114,6 @@ private struct RecordingLiveMapOpenButton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
-    @State private var glow: Double = 0.32
 
     var body: some View {
         Button {
@@ -154,16 +153,17 @@ private struct RecordingLiveMapOpenButton: View {
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        shellPalette.tintColor(for: colorScheme).opacity(hintExpanded ? 0.45 : 0.28),
+                        shellPalette.tintColor(for: colorScheme).opacity(hintExpanded ? 0.55 : 0.40),
                         lineWidth: 1
                     )
             }
             .contentShape(Capsule())
             .animation(reduceMotion ? nil : TrailhoundMotion.liveMapHintPop, value: hintExpanded)
+            .shadow(color: Color.black.opacity(0.32), radius: 8, y: 4)
             .shadow(
-                color: shellPalette.glowColor(for: colorScheme).opacity(glow),
-                radius: hintExpanded ? 10 : 6,
-                y: 1
+                color: shellPalette.glowColor(for: colorScheme).opacity(0.55),
+                radius: hintExpanded ? 12 : 8,
+                y: 2
             )
             .background {
                 SoftPulseRing(
@@ -178,13 +178,6 @@ private struct RecordingLiveMapOpenButton: View {
         .buttonStyle(LiveMapOpenPressStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(L10n.string("recording.live_map.open"))
         .accessibilityIdentifier("recording.live_map.open")
-        .task(id: reduceMotion) {
-            glow = reduceMotion ? 0.4 : 0.32
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
-                glow = 0.72
-            }
-        }
     }
 }
 
@@ -348,10 +341,9 @@ struct ActiveTripView: View {
         .padding(14)
         .frame(
             maxWidth: screenLayout.recordingCardArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
-            maxHeight: screenLayout.recordingCardArrangement == .pane ? .infinity : nil,
             alignment: .leading
         )
-        .frame(maxWidth: .infinity, maxHeight: screenLayout.recordingCardArrangement == .pane ? .infinity : nil)
+        .frame(maxWidth: .infinity, alignment: .top)
         .background {
             RecordingCardStyle.glassSurface(isPaused: isPaused)
         }
@@ -510,16 +502,14 @@ struct ActiveTripView: View {
     }
 
     private var paneRecordingStack: some View {
-        VStack(alignment: .leading, spacing: GlassTokens.paneVerticalRhythm) {
+        VStack(alignment: .leading, spacing: 10) {
             statusRow
             roadScene
                 .frame(maxWidth: .infinity)
-                .frame(height: screenLayout.layoutClass == .phoneLandscape ? 72 : 140)
             ActiveTripLiveStats(arrangement: .grid)
-            Spacer(minLength: GlassTokens.paneVerticalRhythm)
             actionsRow
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     private var bannerRecordingStack: some View {
