@@ -210,6 +210,29 @@ enum TrailhoundMotion {
         return badgeCardExpand(reduceMotion: false)
     }
 
+    /// Wide-book care form. Covers the trailing pane from the trailing edge.
+    /// Back and Save run the same move in reverse.
+    static func panePush(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? .easeOut(duration: 0.12) : .timingCurve(0.22, 0.86, 0.18, 1, duration: 0.42)
+    }
+
+    static func panePushCover(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: .trailing),
+            removal: .move(edge: .trailing)
+        )
+    }
+
+    /// The list under a pane push. It shifts off the leading edge as the form covers it.
+    static func panePushRecede(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: .leading),
+            removal: .move(edge: .leading)
+        )
+    }
+
     /// Gallery content fade after the card has grown — no vertical offset.
     static func badgeGalleryAppear(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeOut(duration: 0.22)

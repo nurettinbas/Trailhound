@@ -39,31 +39,6 @@ struct GlassSectionHeader: View {
     }
 }
 
-/// Section title with the add action on the same header row, above the rows.
-struct GlassSectionHeaderAction: View {
-    let title: String
-    let actionTitle: String
-    let action: () -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            GlassSectionHeader(title: title)
-            Spacer(minLength: 8)
-            Button(action: action) {
-                Label(actionTitle, systemImage: "plus")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(GlassText.secondary(for: colorScheme))
-                    .textCase(nil)
-            }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityLabel(actionTitle)
-        }
-        .textCase(nil)
-    }
-}
-
 struct GlassSectionFooter: View {
     let title: String
     @Environment(\.colorScheme) private var colorScheme

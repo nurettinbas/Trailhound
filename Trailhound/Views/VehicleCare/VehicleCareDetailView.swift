@@ -29,6 +29,7 @@ struct VehicleDetailView: View {
     @FocusState private var vehicleEditorFocus: PairingVehicleFocusedField?
     @State private var vehicleKeyboardNav = VehicleEditorKeyboardNav()
     @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Widest open book only. The profile stays on the leading half.
     /// Tracking and expenses scroll together on the trailing half.
@@ -158,15 +159,22 @@ struct VehicleDetailView: View {
                     consumptionLabel: vehicleKeyboardNav.consumptionLabel
                 )
             } focus: {
-                if let trailingEditor {
-                    trailingEditorForm(trailingEditor)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    careList(showsAtmosphere: false, widePane: true) {
-                        trackingBlock
-                        expensesBlock
+                ZStack {
+                    if let trailingEditor {
+                        trailingEditorForm(trailingEditor)
+                            .id(trailingEditor)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(TrailhoundMotion.panePushCover(reduceMotion: reduceMotion))
+                    } else {
+                        careList(showsAtmosphere: false, widePane: true) {
+                            trackingBlock
+                            expensesBlock
+                        }
+                        .transition(TrailhoundMotion.panePushRecede(reduceMotion: reduceMotion))
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
             }
         } else {
             careList(showsAtmosphere: true, widePane: false) {
@@ -183,7 +191,7 @@ struct VehicleDetailView: View {
 
     private func openAddExpense() {
         if splitsAfterTracking {
-            trailingEditor = .addExpense
+            presentTrailing(.addExpense)
         } else {
             showAddExpense = true
         }
@@ -191,7 +199,7 @@ struct VehicleDetailView: View {
 
     private func openAddSchedule() {
         if splitsAfterTracking {
-            trailingEditor = .addSchedule
+            presentTrailing(.addSchedule)
         } else {
             showAddSchedule = true
         }
@@ -199,7 +207,7 @@ struct VehicleDetailView: View {
 
     private func openEditExpense(_ id: UUID) {
         if splitsAfterTracking {
-            trailingEditor = .editExpense(id)
+            presentTrailing(.editExpense(id))
         } else {
             editingExpenseID = id
         }
@@ -207,7 +215,7 @@ struct VehicleDetailView: View {
 
     private func openEditSchedule(_ id: UUID) {
         if splitsAfterTracking {
-            trailingEditor = .editSchedule(id)
+            presentTrailing(.editSchedule(id))
         } else {
             editingScheduleID = id
         }
@@ -215,14 +223,22 @@ struct VehicleDetailView: View {
 
     private func openCompleteSchedule(_ id: UUID) {
         if splitsAfterTracking {
-            trailingEditor = .completeSchedule(id)
+            presentTrailing(.completeSchedule(id))
         } else {
             completingScheduleID = id
         }
     }
 
+    private func presentTrailing(_ editor: TrailingCareEditor) {
+        withAnimation(TrailhoundMotion.panePush(reduceMotion: reduceMotion)) {
+            trailingEditor = editor
+        }
+    }
+
     private func closeTrailingEditor() {
-        trailingEditor = nil
+        withAnimation(TrailhoundMotion.panePush(reduceMotion: reduceMotion)) {
+            trailingEditor = nil
+        }
     }
 
     @ViewBuilder
@@ -273,14 +289,21 @@ struct VehicleDetailView: View {
     @ViewBuilder
     private var trackingBlock: some View {
         Section {
+                addCareRowButton(
+                    title: L10n.string("vehicles.care.tracking.add"),
+                    rowPosition: .first
+                ) {
+                    openAddSchedule()
+                }
+
                 if schedules.isEmpty {
                     Text(L10n.string("vehicles.care.schedules.empty"))
                         .foregroundStyle(careRowSecondaryInk)
-                        .glassRow(position: .only)
+                        .glassRow(position: .last)
                 } else {
                     ForEach(Array(schedules.enumerated()), id: \.element.id) { index, schedule in
                         trackingCardRow(schedule)
-                            .glassRow(position: GlassRowPosition.index(index, in: schedules.count))
+                            .glassRow(position: GlassRowPosition.index(index + 1, in: schedules.count + 1))
                             .confirmingDeleteSwipe {
                                 deleteSchedule(schedule)
                             }
@@ -295,11 +318,7 @@ struct VehicleDetailView: View {
                     }
                 }
             } header: {
-                GlassSectionHeaderAction(
-                    title: L10n.string("vehicles.care.tracking.section"),
-                    actionTitle: L10n.string("vehicles.care.tracking.add"),
-                    action: { openAddSchedule() }
-                )
+                Text(L10n.string("vehicles.care.tracking.section"))
             } footer: {
                 Text(L10n.string("vehicles.care.tracking.footer"))
                     .font(.caption)
@@ -309,25 +328,28 @@ struct VehicleDetailView: View {
     @ViewBuilder
     private var expensesBlock: some View {
         Section {
+                addCareRowButton(
+                    title: L10n.string("vehicles.care.expense.add"),
+                    rowPosition: .first
+                ) {
+                    openAddExpense()
+                }
+
                 if expenses.isEmpty {
                     Text(L10n.string("vehicles.care.expenses.empty"))
                         .foregroundStyle(careRowSecondaryInk)
-                        .glassRow(position: .only)
+                        .glassRow(position: .last)
                 } else {
                     ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
                         expenseCardRow(expense)
-                            .glassRow(position: GlassRowPosition.index(index, in: expenses.count))
+                            .glassRow(position: GlassRowPosition.index(index + 1, in: expenses.count + 1))
                             .confirmingDeleteSwipe {
                                 deleteExpense(expense)
                             }
                     }
                 }
             } header: {
-                GlassSectionHeaderAction(
-                    title: L10n.string("vehicles.care.expenses.section"),
-                    actionTitle: L10n.string("vehicles.care.expense.add"),
-                    action: { openAddExpense() }
-                )
+                Text(L10n.string("vehicles.care.expenses.section"))
             } footer: {
                 Text(L10n.string("vehicles.care.expenses.footer"))
                     .font(.caption)
@@ -351,8 +373,27 @@ struct VehicleDetailView: View {
             }
     }
 
+    private var careRowPrimaryInk: Color {
+        GlassText.primary(for: colorScheme, palette: shellPalette)
+    }
+
     private var careRowSecondaryInk: Color {
         GlassText.secondary(for: colorScheme, palette: shellPalette)
+    }
+
+    private func addCareRowButton(
+        title: String,
+        rowPosition: GlassRowPosition,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: "plus.circle.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(careRowPrimaryInk)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.glassPlainHit)
+        .glassRow(position: rowPosition)
     }
 
     /// Matches Vehicles tab vehicle card: grouped plate, leading icon tile, title, due date trailing.
@@ -552,7 +593,7 @@ private struct CareTrackingCardRow: View {
 typealias VehicleCareDetailView = VehicleDetailView
 
 /// Add and edit forms that fill the trailing half on the widest book.
-private enum TrailingCareEditor: Equatable {
+private enum TrailingCareEditor: Hashable {
     case addExpense
     case editExpense(UUID)
     case completeSchedule(UUID)
