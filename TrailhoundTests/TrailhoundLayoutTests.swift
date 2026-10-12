@@ -37,6 +37,7 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertFalse(compactWide.isLandscape)
         XCTAssertTrue(compactWide.pinsRecordingCardToFold)
         XCTAssertFalse(compactWide.splitsTrips)
+        XCTAssertFalse(compactWide.splitsIdleLibrary)
         XCTAssertTrue(compactWide.hidesRecordingCardFromList)
 
         let regularPortrait = TrailhoundLayoutResolver.snapshot(
@@ -62,6 +63,7 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertEqual(book.layoutClass, .phoneLandscape)
         XCTAssertTrue(book.splitsTrips)
         XCTAssertTrue(book.isWideBook)
+        XCTAssertTrue(book.splitsIdleLibrary)
         XCTAssertFalse(book.splitsRecording)
         XCTAssertFalse(book.recordingCardLeads)
         XCTAssertFalse(book.pinsRecordingCardToFold)
@@ -74,6 +76,7 @@ final class TrailhoundLayoutTests: XCTestCase {
             size: CGSize(width: 844, height: 390),
             idiom: .phone
         )
+        XCTAssertFalse(phoneLand.splitsIdleLibrary)
         XCTAssertFalse(phoneLand.splitsRecording)
         XCTAssertFalse(phoneLand.recordingCardLeads)
         XCTAssertEqual(phoneLand.recordingCardArrangement, .list)
@@ -91,6 +94,7 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertTrue(openBook.isLandscape)
         XCTAssertTrue(openBook.splitsTrips)
         XCTAssertTrue(openBook.isWideBook)
+        XCTAssertTrue(openBook.splitsIdleLibrary)
         XCTAssertTrue(openBook.splitsRecording)
         XCTAssertTrue(openBook.recordingCardLeads)
         XCTAssertFalse(openBook.pinsRecordingCardToFold)

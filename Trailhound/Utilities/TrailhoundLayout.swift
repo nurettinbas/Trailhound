@@ -137,7 +137,17 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         layoutClass == .duoOpen && isLandscape
     }
 
-    /// Landscape phone and the open book. Idle trips are one full-width list, not Trips | Travels.
+    /// Idle Trips on the leading half, Travels on the trailing half.
+    /// The open book is the widest fold. A compact height size class can still label that
+    /// window phone landscape, so the fold span decides it. A normal phone landscape stays one list.
+    var splitsIdleLibrary: Bool {
+        if layoutClass == .pad, isLandscape { return true }
+        guard isLandscape else { return false }
+        if layoutClass == .duoOpen { return true }
+        return size.width >= TrailhoundLayoutResolver.openFoldSpan
+    }
+
+    /// Landscape phone and the open book share wide-book chrome.
     /// Width is not gated: the side tab shrinks the measured window under the fold span.
     var isWideBook: Bool {
         if layoutClass == .phoneLandscape { return true }

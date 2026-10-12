@@ -263,11 +263,10 @@ struct TripListView: View {
         travelSuggestion = nil
     }
 
-    /// Wide idle shows both libraries, except the Duo book: that list is one full-width column.
+    /// Open book and iPad landscape show both libraries. Phone landscape stays one column.
     /// A recording, live map, or selected trip keeps the trailing pane for that surface.
     private var showsLibrarySplit: Bool {
-        layout.splitsTrips
-            && !layout.isWideBook
+        layout.splitsIdleLibrary
             && !recordingService.state.isActiveSession
             && paneTripID == nil
             && !showLiveFollowMap
@@ -554,14 +553,17 @@ struct TripListView: View {
             .onAppear { syncWideBookStatusActions() }
             .onChange(of: isMergeMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
+            .onChange(of: showsLibrarySplit) { _, _ in syncWideBookStatusActions() }
             .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
                 performWideBookTrailing()
             }
             .onChange(of: layout.isLandscape) { _, _ in
                 beginRecordingViewportSettle()
+                syncWideBookStatusActions()
             }
             .onChange(of: layout.layoutClass) { _, _ in
                 beginRecordingViewportSettle()
+                syncWideBookStatusActions()
             }
             .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -657,8 +659,10 @@ struct TripListView: View {
     }
 
     private func librarySplit(scrollProxy: ScrollViewProxy) -> some View {
+        // One atmosphere for the whole book. Each list painting its own glow
+        // piles a white veil on the fold.
         TrailhoundPaneSplit {
-            tripList(scrollProxy: scrollProxy, library: .trips)
+            tripList(scrollProxy: scrollProxy, library: .trips, paintsAtmosphere: false)
         } focus: {
             travelsPane
         }
@@ -701,7 +705,7 @@ struct TripListView: View {
                 KeyboardDismiss.dismiss()
             }
         )
-        .glassListChrome()
+        .glassListChrome(showsAtmosphere: false)
         .listSectionSpacing(6)
         .portraitPaneListWidth(layout.splitsTrips || layout.isWideBook)
         .refreshable {
