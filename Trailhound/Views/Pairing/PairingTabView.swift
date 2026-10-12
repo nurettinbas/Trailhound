@@ -30,20 +30,22 @@ struct PairingTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             Group {
-                if layout.layoutClass == .phone {
-                    pairingList
-                } else if layout.layoutClass == .duoOpen || layout.showsHeroRail {
+                if layout.isLandscape && (layout.layoutClass == .duoOpen || layout.showsHeroRail) {
+                    // The split already paints one atmosphere. A second glow on the list
+                    // shifts the color on the leading half. Portrait stays one list.
                     TrailhoundPaneSplit {
-                        pairingList
+                        pairingList(paintsAtmosphere: false)
                     } focus: {
                         vehicleFocus
                     }
-                } else {
+                } else if layout.layoutClass == .pad {
                     VStack(spacing: 12) {
                         vehicleFocus
                             .frame(maxHeight: 220)
-                        pairingList
+                        pairingList()
                     }
+                } else {
+                    pairingList()
                 }
             }
                 .navigationDestination(for: VehicleNavDestination.self) { destination in
@@ -75,14 +77,27 @@ struct PairingTabView: View {
         let vehicle = sortedVehicles.first { $0.id == focusedVehicleID } ?? sortedVehicles.first
         return VStack(alignment: .leading, spacing: 8) {
             if let vehicle {
-                TrailhoundHeroRail(collapsed: false) {
-                    Text(L10n.string("vehicles.tab.title"))
-                } figure: {
-                    Text(vehicle.name)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                } detail: {
-                    Text(vehicle.isDefault ? L10n.string("vehicles.tab.title") : vehicle.name)
+                HStack(alignment: .center, spacing: 16) {
+                    VehicleAvatarView(
+                        systemImage: vehicle.systemImage,
+                        photoFileName: vehicle.photoFileName,
+                        size: 96,
+                        cornerRadius: 18,
+                        showsBrandRing: true,
+                        symbolFitsFrame: true,
+                        showsPhotoShine: vehicle.photoFileName != nil
+                    )
+                    TrailhoundHeroRail(collapsed: false) {
+                        if vehicle.isDefault {
+                            Text(L10n.pairingTabDefaultVehicle)
+                        }
+                    } figure: {
+                        Text(vehicle.name)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    } detail: {
+                        Text(fuelSubtitle(vehicle))
+                    }
                 }
                 Button(L10n.string("vehicles.care.detail.title")) {
                     navigationPath.append(VehicleNavDestination.detail(vehicle.id))
@@ -95,7 +110,7 @@ struct PairingTabView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var pairingList: some View {
+    private func pairingList(paintsAtmosphere: Bool = true) -> some View {
         List {
             Section {
                 PairingShortcutsAutomationCard(
@@ -140,7 +155,7 @@ struct PairingTabView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .glassListChrome()
+        .glassListChrome(showsAtmosphere: paintsAtmosphere)
         .navigationTitle(L10n.string("vehicles.tab.title"))
         .navigationBarTitleDisplayMode(.inline)
         .trailhoundShellToolbar()

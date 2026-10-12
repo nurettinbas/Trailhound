@@ -20,13 +20,14 @@ struct PairingShortcutsAutomationCard: View {
             } else {
                 Button(action: onOpenGuide) {
                     cardRow {
-                        Text(L10n.pairingShortcutsGuideCardButton)
-                            .font(.caption2.weight(.semibold))
-                            .glassAccentForeground()
-                            .lineLimit(1)
-                        Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .glassDisclosureInk()
+                        HStack(spacing: 4) {
+                            Text(L10n.pairingShortcutsGuideCardButton)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .glassAccentForeground()
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
                 .buttonStyle(.glassPlainHit)
@@ -36,7 +37,7 @@ struct PairingShortcutsAutomationCard: View {
 
     private var completedRow: some View {
         cardRow {
-            VStack(alignment: .trailing, spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 Button(action: onOpenTest) {
                     Text(L10n.pairingShortcutsGuideCardTest)
                         .font(.caption2.weight(.semibold))
@@ -61,30 +62,31 @@ struct PairingShortcutsAutomationCard: View {
     }
 
     private func cardRow<Trailing: View>(@ViewBuilder trailing: () -> Trailing) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
-                    .frame(width: 36, height: 36)
-                Image(systemName: "bolt.horizontal.circle.fill")
-                    .font(.body)
-                    .glassAccentForeground()
-            }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.body)
+                        .glassAccentForeground()
+                }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(L10n.pairingShortcutsGuideCardTitle)
-                    .font(.subheadline.weight(.semibold))
-                    .glassPrimaryInk()
-                Text(cardSubtitle)
-                    .font(.caption)
-                    .glassSecondaryInk()
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.pairingShortcutsGuideCardTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .glassPrimaryInk()
+                    Text(cardSubtitle)
+                        .font(.caption)
+                        .glassSecondaryInk()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-
-            Spacer(minLength: 0)
 
             trailing()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
 

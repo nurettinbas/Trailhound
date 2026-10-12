@@ -20,6 +20,8 @@ struct VehicleExpenseEditorView: View {
     var prefillCategory: VehicleExpenseCategory = .fuel
     /// When set, save completes this schedule (tracking Mark done) instead of a plain expense insert.
     var completeScheduleID: UUID?
+    /// Wide-book trailing pane. Nil keeps the sheet dismiss.
+    var onFinish: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -66,6 +68,73 @@ struct VehicleExpenseEditorView: View {
     }
 
     var body: some View {
+        editorChrome
+            .dismissKeyboardOnTap(focus: $focusedField)
+            .dismissKeyboardOnScroll()
+            .fieldKeyboardAccessory(
+                title: focusedFieldTitle,
+                focusID: focusedField.map { AnyHashable($0) },
+                onDone: {
+                    focusedField = nil
+                    KeyboardDismiss.dismiss()
+                }
+            )
+            .onAppear {
+                if draft == nil {
+                    if let expense {
+                        let siblings = VehicleExpenseInstallmentService.siblings(of: expense, in: modelContext)
+                        draft = VehicleExpenseEditorDraft(from: expense, siblings: siblings)
+                    } else if let schedule = completeSchedule {
+                        draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
+                    } else {
+                        draft = VehicleExpenseEditorDraft(category: prefillCategory)
+                    }
+                }
+            }
+            .deleteConfirmHost()
+    }
+
+    private var saveDisabled: Bool {
+        isSaving || activeDraft.amount == nil
+    }
+
+    @ViewBuilder
+    private var editorChrome: some View {
+        if onFinish != nil {
+            VStack(spacing: 0) {
+                VehicleCarePaneEditorBar(
+                    title: navigationTitle,
+                    saveDisabled: saveDisabled,
+                    onBack: close,
+                    onSave: save
+                )
+                editorForm
+                    .vehicleCareEmbeddedListChrome()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            editorForm
+                .glassListChrome()
+                .navigationTitle(navigationTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        GlassToolbarBackButton(action: close)
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            save()
+                        } label: {
+                            GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                        }
+                        .disabled(saveDisabled)
+                    }
+                }
+        }
+    }
+
+    private var editorForm: some View {
         Form {
             Section {
                 if isCompletingSchedule, let schedule = completeSchedule {
@@ -180,46 +249,6 @@ struct VehicleExpenseEditorView: View {
                 }
             }
         }
-        .glassListChrome()
-        .navigationTitle(navigationTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .dismissKeyboardOnTap(focus: $focusedField)
-        .dismissKeyboardOnScroll()
-        .fieldKeyboardAccessory(
-            title: focusedFieldTitle,
-            focusID: focusedField.map { AnyHashable($0) },
-            onDone: {
-                focusedField = nil
-                KeyboardDismiss.dismiss()
-            }
-        )
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                GlassToolbarBackButton(action: dismiss.callAsFunction)
-            }
-            .hideSharedToolbarBackgroundIfAvailable()
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    save()
-                } label: {
-                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
-                }
-                .disabled(isSaving || activeDraft.amount == nil)
-            }
-        }
-        .onAppear {
-            if draft == nil {
-                if let expense {
-                    let siblings = VehicleExpenseInstallmentService.siblings(of: expense, in: modelContext)
-                    draft = VehicleExpenseEditorDraft(from: expense, siblings: siblings)
-                } else if let schedule = completeSchedule {
-                    draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
-                } else {
-                    draft = VehicleExpenseEditorDraft(category: prefillCategory)
-                }
-            }
-        }
-        .deleteConfirmHost()
     }
 
     private var navigationTitle: String {
@@ -311,7 +340,7 @@ struct VehicleExpenseEditorView: View {
             }
             ToastPresenter.shared.show(.vehicleExpenseSaved)
             TripStore.syncWidgetWeekDistance(in: modelContext)
-            dismiss()
+            close()
         } catch {
             AppErrorPresenter.shared.present(
                 error as? VehicleCareError == .invalidAmount
@@ -326,9 +355,17 @@ struct VehicleExpenseEditorView: View {
         guard let expense else { return }
         VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
-        dismiss()
+        close()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
+        }
+    }
+
+    private func close() {
+        if let onFinish {
+            onFinish()
+        } else {
+            dismiss()
         }
     }
 
@@ -340,7 +377,7 @@ struct VehicleExpenseEditorView: View {
         guard let expense else { return }
         VehicleExpenseInstallmentService.deleteGroup(of: expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
-        dismiss()
+        close()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
         }

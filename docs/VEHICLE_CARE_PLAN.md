@@ -38,9 +38,9 @@ Existing V13 expenses stay one-shot (`installment*` fields `nil`). Additive V14 
 
 ## Screen order
 
-1. **Vehicle info** — profile draft + Save (`PairingVehicleEditorForm` embedded)
-2. **Tracking & reminders** — due list, Add reminder, Done on each row
-3. **Expenses** — list + Add expense
+1. **Vehicle info** — profile draft. Save sits under that card, not in the nav bar, so it is not confused with an expense or reminder save (`PairingVehicleEditorForm` embedded)
+2. **Tracking & reminders** — Add reminder sits in the section header, above the due list. Done stays on each row
+3. **Expenses** — Add expense sits in the section header, above the list. On the widest open book only, the profile stays on the leading half and Tracking & reminders plus expenses scroll together on the trailing half. Add reminder and Add expense open in that trailing half and fill it edge to edge, with their own back and save, not as a sheet and not by taking over the vehicle navigation bar. Other widths keep one list and a sheet
 
 Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs).
 

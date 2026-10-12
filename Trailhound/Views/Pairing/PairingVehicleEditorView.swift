@@ -76,17 +76,6 @@ struct PairingVehicleEditorView: View {
                     }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    saveTrigger += 1
-                } label: {
-                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
-                }
-                .disabled(saveDisabled)
-                .opacity(saveDisabled ? 0.45 : 1)
-            }
-        }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
         .vehiclePhotoFlowSheets(
             photoSheet: $photoSheet,
@@ -242,6 +231,8 @@ struct PairingVehicleEditorForm: View {
                 .listRowSeparator(.hidden)
 
             vehicleProfileFields(compactTop: true)
+
+            saveProfileButton
         }
     }
 
@@ -311,6 +302,22 @@ struct PairingVehicleEditorForm: View {
         }
         .buttonStyle(.glassPlainHit)
         .disabled(isOnlyVehicle)
+    }
+
+    private var saveProfileButton: some View {
+        let busy = isSaving || isProcessingPhoto || isFraming
+        return Button {
+            Task { await saveVehicle() }
+        } label: {
+            Text(L10n.pairingTabSave)
+        }
+        .buttonStyle(.glassPlainHit)
+        .trailhoundCompactProminentButton()
+        .disabled(busy)
+        .opacity(busy ? 0.45 : 1)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     private var photoSection: some View {

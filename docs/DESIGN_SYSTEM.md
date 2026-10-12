@@ -78,7 +78,7 @@ List is on the leading side. The live surface (recording card, map, selected det
 |---|---|
 | `TrailhoundLayoutResolver` | Class, column count, hinge frame, badge columns |
 | `TrailhoundModuleGrid` | Cached `Layout`. Spans: `.moduleSpan(.full / .half / .feature)`. Half tiles stay between 160 and 300 pt |
-| `TrailhoundHeroRail` | Title, fixed `heroFigureFont` (44 pt light rounded), detail. Collapses to one line |
+| `TrailhoundHeroRail` | Title, fixed `heroFigureFont` (44 pt light rounded), detail. Collapses to one line. Pairing’s landscape focus places `VehicleAvatarView` beside the rail: the name, the fuel line (`Petrol · 7.5 L/100 km`), and “Default vehicle” above the name only when that vehicle is the default. Portrait stays one list |
 | `TrailhoundPaneSplit` | Leading list, trailing focus. Each side scrolls on its own |
 | `TrailhoundMapCanvas` | Phone: bottom sheet. Landscape and iPad: 380 pt trailing panel plus `GlassToolbarCollapseButton`. Open fold: panel and map are the two panes |
 | `trailhoundPaneCard()` | Card max width 440 pt, centered in the pane |
@@ -106,7 +106,7 @@ Profile fold, rotate, and map-mode changes with Instruments → SwiftUI → Anim
 | `GlassEngine.swift` | Resolve native / material / solid |
 | `GlassPalette.swift` | Light tokens + scheme-aware text / semantics |
 | `GlassEnvironment.swift` | `.onGlassShell()`, ink hierarchy, `.glassDisclosureInk()`, `shellPalette` env |
-| `GlassControls.swift` | Toggle tint, section header/footer, `GlassDisclosureChevron`, `.glassDatePicker()`, `.glassMenuPicker()`, toolbar symbol/title/cluster (`GlassToolbarCluster(clustered:)` for shared-platter pairs), `GlassToolbarNavTitle` / `GlassToolbarNavTitleItem` (inline title without the header plate), `GlassToolbarCircleButton` / `GlassToolbarCollapseButton` (44pt Liquid Glass circle — action is the chrome, not the glyph) |
+| `GlassControls.swift` | Toggle tint, section header/footer, `GlassSectionHeaderAction` (title plus a header-weight add action above the rows), `GlassDisclosureChevron`, `.glassDatePicker()`, `.glassMenuPicker()`, toolbar symbol/title/cluster (`GlassToolbarCluster(clustered:)` for shared-platter pairs), `GlassToolbarNavTitle` / `GlassToolbarNavTitleItem` (inline title without the header plate), `GlassToolbarCircleButton` / `GlassToolbarCollapseButton` (44pt Liquid Glass circle — action is the chrome, not the glyph) |
 | `NavigationInteractivePopEnabler.swift` | Edge-swipe pop when the system back button is hidden; `disabled` blocks pop while a vehicle editor has unsaved edits |
 | `GlassButtonStyles.swift` | `.trailhoundProminentButton()` / `.trailhoundCompactProminentButton()` / `.trailhoundGlassButton()` / `.trailhoundDestructiveButton()` / `.trailhoundCardPress()` / `.buttonStyle(.glassPlainHit)` (label bounds fire the action — never glyph-only `.plain`) / `.glassGlyphHit()` |
 | `GlassStyle.swift` | Atmosphere, surfaces, chips, list chrome, `.glassNestedChoice(isSelected:)` (frost fill inside a card — not a second Material), `.glassInputField()` / `.glassInputWell()` (Light white input rim), `.glassCircleChrome()` (44pt overlay collapse), `.glassTabBar()` (unused platter helper — live tab bar is system `UITabBar`), `.glassEffectGrouping()` (chips only — not Lists), `.glassChipScroller()` (horizontal chips inside a card), `.glassNavigationChrome()` (no full-width scroll-edge plate; never hide toolbar item UIViews), `GlassToolbarControlBackground` (overlay / keyboard accessory chips) |
