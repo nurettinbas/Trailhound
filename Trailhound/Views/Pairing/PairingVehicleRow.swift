@@ -38,21 +38,10 @@ struct PairingVehicleRow: View {
                 .id(vehicle.photoFileName ?? "none")
 
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(vehicle.name)
-                            .font(.body.weight(.semibold))
-                            .glassPrimaryInk()
-                            .lineLimit(1)
-                        if vehicle.isDefault {
-                            Text(L10n.pairingTabDefaultVehicle)
-                                .font(.caption2.weight(.bold))
-                                .glassAccentForeground()
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(TrailhoundBrandColors.brandBottom.opacity(0.12))
-                                .clipShape(Capsule())
-                        }
-                    }
+                    Text(vehicle.name)
+                        .font(.body.weight(.semibold))
+                        .glassPrimaryInk()
+                        .lineLimit(1)
 
                     if let careTitle, let band, let chipText {
                         VehicleCareDueChip(
@@ -70,8 +59,18 @@ struct PairingVehicleRow: View {
                             .multilineTextAlignment(.leading)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 0)
+                if vehicle.isDefault {
+                    Text(L10n.pairingTabDefaultVehicle)
+                        .font(.caption2.weight(.bold))
+                        .glassAccentForeground()
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(TrailhoundBrandColors.brandBottom.opacity(0.12))
+                        .clipShape(Capsule())
+                        .fixedSize()
+                }
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))

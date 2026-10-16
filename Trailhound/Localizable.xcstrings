@@ -7278,13 +7278,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default vehicle"
+            "value" : "Default"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varsayılan araç"
+            "value" : "Varsayılan"
           }
         }
       }

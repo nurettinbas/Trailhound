@@ -78,7 +78,7 @@ List is on the leading side. The live surface (recording card, map, selected det
 |---|---|
 | `TrailhoundLayoutResolver` | Class, column count, hinge frame, badge columns |
 | `TrailhoundModuleGrid` | Cached `Layout`. Spans: `.moduleSpan(.full / .half / .feature)`. Half tiles stay between 160 and 300 pt |
-| `TrailhoundHeroRail` | Title, fixed `heroFigureFont` (44 pt light rounded), detail. Collapses to one line. Pairing stays one list on phone portrait, phone landscape, and closed Duo landscape, so the shortcuts card and saved vehicles use the width. On the open book and on iPad landscape, the focus pane places `VehicleAvatarView` beside the rail: the name, the fuel line (`Petrol · 7.5 L/100 km`), and “Default vehicle” above the name only when that vehicle is the default |
+| `TrailhoundHeroRail` | Title, fixed `heroFigureFont` (44 pt light rounded), detail. Collapses to one line. Pairing stays one list on phone portrait, phone landscape, and closed Duo landscape, so the shortcuts card and saved vehicles use the width. On the open book and on iPad landscape, the focus pane places `VehicleAvatarView` beside the rail: the name, the fuel line (`Petrol · 7.5 L/100 km`), and “Default” above the name only when that vehicle is the default |
 | `TrailhoundPaneSplit` | Leading list, trailing focus. Each side scrolls on its own |
 | `TrailhoundMapCanvas` | Phone: bottom sheet. Landscape and iPad: 380 pt trailing panel plus `GlassToolbarCollapseButton`. Open fold: panel and map are the two panes |
 | `trailhoundPaneCard()` | Card max width 440 pt, centered in the pane |
