@@ -264,6 +264,7 @@ struct TrailhoundApp: App {
                     handleScenePhase(phase)
                 }
                 .onOpenURL { url in
+                    LaunchIntroSession.shared.noteURLOpen()
                     runtime.bootstrap(container: modelContainer)
                     handlePremiumDeepLink(url)
                     guard TrailhoundDeepLink.handle(url) else { return }

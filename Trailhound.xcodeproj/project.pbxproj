@@ -157,6 +157,10 @@
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
 		A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */; };
 		A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */; };
+		A1LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */; };
+		A1LAUNCHINTROVIEW00001 /* LaunchIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */; };
+		A1LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */; };
+		L1AUNCHINTROTESTBUILD1 /* LaunchIntroTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */; };
 		A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSSTYLE000000000001 /* GlassStyle.swift */; };
 		A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSENGINE0000000001 /* GlassEngine.swift */; };
 		A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */; };
@@ -593,6 +597,10 @@
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
 		A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreChangeObserver.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundMotion.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroLayout.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroView.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroSceneView.swift; sourceTree = "<group>"; };
+		L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LaunchIntroTests.swift; sourceTree = SOURCE_ROOT; };
 		A2GLASSSTYLE000000000001 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
 		A2GLASSENGINE0000000001 /* GlassEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEngine.swift; sourceTree = "<group>"; };
 		A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTabBarCompact.swift; sourceTree = "<group>"; };
@@ -1110,6 +1118,15 @@
 			path = Pairing;
 			sourceTree = "<group>";
 		};
+		A5LAUNCHINTROGRP000001 /* LaunchIntro */ = {
+			isa = PBXGroup;
+			children = (
+				A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */,
+				A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */,
+			);
+			path = LaunchIntro;
+			sourceTree = "<group>";
+		};
 		A50000000000000000000008 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -1156,6 +1173,7 @@
 				A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */,
 				A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */,
 				A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */,
+				A5LAUNCHINTROGRP000001 /* LaunchIntro */,
 				A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */,
 				A2MAILCOMPOSE00000001 /* MailComposeView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
@@ -1199,6 +1217,7 @@
 				A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */,
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
 				A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */,
+				A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */,
 				A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */,
 				A2APPICONSYNC000000001 /* AppIconSync.swift */,
 				A2GLASSSTYLE000000000001 /* GlassStyle.swift */,
@@ -1349,6 +1368,7 @@
 				F171B4E520A447588E505253 /* DeleteConfirmPresenterTests.swift */,
 				409D7353D2A44C42B7947FCA /* DevLogTests.swift */,
 				3D4BDDBB10634E2DA79A4402 /* GlassContrastTests.swift */,
+				L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */,
 				FD9240CF7F8442C2B6A65D5F /* GlassEngineTests.swift */,
 				603E4D4BA14744CF9C56F11D /* GlassPaletteTests.swift */,
 				B6CB16BB624C4307B0AA6296 /* KeyboardFieldTitleTests.swift */,
@@ -1616,6 +1636,7 @@
 				AA68924BE60047878AFEA76D /* DeleteConfirmPresenterTests.swift in Sources */,
 				C5FF160D58744DEDAECC5E41 /* DevLogTests.swift in Sources */,
 				644CF1B5CF0441DA951620CC /* GlassContrastTests.swift in Sources */,
+				L1AUNCHINTROTESTBUILD1 /* LaunchIntroTests.swift in Sources */,
 				5C9157C85E6349CD83881ACC /* GlassEngineTests.swift in Sources */,
 				0312C000EFDE4B8E924D2D46 /* GlassPaletteTests.swift in Sources */,
 				B2ECDF28DAF743DB8D98C692 /* KeyboardFieldTitleTests.swift in Sources */,
@@ -1731,6 +1752,9 @@
 				A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */,
 				A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */,
 				A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */,
+				A1LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift in Sources */,
+				A1LAUNCHINTROVIEW00001 /* LaunchIntroView.swift in Sources */,
+				A1LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift in Sources */,
 				A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */,
 				A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */,
 				A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */,

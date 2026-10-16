@@ -10,6 +10,15 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 - Identity surfaces (pairing rows, recording capsule, trip/stats vehicle filters, trip-detail picker) reuse `VehicleAvatarView` + `VehiclePhotoStore.prefetch` so thumbs are warm before scroll/chips appear.
 - Recording road animation (`RecordingCarAnimationView` in TrailhoundShared) accepts a **pre-decoded** `UIImage?` plus optional `systemImage` from the app. Shared never opens photo files; `drawingGroup` must not do per-frame I/O.
 
+## Cold-launch intro
+
+- The cold-launch intro (`LaunchIntroSceneView`) is the real app icon on a `CALayer`: road, hound, and corner stopwatch. Scale, the stopwatch rock and hands, and the corner close are `CAKeyframeAnimation`s. Nothing writes SwiftUI state per frame, so the first SwiftData fetch and tab build cannot hitch it.
+- The app hierarchy (onboarding, lock, tabs) is built only after the intro’s first frame is committed (`onStarted`), so the system launch screen waits for one CALayer tree, not every tab. Time before `didFinishLaunching` is the system loading the process; app code before the first intro frame is about 150 ms.
+- The system launch screen is `LaunchBackground` (white / black). It cannot follow the theme because it is drawn before app code runs; the intro eases from it into the theme plate.
+- No offscreen passes: the close animates the plate’s `bounds` and `cornerRadius` (no full-screen shape mask), and the picture and content fade with `allowsGroupOpacity = false`. The stopwatch body (ring, ticks, button) is one filled shape; only the two hands and the dash phase change per frame, and those stop when the icon lands.
+- One `launch.intro` signpost covers the scene. The layer tree is removed when the intro finishes. Low Power and serious thermal drop parallax, particles, and the frame rate (60 Hz, 1.2s). ProMotion uses `CADisableMinimumFrameDurationOnPhone` plus `preferredFrameRateRange` on these animations only; existing `CADisplayLink` clocks keep their own 60 fps cap.
+- The intro does not play for UI tests, VoiceOver, an active or pending recording, a deep link, or a notification tap. Face ID and the external-start confirm wait until it finishes.
+
 ## Trips list scroll (recording card)
 
 - Trips list hides in-progress recordings with an `endedAt != nil` predicate. Do not add ad-hoc SwiftData schema fields without a versioned migration plan.

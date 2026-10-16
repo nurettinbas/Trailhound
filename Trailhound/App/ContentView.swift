@@ -13,16 +13,33 @@ struct ContentView: View {
     @State private var windowSize: CGSize = .zero
     /// Layout the current turn started with. The live size is applied when the turn ends.
     @State private var presentedLayout = TrailhoundLayoutSnapshot.phone
+    @State private var launchIntroPlays = false
+    @State private var launchIntroSettled = false
+    @State private var launchIntroGeneration = 0
+    @State private var contentSettleScale: CGFloat = 1
+    /// The app is built only once the intro’s first frame is on screen, so the system launch screen
+    /// does not wait for the whole tab hierarchy.
+    @State private var contentMounted = false
 
     var body: some View {
-        Group {
-            if !settings.hasCompletedOnboarding {
+        ZStack {
+            Group {
+            if !contentMounted {
+                Color.clear
+            } else if !settings.hasCompletedOnboarding {
                 OnboardingView()
             } else if settings.appLockEnabled && !appLockService.isUnlocked {
                 AppLockView()
             } else {
                 mainTabs
                     .animation(layoutChangeAnimation, value: layoutSnapshot.layoutClass)
+            }
+        }
+        .scaleEffect(contentSettleScale, anchor: .center)
+        .allowsHitTesting(launchIntroSettled)
+
+            if !launchIntroSettled {
+                launchIntroCover
             }
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
@@ -63,6 +80,28 @@ struct ContentView: View {
         .onAppear {
             syncWindowFill()
             rememberPresentedLayout()
+            resolveLaunchIntro()
+        }
+        .onChange(of: tripRecordingService.state.isActiveSession) { _, active in
+            guard active, launchIntroPlays else { return }
+            finishLaunchIntro(playedMotion: false)
+        }
+        .onChange(of: LaunchIntroSession.shared.openedFromURL) { _, opened in
+            guard opened, launchIntroPlays else { return }
+            finishLaunchIntro(playedMotion: false)
+        }
+        .onChange(of: LaunchIntroSession.shared.openedFromNotification) { _, opened in
+            guard opened, launchIntroPlays else { return }
+            finishLaunchIntro(playedMotion: false)
+        }
+        .onChange(of: LaunchIntroSession.shared.replayGeneration) { _, generation in
+            guard generation > 0 else { return }
+            launchIntroGeneration = generation
+            launchIntroSettled = false
+            launchIntroPlays = true
+            if !reduceMotion {
+                contentSettleScale = TrailhoundMotion.launchIntroContentSettleScale
+            }
         }
         .onChange(of: settings.appearanceMode) { _, _ in syncWindowFill() }
         .onChange(of: settings.shellPalette) { _, _ in syncWindowFill() }
@@ -124,6 +163,82 @@ struct ContentView: View {
 
     private func syncWindowFill() {
         AppIconSync.syncWindowStyle(settings.appearanceMode, palette: settings.shellPalette)
+    }
+
+    private var launchIntroCover: some View {
+        ZStack {
+            if launchIntroPlays, windowSize.width > 1, windowSize.height > 1 {
+                LaunchIntroOverlay(
+                    onReveal: {
+                        withAnimation(TrailhoundMotion.launchIntroContentSettle) {
+                            contentSettleScale = 1
+                        }
+                    },
+                    onStarted: {
+                        contentMounted = true
+                    },
+                    onLanded: {
+                        TrailhoundHaptics.launchSettled()
+                    },
+                    onFinished: { playedMotion in
+                        finishLaunchIntro(playedMotion: playedMotion)
+                    }
+                )
+                .id(launchIntroGeneration)
+            } else {
+                LaunchIntroLaunchFill()
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private func resolveLaunchIntro() {
+        guard !launchIntroSettled, !launchIntroPlays else { return }
+        RecordingControlBridge.refreshSharedDefaultsFromDisk()
+        let ownsScene = LaunchIntroSession.shared.claimFirstScene()
+        let decision = LaunchIntroGate.decide(
+            isUITesting: UITestSupport.shouldSkipExternalEffects,
+            isActiveRecording: tripRecordingService.state.isActiveSession,
+            hasPendingRecordingRequest: hasPendingRecordingRequest,
+            openedFromURL: LaunchIntroSession.shared.openedFromURL,
+            openedFromNotification: LaunchIntroSession.shared.openedFromNotification,
+            voiceOver: UIAccessibility.isVoiceOverRunning,
+            alreadyPlayed: LaunchIntroSession.shared.didFinish,
+            isFirstScene: ownsScene
+        )
+        if decision.plays {
+            LaunchIntroSession.shared.markCovering()
+            launchIntroPlays = true
+            if !reduceMotion {
+                contentSettleScale = TrailhoundMotion.launchIntroContentSettleScale
+            }
+        } else {
+            LaunchIntroSession.shared.markSkipped()
+            contentMounted = true
+            launchIntroSettled = true
+        }
+    }
+
+    private var hasPendingRecordingRequest: Bool {
+        settings.pendingStartRecordingRequest
+            || settings.pendingStopRecordingRequest
+            || settings.pendingPauseRecordingRequest
+            || settings.pendingResumeRecordingRequest
+            || settings.awaitingExternalStartConfirmation
+    }
+
+    private func finishLaunchIntro(playedMotion: Bool) {
+        guard !launchIntroSettled else { return }
+        if playedMotion {
+            LaunchIntroSession.shared.markPlayed()
+        } else if !LaunchIntroSession.shared.didFinish {
+            LaunchIntroSession.shared.markSkipped()
+        }
+        contentSettleScale = 1
+        contentMounted = true
+        launchIntroPlays = false
+        launchIntroSettled = true
+        UIAccessibility.post(notification: .screenChanged, argument: nil)
     }
 
     private func publishWindowSize(_ size: CGSize) {
@@ -243,7 +358,8 @@ struct ContentView: View {
         }
         .modifier(TrailhoundTabBarChrome())
         .modifier(TrailhoundRootTint())
-        .task {
+        .task(id: launchIntroSettled) {
+            guard launchIntroSettled else { return }
             await authenticateOnLaunch()
             processPendingRecordingRequests()
             AppIconSync.apply(settings.shellPalette)
@@ -309,7 +425,7 @@ struct ContentView: View {
 
     private var externalStartConfirmationBinding: Binding<Bool> {
         Binding(
-            get: { settings.awaitingExternalStartConfirmation },
+            get: { launchIntroSettled && settings.awaitingExternalStartConfirmation },
             set: { newValue in
                 if !newValue, settings.awaitingExternalStartConfirmation {
                     tripRecordingService.cancelExternalStartRecording()

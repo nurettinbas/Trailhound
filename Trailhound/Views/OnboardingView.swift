@@ -60,6 +60,7 @@ struct OnboardingView: View {
                 .trailhoundAdaptiveSheet()
         }
         .task(id: entranceToken) {
+            await Task.yield()
             await runEntrance(for: currentStep)
         }
         .onChange(of: page) { _, _ in
@@ -525,9 +526,15 @@ struct OnboardingView: View {
 
     // MARK: - Entrance
 
+    /// The cold-launch hound already played the brand entrance.
+    private var welcomeAlreadyIntroduced: Bool {
+        currentStep == .welcome
+            && (LaunchIntroSession.shared.playedIntro || LaunchIntroSession.shared.coversFirstScreen)
+    }
+
     @MainActor
     private func prepareEntrance() {
-        if reduceMotion {
+        if reduceMotion || welcomeAlreadyIntroduced {
             settleEntrance()
             return
         }
@@ -549,7 +556,7 @@ struct OnboardingView: View {
 
     @MainActor
     private func runEntrance(for step: OnboardingStep) async {
-        if reduceMotion {
+        if reduceMotion || welcomeAlreadyIntroduced {
             settleEntrance()
             return
         }

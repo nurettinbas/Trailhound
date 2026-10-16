@@ -393,6 +393,11 @@ struct SettingsView: View {
                 EmptyView().id(SettingsPane.about)
                 LabeledContent(L10n.settingsVersion, value: "1.1.0")
                     .glassRow(position: .first)
+                Button(L10n.settingsPlayLaunchIntro) {
+                    LaunchIntroSession.shared.replay()
+                }
+                .accessibilityIdentifier("settings.playLaunchIntro")
+                .glassRow(position: .middle)
                 Button(L10n.settingsReportProblem) {
                     showReportProblem = true
                 }

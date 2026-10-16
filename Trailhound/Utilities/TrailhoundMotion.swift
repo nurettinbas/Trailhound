@@ -14,6 +14,15 @@ enum TrailhoundMotion {
     static let recordingMorph = Animation.spring(response: 0.26, dampingFraction: 0.9)
     /// Recording card entrance — card rise + car drive-in.
     static let coldOpenFade = Animation.spring(response: 0.28, dampingFraction: 0.88)
+    /// Cold-launch hound intro budgets. Frames are Core Animation, not SwiftUI.
+    static let launchIntroDuration: TimeInterval = 2.45
+    static let launchIntroLowPowerDuration: TimeInterval = 1.7
+    static let launchIntroReduceMotionDuration: TimeInterval = 0.25
+    static let launchIntroSkipDuration: TimeInterval = 0.25
+    /// App underneath settles from this scale to 1 as the plate closes into the icon.
+    static let launchIntroContentSettleScale: CGFloat = 1.04
+    /// Same curve and length as the plate closing, so the app and the icon move as one.
+    static let launchIntroContentSettle = Animation.timingCurve(0.65, 0, 0.35, 1, duration: 0.8)
     /// Soft sheet rise for TripDetail panel.
     static let sheetRise = Animation.spring(response: 0.55, dampingFraction: 0.88)
     /// Trip detail: panel recedes + camera opens as one beat (no sheet modal).
@@ -330,6 +339,12 @@ enum TrailhoundHaptics {
 
     static func badgeUnlocked() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    /// One soft tap as the cold-launch road hands off to the app.
+    static func launchSettled() {
+        guard !UITestSupport.isEnabled else { return }
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
     }
 
     static func destructive() {
