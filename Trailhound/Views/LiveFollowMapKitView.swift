@@ -134,6 +134,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     var session: LiveFollowSession
     var isFollowing: Bool
     var isPaused: Bool
+    /// Card frame, written outside SwiftUI. Read only when overview is tapped.
+    var hudAnchor: RecordingCardAnchorBox
     /// Bumped when the user asks to fit start + traveled path + puck (north-up 2D).
     var overviewRequestToken: Int
     /// Bumped when the user asks to re-lock follow (animated, same ease as overview).
@@ -184,6 +186,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         map.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
         map.centersOnScreenMidpoint = centersOnScreenMidpoint
         context.coordinator.mapView = map
+        context.coordinator.hudAnchor = hudAnchor
         context.coordinator.bindSession()
         context.coordinator.installGestureBreak(on: map)
         context.coordinator.syncRouteIfNeeded(on: map)
@@ -207,6 +210,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             context.coordinator.beginCameraEase()
         }
         context.coordinator.session = session
+        context.coordinator.hudAnchor = hudAnchor
         context.coordinator.isFollowing = isFollowing
         let pauseChanged = context.coordinator.isPaused != isPaused
         context.coordinator.isPaused = isPaused
@@ -284,6 +288,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         ]
         var themeSignature = "sky-l"
         weak var mapView: MKMapView?
+        var hudAnchor: RecordingCardAnchorBox?
         private var isApplyingCamera = false
         private var pinAnnotations: [String: LiveFollowPinAnnotation] = [:]
         private var puckAnnotation: LiveFollowPuckAnnotation?
@@ -337,6 +342,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             var toHeading: CLLocationDirection
             var startedAt: CFTimeInterval
             var retargetFollow: Bool
+            /// Overview only. Recenter keeps a linear distance blend.
+            var logarithmicDistance: Bool
+            var duration: CFTimeInterval
         }
 
         /// History is cut into fixed-size polylines. Everything but the growing tail
@@ -598,19 +606,91 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 vehicle: session.vehicleCoordinate ?? LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces)
             )
             guard !rect.isNull else { return }
+            let size = map.bounds.size
+            guard size.width > 1, size.height > 1 else { return }
+            guard let fit = LiveFollowOverviewFit.target(
+                routeRect: rect,
+                mapSize: size,
+                contentInsets: overviewContentInsets(on: map),
+                visibleHeightPerDistance: pitch0VisibleHeightPerDistance(on: map)
+            ) else { return }
             breakFollow()
             onUserBreakFollow()
-            let center = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
-            let metersPerPoint = MKMetersPerMapPointAtLatitude(center.latitude)
-            let spanMeters = max(rect.size.width, rect.size.height) * metersPerPoint
-            let distance = max(spanMeters * 1.35, 220)
             let target = MKMapCamera(
-                lookingAtCenter: center,
-                fromDistance: distance,
+                lookingAtCenter: fit.center,
+                fromDistance: fit.distanceMeters,
                 pitch: 0,
                 heading: 0
             )
-            startCameraEase(to: target, retargetFollow: false, on: map)
+            startCameraEase(to: target, retargetFollow: false, logarithmicDistance: true, on: map)
+        }
+
+        /// Pitch 0 only. A read — the camera is not moved. Pitched follow uses the fallback.
+        private func pitch0VisibleHeightPerDistance(on map: MKMapView) -> Double {
+            let distance = map.camera.centerCoordinateDistance
+            guard map.camera.pitch < 1, distance > 1 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            let rect = map.visibleMapRect
+            guard !rect.isNull, rect.size.height > 1 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            let mid = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
+            let meters = rect.size.height * MKMetersPerMapPointAtLatitude(mid.latitude)
+            let ratio = meters / distance
+            guard ratio > 0.05, ratio < 20 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            return ratio
+        }
+
+        /// Top chips, the recording card, and a camera-hole side inset.
+        /// A wide card clears the bottom band. A corner card (landscape cover) clears that side.
+        private func overviewContentInsets(on map: MKMapView) -> UIEdgeInsets {
+            let bounds = map.bounds
+            var insets = UIEdgeInsets(
+                top: max(64, map.safeAreaInsets.top + 44),
+                left: 16,
+                bottom: 20,
+                right: 16
+            )
+            if map.safeAreaInsets.right >= 20 {
+                insets.right = max(insets.right, map.safeAreaInsets.right + 8)
+            } else if map.safeAreaInsets.left >= 20 {
+                insets.left = max(insets.left, map.safeAreaInsets.left + 8)
+            }
+
+            let card = hudAnchor?.value.rect ?? .zero
+            guard card.width > 1, card.height > 1 else {
+                insets.bottom = max(insets.bottom, 220)
+                return clampedOverviewInsets(insets, in: bounds)
+            }
+            let inMap = map.convert(card, from: map.window)
+            let overlap = inMap.intersection(bounds.insetBy(dx: -4, dy: -4))
+            guard overlap.width > 1, overlap.height > 1 else {
+                insets.bottom = max(insets.bottom, 220)
+                return clampedOverviewInsets(insets, in: bounds)
+            }
+            if overlap.width > bounds.width * 0.55 {
+                insets.bottom = max(insets.bottom, bounds.maxY - overlap.minY + 12)
+            } else if overlap.midX < bounds.midX {
+                insets.left = max(insets.left, overlap.maxX - bounds.minX + 12)
+            } else {
+                insets.right = max(insets.right, bounds.maxX - overlap.minX + 12)
+            }
+            return clampedOverviewInsets(insets, in: bounds)
+        }
+
+        private func clampedOverviewInsets(_ insets: UIEdgeInsets, in bounds: CGRect) -> UIEdgeInsets {
+            var insets = insets
+            if bounds.height - insets.top - insets.bottom < 48 {
+                insets.bottom = max(20, bounds.height - insets.top - 48)
+            }
+            if bounds.width - insets.left - insets.right < 48 {
+                insets.left = 16
+                insets.right = 16
+            }
+            return insets
         }
 
         func beginCameraEase() {
@@ -631,13 +711,21 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 pitch: pose.pitchDegrees,
                 heading: pose.headingDegrees
             )
-            startCameraEase(to: target, retargetFollow: true, on: map)
+            startCameraEase(to: target, retargetFollow: true, logarithmicDistance: false, on: map)
         }
 
         /// Snapshot the *visible* camera and interpolate toward `target` on the display
         /// link. Never `setCamera(animated:)` — MapKit jumps heading in the model and
         /// then starts the pan a frame later, which reads as a hitch from nowhere.
-        private func startCameraEase(to target: MKMapCamera, retargetFollow: Bool, on map: MKMapView) {
+        ///
+        /// `logarithmicDistance` is the overview pull-back only. Recenter stays linear
+        /// over `cameraEaseDuration`.
+        private func startCameraEase(
+            to target: MKMapCamera,
+            retargetFollow: Bool,
+            logarithmicDistance: Bool,
+            on map: MKMapView
+        ) {
             if session.reduceMotion {
                 cameraEase = nil
                 easeClock.stop()
@@ -657,6 +745,12 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 return
             }
             let from = map.camera
+            let duration = logarithmicDistance
+                ? LiveFollowOverviewFit.overviewDuration(
+                    fromDistance: from.centerCoordinateDistance,
+                    toDistance: target.centerCoordinateDistance
+                )
+                : Self.cameraEaseDuration
             cameraEase = CameraEase(
                 fromCenter: MKMapPoint(from.centerCoordinate),
                 fromDistance: from.centerCoordinateDistance,
@@ -667,9 +761,11 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 toPitch: target.pitch,
                 toHeading: target.heading,
                 startedAt: CACurrentMediaTime(),
-                retargetFollow: retargetFollow
+                retargetFollow: retargetFollow,
+                logarithmicDistance: logarithmicDistance,
+                duration: duration
             )
-            cameraEaseUntil = CACurrentMediaTime() + Self.cameraEaseDuration
+            cameraEaseUntil = CACurrentMediaTime() + duration
             easeClock.start()
             tickCameraEase()
         }
@@ -693,12 +789,18 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 cameraEase = ease
             }
             let elapsed = CACurrentMediaTime() - ease.startedAt
-            let linear = min(1, max(0, elapsed / Self.cameraEaseDuration))
+            let duration = max(ease.duration, 0.01)
+            let linear = min(1, max(0, elapsed / duration))
             let t = Self.smootherstep(linear)
             let x = ease.fromCenter.x + (ease.toCenter.x - ease.fromCenter.x) * t
             let y = ease.fromCenter.y + (ease.toCenter.y - ease.fromCenter.y) * t
             let center = MKMapPoint(x: x, y: y).coordinate
-            let distance = ease.fromDistance + (ease.toDistance - ease.fromDistance) * t
+            let distance = LiveFollowOverviewFit.easedDistance(
+                from: ease.fromDistance,
+                to: ease.toDistance,
+                t: t,
+                logarithmic: ease.logarithmicDistance
+            )
             let pitch = ease.fromPitch + (ease.toPitch - ease.fromPitch) * t
             let heading = LiveFollowCamera.smoothedHeading(
                 from: ease.fromHeading,

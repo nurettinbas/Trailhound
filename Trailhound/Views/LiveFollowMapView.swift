@@ -304,6 +304,7 @@ struct LiveFollowMapView: View {
             session: session,
             isFollowing: isFollowing && !isClosing,
             isPaused: isPaused,
+            hudAnchor: hudAnchorBox,
             overviewRequestToken: overviewRequestToken,
             recenterRequestToken: recenterRequestToken,
             pins: mapPins,

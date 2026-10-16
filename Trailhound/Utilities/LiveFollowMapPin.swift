@@ -1,6 +1,7 @@
 import CoreLocation
 import Foundation
 import MapKit
+import UIKit
 
 /// Session-local map pins for live follow (not a SwiftData schema change).
 enum LiveFollowMapPinKind: String, Equatable {
@@ -98,10 +99,8 @@ enum LiveFollowGrowingRoute {
     static let tipMaxGapMeters: CLLocationDistance = 120
     /// Ignore sub-pixel jitter so a parked puck does not draw a 2-point stub.
     static let tipMinGapMeters: CLLocationDistance = 0.05
-    /// Minimum pad around a point-sized overview (just started).
+    /// Floor for a point-sized trail box so the rect is not zero. Camera air is applied later.
     static let overviewMinPadMeters: CLLocationDistance = 120
-    /// Extra fraction around the traveled bounding box.
-    static let overviewPadFraction: Double = 0.18
 
     /// Last live segment: aged prefix may be decimated; the newest points stay raw.
     static func liveActiveCoordinates(_ raw: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
@@ -193,7 +192,8 @@ enum LiveFollowGrowingRoute {
         return travelX * tipX + travelY * tipY < 0
     }
 
-    /// North-up overview that covers the traveled path and the puck.
+    /// Tight box around the traveled path and the puck. A short axis grows to
+    /// `overviewMinPadMeters`; a long drive is not padded by a fraction of itself.
     static func overviewMapRect(
         historyPieces: [[CLLocationCoordinate2D]],
         vehicle: CLLocationCoordinate2D?
@@ -215,8 +215,117 @@ enum LiveFollowGrowingRoute {
         let latitude = MKMapPoint(x: rect.midX, y: rect.midY).coordinate.latitude
         let metersPerPoint = MKMetersPerMapPointAtLatitude(latitude)
         let minPad = overviewMinPadMeters / max(metersPerPoint, 1e-9)
-        let padX = max(rect.size.width * overviewPadFraction, minPad)
-        let padY = max(rect.size.height * overviewPadFraction, minPad)
-        return rect.insetBy(dx: -padX, dy: -padY)
+        if rect.size.width < minPad {
+            let grow = minPad - rect.size.width
+            rect = rect.insetBy(dx: -grow / 2, dy: 0)
+        }
+        if rect.size.height < minPad {
+            let grow = minPad - rect.size.height
+            rect = rect.insetBy(dx: 0, dy: -grow / 2)
+        }
+        return rect
+    }
+}
+
+/// One-shot north-up frame for Show entire route. Does not touch the follow camera.
+enum LiveFollowOverviewFit {
+    /// Pitch 0: visible ground height ÷ eye distance. Measured across phone, pad, and landscape.
+    static let fallbackVisibleHeightPerDistance: Double = 0.536
+    /// Extra air around the trail inside the clear band (about 15%).
+    static let airMargin: Double = 1.15
+    /// Just-started trip stays a neighborhood, not a rooftop.
+    static let minimumContextMeters: CLLocationDistance = 400
+    static let minimumEyeDistance: CLLocationDistance = 220
+    /// Same length as the follow/recenter flight.
+    static let easeDuration: CFTimeInterval = 0.58
+    static let easeDurationMax: CFTimeInterval = 0.85
+
+    struct Target {
+        var center: CLLocationCoordinate2D
+        var distanceMeters: CLLocationDistance
+        /// Full view the camera shows, before chrome. Tests check the trail against this.
+        var visibleRect: MKMapRect
+    }
+
+    /// Place `routeRect` in the unobstructed band of `mapSize`.
+    ///
+    /// Eye distance is `visible height ÷ visibleHeightPerDistance` at pitch 0.
+    /// The ratio is read from the live map when it is already flat; otherwise the fallback.
+    static func target(
+        routeRect: MKMapRect,
+        mapSize: CGSize,
+        contentInsets: UIEdgeInsets,
+        visibleHeightPerDistance: Double
+    ) -> Target? {
+        guard !routeRect.isNull, mapSize.width > 1, mapSize.height > 1 else { return nil }
+        let eyeScale = visibleHeightPerDistance > 0.05
+            ? visibleHeightPerDistance
+            : fallbackVisibleHeightPerDistance
+
+        let mid = MKMapPoint(x: routeRect.midX, y: routeRect.midY).coordinate
+        let metersPerPoint = MKMetersPerMapPointAtLatitude(mid.latitude)
+        guard metersPerPoint > 1e-9 else { return nil }
+
+        var fitted = routeRect
+        let minPoints = minimumContextMeters / metersPerPoint
+        if fitted.size.width < minPoints {
+            let grow = minPoints - fitted.size.width
+            fitted = fitted.insetBy(dx: -grow / 2, dy: 0)
+        }
+        if fitted.size.height < minPoints {
+            let grow = minPoints - fitted.size.height
+            fitted = fitted.insetBy(dx: 0, dy: -grow / 2)
+        }
+
+        let usableWidth = max(mapSize.width - contentInsets.left - contentInsets.right, 48)
+        let usableHeight = max(mapSize.height - contentInsets.top - contentInsets.bottom, 48)
+        let pointsPerView = max(
+            fitted.size.width / usableWidth,
+            fitted.size.height / usableHeight
+        ) * airMargin
+
+        let fullWidth = pointsPerView * mapSize.width
+        let fullHeight = pointsPerView * mapSize.height
+        let routeCenter = MKMapPoint(x: fitted.midX, y: fitted.midY)
+        let clearCenterX = contentInsets.left + usableWidth / 2
+        let clearCenterY = contentInsets.top + usableHeight / 2
+        let mapCenterX = routeCenter.x + (0.5 - clearCenterX / mapSize.width) * fullWidth
+        let mapCenterY = routeCenter.y + (0.5 - clearCenterY / mapSize.height) * fullHeight
+        let visible = MKMapRect(
+            x: mapCenterX - fullWidth / 2,
+            y: mapCenterY - fullHeight / 2,
+            width: fullWidth,
+            height: fullHeight
+        )
+        let distance = max(minimumEyeDistance, (fullHeight * metersPerPoint) / eyeScale)
+        let center = MKMapPoint(x: mapCenterX, y: mapCenterY).coordinate
+        return Target(center: center, distanceMeters: distance, visibleRect: visible)
+    }
+
+    /// Overview blends eye distance in log space so the scale moves evenly.
+    /// Recenter stays linear — same formula the flight used before.
+    static func easedDistance(
+        from: CLLocationDistance,
+        to: CLLocationDistance,
+        t: Double,
+        logarithmic: Bool
+    ) -> CLLocationDistance {
+        let clamped = min(1, max(0, t))
+        if logarithmic, from > 1, to > 1 {
+            return from * pow(to / from, clamped)
+        }
+        return from + (to - from) * clamped
+    }
+
+    /// 0.58 s when the zoom barely changes; up to 0.85 s on a large pull-back.
+    static func overviewDuration(
+        fromDistance: CLLocationDistance,
+        toDistance: CLLocationDistance
+    ) -> CFTimeInterval {
+        let near = max(min(fromDistance, toDistance), 1)
+        let far = max(fromDistance, toDistance)
+        let zoom = log2(far / near)
+        let extra = min(1, max(0, zoom) / 3) * (easeDurationMax - easeDuration)
+        return easeDuration + extra
     }
 }
