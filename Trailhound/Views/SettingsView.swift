@@ -39,10 +39,10 @@ struct SettingsView: View {
     @Bindable private var settings = AppSettings.shared
 
     @State private var exportURL: URL?
+    @State private var showShortcutsAutomationGuide = false
     @State private var showExportSheet = false
     @State private var isExporting = false
     @State private var showAppLockUnavailableAlert = false
-    @State private var showShortcutsAutomationGuide = false
     @State private var showAddPlacePicker = false
     @State private var showReportProblem = false
     @State private var showMailComposer = false

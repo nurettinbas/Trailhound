@@ -35,6 +35,10 @@ struct OnboardingView: View {
         scenePhase == .active && heroReveal > 0.02
     }
 
+    private var shortcutsGuideIsOpen: Bool {
+        showShortcutsAutomationGuide
+    }
+
     var body: some View {
         ZStack {
             AtmosphericBackground(style: .canvas)
@@ -175,7 +179,7 @@ struct OnboardingView: View {
                 kind: heroKind(for: currentStep),
                 driveInProgress: driveInProgress,
                 beatProgress: beatProgress,
-                isAnimating: sceneIsLive && !showShortcutsAutomationGuide
+                isAnimating: sceneIsLive && !shortcutsGuideIsOpen
             )
             .opacity(heroReveal)
         }
@@ -357,7 +361,7 @@ struct OnboardingView: View {
                         kind: kind,
                         driveInProgress: driveInProgress,
                         beatProgress: beatProgress,
-                        isAnimating: sceneIsLive && page == stepRawValue(for: kind) && !showShortcutsAutomationGuide
+                        isAnimating: sceneIsLive && page == stepRawValue(for: kind) && !shortcutsGuideIsOpen
                     )
                     .opacity(heroReveal)
                     .offset(y: (1 - heroReveal) * 18)
