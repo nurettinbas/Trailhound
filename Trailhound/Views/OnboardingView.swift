@@ -617,9 +617,7 @@ struct OnboardingView: View {
     // MARK: - Actions
 
     private func openAppSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
+        SystemSettingsLink.openLocationPermission()
     }
 
     private func finishOnboarding() {

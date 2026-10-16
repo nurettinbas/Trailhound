@@ -258,9 +258,7 @@ struct SettingsView: View {
 
             Section {
                 Button(L10n.settingsOpenSystemSettings) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    SystemSettingsLink.openAppPage()
                 }
                 .glassRow(position: .only)
             } header: {
@@ -366,9 +364,7 @@ struct SettingsView: View {
                 }
 
                 Button(L10n.settingsOpenSystemSettings) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    SystemSettingsLink.openLocationPermission()
                 }
                 .glassRow(position: .last)
             }

@@ -31,6 +31,30 @@ final class GlassPaletteTests: XCTestCase {
         XCTAssertEqual(GlassSemantic.destructive(for: .light), LightGlassPalette.destructive)
     }
 
+    func testRecordingSegmentThumbContrastsWithCard() {
+        XCTAssertEqual(RecordingSegmentChrome.thumb, Color.white)
+        XCTAssertEqual(
+            RecordingSegmentChrome.label(isSelected: true, palette: .forest),
+            ShellPalette.forest.chromeColor(for: .light)
+        )
+        XCTAssertNotEqual(
+            RecordingSegmentChrome.label(isSelected: true, palette: .forest),
+            ShellPalette.forest.tintColor(for: .light)
+        )
+        XCTAssertEqual(
+            RecordingSegmentChrome.label(isSelected: false, palette: .forest),
+            Color.white.opacity(0.78)
+        )
+        XCTAssertNotEqual(
+            RecordingSegmentChrome.trackFill(for: .light),
+            ShellPalette.forest.tintColor(for: .light)
+        )
+        XCTAssertNotEqual(
+            RecordingSegmentChrome.trackFill(for: .light),
+            RecordingSegmentChrome.trackFill(for: .dark)
+        )
+    }
+
     func testRecordingCardFillFollowsPalette() {
         let sky = RecordingCardStyle.fillColors(isPaused: false, palette: .sky, scheme: .light)
         let rose = RecordingCardStyle.fillColors(isPaused: false, palette: .rose, scheme: .light)

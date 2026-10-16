@@ -337,8 +337,7 @@ struct VehiclePhotoCaptureSheet: View {
     }
 
     private func openSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        SystemSettingsLink.openAppPage()
     }
 }
 

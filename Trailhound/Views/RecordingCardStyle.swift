@@ -40,6 +40,100 @@ enum RecordingCardStyle {
     }
 }
 
+/// 2D/3D and overview/follow on the live-map HUD.
+///
+/// The card is already a saturated palette wash, so a tinted selection pill
+/// disappears into it. The selected segment is an opaque white thumb; its label
+/// uses the palette’s light chrome (deep ink). Unselected labels stay white.
+enum RecordingSegmentChrome {
+    static let thumb = Color.white
+
+    static func trackFill(for scheme: ColorScheme) -> Color {
+        Color.white.opacity(scheme == .dark ? 0.14 : 0.20)
+    }
+
+    static func trackRim(for scheme: ColorScheme) -> Color {
+        Color.white.opacity(scheme == .dark ? 0.22 : 0.42)
+    }
+
+    static func label(isSelected: Bool, palette: ShellPalette) -> Color {
+        if isSelected {
+            return palette.chromeColor(for: .light)
+        }
+        return Color.white.opacity(0.78)
+    }
+}
+
+extension View {
+    /// Frost track for a two-option control on the recording HUD. No `glassEffect`.
+    func recordingSegmentTrack() -> some View {
+        modifier(RecordingSegmentTrackModifier())
+    }
+
+    /// White thumb behind a selected live-map segment. `namespace` is nil when Reduce Motion is on.
+    func recordingSegmentThumb(
+        isSelected: Bool,
+        morphID: String,
+        namespace: Namespace.ID?
+    ) -> some View {
+        modifier(
+            RecordingSegmentThumbModifier(
+                isSelected: isSelected,
+                morphID: morphID,
+                namespace: namespace
+            )
+        )
+    }
+}
+
+private struct RecordingSegmentTrackModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .padding(2)
+            .frame(height: 33)
+            .background {
+                Capsule()
+                    .fill(RecordingSegmentChrome.trackFill(for: colorScheme))
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(
+                                RecordingSegmentChrome.trackRim(for: colorScheme),
+                                lineWidth: 1
+                            )
+                    }
+            }
+    }
+}
+
+private struct RecordingSegmentThumbModifier: ViewModifier {
+    var isSelected: Bool
+    var morphID: String
+    var namespace: Namespace.ID?
+
+    @Environment(\.shellPalette) private var shellPalette
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(
+                RecordingSegmentChrome.label(isSelected: isSelected, palette: shellPalette)
+            )
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(RecordingSegmentChrome.thumb)
+                        .shadow(color: .black.opacity(0.16), radius: 1.5, y: 1)
+                        .matchedGeometryEffectIfAvailable(
+                            stringID: morphID,
+                            namespace: namespace,
+                            isSource: true
+                        )
+                }
+            }
+    }
+}
+
 private struct RecordingGlassSurface: View {
     let isPaused: Bool
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency

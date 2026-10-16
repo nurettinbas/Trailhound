@@ -57,6 +57,7 @@ struct LiveFollowMapView: View {
     @State private var idleLockHeld = false
     /// Local 2D/3D mirror — avoids rebuilding the MapKit host on every settings write.
     @State private var uses3DLocal = true
+    @Namespace private var mapToolMorph
     /// Bumped to ask MapKit to fit start + traveled path + puck (north-up 2D).
     @State private var overviewRequestToken = 0
     @State private var recenterRequestToken = 0
@@ -437,10 +438,12 @@ struct LiveFollowMapView: View {
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.38 : 1)
                 .allowsHitTesting(!isPaused)
+                .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: uses3DLocal)
             mapFollowToggle
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.38 : 1)
                 .allowsHitTesting(!isPaused)
+                .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: isFollowing)
 
             Spacer(minLength: 8)
 
@@ -502,9 +505,11 @@ struct LiveFollowMapView: View {
 
     private func mapCapsuleToggle<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 0, content: content)
-            .padding(2)
-            .frame(height: 33)
-            .background(.white.opacity(0.12), in: Capsule())
+            .recordingSegmentTrack()
+    }
+
+    private var mapToolNamespace: Namespace.ID? {
+        reduceMotion ? nil : mapToolMorph
     }
 
     private func mapDimensionSegment(
@@ -519,13 +524,12 @@ struct LiveFollowMapView: View {
         } label: {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
-                .background {
-                    if selected {
-                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
-                    }
-                }
+                .recordingSegmentThumb(
+                    isSelected: selected,
+                    morphID: "live.dimension",
+                    namespace: mapToolNamespace
+                )
         }
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(
@@ -550,13 +554,12 @@ struct LiveFollowMapView: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
-                .background {
-                    if selected {
-                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
-                    }
-                }
+                .recordingSegmentThumb(
+                    isSelected: selected,
+                    morphID: "live.follow",
+                    namespace: mapToolNamespace
+                )
         }
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(accessibilityLabel)
