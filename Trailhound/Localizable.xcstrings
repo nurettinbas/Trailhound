@@ -20028,6 +20028,23 @@
         }
       }
     },
+    "toast.journal.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel save completed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahat kaydı tamamlandı"
+          }
+        }
+      }
+    },
     "toast.orphan.saved" : {
       "extractionState" : "manual",
       "localizations" : {

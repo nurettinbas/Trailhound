@@ -81,6 +81,8 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertFalse(phoneLand.recordingCardLeads)
         XCTAssertEqual(phoneLand.recordingCardArrangement, .list)
         XCTAssertFalse(phoneLand.hidesRecordingCardFromList)
+        XCTAssertFalse(book.showsPairingVehicleFocus)
+        XCTAssertFalse(phoneLand.showsPairingVehicleFocus)
     }
 
     func testOpenBookLandscapePutsTheRecordingCardOnTheLeadingHalf() {
@@ -100,6 +102,7 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertFalse(openBook.pinsRecordingCardToFold)
         XCTAssertEqual(openBook.recordingCardArrangement, .pane)
         XCTAssertTrue(openBook.hidesRecordingCardFromList)
+        XCTAssertTrue(openBook.showsPairingVehicleFocus)
     }
 
     func testOpenFoldLandscapeIsHalfMapHalfDetails() {
@@ -142,6 +145,54 @@ final class TrailhoundLayoutTests: XCTestCase {
                 to: CGSize(width: 1600, height: 402)
             )
         )
+        XCTAssertTrue(
+            TrailhoundLayoutResolver.aspectFlips(
+                from: CGSize(width: 951, height: 669),
+                to: CGSize(width: 669, height: 951)
+            )
+        )
+        XCTAssertFalse(
+            TrailhoundLayoutResolver.aspectFlips(
+                from: CGSize(width: 390, height: 844),
+                to: CGSize(width: 390, height: 780)
+            )
+        )
+        XCTAssertFalse(
+            TrailhoundLayoutResolver.aspectFlips(
+                from: .zero,
+                to: CGSize(width: 390, height: 844)
+            )
+        )
+    }
+
+    func testSlightlyOpenTurnKeepsTheLayoutThatStartedTheRotation() {
+        let outer = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .regular,
+            size: CGSize(width: 466, height: 678),
+            idiom: .phone
+        )
+        let inner = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 951, height: 669),
+            idiom: .phone
+        )
+        XCTAssertEqual(outer.layoutClass, .phone)
+        XCTAssertEqual(inner.layoutClass, .duoOpen)
+        XCTAssertTrue(inner.isLandscape)
+        let held = TrailhoundLayoutResolver.snapshotDuringTurn(
+            presented: outer,
+            live: inner,
+            isRotating: true
+        )
+        XCTAssertEqual(held, outer)
+        let released = TrailhoundLayoutResolver.snapshotDuringTurn(
+            presented: outer,
+            live: inner,
+            isRotating: false
+        )
+        XCTAssertEqual(released, inner)
     }
 
     func testUprightDuoCentersOnboarding() {
@@ -198,6 +249,20 @@ final class TrailhoundLayoutTests: XCTestCase {
             debugOverride: nil
         )
         XCTAssertEqual(split, .phone)
+        let padLand = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1366, height: 1024),
+            idiom: .pad
+        )
+        XCTAssertTrue(padLand.showsPairingVehicleFocus)
+        let padPortrait = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1024, height: 1366),
+            idiom: .pad
+        )
+        XCTAssertFalse(padPortrait.showsPairingVehicleFocus)
     }
 
     func testColumnCountDoesNotStretchHalfTiles() {
@@ -288,5 +353,124 @@ final class TrailhoundLayoutTests: XCTestCase {
     func testLayoutReflowMatchesBadgeSpring() {
         XCTAssertNotNil(TrailhoundMotion.layoutReflow(reduceMotion: false))
         XCTAssertNotNil(TrailhoundMotion.layoutReflow(reduceMotion: true))
+    }
+
+    func testRecordingAxisIsSideBySideWhenWideAndStackedWhenTall() {
+        XCTAssertEqual(RecordingAxisPlacement.stackAmount(width: 1200, height: 700), 0, accuracy: 0.001)
+        XCTAssertEqual(RecordingAxisPlacement.stackAmount(width: 700, height: 1200), 1, accuracy: 0.001)
+        let mid = RecordingAxisPlacement.stackAmount(width: 900, height: 900)
+        XCTAssertGreaterThan(mid, 0.4)
+        XCTAssertLessThan(mid, 0.6)
+    }
+
+    func testRecordingAxisKeepsTheCardOnTheLeadingSideUntilTheFold() {
+        let gutter: CGFloat = 24
+        let wide = CGRect(x: 0, y: 0, width: 1000, height: 700)
+        let landscape = RecordingAxisPlacement.frames(
+            in: wide,
+            gutter: gutter,
+            liveLeads: true,
+            listOnVisualLeft: true,
+            contentInWindow: wide,
+            windowSize: wide.size
+        )
+        XCTAssertEqual(landscape.live.minX, 0, accuracy: 0.5)
+        XCTAssertLessThan(landscape.live.maxX, landscape.list.minX)
+        XCTAssertEqual(landscape.live.height, wide.height, accuracy: 0.5)
+
+        let tall = CGRect(x: 0, y: 0, width: 700, height: 1200)
+        let portrait = RecordingAxisPlacement.frames(
+            in: tall,
+            gutter: gutter,
+            liveLeads: true,
+            listOnVisualLeft: true,
+            contentInWindow: tall,
+            windowSize: tall.size
+        )
+        XCTAssertEqual(portrait.live.minY, 0, accuracy: 0.5)
+        XCTAssertLessThan(portrait.live.maxY, portrait.list.minY)
+        XCTAssertEqual(portrait.live.width, tall.width, accuracy: 0.5)
+
+        let square = CGRect(x: 0, y: 0, width: 900, height: 900)
+        let turning = RecordingAxisPlacement.frames(
+            in: square,
+            gutter: gutter,
+            liveLeads: true,
+            listOnVisualLeft: true,
+            contentInWindow: square,
+            windowSize: square.size
+        )
+        let side = (square.width - gutter) / 2
+        XCTAssertGreaterThan(turning.live.width, side + 1)
+        XCTAssertLessThan(turning.live.width, square.width - 1)
+        XCTAssertLessThan(turning.live.height, square.height - 1)
+        XCTAssertGreaterThan(turning.live.height, side + 1)
+    }
+
+    func testLibraryAxisStaysOneColumnOnAPhoneAndOnATallBook() {
+        XCTAssertEqual(LibraryAxisPlacement.splitAmount(width: 390, height: 844), 0, accuracy: 0.001)
+        XCTAssertEqual(LibraryAxisPlacement.splitAmount(width: 844, height: 390), 0, accuracy: 0.001)
+        XCTAssertEqual(LibraryAxisPlacement.splitAmount(width: 900, height: 1600), 0, accuracy: 0.001)
+        XCTAssertEqual(
+            LibraryAxisPlacement.splitAmount(width: 1600, height: 900, requiresBookSpan: false),
+            1,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LibraryAxisPlacement.splitAmount(width: 1366, height: 1024, requiresBookSpan: false),
+            1,
+            accuracy: 0.001
+        )
+    }
+
+    func testLibraryAxisFadesTheTrailingLibraryBeforeTheColumnWidens() {
+        let width: CGFloat = 1400
+        for step in 0...40 {
+            let ratio = 0.7 + CGFloat(step) * 0.04
+            let split = LibraryAxisPlacement.splitAmount(
+                width: width,
+                height: width / ratio,
+                requiresBookSpan: false
+            )
+            let frame = LibraryAxisPlacement.frameSplit(split)
+            let opacity = LibraryAxisPlacement.travelsOpacity(split)
+            if opacity > 0.001 {
+                XCTAssertEqual(frame, 1, accuracy: 0.001, "ratio \(ratio)")
+            }
+            if frame < 0.999 {
+                XCTAssertEqual(opacity, 0, accuracy: 0.001, "ratio \(ratio)")
+            }
+        }
+    }
+
+    func testLibraryAxisGivesTheTripsListTheFullWidthOnceTheBookIsTall() {
+        let gutter: CGFloat = 24
+        let wide = CGRect(x: 0, y: 0, width: 1600, height: 900)
+        let split = LibraryAxisPlacement.frames(
+            in: wide,
+            gutter: gutter,
+            frameSplit: 1,
+            listOnVisualLeft: true,
+            contentInWindow: wide,
+            windowSize: wide.size
+        )
+        XCTAssertLessThan(split.trips.maxX, split.travels.minX)
+        XCTAssertEqual(split.trips.height, wide.height, accuracy: 0.5)
+        XCTAssertEqual(split.travels.height, wide.height, accuracy: 0.5)
+        XCTAssertEqual(split.trips.width + gutter + split.travels.width, wide.width, accuracy: 0.5)
+
+        let tall = CGRect(x: 0, y: 0, width: 900, height: 1600)
+        let stacked = LibraryAxisPlacement.frames(
+            in: tall,
+            gutter: gutter,
+            frameSplit: 0,
+            listOnVisualLeft: true,
+            contentInWindow: tall,
+            windowSize: tall.size
+        )
+        XCTAssertEqual(stacked.trips, tall)
+        XCTAssertEqual(LibraryAxisPlacement.travelsOpacity(0), 0, accuracy: 0.001)
+        XCTAssertFalse(LibraryAxisPlacement.pinsTripsLibrary(0))
+        XCTAssertTrue(LibraryAxisPlacement.pinsTripsLibrary(1))
     }
 }

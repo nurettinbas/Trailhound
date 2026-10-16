@@ -32,11 +32,13 @@ struct NotificationsListView: View {
                     Menu {
                         Button(L10n.notificationsMarkAllRead) {
                             store.markAllRead()
+                            ToastPresenter.shared.show(.saved)
                         }
                         .disabled(store.unreadCount == 0)
                         Button(L10n.notificationsClearAll, role: .destructive) {
                             DeleteConfirmPresenter.shared.confirm(.notificationsAll) {
                                 store.clearAll()
+                                ToastPresenter.shared.show(.deleted)
                             }
                         }
                         .disabled(store.items.isEmpty)
@@ -85,6 +87,7 @@ struct NotificationsListView: View {
             }
             Button(L10n.notificationsMarkAllRead) {
                 store.markAllRead()
+                ToastPresenter.shared.show(.saved)
             }
             .trailhoundGlassButton()
             .disabled(store.unreadCount == 0)
@@ -162,6 +165,7 @@ struct NotificationsListView: View {
                             .listRowSeparator(.hidden)
                             .confirmingDeleteSwipe {
                                 store.delete(item.id)
+                                ToastPresenter.shared.show(.deleted)
                             }
                     }
                 }

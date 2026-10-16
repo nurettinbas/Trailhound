@@ -62,8 +62,24 @@ struct TrailhoundDisplayLinkTicker: UIViewRepresentable {
         }
 
         @objc func step(_ link: CADisplayLink) {
+            // A live redraw during the rotation snapshot paints a second copy of the road.
+            if TrailhoundInterfaceRotation.pausesRoadAnimation { return }
             let time = Date.timeIntervalSinceReferenceDate
             onTick(time)
+        }
+    }
+}
+
+/// Drops the flattened road bitmap while the interface is rotating so the car
+/// redraws in the new bounds instead of stretching the previous frame.
+private struct RoadSceneRasterizer: ViewModifier {
+    var enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.drawingGroup(opaque: false, colorMode: .linear)
+        } else {
+            content
         }
     }
 }
@@ -138,7 +154,8 @@ struct RecordingCarAnimationView<CarOverlay: View>: View {
         // Flatten only the road pixels. Keep the display-link host *outside* this
         // rasterizer — `drawingGroup` does not mount `UIViewRepresentable` children,
         // which is why a ticker in `.background` never fired and the car sat still.
-        .drawingGroup(opaque: false, colorMode: .linear)
+        // While the window turns, a frozen raster stretches with the new bounds.
+        .modifier(RoadSceneRasterizer(enabled: !TrailhoundInterfaceRotation.shared.isRotating))
         .overlay(alignment: .topLeading) {
             TrailhoundDisplayLinkTicker(
                 isRunning: ticksRoad,

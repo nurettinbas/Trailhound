@@ -25,16 +25,20 @@ enum TripStore {
         }
     }
 
+    /// Unfinished trips are rare. Cap the read so a tab refresh never materializes the library.
+    static let orphanFetchLimit = 8
+
     static func orphans(from context: ModelContext) -> [Trip] {
-        all(from: context).filter { !isCompleted($0) }
+        var descriptor = FetchDescriptor<Trip>(
+            predicate: #Predicate { $0.endedAt == nil },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = orphanFetchLimit
+        return (try? context.fetch(descriptor)) ?? []
     }
 
     static func orphansNewestFirst(from context: ModelContext) -> [Trip] {
-        var trips = orphans(from: context)
-        trips.sort { lhs, rhs in
-            lhs.startedAt.timeIntervalSinceReferenceDate > rhs.startedAt.timeIntervalSinceReferenceDate
-        }
-        return trips
+        orphans(from: context)
     }
 
     static func trip(id: UUID, from context: ModelContext) -> Trip? {

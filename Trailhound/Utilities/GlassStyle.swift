@@ -4,6 +4,17 @@ import UIKit
 enum GlassTokens {
     static let cardRadius: CGFloat = 22
     static let chipRadius: CGFloat = 14
+    /// Bottom confirmation toast. Same corner family as a glass card, larger than a chip.
+    static let toastCornerRadius: CGFloat = cardRadius
+    static let toastIconDiscSide: CGFloat = 38
+    static let toastMinHeight: CGFloat = 56
+    static let toastMaxWidth: CGFloat = 360
+    static let toastHorizontalPadding: CGFloat = 16
+    static let toastVerticalPadding: CGFloat = 12
+    /// Gap between a bottom toast and the top of the tab platter.
+    static let toastTabBarGap: CGFloat = 12
+    /// Used until the tab platter frame is published.
+    static let toastTabBarFallbackClearance: CGFloat = 68
     static let sectionSpacing: CGFloat = 14
     /// Distance from screen edge to the glass card rim.
     static let panelHorizontalInset: CGFloat = 16

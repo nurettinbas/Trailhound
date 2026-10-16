@@ -11,6 +11,7 @@ struct TripListView: View {
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -67,6 +68,10 @@ struct TripListView: View {
     @State private var recordingViewportSettling = false
     @State private var recordingViewportSettleTask: Task<Void, Never>?
     @State private var showLiveFollowMap = false
+    /// Chrome for the recording book. Held for the length of a turn so the card
+    /// does not swap sides while the panes are still sliding.
+    @State private var recordingBookFolds = false
+    @State private var recordingBookLiveLeads = false
     @State private var paneTripID: UUID?
     @State private var liveFollowCardAnchor = RecordingCardAnchor()
     @State private var liveFollowVehiclePhoto: UIImage?
@@ -78,6 +83,12 @@ struct TripListView: View {
     @State private var pageLimit = TripListPage.pageSize
     @State private var hasMorePages = false
     @State private var hasAnyTrips = false
+    /// First `onAppear` loads the library. Later tab visits must not fetch again.
+    @State private var didInitialLoad = false
+    /// Calendar day the loaded rows were last grouped into Today / Yesterday / ….
+    @State private var lastGroupedDay: Date?
+    @State private var suggestionLoader: TravelSuggestionLoader?
+    @State private var suggestionTask: Task<Void, Never>?
     @State private var weekSummaryText = ""
     @State private var weekSummaryRefreshToken = 0
     @State private var isWeekSummaryRefreshing = false
@@ -132,8 +143,69 @@ struct TripListView: View {
             ? matching.count > pageLimit
             : fetched.count > pageLimit
         let visible = Array(matching.prefix(pageLimit))
-        loadedTrips = visible
-        tripGroups = TripDateGrouping.groupedSections(from: visible)
+        let today = Calendar.current.startOfDay(for: Date())
+        let dayChanged = today != lastGroupedDay
+        lastGroupedDay = today
+        let stamps = visible.map(Self.rowStamp)
+        let previous = loadedTrips.map(Self.rowStamp)
+        if stamps == previous, !dayChanged {
+            return
+        }
+        if stamps != previous {
+            loadedTrips = visible
+        }
+        tripGroups = TripDateGrouping.groupedSections(from: loadedTrips)
+    }
+
+    /// Tab return after the first load. Same-day visits do not touch the store.
+    private func handleTripListAppear() {
+        if searchText != debouncedSearchText {
+            debouncedSearchText = searchText
+        }
+        if didInitialLoad {
+            regroupLoadedTripsIfDayChanged()
+            beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
+            consumeTripDeepLink()
+            return
+        }
+        didInitialLoad = true
+        refreshOrphans()
+        refreshListAggregates()
+        reloadTrips()
+        reloadJournals()
+        careSummary.refresh(in: modelContext)
+        notificationStore.reload()
+        beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
+        consumeTripDeepLink()
+    }
+
+    /// Section titles move with the calendar day. Regroup the rows already in memory.
+    private func regroupLoadedTripsIfDayChanged() {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard today != lastGroupedDay else { return }
+        lastGroupedDay = today
+        tripGroups = TripDateGrouping.groupedSections(from: loadedTrips)
+        refreshListAggregates()
+    }
+
+    private static func rowStamp(_ trip: Trip) -> TripListRowStamp {
+        TripListRowStamp(
+            id: trip.id,
+            startedAt: trip.startedAt,
+            endedAt: trip.endedAt,
+            distanceMeters: trip.distanceMeters,
+            startPlaceName: trip.startPlaceName,
+            endPlaceName: trip.endPlaceName,
+            startAddress: trip.startAddress,
+            endAddress: trip.endAddress,
+            categoryRaw: trip.categoryRaw,
+            note: trip.note,
+            maxSpeedMps: trip.maxSpeedMps,
+            estimatedFuelCost: trip.estimatedFuelCost,
+            dynamicFuelCost: trip.dynamicFuelCost,
+            pendingSuggestedCategoryID: trip.pendingSuggestedCategoryID,
+            vehicleID: trip.vehicleID
+        )
     }
 
     private func consumeTripDeepLink() {
@@ -227,7 +299,7 @@ struct TripListView: View {
         hasMoreJournals = page.hasMore
         loadedJournals = page.journals
         hasAnyJournals = (try? modelContext.fetchCount(TravelJournalPage.countDescriptor())).map { $0 > 0 } ?? false
-        refreshTravelSuggestion()
+        scheduleTravelSuggestionRefresh()
     }
 
     private func loadNextJournalPage() {
@@ -236,18 +308,33 @@ struct TripListView: View {
         reloadJournals()
     }
 
-    private func refreshTravelSuggestion() {
+    /// The suggestion banner is only on Travels. Computing it scans every completed trip,
+    /// so it stays off the trips-tab appear path and off the main actor.
+    private var showsTravelSuggestion: Bool {
+        listMode == .travels || showsLibrarySplit
+    }
+
+    private func scheduleTravelSuggestionRefresh() {
+        suggestionTask?.cancel()
+        guard showsTravelSuggestion else { return }
         let homes = TravelJournalSuggester.homeSnapshots(from: places)
-        let descriptor = TripListPage.completedCountDescriptor()
-        let completed = (try? modelContext.fetch(descriptor)) ?? []
-        let tripSnapshots = completed.map(TravelJournalSuggester.snapshot(from:))
-        let ranges = loadedJournals.map { (start: $0.startedOn, end: $0.endedOn) }
-        travelSuggestion = TravelJournalSuggester.suggest(
-            trips: tripSnapshots,
-            homes: homes,
-            existingJournalRanges: ranges,
-            dismissedFingerprints: settings.dismissedJournalSuggestionFingerprints
-        )
+        let ranges = loadedJournals.map {
+            TravelJournalDateRange(start: $0.startedOn, end: $0.endedOn)
+        }
+        let dismissed = settings.dismissedJournalSuggestionFingerprints
+        let loader = suggestionLoader ?? TravelSuggestionLoader(modelContainer: modelContext.container)
+        suggestionLoader = loader
+        suggestionTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            let suggestion = await loader.suggestion(
+                homes: homes,
+                existingJournalRanges: ranges,
+                dismissedFingerprints: dismissed
+            )
+            guard !Task.isCancelled else { return }
+            travelSuggestion = suggestion
+        }
     }
 
     private func acceptTravelSuggestion(_ suggestion: TravelJournalSuggestion) {
@@ -261,6 +348,14 @@ struct TripListView: View {
         TravelJournalTotals.refresh(journal)
         try? modelContext.save()
         travelSuggestion = nil
+    }
+
+    /// Open book and iPad, both orientations. One mounted pair of lists follows the window
+    /// through a turn, so the page does not scale from the wide book down to one column.
+    private var usesLibraryOrientation: Bool {
+        guard paneTripID == nil, !showLiveFollowMap else { return false }
+        guard !recordingService.state.isActiveSession else { return false }
+        return layout.layoutClass == .duoOpen || layout.layoutClass == .pad
     }
 
     /// Open book and iPad landscape show both libraries. Phone landscape stays one column.
@@ -362,6 +457,7 @@ struct TripListView: View {
                         TravelJournalTotals.prepareForDelete(journal)
                         modelContext.delete(journal)
                         try? modelContext.save()
+                        ToastPresenter.shared.show(.deleted)
                     }
                 }
             }
@@ -493,11 +589,40 @@ struct TripListView: View {
             || (recordingService.state.isActiveSession && showsActiveRecordingNavAffordance)
     }
 
+    /// The bell has to share this page's single trailing item. A second trailing
+    /// item becomes the circle beside the side tab, and a turn leaves it empty.
+    /// Standalone trip detail draws its own bar; the shell bell stays there.
+    private var pageOwnsTrailingBell: Bool {
+        guard !showsStandaloneTripDetail else { return false }
+        return isMergeMode || showsLibrarySplit
+    }
+
     private var liveMapCoverPresented: Binding<Bool> {
         Binding(
             get: { showLiveFollowMap && !layout.splitsRecording && !layout.pinsRecordingCardToFold },
             set: { showLiveFollowMap = $0 }
         )
+    }
+
+    /// A turn already moves the window. The reflow spring would fade the old page on top.
+    private var layoutChangeAnimation: Animation? {
+        if TrailhoundInterfaceRotation.shared.isRotating { return nil }
+        return TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion)
+    }
+
+    private var showsRecordingBook: Bool {
+        let session = recordingService.state.isActiveSession || showLiveFollowMap
+        guard session else { return false }
+        return layout.pinsRecordingCardToFold || layout.splitsRecording
+    }
+
+    /// Card and list stay mounted and slide. A live map or an open trip detail keeps
+    /// the dedicated pane, which owns safe-area and navigation chrome.
+    private var recordingBookSlidesWithRotation: Bool {
+        let recording = recordingService.state.isActiveSession && endCredits == nil
+        if showLiveFollowMap && recording { return false }
+        if layout.splitsRecording, paneTripID != nil, paneTrip != nil { return false }
+        return true
     }
 
     private var showsStandaloneTripDetail: Bool {
@@ -527,33 +652,75 @@ struct TripListView: View {
                                 .accessibilityLabel(L10n.cancel)
                             }
                         }
-                } else if layout.pinsRecordingCardToFold,
-                          recordingService.state.isActiveSession || showLiveFollowMap {
-                    recordingFoldStack(scrollProxy: scrollProxy)
-                } else if layout.splitsRecording,
-                          recordingService.state.isActiveSession || showLiveFollowMap {
-                    tripsSplit(scrollProxy: scrollProxy)
+                } else if showsRecordingBook {
+                    if recordingBookSlidesWithRotation {
+                        recordingOrientationBook(scrollProxy: scrollProxy)
+                    } else if layout.pinsRecordingCardToFold {
+                        recordingFoldStack(scrollProxy: scrollProxy)
+                    } else {
+                        tripsSplit(scrollProxy: scrollProxy)
+                    }
                 } else if layout.splitsTrips, paneTripID != nil {
                     tripsSplit(scrollProxy: scrollProxy)
+                } else if usesLibraryOrientation {
+                    libraryOrientation(scrollProxy: scrollProxy)
                 } else if showsLibrarySplit {
                     librarySplit(scrollProxy: scrollProxy)
                 } else {
                     tripList(scrollProxy: scrollProxy)
                 }
             }
-            .animation(TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion), value: layout.layoutClass)
-            .animation(TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion), value: layout.isLandscape)
+            .animation(layoutChangeAnimation, value: layout.layoutClass)
+            .animation(layoutChangeAnimation, value: layout.isLandscape)
             .navigationDestination(for: TravelJournal.self) { journal in
                 TravelJournalDetailView(journal: journal)
             }
             .sheet(item: $journalEditor) { draft in
                 TravelJournalEditorSheet(draft: draft)
             }
-            .trailhoundShellToolbar(pageOwnsLeading: shellPageOwnsLeading)
-            .onAppear { syncWideBookStatusActions() }
+            .trailhoundShellToolbar(
+                pageOwnsLeading: shellPageOwnsLeading,
+                pageOwnsTrailing: pageOwnsTrailingBell
+            )
+            .onAppear {
+                syncWideBookStatusActions()
+                recordingBookFolds = layout.pinsRecordingCardToFold
+                recordingBookLiveLeads = layout.recordingCardLeads
+            }
+            .onChange(of: layout.pinsRecordingCardToFold) { _, folds in
+                guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+                recordingBookFolds = folds
+            }
+            .onChange(of: layout.recordingCardLeads) { _, leads in
+                guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+                recordingBookLiveLeads = leads
+            }
+            .onChange(of: TrailhoundInterfaceRotation.shared.isRotating) { _, rotating in
+                guard !rotating else { return }
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    recordingBookFolds = layout.pinsRecordingCardToFold
+                    recordingBookLiveLeads = layout.recordingCardLeads
+                }
+            }
             .onChange(of: isMergeMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
-            .onChange(of: showsLibrarySplit) { _, _ in syncWideBookStatusActions() }
+            .onChange(of: showsLibrarySplit) { _, isSplit in
+                syncWideBookStatusActions()
+                if isSplit {
+                    scheduleTravelSuggestionRefresh()
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active, didInitialLoad else { return }
+                guard !DeleteConfirmPresenter.shared.isProgressVisible else { return }
+                reloadTrips()
+                reloadJournals()
+                refreshOrphans()
+                refreshListAggregates()
+                notificationStore.reload()
+            }
             .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
                 performWideBookTrailing()
             }
@@ -568,6 +735,56 @@ struct TripListView: View {
             .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var recordingBookGutter: CGFloat {
+        if layout.layoutClass == .pad, layout.isLandscape {
+            return GlassTokens.padLandscapeGap
+        }
+        return GlassTokens.hingeGutter
+    }
+
+    /// Same recording card and list through portrait and landscape. Their frames
+    /// follow the window, so the turn does not crossfade two copies.
+    private func recordingOrientationBook(scrollProxy: ScrollViewProxy) -> some View {
+        let rotating = TrailhoundInterfaceRotation.shared.isRotating
+        let folds = rotating ? recordingBookFolds : layout.pinsRecordingCardToFold
+        let liveLeads = rotating
+            ? (recordingBookFolds || recordingBookLiveLeads)
+            : (layout.pinsRecordingCardToFold || layout.recordingCardLeads)
+        return RecordingOrientationStage(
+            gutter: recordingBookGutter,
+            liveLeads: liveLeads
+        ) {
+            recordingOrientationLivePane(folds: folds)
+        } list: {
+            tripList(scrollProxy: scrollProxy, paintsAtmosphere: !folds)
+        }
+    }
+
+    private func recordingOrientationLivePane(folds: Bool) -> some View {
+        ActiveTripView(
+            morphNamespace: tripMorphNamespace,
+            morphID: recordingService.activeTripID ?? UUID(),
+            playEntranceReveal: coldOpenArmed && coldOpenTripID == recordingService.activeTripID,
+            onEntranceFinished: finishColdOpen,
+            onStop: { anchor in beginEndCredits(cardAnchor: anchor) },
+            onOpenLiveFollow: { anchor in
+                liveFollowCardAnchor = anchor
+                Task { @MainActor in
+                    await prepareLiveFollowVehiclePhoto()
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showLiveFollowMap = true
+                    }
+                }
+            },
+            isRecordingCardVisible: true
+        )
+        .frame(maxWidth: folds ? .infinity : GlassTokens.paneCardMaxWidth)
+        .padding(folds ? 0 : 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     @ViewBuilder
@@ -656,6 +873,29 @@ struct TripListView: View {
             maxHeight: expands ? .infinity : nil,
             alignment: expands ? .center : .top
         )
+    }
+
+    /// Same trips list and travels list through upright and landscape. The travels list
+    /// fades, then the trips list changes width. A scale would read as a cheap shrink.
+    private func libraryOrientation(scrollProxy: ScrollViewProxy) -> some View {
+        let gap = layout.layoutClass == .pad ? GlassTokens.padLandscapeGap : GlassTokens.hingeGutter
+        let stage = LibraryOrientationStage(gutter: gap, reduceMotion: reduceMotion) { split in
+            // Keep the list the turn started with. Swapping it while the window is
+            // turning cancels the orientation change.
+            let pinsTrips = TrailhoundInterfaceRotation.shared.isRotating
+                ? layout.splitsIdleLibrary
+                : LibraryAxisPlacement.pinsTripsLibrary(split)
+            tripList(
+                scrollProxy: scrollProxy,
+                library: pinsTrips ? .trips : nil,
+                paintsAtmosphere: false
+            )
+        } travels: {
+            travelsPane
+        }
+        return stage
+            .animation(nil, value: layout.layoutClass)
+            .animation(nil, value: layout.isLandscape)
     }
 
     private func librarySplit(scrollProxy: ScrollViewProxy) -> some View {
@@ -878,7 +1118,7 @@ struct TripListView: View {
                         onDelete: {
                             DeleteConfirmPresenter.shared.confirm(.generic) {
                                 if TripRecoveryService.deleteOrphan(orphan.trip, in: modelContext) {
-                                    ToastPresenter.shared.show(.deleted, playHaptic: false)
+                                    ToastPresenter.shared.show(.deleted)
                                     refreshOrphans()
                                 }
                             }
@@ -1061,19 +1301,10 @@ struct TripListView: View {
         }
         .navigationTitle("Trailhound")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            refreshOrphans()
-            notificationStore.reload()
-        }
         .onAppear {
-            debouncedSearchText = searchText
-            refreshOrphans()
-            refreshListAggregates()
-            reloadTrips()
-            reloadJournals()
-            careSummary.refresh(in: modelContext)
-            beginColdOpenIfNeeded(onlyIfRecentlyStarted: true)
-            consumeTripDeepLink()
+            PerformanceSignposts.measure("TripsTabAppear") {
+                handleTripListAppear()
+            }
         }
         .onStoreSave {
             // Merge saves from a background actor; rebuilding the list under that lock
@@ -1177,11 +1408,14 @@ struct TripListView: View {
                     .disabled(completedMergeSelectionCount < 2)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isMergeMode = false
-                        mergeSelection.removeAll()
-                    } label: {
-                        GlassToolbarTitle(title: L10n.cancel)
+                    GlassToolbarCluster(clustered: true) {
+                        TrailhoundNotificationBell()
+                        Button {
+                            isMergeMode = false
+                            mergeSelection.removeAll()
+                        } label: {
+                            GlassToolbarTitle(title: L10n.cancel)
+                        }
                     }
                 }
             } else {
@@ -1206,6 +1440,7 @@ struct TripListView: View {
                 if showsLibrarySplit {
                     ToolbarItem(placement: .topBarTrailing) {
                         GlassToolbarCluster(clustered: true) {
+                            TrailhoundNotificationBell()
                             Button {
                                 journalEditor = .create()
                             } label: {
@@ -1623,9 +1858,10 @@ struct TripListView: View {
     }
 
     private func refreshOrphans() {
-        orphanTrips = TripRecoveryService.findOrphanTrips(in: modelContext)
+        let found = TripRecoveryService.findOrphanTrips(in: modelContext)
+        orphanTrips = found
         TripRecoveryService.scheduleOrphanStaleNotifications(
-            in: modelContext,
+            for: found,
             excludingTripID: recordingService.activeTripID
         )
     }
@@ -1668,7 +1904,6 @@ struct TripListView: View {
     }
 
     private func deleteTrip(_ trip: Trip) {
-        TrailhoundHaptics.destructive()
         TripMapSnapshotCache.shared.remove(for: trip.id)
         TripRoutePathCache.shared.remove(for: trip.id)
         TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
@@ -1680,7 +1915,7 @@ struct TripListView: View {
         }
         mergeSelection.remove(trip.id)
         try? modelContext.save()
-        ToastPresenter.shared.show(.deleted, playHaptic: false)
+        ToastPresenter.shared.show(.deleted)
     }
 
     private func presentMergeConfirm() {
@@ -1916,7 +2151,7 @@ private struct RecordingCardVisibilityProbe: UIViewRepresentable {
             guard frame.width > 1, frame.height > 40 else { return }
             let overlap = frame.intersection(scroll.bounds).height
             let onScreen: Bool
-            if let lastOnScreen {
+            if lastOnScreen != nil {
                 if overlap < 36 {
                     onScreen = false
                 } else if overlap > 100 {
@@ -2130,6 +2365,26 @@ private extension UIWindow {
             .filter { $0.contentSize.height > $0.bounds.height }
             .max(by: { $0.contentSize.height < $1.contentSize.height })
     }
+}
+
+/// Display fields of a trip row. A store save that does not change these must not
+/// replace `loadedTrips`, or SwiftUI diffs every visible row.
+private struct TripListRowStamp: Equatable {
+    let id: UUID
+    let startedAt: Date
+    let endedAt: Date?
+    let distanceMeters: Double
+    let startPlaceName: String?
+    let endPlaceName: String?
+    let startAddress: String?
+    let endAddress: String?
+    let categoryRaw: String
+    let note: String?
+    let maxSpeedMps: Double?
+    let estimatedFuelCost: Double?
+    let dynamicFuelCost: Double?
+    let pendingSuggestedCategoryID: String?
+    let vehicleID: UUID?
 }
 
 private struct CreditsListLandingYKey: PreferenceKey {

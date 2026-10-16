@@ -152,37 +152,7 @@ struct PairingShortcutsAutomationGuideView: View {
             ZStack {
                 AtmosphericBackground().ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    progressRail
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
-
-                    summaryStrip
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-
-                    heroChrome
-                        .padding(.bottom, 8)
-
-                    if currentStep.kind == .silentStart,
-                       locationService.authorizationState != .authorizedAlways {
-                        LocationAlwaysRequiredBanner()
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
-                    }
-
-                    ScrollView {
-                        stepContent(for: currentStep)
-                            .id(currentStep.id)
-                            .transition(.opacity)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 24)
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-
-                    bottomChrome
-                }
+                guideColumn
             }
             .navigationTitle(L10n.pairingShortcutsGuideTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -203,6 +173,57 @@ struct PairingShortcutsAutomationGuideView: View {
                     VehicleDetailView(vehicleID: item.id)
                 }
             }
+        }
+        .toastHost(extraBottomPadding: 68)
+    }
+
+    /// Back/Next sit in the bottom safe-area bar. A sibling under the
+    /// `ScrollView` is covered by the iOS 26 scroll-edge plate, which steals taps.
+    @ViewBuilder
+    private var guideColumn: some View {
+        if #available(iOS 26.0, *) {
+            stepColumn
+                .safeAreaBar(edge: .bottom, spacing: 0) {
+                    bottomChrome
+                }
+        } else {
+            stepColumn
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    bottomChrome
+                }
+        }
+    }
+
+    private var stepColumn: some View {
+        VStack(spacing: 0) {
+            progressRail
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+
+            summaryStrip
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+
+            heroChrome
+                .padding(.bottom, 8)
+
+            if currentStep.kind == .silentStart,
+               locationService.authorizationState != .authorizedAlways {
+                LocationAlwaysRequiredBanner()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            }
+
+            ScrollView {
+                stepContent(for: currentStep)
+                    .id(currentStep.id)
+                    .transition(.opacity)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .modifier(WizardBottomScrollEdgeHidden())
         }
     }
 
@@ -292,22 +313,19 @@ struct PairingShortcutsAutomationGuideView: View {
 
     private var bottomChrome: some View {
         HStack(spacing: 12) {
-            Button {
-                goBack()
-            } label: {
-                Text(L10n.pairingShortcutsGuideBack)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+            if !isFirstStep {
+                Button(action: goBack) {
+                    Text(L10n.pairingShortcutsGuideBack)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .trailhoundGlassButton()
             }
-            .buttonStyle(.bordered)
-            .disabled(isFirstStep)
 
-            Button {
-                advance()
-            } label: {
+            Button(action: advance) {
                 Text(isLastStep ? L10n.pairingShortcutsGuideDone : L10n.pairingShortcutsGuideNext)
                     .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .trailhoundProminentButton()
             .tint(brandAccent)
@@ -316,7 +334,10 @@ struct PairingShortcutsAutomationGuideView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background {
-            GlassToolbarControlBackground(shape: Rectangle())
+            if #unavailable(iOS 26.0) {
+                GlassToolbarControlBackground(shape: Rectangle())
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -400,12 +421,17 @@ struct PairingShortcutsAutomationGuideView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                }
             }
             .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
+            .glassNestedChoice(isSelected: selected)
+            .contentShape(
+                RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+            )
         }
-        .buttonStyle(.glassPlainHit)
-        .trailhoundCardPress()
-        .glassNestedChoice(isSelected: selected)
+        .buttonStyle(.trailhoundCardPress)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -467,10 +493,12 @@ struct PairingShortcutsAutomationGuideView: View {
                 }
             }
             .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
+            .glassNestedChoice(isSelected: selected)
+            .contentShape(
+                RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+            )
         }
-        .buttonStyle(.glassPlainHit)
-        .trailhoundCardPress()
-        .glassNestedChoice(isSelected: selected)
+        .buttonStyle(.trailhoundCardPress)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -954,6 +982,20 @@ private extension Binding where Value == Bool {
 
 private struct EditingVehicleSheet: Identifiable {
     let id: UUID
+}
+
+/// The shortcuts sheet's scroll view inherits a hard bottom edge plate from
+/// navigation chrome. That plate draws over Back/Next and swallows the tap.
+private struct WizardBottomScrollEdgeHidden: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .scrollEdgeEffectStyle(nil, for: .bottom)
+                .scrollEdgeEffectHidden(true, for: .bottom)
+        } else {
+            content
+        }
+    }
 }
 
 #Preview {

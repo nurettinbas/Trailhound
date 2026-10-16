@@ -277,6 +277,20 @@ final class ShellPaletteTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testSelectedTabSymbolKeepsSize() {
+        let tint = UIColor(red: 0.90, green: 0.28, blue: 0.22, alpha: 1)
+        let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        for symbol in TrailhoundTabBarTheme.itemSymbols {
+            let source = UIImage(systemName: symbol.fill, withConfiguration: config)
+            XCTAssertNotNil(source, symbol.fill)
+            let image = TrailhoundTabBarCompact.tintedSelectionImage(source!, tint: tint)
+            XCTAssertEqual(image.size, source!.size, symbol.fill)
+            XCTAssertEqual(image.scale, source!.scale, symbol.fill)
+            XCTAssertEqual(image.renderingMode, .alwaysTemplate, symbol.fill)
+        }
+    }
+
     func testRecapTabFillSymbolExists() {
         XCTAssertEqual(TrailhoundTabBarTheme.itemSymbols.count, 5)
         XCTAssertEqual(TrailhoundTabBarTheme.itemSymbols[3].outline, "star")

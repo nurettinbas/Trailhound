@@ -192,6 +192,21 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
   "are there any trips", a week-scoped fetch for the summary line, a `fetchLimit = 1` descriptor for
   the newest trip behind the post-stop morph, and a fetch by ID for merge (a selection made before
   scrolling may include trips no longer resident).
+- **Tab appear does not fetch.** `TripListView` loads the library on the first `onAppear` only.
+  Switching back to Trips must not call `reloadTrips`, `reloadJournals`, `refreshOrphans`, or
+  `notificationStore.reload()`. `TripsTabAppear` (`PerformanceSignposts`) wraps that appear.
+  A store save and pull-to-refresh still reload. Returning to the foreground reloads once,
+  because a widget or Shortcut may have saved while the process was suspended.
+- **Same-day return only regroups when the calendar day changed.** Today / Yesterday headers
+  are rebuilt from the rows already in memory. The week summary fetch runs with that regroup,
+  not on every tab tap.
+- **A save that does not change row display fields does not replace `loadedTrips`.** Replacing
+  the array makes SwiftUI diff every row. The stamp covers the fields the row actually shows.
+- **Orphan lookup is `endedAt == nil` with `fetchLimit` 8**, newest first. It must not call
+  `TripStore.all()`. `scheduleOrphanStaleNotifications(for:)` takes the list already fetched
+  so the banner path does not scan twice.
+- **Travel suggestion runs on `TravelSuggestionLoader` (`@ModelActor`)** and only while Travels
+  is on screen (phone mode or the iPad split). It must not run inside `TripsTabAppear`.
 - `TripDateGrouping.groupedSections` runs once per load into `@State`, not once per body pass.
 
 ## Inactive tabs
@@ -361,6 +376,9 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 - `StatsYearAwardsBuild` — calendar-year rollup + expense aggregation; must not overlap Recap-tab recap build or Stats tab-open `StatsSnapshotBuild`.
 - `NightDistanceWalk` — appears only for trips that have not been backfilled yet. Seeing these
   steadily in a warmed-up app means the backfill is not completing.
+- `TripsTabAppear` — one interval per trip-list `onAppear`. After the first load, the interval
+  must stay well under a frame. A warmed-up Stats → Trips switch must not show `ModelContext.fetch`
+  or `Data(contentsOf:)` inside it.
 
 ## Glass (light theme)
 
@@ -386,3 +404,4 @@ Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performan
 6. Record a long drive (thousands of points), then open its detail, list thumbnail, and share card — the route must draw as one continuous line except at genuine GPS gaps.
 7. With 30+ trips, start recording and scroll the trip list past the card and back. Temporarily add `Self._printChanges()` to `recordingCard`: expect zero lines while idle and zero while scrolling. In Instruments, neither `context.fetch` nor `Data(contentsOf:)` should appear on the main thread.
 8. Seed a few thousand trips, then switch to Stats. In the os_signpost instrument, `StatsSnapshotBuild` should stay well under a frame and `NightDistanceWalk` should stop appearing once the backfill finishes. Scroll the trip list to the bottom repeatedly: each page should load without a visible stall, and memory should stay flat rather than climbing with every screen of thumbnails. With 30+ trips, switch Light ↔ Dark and scroll immediately: rows must keep their last map thumb (map icon may sway while the other appearance renders); the list must not empty or hitch from parallel `MKMapSnapshotter`s.
+9. With 100+ trips, open Trips once, switch to Stats, then tap Trips five times. In os_signpost, each return's `TripsTabAppear` stays under a frame and contains no `context.fetch` and no notification-archive read. The Hitches track stays clear on that frame. SwiftUI instrument shows no `TripListView` / `TripRowView` body update caused by the tap. If a hitch remains, check the unmount of the tab you left (Stats charts) before pinning trip-row glass.

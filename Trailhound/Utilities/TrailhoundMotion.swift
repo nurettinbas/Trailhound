@@ -24,9 +24,9 @@ enum TrailhoundMotion {
     static let mapClear = Animation.easeOut(duration: 0.9)
     /// Pin pop with a bit of overshoot.
     static let pinPop = Animation.spring(response: 0.36, dampingFraction: 0.72)
-    /// Toast chip drop-in — soft overshoot, matches pinPop energy.
-    static let toastSpring = Animation.spring(response: 0.42, dampingFraction: 0.78)
-    /// Toast chip exit — quick ease up/fade.
+    /// Toast card rise from the bottom — soft overshoot, matches pinPop energy.
+    static let toastSpring = Animation.spring(response: 0.44, dampingFraction: 0.76)
+    /// Toast card exit — quick ease down and fade.
     static let toastDismiss = Animation.easeIn(duration: 0.22)
     /// Recording card live-map CTA popout (label expands from the map chip).
     static let liveMapHintPop = Animation.spring(response: 0.48, dampingFraction: 0.72)
@@ -243,16 +243,16 @@ enum TrailhoundMotion {
         return .opacity.combined(with: .scale(scale: 0.98))
     }
 
-    /// Toast chip: drop from above + scale settle; leave upward with fade.
+    /// Toast card: rise from below and settle; leave downward with fade.
     static func toastTransition(reduceMotion: Bool) -> AnyTransition {
         guard !reduceMotion else { return .opacity }
         return .asymmetric(
             insertion: .opacity
-                .combined(with: .offset(y: -18))
-                .combined(with: .scale(scale: 0.88)),
+                .combined(with: .offset(y: 28))
+                .combined(with: .scale(scale: 0.90, anchor: .bottom)),
             removal: .opacity
-                .combined(with: .offset(y: -10))
-                .combined(with: .scale(scale: 0.94))
+                .combined(with: .offset(y: 16))
+                .combined(with: .scale(scale: 0.94, anchor: .bottom))
         )
     }
 }
@@ -334,6 +334,39 @@ enum TrailhoundHaptics {
 
     static func destructive() {
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+    }
+
+    /// One haptic phrase per toast. Compound styles stagger so the impact is not swallowed by the notification.
+    static func playToast(_ style: ToastHapticStyle) {
+        switch style {
+        case .success:
+            playImpact(.soft, then: .success)
+        case .destructive:
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        case .warning:
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        case .merge:
+            playImpact(.medium, then: .success)
+        case .automation:
+            playImpact(.rigid, then: .success)
+        case .personalRecord:
+            playImpact(.heavy, then: .success)
+        }
+    }
+
+    private static func playImpact(
+        _ style: UIImpactFeedbackGenerator.FeedbackStyle,
+        then notification: UINotificationFeedbackGenerator.FeedbackType
+    ) {
+        let impact = UIImpactFeedbackGenerator(style: style)
+        impact.prepare()
+        impact.impactOccurred()
+        let note = UINotificationFeedbackGenerator()
+        note.prepare()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(45))
+            note.notificationOccurred(notification)
+        }
     }
 }
 

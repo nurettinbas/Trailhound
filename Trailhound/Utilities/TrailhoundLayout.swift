@@ -216,6 +216,18 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         layoutClass == .phoneLandscape || (layoutClass == .pad && isLandscape)
     }
 
+    /// Open book and iPad landscape. Closed cover landscape, including its widest
+    /// span, stays the portrait list so shortcuts and saved vehicles use the width.
+    var showsPairingVehicleFocus: Bool {
+        guard isLandscape else { return false }
+        switch layoutClass {
+        case .duoOpen, .pad:
+            return true
+        case .phone, .phoneLandscape:
+            return false
+        }
+    }
+
     var storyStageMaxWidth: CGFloat? {
         switch layoutClass {
         case .phone:
@@ -279,9 +291,15 @@ enum TrailhoundLayoutResolver {
         guard old.width > 1, old.height > 1, new.width > 1, new.height > 1 else { return false }
         let widthDelta = abs(new.width - old.width)
         let heightDelta = abs(new.height - old.height)
-        let aspectFlipped = (old.width > old.height) != (new.width > new.height)
-        if aspectFlipped { return true }
+        if aspectFlips(from: old, to: new) { return true }
         return widthDelta > 12 && heightDelta > 12
+    }
+
+    /// Portrait to landscape, or the reverse. The first frame of that resize is what
+    /// cancels the Duo turn when the page rebuilds before UIKit has started it.
+    static func aspectFlips(from old: CGSize, to new: CGSize) -> Bool {
+        guard old.width > 1, old.height > 1, new.width > 1, new.height > 1 else { return false }
+        return (old.width > old.height) != (new.width > new.height)
     }
 
     static func resolve(
@@ -336,6 +354,18 @@ enum TrailhoundLayoutResolver {
             size: size,
             isLandscape: landscape
         )
+    }
+
+    /// The root keeps this snapshot while the window is turning.
+    /// A slight-open fold jumps from the outer portrait to the inner landscape.
+    /// Swapping the hierarchy in that turn cancels the orientation change and
+    /// leaves the interface rotated.
+    static func snapshotDuringTurn(
+        presented: TrailhoundLayoutSnapshot,
+        live: TrailhoundLayoutSnapshot,
+        isRotating: Bool
+    ) -> TrailhoundLayoutSnapshot {
+        isRotating ? presented : live
     }
 
     /// Half tiles stay between `moduleMinHalf` and `moduleMaxHalf`. Extra width adds a column.
@@ -794,6 +824,525 @@ struct TrailhoundHingeCardStack<Content: View>: View {
             gutter: GlassTokens.hingeGutter,
             listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection)
         )
+    }
+}
+
+/// Device rotation. The recording road must not redraw through UIKit's rotation
+/// snapshot, and the trips page must not crossfade a second copy of itself.
+@MainActor
+@Observable
+final class TrailhoundInterfaceRotation {
+    static let shared = TrailhoundInterfaceRotation()
+
+    private(set) var depth = 0
+    /// SwiftUI often reports the new window size before UIKit starts the turn.
+    /// Holding here keeps the page that is on screen until that turn ends.
+    private var sizeHold = false
+    private var holdToken = 0
+    /// True through the frame that applies the layout the turn released.
+    /// A spring on that frame fades the old page over the new one.
+    private(set) var suppressReflowAnimation = false
+    /// Display-link callback reads this without hopping to the main actor.
+    nonisolated(unsafe) static var pausesRoadAnimation = false
+    private var lastOrientationRepair: CFTimeInterval = 0
+
+    var isRotating: Bool { depth > 0 || sizeHold }
+
+    /// Call before publishing a size whose aspect flipped. UIKit's transition
+    /// adopts the hold; if no transition arrives, the hold releases itself.
+    func holdForIncomingTurn() {
+        guard !sizeHold else { return }
+        sizeHold = true
+        Self.pausesRoadAnimation = true
+        suppressReflowAnimation = true
+        scheduleHoldRelease(after: .milliseconds(900))
+    }
+
+    func begin() {
+        depth += 1
+        sizeHold = true
+        Self.pausesRoadAnimation = true
+        suppressReflowAnimation = true
+        // The geometry hold has a short timeout. A real turn outlives that, so
+        // retire the timeout and let end() release the page. If end() never
+        // arrives, drop the hold so portrait is not left off.
+        holdToken += 1
+        let token = holdToken
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(2500))
+            guard self.holdToken == token else { return }
+            self.depth = 0
+            self.releaseHold()
+        }
+    }
+
+    func end() {
+        depth = max(0, depth - 1)
+        Self.pausesRoadAnimation = depth > 0 || sizeHold
+        guard depth == 0 else { return }
+        releaseHold()
+    }
+
+    /// One repair per stuck turn. A second request inside the cooldown fights the gesture.
+    func shouldRepairOrientation() -> Bool {
+        let now = CACurrentMediaTime()
+        guard now - lastOrientationRepair > 1.5 else { return false }
+        lastOrientationRepair = now
+        return true
+    }
+
+    private func scheduleHoldRelease(after delay: Duration) {
+        holdToken += 1
+        let token = holdToken
+        Task { @MainActor in
+            try? await Task.sleep(for: delay)
+            guard self.holdToken == token, self.depth == 0 else { return }
+            self.releaseHold()
+        }
+    }
+
+    private func releaseHold() {
+        holdToken += 1
+        sizeHold = false
+        Self.pausesRoadAnimation = depth > 0
+        suppressReflowAnimation = true
+        Task { @MainActor in
+            guard !self.isRotating else { return }
+            self.suppressReflowAnimation = false
+        }
+    }
+}
+
+/// Where the recording card and the trip list sit while the window turns.
+/// `stackAmount` is 0 side by side and 1 stacked. In between, the two panes slide
+/// so a rotation is one move instead of two translucent screens.
+enum RecordingAxisPlacement {
+    struct Frames: Equatable {
+        var live: CGRect
+        var list: CGRect
+    }
+
+    /// Fully side by side once the window is this much wider than it is tall.
+    static let sideBySideRatio: CGFloat = 1.12
+
+    static func stackAmount(width: CGFloat, height: CGFloat) -> CGFloat {
+        guard width > 1, height > 1 else { return 0 }
+        let ratio = width / height
+        let stacked = 1 / sideBySideRatio
+        return min(1, max(0, (sideBySideRatio - ratio) / (sideBySideRatio - stacked)))
+    }
+
+    static func frames(
+        in bounds: CGRect,
+        gutter: CGFloat,
+        liveLeads: Bool,
+        listOnVisualLeft: Bool,
+        contentInWindow: CGRect,
+        windowSize: CGSize
+    ) -> Frames {
+        let width = bounds.width
+        let height = bounds.height
+        guard width > 1, height > 1 else {
+            return Frames(live: bounds, list: bounds)
+        }
+        let gap = max(0, gutter)
+        let travel = stackAmount(width: width, height: height)
+        let landscape = landscapeFrames(
+            in: bounds,
+            gap: gap,
+            liveLeads: liveLeads,
+            listOnVisualLeft: listOnVisualLeft,
+            contentInWindow: contentInWindow,
+            windowSize: windowSize
+        )
+        let portrait = portraitFrames(
+            in: bounds,
+            gap: gap,
+            contentInWindow: contentInWindow,
+            windowSize: windowSize
+        )
+        return Frames(
+            live: lerp(landscape.live, portrait.live, travel),
+            list: lerp(landscape.list, portrait.list, travel)
+        )
+    }
+
+    private static func landscapeFrames(
+        in bounds: CGRect,
+        gap: CGFloat,
+        liveLeads: Bool,
+        listOnVisualLeft: Bool,
+        contentInWindow: CGRect,
+        windowSize: CGSize
+    ) -> Frames {
+        let width = bounds.width
+        let height = bounds.height
+        let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : width
+        let originX = contentInWindow.width > 1 ? contentInWindow.minX : 0
+        let windowWidth = windowSize.width > 1 ? windowSize.width : width
+        let leading = TrailhoundLayoutResolver.duoLeadingPaneWidth(
+            contentOriginX: originX,
+            contentWidth: contentWidth,
+            windowWidth: windowWidth,
+            gutter: gap,
+            listOnVisualLeft: listOnVisualLeft
+        )
+        let leadingWidth = min(max(0, leading), max(0, width - gap))
+        let visualLeftWidth = listOnVisualLeft
+            ? leadingWidth
+            : max(0, width - gap - leadingWidth)
+        let visualRightWidth = max(0, width - gap - visualLeftWidth)
+        let left = CGRect(x: bounds.minX, y: bounds.minY, width: visualLeftWidth, height: height)
+        let right = CGRect(
+            x: bounds.minX + visualLeftWidth + gap,
+            y: bounds.minY,
+            width: visualRightWidth,
+            height: height
+        )
+        let liveOnVisualLeft = liveLeads == listOnVisualLeft
+        return Frames(
+            live: liveOnVisualLeft ? left : right,
+            list: liveOnVisualLeft ? right : left
+        )
+    }
+
+    private static func portraitFrames(
+        in bounds: CGRect,
+        gap: CGFloat,
+        contentInWindow: CGRect,
+        windowSize: CGSize
+    ) -> Frames {
+        let width = bounds.width
+        let height = bounds.height
+        let contentHeight = contentInWindow.height > 1 ? contentInWindow.height : height
+        let originY = contentInWindow.height > 1 ? contentInWindow.minY : 0
+        let windowHeight = windowSize.height > 1 ? windowSize.height : height
+        let topSpan = TrailhoundLayoutResolver.duoLeadingPaneWidth(
+            contentOriginX: originY,
+            contentWidth: contentHeight,
+            windowWidth: windowHeight,
+            gutter: gap,
+            listOnVisualLeft: true
+        )
+        let topHeight = min(max(0, topSpan), max(0, height - gap))
+        let bottomHeight = max(0, height - gap - topHeight)
+        return Frames(
+            live: CGRect(x: bounds.minX, y: bounds.minY, width: width, height: topHeight),
+            list: CGRect(
+                x: bounds.minX,
+                y: bounds.minY + topHeight + gap,
+                width: width,
+                height: bottomHeight
+            )
+        )
+    }
+
+    private static func lerp(_ from: CGRect, _ to: CGRect, _ t: CGFloat) -> CGRect {
+        CGRect(
+            x: from.minX + (to.minX - from.minX) * t,
+            y: from.minY + (to.minY - from.minY) * t,
+            width: from.width + (to.width - from.width) * t,
+            height: from.height + (to.height - from.height) * t
+        )
+    }
+}
+
+/// Recording card and trip list. The same two children slide between a side-by-side
+/// book and a stacked fold, so a turn does not fade a second copy of the page.
+struct RecordingAxisLayout: Layout {
+    var gutter: CGFloat
+    var liveLeads: Bool
+    var listOnVisualLeft: Bool
+    var contentInWindow: CGRect
+    var windowSize: CGSize
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count >= 2 else { return }
+        let frames = RecordingAxisPlacement.frames(
+            in: bounds,
+            gutter: gutter,
+            liveLeads: liveLeads,
+            listOnVisualLeft: listOnVisualLeft,
+            contentInWindow: contentInWindow,
+            windowSize: windowSize
+        )
+        subviews[0].place(
+            at: frames.live.origin,
+            anchor: .topLeading,
+            proposal: ProposedViewSize(frames.live.size)
+        )
+        subviews[1].place(
+            at: frames.list.origin,
+            anchor: .topLeading,
+            proposal: ProposedViewSize(frames.list.size)
+        )
+    }
+}
+
+struct RecordingOrientationStage<Live: View, List: View>: View {
+    var gutter: CGFloat
+    var liveLeads: Bool
+    @ViewBuilder var live: () -> Live
+    @ViewBuilder var list: () -> List
+
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var contentInWindow: CGRect = .zero
+    @State private var measuredWindow: CGSize = .zero
+
+    var body: some View {
+        RecordingAxisLayout(
+            gutter: gutter,
+            liveLeads: liveLeads,
+            listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection),
+            contentInWindow: contentInWindow,
+            windowSize: measuredWindow
+        ) {
+            live()
+                .clipped()
+            list()
+                .clipped()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            AtmosphericBackground()
+                .ignoresSafeArea()
+            TrailhoundWindowFrameReader { frame, windowSize in
+                guard frame != contentInWindow || windowSize != measuredWindow else { return }
+                contentInWindow = frame
+                measuredWindow = windowSize
+            }
+        }
+    }
+}
+
+/// Idle Trips | Travels book. `splitAmount` is 0 for one column and 1 side by side.
+/// The trailing library fades while both columns still have their landscape width,
+/// then the leading list widens. Nothing scales, so a turn is not a shrink and a pop.
+enum LibraryAxisPlacement {
+    struct Frames: Equatable {
+        var trips: CGRect
+        var travels: CGRect
+    }
+
+    /// Fully one column at a square window. Fully side by side once the window is a
+    /// landscape book — including an iPad whose side tab makes the content a little narrower.
+    static let splitStartRatio: CGFloat = 1
+    static let splitEndRatio: CGFloat = 1.18
+    /// Trailing library is gone before the leading column leaves its half.
+    static let fadeCutoff: CGFloat = 0.62
+
+    static func splitAmount(width: CGFloat, height: CGFloat, requiresBookSpan: Bool = true) -> CGFloat {
+        guard width > 1, height > 1 else { return 0 }
+        if requiresBookSpan, max(width, height) < TrailhoundLayoutResolver.openFoldSpan { return 0 }
+        let span = splitEndRatio - splitStartRatio
+        guard span > 0 else { return 0 }
+        let t = (width / height - splitStartRatio) / span
+        return smooth(t)
+    }
+
+    /// 1 while the trailing library is still fading. Then eases toward the full-width column.
+    static func frameSplit(_ split: CGFloat) -> CGFloat {
+        guard split < fadeCutoff else { return 1 }
+        guard fadeCutoff > 0 else { return 0 }
+        return smooth(split / fadeCutoff)
+    }
+
+    static func travelsOpacity(_ split: CGFloat) -> CGFloat {
+        guard split > fadeCutoff else { return 0 }
+        return smooth((split - fadeCutoff) / (1 - fadeCutoff))
+    }
+
+    /// Leading list drops the Trips | Travels segment once the window is leaving the single column.
+    static func pinsTripsLibrary(_ split: CGFloat) -> Bool {
+        split > 0.04
+    }
+
+    static func frames(
+        in bounds: CGRect,
+        gutter: CGFloat,
+        frameSplit: CGFloat,
+        listOnVisualLeft: Bool,
+        contentInWindow: CGRect,
+        windowSize: CGSize
+    ) -> Frames {
+        let width = bounds.width
+        let height = bounds.height
+        guard width > 1, height > 1 else {
+            return Frames(trips: bounds, travels: bounds)
+        }
+        let sideBySide = sideBySideFrames(
+            in: bounds,
+            gap: max(0, gutter),
+            listOnVisualLeft: listOnVisualLeft,
+            contentInWindow: contentInWindow,
+            windowSize: windowSize
+        )
+        let full = CGRect(x: bounds.minX, y: bounds.minY, width: width, height: height)
+        return Frames(
+            trips: lerp(full, sideBySide.trips, frameSplit),
+            travels: sideBySide.travels
+        )
+    }
+
+    private static func sideBySideFrames(
+        in bounds: CGRect,
+        gap: CGFloat,
+        listOnVisualLeft: Bool,
+        contentInWindow: CGRect,
+        windowSize: CGSize
+    ) -> Frames {
+        let width = bounds.width
+        let height = bounds.height
+        let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : width
+        let originX = contentInWindow.width > 1 ? contentInWindow.minX : 0
+        let windowWidth = windowSize.width > 1 ? windowSize.width : width
+        let leading = TrailhoundLayoutResolver.duoLeadingPaneWidth(
+            contentOriginX: originX,
+            contentWidth: contentWidth,
+            windowWidth: windowWidth,
+            gutter: gap,
+            listOnVisualLeft: listOnVisualLeft
+        )
+        let leadingWidth = min(max(0, leading), max(0, width - gap))
+        let visualLeftWidth = listOnVisualLeft
+            ? leadingWidth
+            : max(0, width - gap - leadingWidth)
+        let visualRightWidth = max(0, width - gap - visualLeftWidth)
+        let left = CGRect(x: bounds.minX, y: bounds.minY, width: visualLeftWidth, height: height)
+        let right = CGRect(
+            x: bounds.minX + visualLeftWidth + gap,
+            y: bounds.minY,
+            width: visualRightWidth,
+            height: height
+        )
+        return Frames(
+            trips: listOnVisualLeft ? left : right,
+            travels: listOnVisualLeft ? right : left
+        )
+    }
+
+    private static func lerp(_ from: CGRect, _ to: CGRect, _ t: CGFloat) -> CGRect {
+        let amount = min(1, max(0, t))
+        return CGRect(
+            x: from.minX + (to.minX - from.minX) * amount,
+            y: from.minY + (to.minY - from.minY) * amount,
+            width: from.width + (to.width - from.width) * amount,
+            height: from.height + (to.height - from.height) * amount
+        )
+    }
+
+    private static func smooth(_ t: CGFloat) -> CGFloat {
+        let x = min(1, max(0, t))
+        return x * x * (3 - 2 * x)
+    }
+}
+
+/// Trips and Travels stay mounted. Frames follow the window, so a rotation does not
+/// crossfade a second copy or scale the page.
+struct LibraryAxisLayout: Layout {
+    var gutter: CGFloat
+    var frameSplit: CGFloat
+    var listOnVisualLeft: Bool
+    var contentInWindow: CGRect
+    var windowSize: CGSize
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count >= 2 else { return }
+        let frames = LibraryAxisPlacement.frames(
+            in: bounds,
+            gutter: gutter,
+            frameSplit: frameSplit,
+            listOnVisualLeft: listOnVisualLeft,
+            contentInWindow: contentInWindow,
+            windowSize: windowSize
+        )
+        subviews[0].place(
+            at: frames.trips.origin,
+            anchor: .topLeading,
+            proposal: ProposedViewSize(frames.trips.size)
+        )
+        subviews[1].place(
+            at: frames.travels.origin,
+            anchor: .topLeading,
+            proposal: ProposedViewSize(frames.travels.size)
+        )
+    }
+}
+
+struct LibraryOrientationStage<Trips: View, Travels: View>: View {
+    var gutter: CGFloat
+    var reduceMotion: Bool
+    @ViewBuilder var trips: (CGFloat) -> Trips
+    @ViewBuilder var travels: () -> Travels
+
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var contentInWindow: CGRect = .zero
+    @State private var measuredWindow: CGSize = .zero
+
+    var body: some View {
+        GeometryReader { geo in
+            let split = resolvedSplit(in: geo.size)
+            let opacity = LibraryAxisPlacement.travelsOpacity(split)
+            let slide = reduceMotion ? 0 : (1 - opacity) * 16
+            let towardTrailing: CGFloat = TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection) ? 1 : -1
+            LibraryAxisLayout(
+                gutter: gutter,
+                frameSplit: LibraryAxisPlacement.frameSplit(split),
+                listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection),
+                contentInWindow: contentInWindow,
+                windowSize: measuredWindow == .zero ? geo.size : measuredWindow
+            ) {
+                trips(split)
+                    .clipped()
+                travels()
+                    .clipped()
+                    .opacity(opacity)
+                    .offset(x: towardTrailing * slide)
+                    .animation(nil, value: opacity)
+                    .allowsHitTesting(opacity > 0.2)
+                    .accessibilityHidden(opacity == 0)
+                    .disabled(opacity == 0)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+            .transaction { transaction in
+                // The rotation already moves the bounds. A spring on top scales the columns.
+                if reduceMotion || TrailhoundInterfaceRotation.shared.isRotating {
+                    transaction.animation = nil
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            AtmosphericBackground()
+                .ignoresSafeArea()
+            TrailhoundWindowFrameReader { frame, windowSize in
+                guard frame != contentInWindow || windowSize != measuredWindow else { return }
+                contentInWindow = frame
+                measuredWindow = windowSize
+            }
+        }
+    }
+
+    /// Reduce Motion snaps at the midpoint. The slide and the in-between widths stay off.
+    /// The stage is only mounted on the open book and on iPad, so a side-tab inset must
+    /// not fail the phone-width gate and collapse a landscape book.
+    private func resolvedSplit(in size: CGSize) -> CGFloat {
+        let live = LibraryAxisPlacement.splitAmount(
+            width: size.width,
+            height: size.height,
+            requiresBookSpan: false
+        )
+        guard reduceMotion else { return live }
+        return live > 0.5 ? 1 : 0
     }
 }
 

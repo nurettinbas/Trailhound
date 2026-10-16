@@ -11,6 +11,8 @@ struct ContentView: View {
     @Bindable private var settings = AppSettings.shared
     @Bindable private var tabSelection = TabSelection.shared
     @State private var windowSize: CGSize = .zero
+    /// Layout the current turn started with. The live size is applied when the turn ends.
+    @State private var presentedLayout = TrailhoundLayoutSnapshot.phone
 
     var body: some View {
         Group {
@@ -20,15 +22,12 @@ struct ContentView: View {
                 AppLockView()
             } else {
                 mainTabs
-                    .animation(
-                        TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion),
-                        value: layoutSnapshot.layoutClass
-                    )
+                    .animation(layoutChangeAnimation, value: layoutSnapshot.layoutClass)
             }
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .onGlassShell()
-        .toastHost()
+        .toastHost(clearsTabBar: true)
         .deleteConfirmHost()
         .environment(\.shellPalette, settings.shellPalette)
         .environment(\.trailhoundLayout, layoutSnapshot)
@@ -58,11 +57,34 @@ struct ContentView: View {
             .environment(\.shellPalette, settings.shellPalette)
             .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
             .onGlassShell()
+            .toastHost()
+            .deleteConfirmHost()
         }
-        .onAppear { syncWindowFill() }
+        .onAppear {
+            syncWindowFill()
+            rememberPresentedLayout()
+        }
         .onChange(of: settings.appearanceMode) { _, _ in syncWindowFill() }
         .onChange(of: settings.shellPalette) { _, _ in syncWindowFill() }
-        .onChange(of: windowSize) { _, _ in syncWindowFill() }
+        .onChange(of: windowSize) { _, _ in
+            rememberPresentedLayout()
+            guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+            syncWindowFill()
+        }
+        .onChange(of: horizontalSizeClass) { _, _ in rememberPresentedLayout() }
+        .onChange(of: verticalSizeClass) { _, _ in rememberPresentedLayout() }
+        .onChange(of: TrailhoundInterfaceRotation.shared.isRotating) { _, rotating in
+            guard !rotating else { return }
+            rememberPresentedLayout()
+            syncWindowFill()
+        }
+    }
+
+    /// A turn already moves the window. A second spring fades the old page over the new one.
+    private var layoutChangeAnimation: Animation? {
+        let rotation = TrailhoundInterfaceRotation.shared
+        if rotation.isRotating || rotation.suppressReflowAnimation { return nil }
+        return TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion)
     }
 
     private var isRecordingSession: Bool {
@@ -70,6 +92,14 @@ struct ContentView: View {
     }
 
     private var layoutSnapshot: TrailhoundLayoutSnapshot {
+        TrailhoundLayoutResolver.snapshotDuringTurn(
+            presented: presentedLayout,
+            live: liveLayout,
+            isRotating: TrailhoundInterfaceRotation.shared.isRotating
+        )
+    }
+
+    private var liveLayout: TrailhoundLayoutSnapshot {
         let size = windowSize == .zero ? CGSize(width: 390, height: 844) : windowSize
         return TrailhoundLayoutResolver.snapshot(
             horizontal: horizontalSizeClass,
@@ -79,18 +109,31 @@ struct ContentView: View {
         )
     }
 
+    /// Keeps the snapshot a later turn will hold. Ignored while a turn is in progress
+    /// so the live inner-display size cannot swap the hierarchy mid-rotation.
+    private func rememberPresentedLayout() {
+        guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+        let next = liveLayout
+        guard next != presentedLayout else { return }
+        let classChanged = next.layoutClass != presentedLayout.layoutClass
+        presentedLayout = next
+        guard classChanged else { return }
+        let state = PerformanceSignposts.signposter.beginInterval("layout.reflow")
+        PerformanceSignposts.signposter.endInterval("layout.reflow", state)
+    }
+
     private func syncWindowFill() {
         AppIconSync.syncWindowStyle(settings.appearanceMode, palette: settings.shellPalette)
     }
 
     private func publishWindowSize(_ size: CGSize) {
         guard size != windowSize else { return }
-        let previous = layoutSnapshot.layoutClass
+        // The new size can arrive before UIKit's turn. Rebuilding the page then
+        // cancels the rotation and the Duo stays landscape, sideways in the hand.
+        if TrailhoundLayoutResolver.aspectFlips(from: windowSize, to: size) {
+            TrailhoundInterfaceRotation.shared.holdForIncomingTurn()
+        }
         windowSize = size
-        let next = layoutSnapshot.layoutClass
-        guard previous != next else { return }
-        let state = PerformanceSignposts.signposter.beginInterval("layout.reflow")
-        PerformanceSignposts.signposter.endInterval("layout.reflow", state)
     }
 
     private var mainTabs: some View {

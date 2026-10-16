@@ -666,6 +666,7 @@ enum L10n {
     static var toastVehicleReminderSaved: String { string("toast.vehicle.reminder.saved") }
     static var toastVehicleExpenseSaved: String { string("toast.vehicle.expense.saved") }
     static var toastTripSaved: String { string("toast.trip.saved") }
+    static var toastJournalSaved: String { string("toast.journal.saved") }
     static var toastCategoryAdded: String { string("toast.category.added") }
     static var toastCategoryDeleted: String { string("toast.category.deleted") }
     static var toastCategoryAccepted: String { string("toast.category.accepted") }

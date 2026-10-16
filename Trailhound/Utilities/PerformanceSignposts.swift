@@ -1,8 +1,10 @@
 import Foundation
 import os
 
-/// Instruments the aggregation paths that historically blocked the main thread.
+/// Instruments the paths that historically blocked the main thread.
 /// Profile with Instruments → os_signpost, subsystem `com.trailhound.app`, category `Performance`.
+/// `TripsTabAppear` wraps the trip list's `onAppear`. After the first load it must stay
+/// under a frame and must not fetch trips or read the notification archive.
 enum PerformanceSignposts {
     static let signposter = OSSignposter(
         subsystem: "com.trailhound.app",

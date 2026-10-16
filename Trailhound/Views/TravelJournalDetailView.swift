@@ -461,12 +461,12 @@ struct TravelJournalDetailView: View {
     }
 
     private func removeFromJournal(_ trip: Trip) {
-        TrailhoundHaptics.destructive()
         TravelJournalTotals.assign(trip: trip, to: nil, in: modelContext)
         if selectedTripID == trip.id {
             selectedTripID = nil
         }
         try? modelContext.save()
+        ToastPresenter.shared.show(.deleted)
     }
 
     private func loadRoutes() async {

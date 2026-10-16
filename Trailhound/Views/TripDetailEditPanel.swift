@@ -139,6 +139,8 @@ struct TripDetailEditPanel: View {
     @State private var trimTailCount: Int = 0
     @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
     @State private var journalEditor: TravelJournalEditorDraft?
+    /// Keeps the edit sheet from jumping the first time a travel menu choice saves.
+    @State private var menuScrollHold = TripDetailMenuScrollHold()
     @State private var keyboardOverlap: CGFloat = 0
     @State private var keyboardAnimationDuration: TimeInterval = 0.25
     @FocusState private var focusedField: TripDetailFocusedField?
@@ -255,6 +257,9 @@ struct TripDetailEditPanel: View {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
                         detailPanelContent
+                            .background(alignment: .top) {
+                                TripDetailMenuScrollHoldAnchor(hold: menuScrollHold)
+                            }
                     }
                     .scrollBounceBehavior(.basedOnSize)
                     .dismissKeyboardOnScroll()
@@ -676,10 +681,14 @@ struct TripDetailEditPanel: View {
             set: { newValue in
                 // Resigning first responder here runs while the menu is closing and
                 // pulls the sheet down with the keyboard. Assign without that.
+                // The first choice after the sheet appears also yanks this scroll
+                // view while the menu dismisses and the save rebuilds the form.
                 switch newValue {
                 case .none:
+                    menuScrollHold.pin()
                     assignJournal(nil)
                 case .journal(let id):
+                    menuScrollHold.pin()
                     assignJournal(id)
                 case .createNew:
                     openNewTravelEditor()
@@ -706,7 +715,7 @@ struct TripDetailEditPanel: View {
             TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
             try? modelContext.save()
         }
-        TrailhoundHaptics.selection()
+        ToastPresenter.shared.show(.tripSaved)
     }
 
     @ViewBuilder
@@ -752,14 +761,22 @@ struct TripDetailEditPanel: View {
     }
 
     private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8)
-        ]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(metrics) { metric in
-                statsMetricCard(for: metric)
+        // Eager rows. A lazy grid inside this sheet collapses the first time the
+        // travel menu saves (the tiles are off screen), and the scroll view jumps.
+        let rowIDs = stride(from: 0, to: metrics.count, by: 3).map { metrics[$0].id }
+        return VStack(spacing: 8) {
+            ForEach(rowIDs, id: \.self) { rowID in
+                let start = metrics.firstIndex(where: { $0.id == rowID }) ?? 0
+                let row = Array(metrics[start..<min(start + 3, metrics.count)])
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(row) { metric in
+                        statsMetricCard(for: metric)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                    ForEach(0..<max(0, 3 - row.count), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
     }
@@ -1452,5 +1469,132 @@ private struct TripDetailEditWell: ViewModifier {
 
     private var fill: Color {
         GlassTokens.fieldFill(for: colorScheme, palette: shellPalette)
+    }
+}
+
+/// Remembers where the trip-detail sheet was scrolled and puts it back if a
+/// travel-menu save moves it. The first change after opening the sheet is the
+/// one that jumps; later changes in the same visit do not.
+@MainActor
+private final class TripDetailMenuScrollHold {
+    fileprivate weak var view: TripDetailMenuScrollHoldView?
+    fileprivate var pinnedOffset: CGPoint?
+    fileprivate var pinUntil: CFTimeInterval = 0
+    fileprivate var lastStableOffset: CGPoint?
+
+    func pin() {
+        view?.beginPin()
+    }
+}
+
+private struct TripDetailMenuScrollHoldAnchor: UIViewRepresentable {
+    var hold: TripDetailMenuScrollHold
+
+    func makeUIView(context: Context) -> TripDetailMenuScrollHoldView {
+        let view = TripDetailMenuScrollHoldView()
+        view.hold = hold
+        hold.view = view
+        return view
+    }
+
+    func updateUIView(_ uiView: TripDetailMenuScrollHoldView, context: Context) {
+        uiView.hold = hold
+        hold.view = uiView
+        uiView.restoreIfNeeded()
+    }
+}
+
+private final class TripDetailMenuScrollHoldView: UIView {
+    weak var hold: TripDetailMenuScrollHold?
+    private var observation: NSKeyValueObservation?
+    private var isApplying = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        attachIfNeeded()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        attachIfNeeded()
+        if hold?.lastStableOffset == nil, let scroll = enclosingScrollView(), !scroll.isTracking {
+            hold?.lastStableOffset = scroll.contentOffset
+        }
+        restoreIfNeeded()
+    }
+
+    func beginPin() {
+        guard let scroll = enclosingScrollView(), let hold else { return }
+        attachIfNeeded()
+        let current = scroll.contentOffset
+        if let stable = hold.lastStableOffset, abs(current.y - stable.y) > 24 {
+            hold.pinnedOffset = stable
+        } else {
+            hold.pinnedOffset = current
+            hold.lastStableOffset = current
+        }
+        hold.pinUntil = CACurrentMediaTime() + 0.55
+        restoreIfNeeded()
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreIfNeeded()
+        }
+    }
+
+    func restoreIfNeeded() {
+        guard !isApplying, let hold else { return }
+        guard CACurrentMediaTime() < hold.pinUntil, let pinned = hold.pinnedOffset else { return }
+        guard let scroll = enclosingScrollView() else { return }
+        if scroll.isTracking || scroll.isDragging {
+            hold.pinUntil = 0
+            hold.pinnedOffset = nil
+            hold.lastStableOffset = scroll.contentOffset
+            return
+        }
+        guard abs(scroll.contentOffset.y - pinned.y) > 0.5 else { return }
+        isApplying = true
+        scroll.setContentOffset(pinned, animated: false)
+        isApplying = false
+    }
+
+    private func attachIfNeeded() {
+        guard observation == nil, let scroll = enclosingScrollView() else { return }
+        observation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                self?.noteOffset()
+            }
+        }
+    }
+
+    private func noteOffset() {
+        guard !isApplying, let hold, let scroll = enclosingScrollView() else { return }
+        if CACurrentMediaTime() < hold.pinUntil {
+            restoreIfNeeded()
+            return
+        }
+        hold.lastStableOffset = scroll.contentOffset
+    }
+
+    private func enclosingScrollView() -> UIScrollView? {
+        var view: UIView? = superview
+        while let current = view {
+            if let scroll = current as? UIScrollView { return scroll }
+            view = current.superview
+        }
+        return nil
+    }
+
+    deinit {
+        observation?.invalidate()
     }
 }

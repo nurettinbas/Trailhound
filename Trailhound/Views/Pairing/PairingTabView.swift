@@ -30,9 +30,9 @@ struct PairingTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             Group {
-                if layout.isLandscape && (layout.layoutClass == .duoOpen || layout.showsHeroRail) {
+                if layout.showsPairingVehicleFocus {
                     // The split already paints one atmosphere. A second glow on the list
-                    // shifts the color on the leading half. Portrait stays one list.
+                    // shifts the color on the leading half. Portrait and closed landscape stay one list.
                     TrailhoundPaneSplit {
                         pairingList(paintsAtmosphere: false)
                     } focus: {

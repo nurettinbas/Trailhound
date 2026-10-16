@@ -5,6 +5,10 @@ import SwiftUI
 /// Start hides while a trip is already recording or paused.
 struct TrailhoundShellToolbar: ViewModifier {
     var pageOwnsLeading: Bool = false
+    /// Split book and merge mode draw the bell inside their own trailing item.
+    /// A second `.topBarTrailing` item is what iOS parks beside the side tab;
+    /// rotating that circle drops the bell glyph.
+    var pageOwnsTrailing: Bool = false
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -18,8 +22,10 @@ struct TrailhoundShellToolbar: ViewModifier {
                     startCluster
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                statusPair
+            if !pageOwnsTrailing {
+                ToolbarItem(placement: .topBarTrailing) {
+                    statusPair
+                }
             }
         }
     }
@@ -88,8 +94,8 @@ struct TrailhoundShellToolbar: ViewModifier {
 }
 
 extension View {
-    func trailhoundShellToolbar(pageOwnsLeading: Bool = false) -> some View {
-        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading))
+    func trailhoundShellToolbar(pageOwnsLeading: Bool = false, pageOwnsTrailing: Bool = false) -> some View {
+        modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading, pageOwnsTrailing: pageOwnsTrailing))
     }
 }
 

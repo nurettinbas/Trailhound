@@ -268,6 +268,8 @@ struct ActiveTripView: View {
     @State private var displayedPaused = false
     /// Decoded thumb for the road scene — injected so TimelineView never hits disk.
     @State private var roadVehiclePhoto: UIImage?
+    /// Kept through a turn so the road, stats, and buttons are not rebuilt mid-slide.
+    @State private var settledArrangement: RecordingCardArrangement?
 
     init(
         morphNamespace: Namespace.ID? = nil,
@@ -340,7 +342,7 @@ struct ActiveTripView: View {
         arrangedRecordingStack
         .padding(14)
         .frame(
-            maxWidth: screenLayout.recordingCardArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
+            maxWidth: presentedArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
             alignment: .leading
         )
         .frame(maxWidth: .infinity, alignment: .top)
@@ -381,6 +383,21 @@ struct ActiveTripView: View {
         }
         .onAppear {
             displayedPaused = recordingService.state == .paused
+            if settledArrangement == nil {
+                settledArrangement = screenLayout.recordingCardArrangement
+            }
+        }
+        .onChange(of: screenLayout.recordingCardArrangement) { _, newValue in
+            guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+            settledArrangement = newValue
+        }
+        .onChange(of: TrailhoundInterfaceRotation.shared.isRotating) { _, rotating in
+            guard !rotating else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                settledArrangement = screenLayout.recordingCardArrangement
+            }
         }
         .onChange(of: recordingService.state) { _, newState in
             if newState.isActiveSession {
@@ -399,80 +416,49 @@ struct ActiveTripView: View {
         }
     }
 
-    @ViewBuilder
-    private var arrangedRecordingStack: some View {
-        switch screenLayout.recordingCardArrangement {
-        case .list:
-            listRecordingStack
-        case .pane:
-            paneRecordingStack
-        case .banner:
-            bannerRecordingStack
+    /// During a turn the card keeps the arrangement it started with. The panes
+    /// slide around it; swapping the road for a second copy is the ghost.
+    private var presentedArrangement: RecordingCardArrangement {
+        if TrailhoundInterfaceRotation.shared.isRotating, let settledArrangement {
+            return settledArrangement
         }
+        return screenLayout.recordingCardArrangement
     }
 
-    private var listRecordingStack: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            statusRow
-
-            HStack(alignment: .center, spacing: 10) {
-                RecordingCarAnimationView(
-                    compact: true,
-                    isAnimating: shouldRunRoadClock,
-                    isPaused: isPaused,
-                    driveInProgress: carDriveIn,
-                    systemImage: VehicleIconOption.default.rawValue,
-                    vehiclePhoto: roadVehiclePhoto,
-                    symbolScaleX: -1,
-                    allowsVerticalBounce: true
-                ) { layout in
-                    if let serviceDue = urgentServiceDue {
-                        RecordingVehicleServiceBadge(
-                            carSize: layout.carSize,
-                            isOverdue: serviceDue.state.isOverdue
-                        )
-                        .recordingVehicleServiceBadgePosition(layout: layout)
-                    }
-                }
-                .matchedGeometryEffectIfAvailable(
-                    stringID: RecordingMorphID.car,
-                    namespace: morphNamespace,
-                    isSource: true
-                )
-                .matchedGeometryEffectIfAvailable(
-                    id: morphID,
-                    namespace: morphNamespace,
-                    isSource: true
-                )
-                .frame(maxWidth: .infinity)
-                .background {
-                    GeometryReader { geo in
-                        let frame = geo.frame(in: .global)
-                        Color.clear
-                            .onAppear { updateCarAnchor(frame) }
-                            .onChange(of: frame.origin.y) { _, _ in updateCarAnchor(frame) }
-                            .onChange(of: frame.size.width) { _, _ in updateCarAnchor(frame) }
-                            .onChange(of: frame.size.height) { _, _ in updateCarAnchor(frame) }
-                    }
+    private var arrangedRecordingStack: some View {
+        let arrangement = presentedArrangement
+        let compactRoad = screenLayout.layoutClass == .phoneLandscape || arrangement == .list
+        let capsRoadHeight = compactRoad || arrangement == .banner
+        let actionsBeside = arrangement == .banner
+        let reveals = arrangement == .list
+        return HStack(alignment: .center, spacing: actionsBeside ? 16 : 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                statusRow
+                roadScene(compact: compactRoad, reportsMorph: arrangement != .pane)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: capsRoadHeight ? 72 : nil)
+                    .opacity(reveals ? detailsReveal : 1)
+                    .scaleEffect(reveals ? 0.92 + 0.08 * detailsReveal : 1)
+                ActiveTripLiveStats(arrangement: arrangement == .pane ? .grid : .inline)
+                    .opacity(reveals ? detailsReveal : 1)
+                    .offset(y: reveals ? (1 - detailsReveal) * 10 : 0)
+                if !actionsBeside {
+                    actionsRow
+                        .opacity(reveals ? detailsReveal : 1)
+                        .offset(y: reveals ? (1 - detailsReveal) * 8 : 0)
                 }
             }
-            .frame(height: 72)
-            .opacity(detailsReveal)
-            .scaleEffect(0.92 + 0.08 * detailsReveal)
-
-            ActiveTripLiveStats()
-                .opacity(detailsReveal)
-                .offset(y: (1 - detailsReveal) * 10)
-
-            actionsRow
-                .opacity(detailsReveal)
-                .offset(y: (1 - detailsReveal) * 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            if actionsBeside {
+                actionsRow
+                    .frame(maxWidth: 280)
+            }
         }
     }
 
-    private var roadScene: some View {
+    private func roadScene(compact: Bool, reportsMorph: Bool) -> some View {
         RecordingCarAnimationView(
-            compact: screenLayout.layoutClass == .phoneLandscape || screenLayout.recordingCardArrangement == .list,
+            compact: compact,
             isAnimating: shouldRunRoadClock,
             isPaused: isPaused,
             driveInProgress: carDriveIn,
@@ -497,32 +483,17 @@ struct ActiveTripView: View {
         .matchedGeometryEffectIfAvailable(
             id: morphID,
             namespace: morphNamespace,
-            isSource: screenLayout.recordingCardArrangement != .pane
+            isSource: reportsMorph
         )
-    }
-
-    private var paneRecordingStack: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            statusRow
-            roadScene
-                .frame(maxWidth: .infinity)
-            ActiveTripLiveStats(arrangement: .grid)
-            actionsRow
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-    }
-
-    private var bannerRecordingStack: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                statusRow
-                roadScene
-                    .frame(height: 72)
-                ActiveTripLiveStats()
+        .background {
+            GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { updateCarAnchor(frame) }
+                    .onChange(of: frame.origin.y) { _, _ in updateCarAnchor(frame) }
+                    .onChange(of: frame.size.width) { _, _ in updateCarAnchor(frame) }
+                    .onChange(of: frame.size.height) { _, _ in updateCarAnchor(frame) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            actionsRow
-                .frame(maxWidth: 280)
         }
     }
 

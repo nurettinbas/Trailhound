@@ -22,6 +22,8 @@ private struct LightChromeProminentButtonStyle: ButtonStyle {
     var tint: Color
     var reduceMotion: Bool
 
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.semibold))
@@ -37,7 +39,8 @@ private struct LightChromeProminentButtonStyle: ButtonStyle {
                     }
             }
             .contentShape(Capsule(style: .continuous))
-            .scaleEffect((configuration.isPressed && !reduceMotion) ? 0.97 : 1)
+            .opacity(isEnabled ? 1 : 0.4)
+            .scaleEffect((configuration.isPressed && !reduceMotion && isEnabled) ? 0.97 : 1)
             .animation(reduceMotion ? nil : TrailhoundMotion.cardSpring, value: configuration.isPressed)
     }
 }

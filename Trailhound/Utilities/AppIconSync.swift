@@ -329,20 +329,83 @@ extension UIWindow {
 }
 
 extension UIViewController {
-    @objc func trailhound_viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-        let rotates = MainActor.assumeIsolated {
-            view.bounds.size != size && view.window?.rootViewController === self
+    /// A cancelled turn can leave the hosting view rotated inside the new display.
+    /// Identity restores upright layout; the scene then applies the orientation it already wants.
+    @discardableResult
+    fileprivate func restoreUprightInterface() -> Bool {
+        var stuck: [UIView] = []
+        var current: UIView? = view
+        var steps = 0
+        while let candidate = current, steps < 12 {
+            if !candidate.transform.isIdentity {
+                stuck.append(candidate)
+            }
+            if candidate is UIWindow { break }
+            current = candidate.superview
+            steps += 1
         }
-        if rotates {
+        guard !stuck.isEmpty else { return false }
+        UIView.performWithoutAnimation {
+            for candidate in stuck {
+                candidate.transform = .identity
+            }
+        }
+        setNeedsUpdateOfSupportedInterfaceOrientations()
+        return true
+    }
+
+    /// The turn to portrait was cancelled and the interface is still landscape.
+    /// Ask once, after the gesture has settled, so the Duo can stand upright.
+    fileprivate func repairCancelledOrientation(target: CGSize) {
+        let targetPortrait = target.height > target.width
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+            guard let scene = self.view.window?.windowScene else { return }
+            let interfacePortrait = scene.interfaceOrientation.isPortrait
+            guard targetPortrait != interfacePortrait else { return }
+            guard TrailhoundInterfaceRotation.shared.shouldRepairOrientation() else { return }
+            let mask: UIInterfaceOrientationMask = targetPortrait ? .portrait : .landscape
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
+        }
+    }
+
+    @objc func trailhound_viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        let transition = MainActor.assumeIsolated { () -> (paint: Bool, turn: Bool) in
+            let isRoot = view.window?.rootViewController === self
+            let bounds = view.bounds.size
+            let sizeChanges = bounds != size
+            let aspectFlips = sizeChanges && bounds.width > 1 && bounds.height > 1
+                && (bounds.width > bounds.height) != (size.width > size.height)
+            let transformTurns = coordinator.targetTransform != .identity
+            return (isRoot && sizeChanges, isRoot && (aspectFlips || transformTurns))
+        }
+        if transition.paint {
             MainActor.assumeIsolated {
                 AppIconSync.beginRotationPaint()
             }
         }
+        if transition.turn {
+            MainActor.assumeIsolated {
+                TrailhoundInterfaceRotation.shared.begin()
+            }
+        }
         trailhound_viewWillTransition(to: size, with: coordinator)
-        guard rotates else { return }
+        guard transition.paint || transition.turn else { return }
         coordinator.animate(alongsideTransition: { _ in
+            guard transition.paint else { return }
             MainActor.assumeIsolated {
                 AppIconSync.paintRotationSurfaces(palette: AppSettings.shared.shellPalette)
+            }
+        }, completion: { context in
+            let cancelled = context.isCancelled
+            MainActor.assumeIsolated {
+                if transition.turn {
+                    TrailhoundInterfaceRotation.shared.end()
+                }
+                guard cancelled else { return }
+                self.restoreUprightInterface()
+                self.repairCancelledOrientation(target: size)
             }
         })
     }

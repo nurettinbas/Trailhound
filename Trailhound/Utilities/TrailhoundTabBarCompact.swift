@@ -160,10 +160,12 @@ enum TrailhoundTabBarCompact {
         let selectedControl = tabItemControl(containing: view)?.isSelected == true
         let paintsSelection = onBar && (insideSelection || childInsideSelection || selectedControl)
 
-        if let imageView = view as? UIImageView, paintsSelection {
+        if let imageView = view as? UIImageView, paintsSelection, let source = imageView.image {
+            // Same symbol, same size. Template mode takes the palette tint.
+            // Redrawing the glyph shrinks it inside the tab slot.
             let stamped = objc_getAssociatedObject(imageView, &SelectionImageStamp.key) as? UIImage
-            if stamped !== imageView.image || !sameColor(imageView.tintColor, tint) {
-                let colored = imageView.image?.withTintColor(tint, renderingMode: .alwaysOriginal)
+            if stamped !== source || !sameColor(imageView.tintColor, tint) {
+                let colored = tintedSelectionImage(source, tint: tint)
                 imageView.tintColor = tint
                 imageView.image = colored
                 objc_setAssociatedObject(
@@ -309,6 +311,11 @@ enum TrailhoundTabBarCompact {
             node = current.superview
         }
         return nil
+    }
+
+    /// Palette ink on the system symbol. Does not redraw it, so the tab slot keeps its size.
+    static func tintedSelectionImage(_ image: UIImage, tint: UIColor) -> UIImage {
+        image.withTintColor(tint, renderingMode: .alwaysTemplate)
     }
 
     private static func sameColor(_ lhs: UIColor?, _ rhs: UIColor?) -> Bool {

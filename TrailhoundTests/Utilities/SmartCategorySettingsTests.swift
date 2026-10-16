@@ -75,4 +75,21 @@ final class SmartCategoryToastTests: XCTestCase {
         XCTAssertEqual(ToastKind.journalTitleRequired.message, L10n.journalTitleRequired)
         XCTAssertNotEqual(ToastKind.categoryAccepted.message, ToastKind.journalTitleRequired.message)
     }
+
+    func testToastKindsExposeSymbolsAndHaptics() {
+        XCTAssertEqual(ToastKind.journalSaved.message, L10n.toastJournalSaved)
+        XCTAssertEqual(ToastKind.journalSaved.systemImage, "book.closed.fill")
+        XCTAssertEqual(ToastKind.journalSaved.hapticStyle, .success)
+        XCTAssertEqual(ToastKind.categoryAccepted.systemImage, "sparkles")
+        XCTAssertEqual(ToastKind.categoryAccepted.symbolAnimation, .pulse)
+        XCTAssertEqual(ToastKind.deleted.systemImage, "trash.fill")
+        XCTAssertEqual(ToastKind.deleted.hapticStyle, .destructive)
+        XCTAssertEqual(ToastKind.deleted.emblemTone, .destructive)
+        XCTAssertEqual(ToastKind.journalTitleRequired.hapticStyle, .warning)
+        XCTAssertEqual(ToastKind.journalTitleRequired.symbolAnimation, .wiggle)
+        XCTAssertEqual(ToastKind.tripsMerged.hapticStyle, .merge)
+        XCTAssertEqual(ToastKind.shortcutsAutomationReached.hapticStyle, .automation)
+        XCTAssertEqual(ToastKind.vehicleReminderSaved.symbolAnimation, .wiggle)
+        XCTAssertNotEqual(ToastKind.saved.systemImage, ToastKind.tripSaved.systemImage)
+    }
 }

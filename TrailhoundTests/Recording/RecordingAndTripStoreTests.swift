@@ -225,6 +225,33 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(orphans.first?.id, open.id)
     }
 
+    func testOrphansFetchLimitKeepsNewestOpenTrips() throws {
+        let container = try ModelContainer(
+            for: Trip.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let now = Date()
+        for index in 0..<(TripStore.orphanFetchLimit + 1) {
+            context.insert(
+                Trip(
+                    startedAt: now.addingTimeInterval(TimeInterval(index) * 60),
+                    endedAt: nil
+                )
+            )
+        }
+        context.insert(Trip(startedAt: now, endedAt: now))
+        try context.save()
+
+        let orphans = TripStore.orphans(from: context)
+        XCTAssertEqual(orphans.count, TripStore.orphanFetchLimit)
+        XCTAssertEqual(orphans.first?.endedAt, nil)
+        for pair in zip(orphans, orphans.dropFirst()) {
+            XCTAssertGreaterThan(pair.0.startedAt, pair.1.startedAt)
+        }
+        XCTAssertFalse(orphans.contains { $0.endedAt != nil })
+    }
+
     func testCompletedSinceFiltersByStartDate() throws {
         let container = try ModelContainer(
             for: Trip.self,
