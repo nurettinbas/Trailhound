@@ -167,7 +167,7 @@ The card is Liquid Glass (`glassChrome`, `GlassTokens.toastCornerRadius` 22, min
 |---|---|
 | Horizontal chips inside a glass card | `.glassChipScroller()` on the `ScrollView` — compresses the `HStack` and clips plates at the trailing edge. `GlassChipGroup` stays **inside** the scroller. Unselected = frost fill. |
 | Palette-tint label chip on a dark plate | `.statsThemeChip()` — same tint + white type + white rim as compact Play; not frost, not a button |
-| Choice / instruction tile inside a glass card | `.glassNestedChoice(isSelected:)` — selected = chip mid-family fill + white type; unselected = nested frost tint. Not `statsNestedTile`, not a second Material. Pair with `.trailhoundCardPress()` when tappable. |
+| Choice / instruction tile inside a glass card | `.glassNestedChoice(isSelected:)` — Light selected = slightly stronger nested frost + white rim (same 0.72 rim as the primary capsule). A mid-family fill on a saturated Light shell is the same hue as the atmosphere and the Next pill, so it reads as a second button. Dark selected = deep tint fill + white type. Unselected = nested frost tint. Not `statsNestedTile`, not a second Material. Pair with `.trailhoundCardPress()` when tappable. |
 | Tile on atmosphere (trip fuel factors) | `.glassChrome` — same native plate as duration/distance cards. Not nested fill. |
 | Travel journal selected trip | `.glassChrome(enabled:)` — same native plate as the trip list. Not a white wash. |
 | Text field | `.glassInputField()` — frost well + Light white rim (`LightGlassPalette.fieldRimOpacity`). Dark: fill only. |

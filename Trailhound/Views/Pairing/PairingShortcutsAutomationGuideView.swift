@@ -177,21 +177,13 @@ struct PairingShortcutsAutomationGuideView: View {
         .toastHost(extraBottomPadding: 68)
     }
 
-    /// Back/Next sit in the bottom safe-area bar. A sibling under the
-    /// `ScrollView` is covered by the iOS 26 scroll-edge plate, which steals taps.
-    @ViewBuilder
+    /// Back / Next sit under the scroller. The bottom scroll-edge plate is hidden
+    /// so it cannot cover this inset or steal the tap.
     private var guideColumn: some View {
-        if #available(iOS 26.0, *) {
-            stepColumn
-                .safeAreaBar(edge: .bottom, spacing: 0) {
-                    bottomChrome
-                }
-        } else {
-            stepColumn
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    bottomChrome
-                }
-        }
+        stepColumn
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomChrome
+            }
     }
 
     private var stepColumn: some View {
@@ -205,25 +197,39 @@ struct PairingShortcutsAutomationGuideView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
 
-            heroChrome
-                .padding(.bottom, 8)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 0)
+                            .id(Self.scrollTopID)
 
-            if currentStep.kind == .silentStart,
-               locationService.authorizationState != .authorizedAlways {
-                LocationAlwaysRequiredBanner()
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-            }
+                        heroChrome
+                            .padding(.bottom, heroChromeIsEmpty ? 0 : 8)
 
-            ScrollView {
-                stepContent(for: currentStep)
-                    .id(currentStep.id)
-                    .transition(.opacity)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+                        if currentStep.kind == .silentStart,
+                           locationService.authorizationState != .authorizedAlways {
+                            LocationAlwaysRequiredBanner()
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 8)
+                        }
+
+                        stepContent(for: currentStep)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 24)
+                    }
+                }
+                .id(currentStep.id)
+                .scrollBounceBehavior(.basedOnSize)
+                .modifier(WizardBottomScrollEdgeHidden())
+                .onChange(of: stepIndex) { _, _ in
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        proxy.scrollTo(Self.scrollTopID, anchor: .top)
+                    }
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .modifier(WizardBottomScrollEdgeHidden())
         }
     }
 
@@ -237,14 +243,24 @@ struct PairingShortcutsAutomationGuideView: View {
                 let progress = CGFloat(stepIndex + 1) / CGFloat(max(steps.count, 1))
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.secondary.opacity(0.18))
+                        .fill(progressTrack)
                     Capsule()
-                        .fill(brandAccent)
+                        .fill(progressFill)
                         .frame(width: max(8, geo.size.width * progress))
                 }
             }
-            .frame(height: 4)
+            .frame(height: 3)
         }
+    }
+
+    /// Accent on a saturated Light shell disappears into the wash. The rail uses
+    /// the shell’s white ink there; Dark keeps the palette tint.
+    private var progressTrack: Color {
+        colorScheme == .dark ? Color.secondary.opacity(0.18) : Color.white.opacity(0.28)
+    }
+
+    private var progressFill: Color {
+        colorScheme == .dark ? brandAccent : Color.white.opacity(0.92)
     }
 
     private var summaryStrip: some View {
@@ -262,6 +278,15 @@ struct PairingShortcutsAutomationGuideView: View {
         .font(.caption.weight(.semibold))
         .glassSecondaryInk()
         .frame(minHeight: 16)
+    }
+
+    private var heroChromeIsEmpty: Bool {
+        switch currentStep.kind {
+        case .silentStart, .handoff, .test:
+            return false
+        default:
+            return true
+        }
     }
 
     @ViewBuilder
@@ -288,6 +313,7 @@ struct PairingShortcutsAutomationGuideView: View {
                 }
             }
             .frame(height: 140)
+            .clipped()
             .padding(.horizontal, 16)
         case .test:
             ZStack {
@@ -306,39 +332,37 @@ struct PairingShortcutsAutomationGuideView: View {
                 }
             }
             .frame(height: 88)
+            .clipped()
         default:
             EmptyView()
         }
     }
 
+    /// Trailing capsule only. A full-width tint bar is the same hue as a saturated
+    /// Light shell, and the old 44 pt label plus button padding made it a slab
+    /// that cut through the last choice.
     private var bottomChrome: some View {
         HStack(spacing: 12) {
             if !isFirstStep {
                 Button(action: goBack) {
                     Text(L10n.pairingShortcutsGuideBack)
                         .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .trailhoundGlassButton()
             }
 
+            Spacer(minLength: 0)
+
             Button(action: advance) {
                 Text(isLastStep ? L10n.pairingShortcutsGuideDone : L10n.pairingShortcutsGuideNext)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .trailhoundProminentButton()
             .tint(brandAccent)
             .disabled(!canAdvance)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background {
-            if #unavailable(iOS 26.0) {
-                GlassToolbarControlBackground(shape: Rectangle())
-                    .allowsHitTesting(false)
-            }
-        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -408,24 +432,28 @@ struct PairingShortcutsAutomationGuideView: View {
                 Image(systemName: resolvedTriggerSymbol(for: trigger))
                     .font(.title3.weight(.semibold))
                     .frame(width: 28)
+                    .foregroundStyle(wizardChoiceInk(selected: selected))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(wizardChoiceInk(selected: selected))
                     Text(body)
                         .font(.caption)
+                        .foregroundStyle(wizardChoiceInk(selected: selected, secondary: true))
                         .fixedSize(horizontal: false, vertical: true)
                     if let note {
                         Text(note)
                             .font(.caption2)
+                            .foregroundStyle(wizardChoiceInk(selected: selected, secondary: true))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(wizardChoiceInk(selected: true))
                 }
             }
-            .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
             .glassNestedChoice(isSelected: selected)
             .contentShape(
                 RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
@@ -487,12 +515,13 @@ struct PairingShortcutsAutomationGuideView: View {
                 Text(vehicle.name)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .foregroundStyle(wizardChoiceInk(selected: selected))
                 Spacer(minLength: 0)
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(wizardChoiceInk(selected: true))
                 }
             }
-            .foregroundStyle(selected ? Color.white : GlassText.primary(for: colorScheme))
             .glassNestedChoice(isSelected: selected)
             .contentShape(
                 RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
@@ -715,10 +744,22 @@ struct PairingShortcutsAutomationGuideView: View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(brandAccent)
+                .glassPrimaryInk()
             Text(title)
                 .font(.headline)
+                .glassPrimaryInk()
         }
+    }
+
+    /// Dark selected rows sit on a deep tint, so the type stays white.
+    /// Light rows sit on frost; body copy uses the secondary ink.
+    private func wizardChoiceInk(selected: Bool, secondary: Bool = false) -> Color {
+        if selected, colorScheme == .dark {
+            return .white
+        }
+        return secondary
+            ? GlassText.secondary(for: colorScheme)
+            : GlassText.primary(for: colorScheme)
     }
 
     private var connectSteps: [String] {
@@ -940,6 +981,8 @@ struct PairingShortcutsAutomationGuideView: View {
             }
         }
     }
+
+    private static let scrollTopID = "wizard-scroll-top"
 
     private static func makeSteps() -> [GuideWizardStep] {
         [

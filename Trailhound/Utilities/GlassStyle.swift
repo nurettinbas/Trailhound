@@ -1158,7 +1158,7 @@ final class GlassSegmentedProbeView: UIView {
     }
 }
 
-/// Frost fill inside a glass card — chip selected/unselected recipe, never a second Material.
+/// Frost fill inside a glass card. Light selection is a rim, not a second tint slab.
 private struct GlassNestedChoiceModifier: ViewModifier {
     var isSelected: Bool
 
@@ -1173,21 +1173,38 @@ private struct GlassNestedChoiceModifier: ViewModifier {
             .background {
                 RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
                     .fill(fill)
+                    .overlay {
+                        if showsSelectionRim {
+                            RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
+                        }
+                    }
             }
     }
 
+    /// Light shells are already a saturated wash. A mid-family fill there is the
+    /// same hue as the atmosphere and the primary capsule, so the row reads as
+    /// another button. Dark keeps the deep tint slab.
+    private var showsSelectionRim: Bool {
+        isSelected && colorScheme == .light
+    }
+
     private var fill: Color {
-        if isSelected {
-            return colorScheme == .dark
-                ? shellPalette.tintColor(for: .dark)
-                : LightGlassPalette.selectedChipFill(for: shellPalette)
+        if isSelected, colorScheme == .dark {
+            return shellPalette.tintColor(for: .dark)
         }
         if reduceTransparency {
             return shellPalette.opaquePanelFill(for: colorScheme)
         }
-        return colorScheme == .dark
+        let frost = colorScheme == .dark
             ? Color.white.opacity(0.10)
             : shellPalette.glassReadabilityTint(for: .light).opacity(GlassContrast.nestedTileTintOpacity)
+        if isSelected, colorScheme == .light {
+            return shellPalette.glassReadabilityTint(for: .light).opacity(
+                min(0.42, GlassContrast.nestedTileTintOpacity + 0.12)
+            )
+        }
+        return frost
     }
 }
 
