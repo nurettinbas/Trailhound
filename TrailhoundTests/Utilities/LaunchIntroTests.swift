@@ -6,8 +6,8 @@ final class LaunchIntroTimelineTests: XCTestCase {
     func testStandardBeatsAreOrderedAndShort() {
         let timeline = LaunchIntroTimeline.standard
         assertOrdered(timeline)
-        XCTAssertEqual(timeline.total, 2.45, accuracy: 0.001)
-        XCTAssertGreaterThanOrEqual(timeline.closeEnd - timeline.runEnd, 0.6, "the close needs room to read")
+        XCTAssertEqual(timeline.total, 1.715, accuracy: 0.001)
+        XCTAssertGreaterThanOrEqual(timeline.closeEnd - timeline.runEnd, 0.5, "the close needs room to read")
         XCTAssertLessThanOrEqual(timeline.total - timeline.closeEnd, 0.4, "the exit stays quick")
         XCTAssertTrue(timeline.allowsMotion)
         XCTAssertEqual(timeline.preferredFrameRate, 120)

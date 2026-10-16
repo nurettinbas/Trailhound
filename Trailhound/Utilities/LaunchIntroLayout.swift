@@ -18,9 +18,9 @@ struct LaunchIntroTimeline: Equatable {
 
     static var standard: LaunchIntroTimeline {
         LaunchIntroTimeline(
-            enterEnd: 0.40,
-            runEnd: 1.30,
-            closeEnd: 2.10,
+            enterEnd: 0.28,
+            runEnd: 0.91,
+            closeEnd: 1.47,
             total: TrailhoundMotion.launchIntroDuration,
             allowsMotion: true,
             preferredFrameRate: 120
@@ -29,9 +29,9 @@ struct LaunchIntroTimeline: Equatable {
 
     static var lowPower: LaunchIntroTimeline {
         LaunchIntroTimeline(
-            enterEnd: 0.30,
-            runEnd: 0.85,
-            closeEnd: 1.40,
+            enterEnd: 0.21,
+            runEnd: 0.595,
+            closeEnd: 0.98,
             total: TrailhoundMotion.launchIntroLowPowerDuration,
             allowsMotion: true,
             preferredFrameRate: 60
