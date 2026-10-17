@@ -843,25 +843,23 @@ struct TripDetailViewModel {
             routeRect = routeRect.insetBy(dx: 0, dy: -(minPoints - routeRect.size.height) / 2)
         }
 
-        let usableWidth = max(mapSize.width - edgePadding.left - edgePadding.right, 48)
-        let usableHeight = max(mapSize.height - edgePadding.top - edgePadding.bottom, 48)
+        let usable = TripDetailMapFraming.usableSize(mapSize: mapSize, edgePadding: edgePadding)
+        let visibleCenter = TripDetailMapFraming.visibleCenter(mapSize: mapSize, edgePadding: edgePadding)
 
         // Map points per view point so the route fills the usable rect.
         let scale = max(
-            routeRect.size.width / usableWidth,
-            routeRect.size.height / usableHeight
+            routeRect.size.width / Double(usable.width),
+            routeRect.size.height / Double(usable.height)
         ) * margin
 
         let fullWidth = scale * mapSize.width
         let fullHeight = scale * mapSize.height
 
         let routeCenter = MKMapPoint(CLLocationCoordinate2D(latitude: midLat, longitude: midLon))
-        let visibleCenterX = edgePadding.left + usableWidth / 2
-        let visibleCenterY = edgePadding.top + usableHeight / 2
 
         // Place route center at the visible-rect center (not the full map center).
-        let mapCenterX = routeCenter.x + (0.5 - Double(visibleCenterX / mapSize.width)) * fullWidth
-        let mapCenterY = routeCenter.y + (0.5 - Double(visibleCenterY / mapSize.height)) * fullHeight
+        let mapCenterX = routeCenter.x + (0.5 - Double(visibleCenter.x / mapSize.width)) * fullWidth
+        let mapCenterY = routeCenter.y + (0.5 - Double(visibleCenter.y / mapSize.height)) * fullHeight
 
         let fitted = MKMapRect(
             x: mapCenterX - fullWidth / 2,
@@ -899,5 +897,227 @@ struct TripDetailViewModel {
 
     static func speedColor(for speedMps: Double?) -> Color {
         SpeedBand.initial(kmh: (speedMps ?? 0) * 3.6).color
+    }
+}
+
+/// Visible-map insets for one trip-detail posture. The route is centered in what
+/// remains after the card, side tab, or trailing panel.
+struct TripDetailMapFraming: Equatable, Sendable {
+    enum Posture: Equatable, Sendable {
+        /// Phone portrait and the upright Duo sheet.
+        case sheet
+        /// Landscape phone: bottom card, map under the side tab.
+        case phoneLandscape
+        /// Open Duo landscape: the map is the trailing pane.
+        case duoSplit
+        /// iPad landscape: 380 pt panel on the trailing side.
+        case padTrailing
+        /// iPad portrait: the map pane is already just the map.
+        case stacked
+        /// In-place full-screen map.
+        case expanded
+    }
+
+    struct Input: Equatable, Sendable {
+        var posture: Posture
+        var mapSize: CGSize
+        var topChrome: CGFloat
+        var bottomCardHeight: CGFloat
+        var trailingCover: CGFloat
+        var leadingInset: CGFloat
+        var homeIndicator: CGFloat
+    }
+
+    /// Speed legend and pin labels above a bottom card.
+    static let legendAndPins: CGFloat = 56
+    /// `regionFitting` will not squeeze the route into a thinner strip than this.
+    static let minimumUsable: CGFloat = 48
+    static let expandedStylePicker: CGFloat = 52
+    static let expandedLegend: CGFloat = 36
+
+    static func edgeInsets(_ input: Input) -> UIEdgeInsets {
+        let width = max(input.mapSize.width, 1)
+        switch input.posture {
+        case .expanded:
+            let horizontal = max(width * 0.08, 24)
+            let top = max(input.topChrome, 96) + expandedStylePicker
+            let bottom = max(input.homeIndicator + 49, 83) + expandedLegend
+            return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+        case .duoSplit:
+            let horizontal = max(width * 0.06, 16)
+            let top = max(input.topChrome, 54)
+            let bottom = max(input.homeIndicator, 12)
+            return UIEdgeInsets(
+                top: top,
+                left: horizontal,
+                bottom: bottom,
+                right: horizontal + max(input.trailingCover, 0)
+            )
+        case .stacked:
+            let horizontal = max(width * 0.06, 16)
+            return UIEdgeInsets(top: 16, left: horizontal, bottom: 16, right: horizontal)
+        case .padTrailing:
+            let horizontal = max(width * 0.06, 16)
+            let top = max(input.topChrome, 96)
+            let bottom = max(input.bottomCardHeight, 0) + legendAndPins
+            let right = horizontal + GlassTokens.floatingPanelWidth + GlassTokens.panelHorizontalInset
+            return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: right)
+        case .phoneLandscape:
+            let horizontal = max(width * 0.06, 16)
+            let top = max(input.topChrome, 96)
+            let bottom = max(input.bottomCardHeight, 0) + legendAndPins
+            return UIEdgeInsets(
+                top: top,
+                left: horizontal,
+                bottom: bottom,
+                right: horizontal + max(input.trailingCover, 0)
+            )
+        case .sheet:
+            let horizontal = max(width * 0.06, 16)
+            let top = max(input.topChrome, 96)
+            let bottom = max(input.bottomCardHeight, 0) + legendAndPins
+            return UIEdgeInsets(
+                top: top,
+                left: horizontal + max(input.leadingInset, 0),
+                bottom: bottom,
+                right: horizontal + max(input.trailingCover, 0)
+            )
+        }
+    }
+
+    static func usableSize(mapSize: CGSize, edgePadding: UIEdgeInsets) -> CGSize {
+        CGSize(
+            width: max(mapSize.width - edgePadding.left - edgePadding.right, minimumUsable),
+            height: max(mapSize.height - edgePadding.top - edgePadding.bottom, minimumUsable)
+        )
+    }
+
+    static func visibleCenter(mapSize: CGSize, edgePadding: UIEdgeInsets) -> CGPoint {
+        let usable = usableSize(mapSize: mapSize, edgePadding: edgePadding)
+        return CGPoint(
+            x: edgePadding.left + usable.width / 2,
+            y: edgePadding.top + usable.height / 2
+        )
+    }
+}
+
+/// Where the route midpoint lands inside a fitted region, as a fraction of the map view.
+enum TripDetailMapProjection {
+    static func fraction(_ coordinate: CLLocationCoordinate2D, in region: MKCoordinateRegion) -> CGPoint {
+        let halfLat = region.span.latitudeDelta / 2
+        let halfLon = region.span.longitudeDelta / 2
+        let northWest = MKMapPoint(
+            CLLocationCoordinate2D(
+                latitude: region.center.latitude + halfLat,
+                longitude: region.center.longitude - halfLon
+            )
+        )
+        let southEast = MKMapPoint(
+            CLLocationCoordinate2D(
+                latitude: region.center.latitude - halfLat,
+                longitude: region.center.longitude + halfLon
+            )
+        )
+        let rect = MKMapRect(
+            x: min(northWest.x, southEast.x),
+            y: min(northWest.y, southEast.y),
+            width: max(abs(southEast.x - northWest.x), 1),
+            height: max(abs(southEast.y - northWest.y), 1)
+        )
+        let point = MKMapPoint(coordinate)
+        return CGPoint(
+            x: (point.x - rect.minX) / rect.width,
+            y: (point.y - rect.minY) / rect.height
+        )
+    }
+}
+
+/// Decides when a trip-detail camera fit is owed. A turn never writes the camera;
+/// the owed fit waits until the turn is actually over.
+struct TripDetailCameraSettle: Equatable, Sendable {
+    typealias Frame = TripDetailMapFraming.Input
+
+    struct State: Equatable, Sendable {
+        var rotating = false
+        var frame: Frame?
+        var owed = false
+        var fits: [Frame] = []
+    }
+
+    enum Action: Equatable, Sendable {
+        case none
+        case waitForQuiet
+        case fit(Frame)
+    }
+
+    static func reduce(
+        _ state: inout State,
+        layout frame: Frame,
+        rotating: Bool,
+        looksLikeTurn: Bool
+    ) -> Action {
+        let changed = state.frame != frame
+        state.frame = frame
+        state.rotating = rotating
+        if rotating {
+            state.owed = true
+            return .none
+        }
+        if looksLikeTurn {
+            state.owed = true
+            return .waitForQuiet
+        }
+        guard changed || state.owed else { return .none }
+        state.owed = true
+        return .waitForQuiet
+    }
+
+    static func reduceTurnFlag(_ state: inout State, rotating: Bool) -> Action {
+        state.rotating = rotating
+        guard !rotating, state.owed, state.frame != nil else { return .none }
+        return .waitForQuiet
+    }
+
+    /// The quiet beat ended. A turn that is still going keeps the fit owed.
+    static func reduceQuietElapsed(_ state: inout State, stillRotating: Bool) -> Action {
+        if stillRotating || state.rotating {
+            state.rotating = true
+            state.owed = true
+            return .none
+        }
+        guard state.owed, let frame = state.frame else { return .none }
+        state.owed = false
+        state.fits.append(frame)
+        return .fit(frame)
+    }
+
+    static func reduceRequest(_ state: inout State, frame: Frame, rotating: Bool) -> Action {
+        state.frame = frame
+        state.rotating = rotating
+        state.owed = true
+        return rotating ? .none : .waitForQuiet
+    }
+}
+
+/// Skips a camera write that would not move the route on screen.
+enum TripDetailCameraMotion {
+    static let minimumCenterShift: CGFloat = 2
+    static let minimumSpanChange = 0.02
+
+    static func shouldWrite(
+        current: MKCoordinateRegion,
+        proposed: MKCoordinateRegion,
+        mapSize: CGSize
+    ) -> Bool {
+        let latSpan = max(current.span.latitudeDelta, 1e-8)
+        let lonSpan = max(current.span.longitudeDelta, 1e-8)
+        let pointsPerLat = mapSize.height / latSpan
+        let pointsPerLon = mapSize.width / lonSpan
+        let dy = abs(proposed.center.latitude - current.center.latitude) * pointsPerLat
+        let dx = abs(proposed.center.longitude - current.center.longitude) * pointsPerLon
+        if dx > minimumCenterShift || dy > minimumCenterShift { return true }
+        let latitudeChange = abs(proposed.span.latitudeDelta - current.span.latitudeDelta) / latSpan
+        let longitudeChange = abs(proposed.span.longitudeDelta - current.span.longitudeDelta) / lonSpan
+        return latitudeChange > minimumSpanChange || longitudeChange > minimumSpanChange
     }
 }

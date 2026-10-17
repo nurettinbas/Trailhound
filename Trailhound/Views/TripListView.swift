@@ -606,7 +606,8 @@ struct TripListView: View {
 
     /// A turn already moves the window. The reflow spring would fade the old page on top.
     private var layoutChangeAnimation: Animation? {
-        if TrailhoundInterfaceRotation.shared.isRotating { return nil }
+        let rotation = TrailhoundInterfaceRotation.shared
+        if rotation.isRotating || rotation.suppressReflowAnimation { return nil }
         return TrailhoundMotion.layoutReflow(reduceMotion: reduceMotion)
     }
 
@@ -626,8 +627,9 @@ struct TripListView: View {
     }
 
     private var showsStandaloneTripDetail: Bool {
-        layout.opensTripInPane
-            && paneTripID != nil
+        // Keep the open trip through the turn. A portrait pass can resolve as a
+        // phone for a moment; dropping the pane then is what sends the user back to the list.
+        paneTrip != nil
             && !recordingService.state.isActiveSession
             && !showLiveFollowMap
     }

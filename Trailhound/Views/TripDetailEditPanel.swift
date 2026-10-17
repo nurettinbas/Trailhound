@@ -38,8 +38,7 @@ struct TripSummaryMetricTile: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: TripSummaryMetricCardLayout.helpButtonSide,
-                        sheetHeight: 320
+                        side: TripSummaryMetricCardLayout.helpButtonSide
                     )
                 }
             }
@@ -102,6 +101,8 @@ struct TripDetailEditPanel: View {
     let panelRisen: Bool
     let restHeight: CGFloat
     let mapPeek: CGFloat
+    /// Phone overlay keeps the sheet handle. A full page hides it so the pane does not look closable.
+    var showsGrabber: Bool = true
     let reduceMotion: Bool
     let statCountProgress: [String: Double]
     let speedChartRevealProgress: Double
@@ -164,7 +165,16 @@ struct TripDetailEditPanel: View {
     }
 
     private var scrollBottomInset: CGFloat {
-        TripDetailKeyboardLayout.scrollBottomInset(keyboardOverlap: keyboardOverlap)
+        let standard = TripDetailKeyboardLayout.scrollBottomInset(keyboardOverlap: keyboardOverlap)
+        guard !showsGrabber, keyboardOverlap <= 0 else { return standard }
+        return max(Self.keyWindowSafeBottom + 12, GlassTokens.paneVerticalRhythm)
+    }
+
+    private static var keyWindowSafeBottom: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first
+        return window?.safeAreaInsets.bottom ?? 0
     }
 
     private var sortedStops: [TripStop] {
@@ -251,7 +261,9 @@ struct TripDetailEditPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            panelGrabber
+            if showsGrabber {
+                panelGrabber
+            }
 
             if panelRisen {
                 ScrollViewReader { proxy in
@@ -262,6 +274,7 @@ struct TripDetailEditPanel: View {
                             }
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    .modifier(FullPageVerticalBleed(enabled: !showsGrabber))
                     .dismissKeyboardOnScroll()
                     .onChange(of: focusedField) { _, field in
                         scrollToFocusedField(field, proxy: proxy)
@@ -369,6 +382,19 @@ struct TripDetailEditPanel: View {
         editedEndedAt = trip.endedAt ?? Date()
         trimHeadCount = 0
         trimTailCount = 0
+    }
+
+    /// Full-page panes already sit on the book. The scroll view must not re-inset the status and home bands.
+    private struct FullPageVerticalBleed: ViewModifier {
+        var enabled: Bool
+
+        func body(content: Content) -> some View {
+            if enabled {
+                content.ignoresSafeArea(edges: .vertical)
+            } else {
+                content
+            }
+        }
     }
 
     private var panelGrabber: some View {
@@ -608,6 +634,7 @@ struct TripDetailEditPanel: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, GlassTokens.listContentHorizontalInset)
+        .padding(.top, showsGrabber ? 0 : GlassTokens.paneVerticalRhythm)
         .padding(.bottom, scrollBottomInset)
     }
 
@@ -629,8 +656,7 @@ struct TripDetailEditPanel: View {
         detailSection(
             title: L10n.journalAdd,
             helpTitle: L10n.journalAddHelpTitle,
-            helpBody: L10n.journalAddHelpBody,
-            helpSheetHeight: 380
+            helpBody: L10n.journalAddHelpBody
         ) {
             detailMenuPicker(
                 title: L10n.journalAdd,
@@ -739,8 +765,7 @@ struct TripDetailEditPanel: View {
                 HelpPopoverButton(
                     accessibilityLabel: L10n.fuelFactorsHelpTitle,
                     message: L10n.fuelFactorsHelpBody,
-                    side: TripSummaryMetricCardLayout.helpButtonSide,
-                    sheetHeight: 260
+                    side: TripSummaryMetricCardLayout.helpButtonSide
                 )
                 Spacer(minLength: 0)
             }
@@ -987,7 +1012,6 @@ struct TripDetailEditPanel: View {
         title: String,
         helpTitle: String? = nil,
         helpBody: String? = nil,
-        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -998,8 +1022,7 @@ struct TripDetailEditPanel: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 22,
-                        sheetHeight: helpSheetHeight
+                        side: 22
                     )
                 }
             }
@@ -1015,14 +1038,12 @@ struct TripDetailEditPanel: View {
         title: String,
         helpTitle: String? = nil,
         helpBody: String? = nil,
-        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
         detailSelectionSection(
             title: title,
             helpTitle: helpTitle,
-            helpBody: helpBody,
-            helpSheetHeight: helpSheetHeight
+            helpBody: helpBody
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 content()

@@ -1505,8 +1505,7 @@ struct StatsView: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 16,
-                        sheetHeight: 320
+                        side: 16
                     )
                 }
                 Spacer(minLength: 0)
@@ -1944,8 +1943,7 @@ struct StatsView: View {
                 titleAccessory: {
                     HelpPopoverButton(
                         accessibilityLabel: L10n.dynamicFuelHelpTitle,
-                        message: L10n.statsDynamicFuelHelpBody,
-                        sheetHeight: 320
+                        message: L10n.statsDynamicFuelHelpBody
                     )
                 }
             ) {
@@ -2400,8 +2398,7 @@ struct StatsView: View {
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
-                        message: helpBody,
-                        sheetHeight: 320
+                        message: helpBody
                     )
                 }
             }

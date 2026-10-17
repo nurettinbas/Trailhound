@@ -473,4 +473,5 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertFalse(LibraryAxisPlacement.pinsTripsLibrary(0))
         XCTAssertTrue(LibraryAxisPlacement.pinsTripsLibrary(1))
     }
+
 }

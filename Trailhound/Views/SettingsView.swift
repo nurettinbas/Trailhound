@@ -142,11 +142,22 @@ struct SettingsView: View {
             }
 
             Section {
+                Button {
+                    showAddPlacePicker = true
+                } label: {
+                    Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .glassPrimaryInk()
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassPlainHit)
+                .glassRow(position: .first)
+
                 if places.isEmpty {
                     Text(L10n.settingsFavoritePlacesEmpty)
                         .font(.subheadline)
                         .glassSecondaryInk()
-                        .glassRow(position: favoritePlacesRowCount == 1 ? .only : .first)
+                        .glassRow(position: .last)
                 }
 
                 ForEach(Array(places.enumerated()), id: \.element.id) { index, place in
@@ -182,18 +193,6 @@ struct SettingsView: View {
                         deletePlace(place)
                     }
                 }
-
-                Button {
-                    showAddPlacePicker = true
-                } label: {
-                    Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .glassAccentForeground()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.glassPlainHit)
-                .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsFavoritePlaces)
             } footer: {
@@ -570,8 +569,7 @@ struct SettingsView: View {
     }
 
     private func favoritePlacePosition(placeIndex: Int) -> GlassRowPosition {
-        let offset = places.isEmpty ? 1 : 0
-        return GlassRowPosition.index(placeIndex + offset, in: favoritePlacesRowCount)
+        GlassRowPosition.index(placeIndex + 1, in: favoritePlacesRowCount)
     }
 
     private static func hourLabel(_ hour: Int) -> String {

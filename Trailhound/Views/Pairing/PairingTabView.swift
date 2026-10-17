@@ -139,6 +139,9 @@ struct PairingTabView: View {
             } else {
                 Section(sortedVehicles.count == 1 ? L10n.pairingTabVehicleSection : L10n.pairingTabSavedVehicles) {
                     let rowCount = sortedVehicles.count + 1
+                    addVehicleButton
+                        .glassRow(position: .first)
+
                     ForEach(Array(sortedVehicles.enumerated()), id: \.element.id) { index, vehicle in
                         vehicleRow(vehicle)
                             .confirmingDeleteSwipe(
@@ -146,11 +149,8 @@ struct PairingTabView: View {
                             ) {
                                 deleteVehicle(vehicle.id)
                             }
-                            .glassRow(position: GlassRowPosition.index(index, in: rowCount))
+                            .glassRow(position: GlassRowPosition.index(index + 1, in: rowCount))
                     }
-
-                    addVehicleButton
-                        .glassRow(position: .last)
                 }
             }
         }
@@ -176,7 +176,7 @@ struct PairingTabView: View {
         Button(action: addVehiclePrompt) {
             Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
                 .font(.body.weight(.semibold))
-                .glassAccentForeground()
+                .glassPrimaryInk()
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassPlainHit)

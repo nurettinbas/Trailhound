@@ -907,6 +907,9 @@ final class TrailhoundInterfaceRotation {
         Self.pausesRoadAnimation = depth > 0
         suppressReflowAnimation = true
         Task { @MainActor in
+            // Stay quiet through the frames after the turn. A spring in that
+            // window fades the trip list over the open trip.
+            try? await Task.sleep(for: .milliseconds(500))
             guard !self.isRotating else { return }
             self.suppressReflowAnimation = false
         }
@@ -1355,6 +1358,8 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
     /// Live map column. It covers the vertical safe area so the shell blue does not show above and below the map.
     var leadingFillsVertically: Bool = false
     var focusFillsVertically: Bool = false
+    /// Focus pane draws under the side tab. The hinge gutter stays put; only the trailing screen edge is covered.
+    var focusBleedsTrailing: Bool = false
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var focus: () -> Focus
 
@@ -1363,7 +1368,7 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
 
     var body: some View {
         let gap = gutter ?? defaultGutter
-        split(gap: gap, leadingWidth: leadingWidth(gap: gap))
+        bleedTrailing(split(gap: gap, leadingWidth: leadingWidth(gap: gap)))
             .background {
                 AtmosphericBackground()
                     .ignoresSafeArea()
@@ -1395,6 +1400,15 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
             pane(focus(), width: nil, fillsVertically: focusFillsVertically)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func bleedTrailing<Content: View>(_ content: Content) -> some View {
+        if focusBleedsTrailing {
+            content.ignoresSafeArea(edges: .trailing)
+        } else {
+            content
+        }
     }
 
     private func pane<Content: View>(_ content: Content, width: CGFloat?, fillsVertically: Bool) -> some View {
