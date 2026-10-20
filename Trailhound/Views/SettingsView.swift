@@ -36,6 +36,7 @@ struct SettingsView: View {
     @Environment(AppLockService.self) private var appLockService
     @Query private var places: [SavedPlace]
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
+    @Query(sort: \VehicleProfile.name) private var vehicles: [VehicleProfile]
     @Bindable private var settings = AppSettings.shared
 
     @State private var exportURL: URL?
@@ -55,6 +56,18 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.trailhoundLayout) private var layout
     @State private var settingsPane: SettingsPane = .recording
+
+    /// One price row per fuel type on the saved vehicles. Empty garage keeps petrol, the new-car default.
+    private var pricedFuelTypes: [VehicleFuelType] {
+        FuelPriceRows.types(in: vehicles.map(\.fuelType))
+    }
+
+    private func unitPriceBinding(for fuelType: VehicleFuelType) -> Binding<Double> {
+        Binding(
+            get: { settings.unitPrice(for: fuelType) },
+            set: { settings.setUnitPrice($0, for: fuelType) }
+        )
+    }
 
     var body: some View {
         switch layout.settingsChrome {
@@ -268,27 +281,36 @@ struct SettingsView: View {
 
             Section(L10n.settingsFuelSection) {
                 EmptyView().id(SettingsPane.fuel)
-                LabeledContent(L10n.settingsFuelPrice) {
-                    HStack(spacing: 8) {
-                        Spacer(minLength: 0)
-                        TextField(settings.fuelCurrency.symbol, value: $settings.fuelPricePerLiter, format: .number)
+                let fuelTypes = pricedFuelTypes
+                ForEach(Array(fuelTypes.enumerated()), id: \.element) { index, type in
+                    LabeledContent(type.displayName) {
+                        HStack(spacing: 8) {
+                            Spacer(minLength: 0)
+                            TextField(
+                                settings.fuelCurrency.symbol,
+                                value: unitPriceBinding(for: type),
+                                format: .number
+                            )
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.leading)
-                            .focused($focusedField, equals: .fuelPrice)
+                            .focused($focusedField, equals: .fuelPrice(type))
                             .glassInputField()
                             .frame(width: 96)
-                        Picker(selection: $settings.fuelCurrency) {
-                            ForEach(FuelCurrency.allCases) { currency in
-                                Text(currency.symbol).tag(currency)
+                            if index == 0 {
+                                Picker(selection: $settings.fuelCurrency) {
+                                    ForEach(FuelCurrency.allCases) { currency in
+                                        Text(currency.symbol).tag(currency)
+                                    }
+                                } label: {
+                                    Text(L10n.settingsFuelCurrency)
+                                }
+                                .glassMenuPicker()
+                                .accessibilityLabel(L10n.settingsFuelCurrency)
                             }
-                        } label: {
-                            Text(L10n.settingsFuelCurrency)
                         }
-                        .glassMenuPicker()
-                        .accessibilityLabel(L10n.settingsFuelCurrency)
                     }
+                    .glassRow(position: index == 0 ? .first : .middle)
                 }
-                .glassRow(position: .first)
                 Text(L10n.settingsFuelHint)
                     .font(.footnote)
                     .glassSecondaryInk()

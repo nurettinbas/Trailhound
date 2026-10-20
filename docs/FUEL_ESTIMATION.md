@@ -54,6 +54,8 @@ Petrol knots (L/100 relative to C₀): 10 km/h 1.55 · 30 1.18 · 50 **1.00** ·
 
 Diesel damps the low-speed bump; hybrid damps low speed more and high speed slightly; EV uses `0.50 + 0.50×(v/80)²` with no combustion idle or cold start (output is kWh).
 
+LPG uses the petrol knots, idle, cold start, and transient. It is still litres and L/100 km. Absolute volume scales with that vehicle’s C₀ — switching a car to LPG does not invent a higher consumption. Settings shows one price row per fuel type on your vehicles (petrol 65, LPG 35, electric 8.5 per kWh until you change them). Diesel and hybrid keep the petrol liter price until you set their own. A trip that already stored `fuelUnitPrice` keeps that snapshot.
+
 The speed term is on **stored** kilometres. Unobserved distance stays at C₀.
 
 ### Idle, transient, cold
@@ -88,7 +90,7 @@ Read:
 
 **Not** used by month cost forecast, year recap, travel-journal totals, trip-list fuel chip, or widgets — those stay on avg fuel.
 
-Mixed petrol and electric in the same Stats filter: cost still totals; litres and kWh are **not** added together.
+Mixed petrol and electric in the same Stats filter: cost still totals; litres and kWh are **not** added together. LPG counts as liquid litres, so it adds with petrol, diesel, and hybrid.
 
 If a fuel-formula refresh is interrupted, the version key is **not** written, so the next launch finishes fuel then rebuilds Stats.
 

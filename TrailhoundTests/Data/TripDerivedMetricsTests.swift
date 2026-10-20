@@ -615,6 +615,70 @@ final class TripDerivedMetricsTests: XCTestCase {
         XCTAssertGreaterThan(impliedKWh, petrolLiterMistake * 3)
     }
 
+    func testRecomputeFuelLpgUsesLpgLiterPriceAndKeepsStoredAvg() {
+        let defaults = UserDefaults(suiteName: "group.com.trailhound.app") ?? .standard
+        defaults.set(65, forKey: "fuelPricePerLiter")
+        defaults.set(28, forKey: "lpgPricePerLiter")
+        defer { defaults.removeObject(forKey: "lpgPricePerLiter") }
+
+        let open = makeTrip(
+            startedAt: Date().addingTimeInterval(-3_600),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        open.distanceMeters = 10_000
+        open.fuelConsumptionPer100 = 10
+        open.fuelUnitPrice = nil
+        let vehicle = VehicleProfile(name: "LPG", fuelType: .lpg, consumption: 10)
+
+        TripDerivedMetrics.recomputeFuel(for: open, fuelType: .petrol, vehicle: vehicle)
+
+        XCTAssertEqual(open.fuelTypeSnapshot, .lpg)
+        XCTAssertEqual(open.fuelUnitKey, "liquid")
+        let expected = TripFuelEstimate.compute(
+            points: open.sortedPoints,
+            distanceMeters: open.distanceMeters,
+            consumptionPer100: 10,
+            unitPrice: 28,
+            fuelType: .lpg,
+            durationSeconds: open.duration,
+            thermal: TripDerivedMetrics.thermalInput(for: open)
+        )
+        XCTAssertEqual(open.dynamicFuelCost ?? 0, expected.dynamicCost, accuracy: 0.01)
+        let petrolPrice = TripFuelEstimate.compute(
+            points: open.sortedPoints,
+            distanceMeters: open.distanceMeters,
+            consumptionPer100: 10,
+            unitPrice: 65,
+            fuelType: .petrol,
+            durationSeconds: open.duration,
+            thermal: TripDerivedMetrics.thermalInput(for: open)
+        )
+        XCTAssertNotEqual(open.dynamicFuelCost ?? 0, petrolPrice.dynamicCost, accuracy: 0.01)
+
+        let stored = makeTrip(
+            startedAt: Date().addingTimeInterval(-7_200),
+            coordinates: [(41.0, 29.0), (41.01, 29.02), (41.02, 29.04)]
+        )
+        stored.distanceMeters = 10_000
+        stored.fuelConsumptionPer100 = 10
+        stored.fuelUnitPrice = 40
+        stored.estimatedFuelCost = 40
+
+        TripDerivedMetrics.recomputeFuel(for: stored, fuelType: .petrol, vehicle: vehicle)
+
+        XCTAssertEqual(stored.estimatedFuelCost ?? 0, 40, accuracy: 0.01)
+        let priced = TripFuelEstimate.compute(
+            points: stored.sortedPoints,
+            distanceMeters: stored.distanceMeters,
+            consumptionPer100: 10,
+            unitPrice: 40,
+            fuelType: .lpg,
+            durationSeconds: stored.duration,
+            thermal: TripDerivedMetrics.thermalInput(for: stored)
+        )
+        XCTAssertEqual(stored.dynamicFuelCost ?? 0, priced.dynamicCost, accuracy: 0.01)
+    }
+
     func testRecomputeClearsStoredCoordinatesWhenPointsAreEmpty() {
         let trip = Trip(startedAt: Date(), endedAt: Date())
         trip.startLatitude = 1

@@ -65,7 +65,8 @@ struct PowertrainFuelProfile: Sendable {
 
     static func profile(for fuelType: VehicleFuelType) -> PowertrainFuelProfile {
         switch fuelType {
-        case .petrol:
+        case .petrol, .lpg:
+            // LPG is spark-ignition. Litres scale with this vehicle’s C₀, so the shape matches petrol.
             return PowertrainFuelProfile(kind: .petrol, kTransient: 3.5, regenCap: 0)
         case .diesel:
             return PowertrainFuelProfile(kind: .diesel, kTransient: 3.0, regenCap: 0)

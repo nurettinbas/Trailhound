@@ -6,7 +6,7 @@ struct TripRowView: View {
     var places: [SavedPlace] = []
     var categories: [UserCategory] = []
     var privacyRadius: Double = 500
-    /// Resolved from `trip.vehicleID` upstream — relationship is not populated on list rows.
+    /// Resolved from `trip.vehicleID` upstream — relationship is not populated on list rows  .
     var vehicle: VehicleProfile? = nil
     var morphNamespace: Namespace.ID?
     var morphID: UUID?

@@ -16,6 +16,7 @@ enum DeviceTestChecklist {
         "Trip detail edit fields: place/address/fuel/note stay above keyboard accessory; title chip hugs text (not full-bleed); Tamam glass chip; map does not jump; scroll dismisses keyboard; Reduce Motion settles instantly",
         "Appearance Light: every text field / search well has a thin white liquid-glass rim; Dark fields have no extra rim",
         "Form sheets (expense/schedule/settings/place/pairing): title chip + glass Tamam on first focus; tap/scroll dismiss; Trip Detail still grows panel without map jump",
+        "Expense receipt: Add Receipt opens Library/Camera sheet with receipt copy; camera and library both attach; thumbnail opens full-screen viewer (pinch, double-tap, glass Close); Read Amount outlines the total row, warning callout visible, Use This Amount fills the field, Not Right leaves it; Replace/Remove; Cancel deletes an unsaved photo; receipt glyph on the expense row; Light and Dark; airplane mode still reads",
         "Trip list search: keyboard shows hug-content title chip + glass Tamam; tap/scroll also dismisses",
         "50 km trip detail: colorSegs ≤ 60; route remains readable",
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",

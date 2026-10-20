@@ -27,6 +27,7 @@ enum VehiclePairingService {
     ) -> Bool {
         let wasDefault = vehicle.isDefault
         let photoFileName = vehicle.photoFileName
+        let receiptFileNames = Set(vehicle.expenses.compactMap(\.receiptFileName))
         let vehicleID = vehicle.id
         VehicleCareNotificationScheduler.cancelAll(for: vehicleID)
         context.delete(vehicle)
@@ -34,6 +35,9 @@ enum VehiclePairingService {
             try context.save()
             if let photoFileName {
                 VehiclePhotoStore.shared.remove(fileName: photoFileName)
+            }
+            for receipt in receiptFileNames {
+                ExpenseReceiptStore.shared.removeIfUnreferenced(fileName: receipt, in: context)
             }
             if wasDefault, let next = fetchVehicles(in: context).first {
                 setDefaultVehicle(next, in: context)

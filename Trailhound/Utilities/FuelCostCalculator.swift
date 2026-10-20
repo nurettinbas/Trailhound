@@ -1,5 +1,62 @@
 import Foundation
 
+/// Liter / kWh prices keyed by fuel type. Petrol keeps `fuelPricePerLiter`.
+/// Diesel and hybrid use that liter price until their own key is set, so an existing
+/// shared price does not jump. LPG and electric never read the petrol price.
+enum FuelUnitPrices {
+    static let petrolFallback = 65.0
+    static let lpgFallback = 35.0
+    static let electricFallback = 8.5
+
+    static func resolved(fuelType: VehicleFuelType, defaults: UserDefaults) -> Double {
+        switch fuelType {
+        case .electric:
+            return positive(defaults, key: "evChargePricePerKWh") ?? electricFallback
+        case .lpg:
+            return positive(defaults, key: "lpgPricePerLiter") ?? lpgFallback
+        case .diesel:
+            return positive(defaults, key: "dieselPricePerLiter") ?? sharedLiter(defaults)
+        case .hybrid:
+            return positive(defaults, key: "hybridPricePerLiter") ?? sharedLiter(defaults)
+        case .petrol:
+            return sharedLiter(defaults)
+        }
+    }
+
+    static func set(_ value: Double, fuelType: VehicleFuelType, defaults: UserDefaults) {
+        defaults.set(value, forKey: storageKey(for: fuelType))
+    }
+
+    static func storageKey(for fuelType: VehicleFuelType) -> String {
+        switch fuelType {
+        case .petrol: "fuelPricePerLiter"
+        case .diesel: "dieselPricePerLiter"
+        case .lpg: "lpgPricePerLiter"
+        case .hybrid: "hybridPricePerLiter"
+        case .electric: "evChargePricePerKWh"
+        }
+    }
+
+    private static func sharedLiter(_ defaults: UserDefaults) -> Double {
+        positive(defaults, key: "fuelPricePerLiter") ?? petrolFallback
+    }
+
+    private static func positive(_ defaults: UserDefaults, key: String) -> Double? {
+        let value = defaults.double(forKey: key)
+        return value > 0 ? value : nil
+    }
+}
+
+/// Settings shows one price row per fuel type the user actually has.
+/// No vehicles yet → petrol, which is the default type on a new car.
+enum FuelPriceRows {
+    static func types(in fuelTypes: [VehicleFuelType]) -> [VehicleFuelType] {
+        let present = Set(fuelTypes)
+        let ordered = VehicleFuelType.allCases.filter { present.contains($0) }
+        return ordered.isEmpty ? [.petrol] : ordered
+    }
+}
+
 enum FuelCostCalculator {
     private static let suiteName = "group.com.trailhound.app"
     private static let fuelCurrencyKey = "fuelCurrency"
@@ -31,15 +88,12 @@ enum FuelCostCalculator {
         }
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
         let resolvedType = vehicle?.fuelType ?? fuelType ?? .petrol
-        if resolvedType == .electric {
-            if let vehiclePrice = vehicle?.chargePricePerKWh, vehiclePrice > 0 {
-                return vehiclePrice
-            }
-            let storedPrice = defaults.double(forKey: "evChargePricePerKWh")
-            return storedPrice > 0 ? storedPrice : 8.5
+        if resolvedType == .electric,
+           let vehiclePrice = vehicle?.chargePricePerKWh,
+           vehiclePrice > 0 {
+            return vehiclePrice
         }
-        let pricePerLiter = defaults.double(forKey: "fuelPricePerLiter")
-        return pricePerLiter > 0 ? pricePerLiter : 65.0
+        return FuelUnitPrices.resolved(fuelType: resolvedType, defaults: defaults)
     }
 
     static func estimateCost(

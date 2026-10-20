@@ -78,6 +78,8 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 ### Vehicle care & costs
 - **Reminders** — inspection, insurance, comprehensive cover, service due dates with staged local push + inbox (service: 30 days → 1 week → due day → one overdue; insurance: 1 week → due day → one overdue); **Add reminder** is the same row button, at the top of the section, above the rows. Mark done from the row (Done) to log cost and roll the next due date
 - **Expenses** — **Add expense** is the same row button, at the top of the section, above the rows. Log fuel, traffic insurance, casco, service, inspection, repair, accessory, and other costs separately from reminders; split a purchase into **monthly installments** (up to 24) so each month’s share appears on Stats in that month
+- **Receipt photo** on an expense — take a photo or pick one from the library, see a thumbnail in the form, and open it full screen with pinch and double-tap zoom. A receipt glyph marks expenses that have one; every slice of an installment plan shares the same receipt
+- **Read Amount** from a receipt (optional) — Apple’s on-device text recognition (Vision) finds the total line (GENEL TOPLAM, ÖDENECEK, TOPLAM, TOTAL…, skipping ARA TOPLAM / KDV / change), outlines it on the photo, and lets you pick another amount it found. Nothing fills in until you tap **Use This Amount**, and the sheet warns that text recognition can make mistakes. Works offline; the photo and its text never leave the iPhone and no AI service is involved
 - One vehicle detail screen under the **Pairing** tab: profile → reminders → expenses; cost charts live on **Stats**. Profile Save sits under the vehicle card, not in the nav bar. Phone landscape and closed Duo landscape stay one list, the same column as portrait, so the shortcuts card and saved vehicles use the width. On the open book and on iPad landscape, the focused vehicle’s photo or icon sits beside its name, with the fuel line under the name and “Default” above it only when that vehicle is the default. On the widest open book, the profile stays on the leading half and Tracking & reminders plus expenses scroll together on the trailing half. Add reminder and Add expense slide in from the trailing edge and fill that half; back and Save slide it back out. The Shortcuts card keeps the setup copy above the guide
 - Overdue care also shown as an in-app banner; push fires once when overdue (no daily spam)
 
@@ -85,7 +87,7 @@ Trailhound is a native SwiftUI app built with SwiftData. It records routes local
 - Personal / business categories (+ custom)
 - **Smart category** (optional): suggests Personal or Business from frequent routes, Home/Work places, and weekday work hours; swipe the list row to accept — nothing is applied automatically
 - **Travel journal** — phone portrait uses the Trips tab segment **Trips | Travels**. On the widest open book (Duo landscape) and on iPad landscape, both libraries sit side by side: Trips leading, Travels trailing. Turning that book upright fades Travels out, then the Trips list widens in place; turning back narrows the list, then fades Travels in. Phone landscape stays one list. Group completed drives under a Seyahat, all member routes on one map, optional suggestion chip, **Add to travel** on trip detail, Stats **Travel** filter. Deleting a journal unassigns trips; it does not delete them
-- Vehicle management (petrol, diesel, hybrid, EV)
+- Vehicle management (petrol, diesel, LPG, hybrid, EV)
 - In-app notifications inbox (trips, vehicle care, badge unlocks, January recap) opens as its own page from the bell on every tab. Choosing a row closes the inbox first, then opens the matching screen. A trip opens on the Trips tab, not inside the inbox. The bell and the Trips merge or new-travel button stay in their own trailing capsule, side by side, in every orientation. On the split Trips | Travels book that capsule is the bell, plus, and merge together, so a rotation cannot leave an empty circle beside the side tab. Start stays in its own leading capsule. Rotating does not stack them or show a second copy
 - Turkish & English UI (Localizable.xcstrings). Premium surfaces also ship Arabic, German, and Italian copy
 
@@ -231,14 +233,14 @@ docs/                 # Battery, design system, Stats, TestFlight, privacy, supp
 - [Recap tab](docs/YEAR_TAB.md) — year awards first, badges, frequent routes, Recap-style month forecast, year recap last
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — glass cards, filters, comparison
 - [Recap (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Recap) — Recap tab, year awards, story, badges, routes, forecast
-- [Architecture (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Architecture) — schema **V22**, models, premium derived caches
+- [Architecture (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Architecture) — schema **V23**, models, premium derived caches
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md) — Personal Automation wizard, honest test, checklist
 - [Shortcuts (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Shortcuts) — Pairing wizard, named Shortcut + Run Shortcut
 - [TestFlight release checklist](docs/TESTFLIGHT_RELEASE.md)
 - [Vehicle care & expenses](docs/VEHICLE_CARE_PLAN.md) — reminders vs costs, monthly installments, UI layout, notification rules
 - [Travel journal](docs/TRAVEL_JOURNAL_PLAN.md) — Seyahat grouping, suggestion rules, schema V19
-- [Privacy policy](docs/PRIVACY.md) — on-device data, optional diagnostic reports
+- [Privacy policy](docs/PRIVACY.md) — on-device data, receipt photos and on-device text recognition, optional diagnostic reports
 - [Support](docs/SUPPORT.md) — contact and Report a problem
 
 ---

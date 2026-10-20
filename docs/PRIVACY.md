@@ -9,7 +9,10 @@ This page is the public privacy policy for the App Store listing and the in-app 
 ## What stays on the device
 
 - GPS points, trip metadata, vehicle profiles, photos you attach to a vehicle, saved places, journals, and expenses
+- Receipt photos you attach to an expense, and any amount read from them
 - A rolling diagnostic log used only if you later choose **Report a problem**
+
+**Read Amount** on a receipt uses Apple’s on-device text recognition (Vision). The photo and the recognized text are processed on your iPhone. They are not sent to Trailhound, to an AI service, or to any server. The app shows what it read and fills the amount only after you confirm it.
 
 Location is used for recording drives (app functionality). It is not sent to Trailhound unless you explicitly mail a diagnostic report, and that report does **not** include coordinates, addresses, place names, vehicle names, photos, or your notes.
 

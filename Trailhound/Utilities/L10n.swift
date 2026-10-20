@@ -238,6 +238,7 @@ enum L10n {
     static var stopDuration: String { string("label.stop_duration") }
     static var fuelPetrol: String { string("fuel.petrol") }
     static var fuelDiesel: String { string("fuel.diesel") }
+    static var fuelLpg: String { string("fuel.lpg") }
     static var fuelElectric: String { string("fuel.electric") }
     static var fuelHybrid: String { string("fuel.hybrid") }
     static var tripLocationOverrides: String { string("trip.location.overrides") }

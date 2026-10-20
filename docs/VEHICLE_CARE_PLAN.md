@@ -1,6 +1,6 @@
 # Vehicle care & expenses
 
-> **Status:** Shipped (schema V14) — installments + UI layering  
+> **Status:** Shipped (schema V14) — installments + UI layering; receipt photos + on-device amount reading (schema V23)  
 > **Placement:** Vehicles tab → single detail screen
 
 ---
@@ -33,6 +33,27 @@ A purchase can be **pay in full** or **2–24 monthly installments**.
 Existing V13 expenses stay one-shot (`installment*` fields `nil`). Additive V14 only — no store reset.
 
 **Mark done:** the visible checkmark (Done) on the reminder row opens the completion sheet; leading swipe is the same action as a shortcut.
+
+---
+
+## Receipts (V23)
+
+An expense can carry one receipt photo. Reading the amount from it is optional and always needs the user's confirmation.
+
+| Rule | Behavior |
+|------|----------|
+| Storage | JPEG in Application Support `ExpenseReceipts/` (`ExpenseReceiptStore`), long edge ≤ 1600 px, file protection until first unlock. SwiftData stores only `VehicleExpense.receiptFileName`, never image bytes. |
+| Source | **Add Receipt** opens the same Library / Camera sheet as vehicle photos (`VehiclePhotoFlowSheet` with `PhotoSourceCopy.receipt`). No framing step. |
+| Form | Thumbnail opens a full-screen viewer (pinch, double-tap). **Read Amount**, **Replace Photo**, **Remove Receipt**. A new file is kept only after Save; Cancel or swipe-dismiss deletes it. A removed saved receipt is deleted only after Save. |
+| Installments | Every slice of one plan points at the same file. Deleting one slice keeps the file while any expense still references it. Deleting the plan or the vehicle removes it. |
+| Expenses list | A receipt glyph after the date marks rows with a photo. |
+| Read Amount | Apple Vision `VNRecognizeTextRequest` (`.accurate`, tr-TR / en-US when supported, language correction off so digits stay raw) on the device. No network, no AI model, no third-party SDK. |
+| Parser | `ReceiptAmountParser` — fixed rules. Total labels in priority order: GENEL TOPLAM, ÖDENECEK (TUTAR), TOPLAM TUTAR, GRAND TOTAL, AMOUNT DUE, TOTAL DUE, TOPLAM, TOTAL. Skips ARA TOPLAM, SUBTOTAL, TOPKDV / KDV / VAT / TAX, NAKİT / CASH, PARA ÜSTÜ / CHANGE, İNDİRİM / DISCOUNT (`TOPLAM (KDV DAHİL)` still counts as the total). Reads `1.234,56`, `1234,56`, `1,234.56`, `*1.234,56`, `TL` / `₺`; dates and times are not amounts. A label with the value on the next row is joined. With no label, the largest amount is offered as a guess. Up to four other amounts are offered as chips. |
+| Confirm | The sheet outlines the matched row on the photo, shows the amount large, and warns that text recognition can make mistakes. **Use This Amount** fills the field in whole units (1.234,56 → 1.235, as the field takes whole units). **Not Right** leaves the field alone. |
+
+**Limits:** thermal paper glare, crumpled or faded receipts, and handwriting read poorly. Receipts with several totals (tip, split payment) may highlight the wrong row. That is why nothing is written without confirmation.
+
+**Migration:** V23 only adds the optional `receiptFileName` column. Existing expenses open with `nil`; amounts, dates, and installments are untouched. Verified by opening a copy of a real V22 simulator store (`VehicleCareMigrationTests.testRealV22StoreOpensUnderV23WithoutDataLoss`).
 
 ---
 

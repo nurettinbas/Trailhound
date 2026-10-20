@@ -23,6 +23,7 @@ enum VehicleExpenseInstallmentService {
         startDate: Date,
         installmentCount: Int,
         note: String?,
+        receiptFileName: String? = nil,
         linkedScheduleID: UUID? = nil,
         odometerKm: Int? = nil,
         source: VehicleExpenseSource = .manual,
@@ -45,6 +46,7 @@ enum VehicleExpenseInstallmentService {
                 count: slices.count,
                 groupID: groupID,
                 note: note,
+                receiptFileName: receiptFileName,
                 linkedScheduleID: linkedScheduleID,
                 odometerKm: slice.index == 1 ? odometerKm : nil,
                 source: source,
@@ -66,6 +68,7 @@ enum VehicleExpenseInstallmentService {
         startDate: Date,
         installmentCount: Int,
         note: String?,
+        receiptFileName: String?,
         in context: ModelContext
     ) throws -> VehicleExpense {
         guard totalAmount >= 0 else { throw VehicleCareError.invalidAmount }
@@ -94,7 +97,8 @@ enum VehicleExpenseInstallmentService {
                     totalAmount: totalAmount,
                     count: slices.count,
                     groupID: groupID,
-                    note: note
+                    note: note,
+                    receiptFileName: receiptFileName
                 )
                 if first == nil { first = row }
             } else {
@@ -105,6 +109,7 @@ enum VehicleExpenseInstallmentService {
                     count: slices.count,
                     groupID: groupID,
                     note: note,
+                    receiptFileName: receiptFileName,
                     linkedScheduleID: existing.linkedScheduleID,
                     odometerKm: slice.index == 1 ? existing.odometerKm : nil,
                     source: existing.source,
@@ -127,17 +132,23 @@ enum VehicleExpenseInstallmentService {
     }
 
     static func deleteOne(_ expense: VehicleExpense, in context: ModelContext) {
+        let receipt = expense.receiptFileName
         YearRecapCache.invalidate(yearContaining: expense.occurredAt)
         context.delete(expense)
         try? context.save()
+        ExpenseReceiptStore.shared.removeIfUnreferenced(fileName: receipt, in: context)
     }
 
     static func deleteGroup(of expense: VehicleExpense, in context: ModelContext) {
+        let receipts = Set(siblings(of: expense, in: context).compactMap(\.receiptFileName))
         for sibling in siblings(of: expense, in: context) {
             YearRecapCache.invalidate(yearContaining: sibling.occurredAt)
             context.delete(sibling)
         }
         try? context.save()
+        for receipt in receipts {
+            ExpenseReceiptStore.shared.removeIfUnreferenced(fileName: receipt, in: context)
+        }
     }
 
     private static func makeExpense(
@@ -147,6 +158,7 @@ enum VehicleExpenseInstallmentService {
         count: Int,
         groupID: UUID?,
         note: String?,
+        receiptFileName: String?,
         linkedScheduleID: UUID?,
         odometerKm: Int? = nil,
         source: VehicleExpenseSource,
@@ -164,7 +176,8 @@ enum VehicleExpenseInstallmentService {
             installmentGroupID: groupID,
             installmentIndex: groupID == nil ? nil : slice.index,
             installmentCount: groupID == nil ? nil : count,
-            installmentTotalAmount: groupID == nil ? nil : totalAmount
+            installmentTotalAmount: groupID == nil ? nil : totalAmount,
+            receiptFileName: receiptFileName
         )
     }
 
@@ -175,12 +188,14 @@ enum VehicleExpenseInstallmentService {
         totalAmount: Double,
         count: Int,
         groupID: UUID?,
-        note: String?
+        note: String?,
+        receiptFileName: String?
     ) {
         expense.category = category
         expense.amount = slice.amount
         expense.occurredAt = slice.dueDate
         expense.note = note
+        expense.receiptFileName = receiptFileName
         expense.installmentGroupID = groupID
         expense.installmentIndex = groupID == nil ? nil : slice.index
         expense.installmentCount = groupID == nil ? nil : count

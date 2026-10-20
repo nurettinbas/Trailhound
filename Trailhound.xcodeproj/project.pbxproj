@@ -71,6 +71,8 @@
 		827CCD07A5334FA49B2E662E /* VehicleCostSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */; };
 		5AD153B8CCD4406EADE9B0B6 /* VehicleExpenseCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */; };
 		D5AAC4B82D094E0C9FB8BD70 /* VehicleExpenseEditorDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */; };
+		C6CBF67AC0C546F0B1FA5F3C /* ExpenseReceiptStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */; };
+		31700934E0C74B38937C9D8E /* ReceiptAmountParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */; };
 		F6CB0070BE6C4AFAA87D54E2 /* VehicleExpenseInstallmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */; };
 		F47D9951692F49D1ABE964E0 /* SpeedChartSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */; };
 		355E3B97ED084EF794B2B0CA /* SpeedColoredSegmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */; };
@@ -173,6 +175,8 @@
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
 		A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */; };
+		D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */; };
+		1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */; };
 		A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */; };
 		A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */; };
 		A1VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */; };
@@ -335,6 +339,7 @@
 		A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */; };
 		A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */; };
 		A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */; };
+		36D4DF0E85CA4826A7C22080 /* ReceiptTextRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */; };
 		A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */; };
 		A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */; };
 		A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */; };
@@ -348,6 +353,9 @@
 		A1VCAREDUCHIP00000001 /* VehicleCareDueChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */; };
 		A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */; };
 		A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */; };
+		9636DCBD04CA4C68A97D9C8E /* ExpenseReceiptScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */; };
+		30C25BFE25C5471DAD239FC6 /* ExpenseReceiptViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */; };
+		7B9DA8F1127F4BC2B8561DC0 /* ExpenseReceiptSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */; };
 		A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */; };
 		A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */; };
 		A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */; };
@@ -512,6 +520,8 @@
 		181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCostSnapshotLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseCategoryTests.swift; sourceTree = SOURCE_ROOT; };
 		108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseEditorDraftTests.swift; sourceTree = SOURCE_ROOT; };
+		AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/ExpenseReceiptStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/ReceiptAmountParserTests.swift; sourceTree = SOURCE_ROOT; };
 		3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseInstallmentTests.swift; sourceTree = SOURCE_ROOT; };
 		FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedChartSeriesTests.swift; sourceTree = SOURCE_ROOT; };
 		87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedColoredSegmentTests.swift; sourceTree = SOURCE_ROOT; };
@@ -615,6 +625,8 @@
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoStore.swift; sourceTree = "<group>"; };
+		894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptAmountParser.swift; sourceTree = "<group>"; };
+		349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptStore.swift; sourceTree = "<group>"; };
 		A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAvatarView.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCaptureSheet.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoSourceSheet.swift; sourceTree = "<group>"; };
@@ -745,6 +757,7 @@
 		A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleCompletionService.swift; sourceTree = "<group>"; };
 		A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentPlan.swift; sourceTree = "<group>"; };
 		A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentService.swift; sourceTree = "<group>"; };
+		3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptTextRecognizer.swift; sourceTree = "<group>"; };
 		A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderPlanner.swift; sourceTree = "<group>"; };
@@ -758,6 +771,9 @@
 		A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDueChip.swift; sourceTree = "<group>"; };
 		A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleEditorView.swift; sourceTree = "<group>"; };
 		A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseEditorView.swift; sourceTree = "<group>"; };
+		5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptScanSheet.swift; sourceTree = "<group>"; };
+		8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptViewer.swift; sourceTree = "<group>"; };
+		94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptSection.swift; sourceTree = "<group>"; };
 		A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareMiniChart.swift; sourceTree = "<group>"; };
 		A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostDonutChart.swift; sourceTree = "<group>"; };
 		A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostCategoryChart.swift; sourceTree = "<group>"; };
@@ -1019,6 +1035,7 @@
 				A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */,
 				A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */,
 				A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */,
+				3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */,
 				A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */,
 				A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */,
 				A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */,
@@ -1094,6 +1111,9 @@
 				A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */,
 				A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */,
 				A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */,
+				5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */,
+				8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */,
+				94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */,
 				A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */,
 				A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */,
 				A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */,
@@ -1244,6 +1264,8 @@
 				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
 				A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
+				894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */,
+				349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */,
 				A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */,
 				A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */,
 				A2UITESTSUPPORT00000001 /* UITestSupport.swift */,
@@ -1402,6 +1424,8 @@
 				181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */,
 				3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */,
 				108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */,
+				AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */,
+				2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */,
 				3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */,
 				FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */,
 				87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */,
@@ -1671,6 +1695,8 @@
 				827CCD07A5334FA49B2E662E /* VehicleCostSnapshotLoaderTests.swift in Sources */,
 				5AD153B8CCD4406EADE9B0B6 /* VehicleExpenseCategoryTests.swift in Sources */,
 				D5AAC4B82D094E0C9FB8BD70 /* VehicleExpenseEditorDraftTests.swift in Sources */,
+				C6CBF67AC0C546F0B1FA5F3C /* ExpenseReceiptStoreTests.swift in Sources */,
+				31700934E0C74B38937C9D8E /* ReceiptAmountParserTests.swift in Sources */,
 				F6CB0070BE6C4AFAA87D54E2 /* VehicleExpenseInstallmentTests.swift in Sources */,
 				F47D9951692F49D1ABE964E0 /* SpeedChartSeriesTests.swift in Sources */,
 				355E3B97ED084EF794B2B0CA /* SpeedColoredSegmentTests.swift in Sources */,
@@ -1781,6 +1807,8 @@
 				A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
 				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
+				D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */,
+				1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */,
 				A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */,
 				A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */,
 				A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */,
@@ -1897,6 +1925,7 @@
 				A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */,
 				A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */,
 				A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */,
+				36D4DF0E85CA4826A7C22080 /* ReceiptTextRecognizer.swift in Sources */,
 				A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */,
 				A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */,
 				A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */,
@@ -1911,6 +1940,9 @@
 				A1VCAREDUCHIP00000001 /* VehicleCareDueChip.swift in Sources */,
 				A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */,
 				A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */,
+				9636DCBD04CA4C68A97D9C8E /* ExpenseReceiptScanSheet.swift in Sources */,
+				30C25BFE25C5471DAD239FC6 /* ExpenseReceiptViewer.swift in Sources */,
+				7B9DA8F1127F4BC2B8561DC0 /* ExpenseReceiptSection.swift in Sources */,
 				A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */,
 				A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */,
 				A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */,
@@ -2153,11 +2185,11 @@
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos to choose one for your vehicle avatar or an expense receipt.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -2198,11 +2230,11 @@
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos to choose one for your vehicle avatar or an expense receipt.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

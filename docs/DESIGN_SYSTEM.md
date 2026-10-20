@@ -175,3 +175,14 @@ The card is Liquid Glass (`glassChrome`, `GlassTokens.toastCornerRadius` 22, min
 | Travel journal selected trip | `.glassChrome(enabled:)` — same native plate as the trip list. Not a white wash. |
 | Text field | `.glassInputField()` — frost well + Light white rim (`LightGlassPalette.fieldRimOpacity`). Dark: fill only. |
 | Search / custom input well | `.glassInputWell()` — same rim as text fields; caller supplies padding. Not `glassField` (that is fill-only, used by stepper chips). |
+| Info / caution note | `GlassNoticeCallout(systemImage:title:message:tone:)` in `GlassStyle.swift` — glyph + title + footnote on `.glassNestedChoice(isSelected: false)` frost. `.caution` tints the glyph with `GlassSemantic.paused` (orange); text stays glass ink. Receipt OCR warning. Not a banner plate, not a second Material. |
+| Receipt / document photo | `ReceiptThumbnailTile(image:width:height:)` in `GlassStyle.swift` — `nestedChoiceRadius` clip, 1 pt white rim (0.56 Light / 0.28 Dark), frost placeholder with `doc.text.image` while loading. Expense editor receipt card and the confirm sheet. |
+
+## Receipt screens
+
+Expense receipt flow (`ExpenseReceiptSection`, `ExpenseReceiptViewer`, `ExpenseReceiptScanSheet`):
+
+- Source picker is `VehiclePhotoFlowSheet` with receipt copy (same atmosphere, Library / Camera rows).
+- Receipt card in the expense form: `ReceiptThumbnailTile` + `.trailhoundCompactProminentButton()` **Read amount**; below it a full-width **Replace Photo** row (`.glassPlainHit`, primary ink) and a destructive-tinted **Remove Receipt** row (`.destructiveTint()`).
+- Full-screen viewer: black stage (camera/crop stage rule), pinch / double-tap zoom, Close is `GlassNavCircleIcon` (`xmark`).
+- Confirm sheet: `AtmosphericBackground`, receipt with the matched total row outlined in the palette tint, amount in `heroFigureFont`-style rounded type, other amounts as `GlassFilterChip`s, `GlassNoticeCallout` caution, `.trailhoundProminentButton()` Use this amount and `.trailhoundGlassButton()` Not right.

@@ -44,12 +44,18 @@
     },
     "NSCameraUsageDescription" : {
       "comment" : "Privacy - Camera Usage Description",
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Take a photo of your vehicle to use as its avatar."
+            "state" : "translated",
+            "value" : "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araç avatarı için aracını ya da bir gidere eklemek için fişi fotoğrafla."
           }
         }
       }
@@ -111,13 +117,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Browse recent photos and choose one of your vehicle for its avatar."
+            "value" : "Browse recent photos to choose one for your vehicle avatar or an expense receipt."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Son fotoğraflarına bakıp araç avatarı için bir fotoğraf seçebilirsin."
+            "value" : "Son fotoğraflarına bakıp araç avatarı ya da gider fişi için bir fotoğraf seçebilirsin."
           }
         }
       }

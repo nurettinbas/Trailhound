@@ -446,6 +446,12 @@ struct VehicleDetailView: View {
                                     .glassAccentForeground()
                                     .lineLimit(1)
                             }
+                            if expense.receiptFileName != nil {
+                                Image(systemName: "doc.text.image")
+                                    .font(.caption2.weight(.semibold))
+                                    .glassSecondaryInk()
+                                    .accessibilityLabel(L10n.string("vehicles.care.expense.receipt.attached"))
+                            }
                         }
 
                         if hasNote, let note {
@@ -499,8 +505,7 @@ struct VehicleDetailView: View {
     }
 
     private func deleteExpense(_ expense: VehicleExpense) {
-        modelContext.delete(expense)
-        try? modelContext.save()
+        VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
         ToastPresenter.shared.show(.deleted)
     }
 }

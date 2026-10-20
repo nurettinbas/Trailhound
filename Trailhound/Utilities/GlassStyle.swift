@@ -1549,3 +1549,83 @@ extension View {
         }
     }
 }
+
+/// Informational / caution note inside a glass card or sheet (receipt OCR warning).
+/// Nested frost (`glassNestedChoice(isSelected: false)`) — not a second Material, not a banner plate.
+struct GlassNoticeCallout: View {
+    enum Tone {
+        case info
+        case caution
+    }
+
+    let systemImage: String
+    let title: String
+    var message: String? = nil
+    var tone: Tone = .caution
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(iconColor)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .glassPrimaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
+                if let message {
+                    Text(message)
+                        .font(.footnote)
+                        .glassSecondaryInk()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .glassNestedChoice(isSelected: false)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var iconColor: Color {
+        switch tone {
+        case .info: return GlassText.primary(for: colorScheme)
+        case .caution: return GlassSemantic.paused(for: colorScheme)
+        }
+    }
+}
+
+/// Receipt / document photo tile. Rounded nested radius + thin white rim; a frost
+/// placeholder with a document glyph while the image loads.
+struct ReceiptThumbnailTile: View {
+    let image: UIImage?
+    var width: CGFloat = 72
+    var height: CGFloat = 96
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .transition(.opacity)
+            } else {
+                shape
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.16))
+                Image(systemName: "doc.text.image")
+                    .font(.title3.weight(.semibold))
+                    .glassSecondaryInk()
+            }
+        }
+        .frame(width: width, height: height)
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.28 : 0.56), lineWidth: 1)
+        }
+    }
+}

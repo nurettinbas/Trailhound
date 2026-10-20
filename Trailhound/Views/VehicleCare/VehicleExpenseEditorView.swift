@@ -34,6 +34,11 @@ struct VehicleExpenseEditorView: View {
 
     @State private var draft: VehicleExpenseEditorDraft?
     @State private var isSaving = false
+    @State private var didSave = false
+    @State private var isReceiptSourcePresented = false
+    @State private var isReceiptViewerPresented = false
+    @State private var isReceiptScanPresented = false
+    @State private var isImportingReceipt = false
     @FocusState private var focusedField: VehicleExpenseFocusedField?
 
     private var vehicle: VehicleProfile? {
@@ -88,6 +93,46 @@ struct VehicleExpenseEditorView: View {
                         draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
                     } else {
                         draft = VehicleExpenseEditorDraft(category: prefillCategory)
+                    }
+                }
+            }
+            .onDisappear {
+                // A full-screen cover hides the form without closing it.
+                guard !isReceiptViewerPresented else { return }
+                discardUnsavedReceipt()
+            }
+            .sheet(isPresented: $isReceiptSourcePresented) {
+                VehiclePhotoFlowSheet(
+                    copy: .receipt,
+                    onPicked: { image in
+                        isReceiptSourcePresented = false
+                        importReceipt(image)
+                    },
+                    onCancel: {
+                        isReceiptSourcePresented = false
+                    }
+                )
+            }
+            .sheet(isPresented: $isReceiptScanPresented) {
+                if let fileName = activeDraft.receiptFileName {
+                    ExpenseReceiptScanSheet(
+                        fileName: fileName,
+                        onUse: { wholeUnits in
+                            var next = activeDraft
+                            next.applyScannedAmount(wholeUnits)
+                            draft = next
+                            isReceiptScanPresented = false
+                        },
+                        onDismiss: {
+                            isReceiptScanPresented = false
+                        }
+                    )
+                }
+            }
+            .fullScreenCover(isPresented: $isReceiptViewerPresented) {
+                if let fileName = activeDraft.receiptFileName {
+                    ExpenseReceiptViewer(fileName: fileName) {
+                        isReceiptViewerPresented = false
                     }
                 }
             }
@@ -215,6 +260,24 @@ struct VehicleExpenseEditorView: View {
                 }
             }
 
+            ExpenseReceiptSection(
+                fileName: activeDraft.receiptFileName,
+                isImporting: isImportingReceipt,
+                onAdd: {
+                    focusedField = nil
+                    isReceiptSourcePresented = true
+                },
+                onView: {
+                    focusedField = nil
+                    isReceiptViewerPresented = true
+                },
+                onScan: {
+                    focusedField = nil
+                    isReceiptScanPresented = true
+                },
+                onRemove: removeReceipt
+            )
+
             if expense != nil {
                 Section {
                     if expense?.isInstallment == true {
@@ -333,11 +396,17 @@ struct VehicleExpenseEditorView: View {
                     note: activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? nil
                         : activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                    receiptFileName: activeDraft.receiptFileName,
                     in: modelContext
                 )
             } else {
                 _ = try activeDraft.insert(for: vehicle, in: modelContext)
             }
+            didSave = true
+            ExpenseReceiptStore.shared.removeIfUnreferenced(
+                fileName: activeDraft.receiptToDeleteAfterSave,
+                in: modelContext
+            )
             ToastPresenter.shared.show(.vehicleExpenseSaved)
             TripStore.syncWidgetWeekDistance(in: modelContext)
             close()
@@ -351,8 +420,45 @@ struct VehicleExpenseEditorView: View {
         }
     }
 
+    private func importReceipt(_ image: UIImage) {
+        isImportingReceipt = true
+        Task { @MainActor in
+            defer { isImportingReceipt = false }
+            do {
+                let fileName = try await ExpenseReceiptStore.shared.save(image)
+                var next = activeDraft
+                let orphan = next.attachReceipt(fileName)
+                draft = next
+                if let orphan {
+                    ExpenseReceiptStore.shared.remove(fileName: orphan)
+                }
+            } catch {
+                AppErrorPresenter.shared.present(L10n.string("vehicles.care.expense.receipt.save_failed"))
+            }
+        }
+    }
+
+    private func removeReceipt() {
+        var next = activeDraft
+        let orphan = next.removeReceipt()
+        draft = next
+        if let orphan {
+            ExpenseReceiptStore.shared.remove(fileName: orphan)
+        }
+    }
+
+    /// New receipt picked in this form, then the form closed without Save.
+    private func discardUnsavedReceipt() {
+        guard !didSave, let orphan = activeDraft.receiptToDeleteOnCancel else { return }
+        ExpenseReceiptStore.shared.removeIfUnreferenced(fileName: orphan, in: modelContext)
+        var next = activeDraft
+        _ = next.removeReceipt()
+        draft = next
+    }
+
     private func deleteExpense() {
         guard let expense else { return }
+        discardUnsavedReceipt()
         VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
         close()
@@ -362,6 +468,7 @@ struct VehicleExpenseEditorView: View {
     }
 
     private func close() {
+        discardUnsavedReceipt()
         if let onFinish {
             onFinish()
         } else {
@@ -375,6 +482,7 @@ struct VehicleExpenseEditorView: View {
 
     private func deletePlan() {
         guard let expense else { return }
+        discardUnsavedReceipt()
         VehicleExpenseInstallmentService.deleteGroup(of: expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
         close()
