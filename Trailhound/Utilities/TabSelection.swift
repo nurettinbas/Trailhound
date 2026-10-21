@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -19,6 +20,8 @@ final class TabSelection {
     private(set) var pendingVehicleCareID: UUID?
     private(set) var pendingStatsAnchor: StatsPremiumAnchor?
     private(set) var pendingTripID: UUID?
+    /// Trips tab stack. Trip rows, travel rows, and notification deep links all write here.
+    var tripsPath = NavigationPath()
 
     func openPairing() {
         selectedTab = .pairing
@@ -70,6 +73,24 @@ final class TabSelection {
     func openTrip(id: UUID) {
         pendingTripID = id
         selectedTab = .trips
+        DevLog.shared.log(.tripDetail, "openTrip pending=\(id.uuidString.prefix(8)) path=\(tripsPath.count)")
+    }
+
+    /// Notification deep link: one trip on top of the list, never a second copy.
+    func showFinishedTrip(_ trip: Trip) {
+        var path = NavigationPath()
+        path.append(trip)
+        tripsPath = path
+        selectedTab = .trips
+        DevLog.shared.log(.tripDetail, "showFinishedTrip \(trip.id.uuidString.prefix(8)) path=\(tripsPath.count)")
+    }
+
+    /// Travel detail opens a member trip above the travel, on the same stack.
+    func appendTrip(_ trip: Trip) {
+        var path = tripsPath
+        path.append(trip)
+        tripsPath = path
+        DevLog.shared.log(.tripDetail, "appendTrip \(trip.id.uuidString.prefix(8)) path=\(tripsPath.count)")
     }
 
     func consumePendingStatsAnchor() -> StatsPremiumAnchor? {

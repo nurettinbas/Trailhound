@@ -106,7 +106,8 @@ struct NotificationsListView: View {
                 Text(item.body)
                     .font(.body)
                     .glassSecondaryInk()
-                if store.route(for: item).opensDestination || resolvedTrip(for: item)?.endedAt != nil {
+                if store.route(for: item).opensDestination
+                    || (item.tripID != nil && Self.linksToTrip(store.kind(for: item))) {
                     Button(L10n.notificationsOpen) {
                         open(item)
                     }
@@ -224,15 +225,36 @@ struct NotificationsListView: View {
 
     private func open(_ item: StoredAppNotification) {
         store.markRead(item.id)
-        if let trip = resolvedTrip(for: item), trip.endedAt != nil {
-            leaveInbox {
-                tabSelection.openTrip(id: trip.id)
+        selectedNotificationID = item.id
+        let kind = store.kind(for: item)
+        if let tripID = item.tripID, Self.linksToTrip(kind) {
+            switch TripDeepLinkResolver.resolve(
+                tripID: tripID,
+                in: modelContext,
+                activeTripID: recordingService.activeTripID
+            ) {
+            case .missing:
+                ToastPresenter.shared.show(.tripNotFound)
+            case .unfinished:
+                break
+            case .recording:
+                leaveInbox { tabSelection.focusRecordingCard() }
+            case .finished:
+                leaveInbox { tabSelection.openTrip(id: tripID) }
             }
             return
         }
         let route = store.route(for: item)
-        leaveInbox {
-            route.perform()
+        guard route.opensDestination else { return }
+        leaveInbox { route.perform() }
+    }
+
+    private static func linksToTrip(_ kind: AppNotificationKind) -> Bool {
+        switch kind {
+        case .tripStarted, .tripEnded, .tripsMerged:
+            return true
+        default:
+            return false
         }
     }
 
@@ -259,38 +281,15 @@ struct NotificationsListView: View {
         let showsOrphanActions = kind == .orphanStale
             && trip?.endedAt == nil
             && trip?.id != recordingService.activeTripID
-        // Open any finished trip (started/ended rows). Active/unfinished trips stay non-tappable.
-        let canOpenTrip = trip?.endedAt != nil && !showsOrphanActions
+        let opensTrip = Self.linksToTrip(kind) && item.tripID != nil && !showsOrphanActions
         let route = store.route(for: item)
-        let opensRoute = !canOpenTrip && route.opensDestination && !showsOrphanActions
+        let opensRoute = !opensTrip && route.opensDestination && !showsOrphanActions
 
         VStack(alignment: .leading, spacing: 6) {
-            if canOpenTrip, let trip {
+            if opensTrip || opensRoute {
                 rowContent(item: item, kind: kind, showsChevron: true)
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        store.markRead(item.id)
-                        selectedNotificationID = item.id
-                        if layout.layoutClass == .duoOpen {
-                            return
-                        }
-                        leaveInbox {
-                            tabSelection.openTrip(id: trip.id)
-                        }
-                    }
-            } else if opensRoute {
-                rowContent(item: item, kind: kind, showsChevron: true)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        store.markRead(item.id)
-                        selectedNotificationID = item.id
-                        if layout.layoutClass == .duoOpen {
-                            return
-                        }
-                        leaveInbox {
-                            route.perform()
-                        }
-                    }
+                    .onTapGesture { open(item) }
             } else {
                 rowContent(item: item, kind: kind, showsChevron: false)
                     .contentShape(Rectangle())

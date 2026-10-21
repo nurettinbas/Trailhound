@@ -1338,13 +1338,6 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
                 item.compactAppearance = appearance
                 item.compactScrollEdgeAppearance = appearance
             }
-
-            if let bar = navigationController?.navigationBar {
-                bar.standardAppearance = appearance
-                bar.scrollEdgeAppearance = appearance
-                bar.compactAppearance = appearance
-                bar.compactScrollEdgeAppearance = appearance
-            }
         }
 
         private func hideScrollEdgeEffects() {
@@ -1517,6 +1510,27 @@ extension View {
 
     func glassFormListRow() -> some View {
         glassFormRow(position: .only)
+    }
+
+    /// Detail back. iOS 26 uses the system Liquid Glass back button and its own swipe-back,
+    /// including the full-screen content pop. Older systems keep the custom glass circle and
+    /// the edge-swipe enabler. The vehicle editor does not use this — it must block the pop
+    /// while edits are unsaved.
+    @ViewBuilder
+    func glassDetailBackNavigation(action: @escaping () -> Void) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            self
+                .navigationBarBackButtonHidden(true)
+                .background(NavigationInteractivePopEnabler())
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        GlassToolbarBackButton(action: action)
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                }
+        }
     }
 
     /// Keeps the nav bar visually merged with the atmospheric shell. Only the

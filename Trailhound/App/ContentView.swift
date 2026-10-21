@@ -256,7 +256,7 @@ struct ContentView: View {
             AtmosphericBackground()
 
             TabView(selection: $tabSelection.selectedTab) {
-                NavigationStack {
+                NavigationStack(path: $tabSelection.tripsPath) {
                     TripListView()
                 }
                 .background(Color.clear)

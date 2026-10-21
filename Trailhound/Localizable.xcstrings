@@ -20232,6 +20232,23 @@
         }
       }
     },
+    "toast.trip.not_found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trip not found. It may have been deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlgili trip bulunamadı. Silinmiş olabilir."
+          }
+        }
+      }
+    },
     "toast.trip.saved" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -1,4 +1,5 @@
 import CoreLocation
+import SwiftData
 import SwiftUI
 import XCTest
 @testable import Trailhound
@@ -179,6 +180,47 @@ final class TabSelectionTests: XCTestCase {
         XCTAssertEqual(tabs.selectedTab, .trips)
         XCTAssertEqual(tabs.consumePendingTripID(), id)
         XCTAssertNil(tabs.consumePendingTripID())
+    }
+
+    func testShowFinishedTripReplacesTheStackWithOneTrip() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let trip = Trip(endedAt: Date())
+        container.mainContext.insert(trip)
+        let tabs = TabSelection.shared
+        tabs.tripsPath = NavigationPath()
+        tabs.showFinishedTrip(trip)
+        tabs.showFinishedTrip(trip)
+        XCTAssertEqual(tabs.tripsPath.count, 1)
+        tabs.tripsPath = NavigationPath()
+    }
+}
+
+@MainActor
+final class TripDeepLinkResolverTests: XCTestCase {
+    func testFinishedRecordingUnfinishedAndMissing() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let finished = Trip(endedAt: Date())
+        let live = Trip()
+        context.insert(finished)
+        context.insert(live)
+
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: finished.id, in: context, activeTripID: nil),
+            .finished(finished)
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: live.id, in: context, activeTripID: live.id),
+            .recording
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: live.id, in: context, activeTripID: nil),
+            .unfinished
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: UUID(), in: context, activeTripID: nil),
+            .missing
+        )
     }
 }
 

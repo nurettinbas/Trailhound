@@ -76,6 +76,8 @@ enum DeviceTestChecklist {
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
         "Appearance Light and Dark, portrait and landscape: tab bar stays the system Liquid Glass bar; the selected tab uses the current palette tint",
-        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
+        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab",
+        "Trip detail swipe-back (edge and mid-screen, full and cancelled): returns to the list once, route does not redraw, bar shows Trailhound / Start / bell — never the detail back, share, or expand buttons",
+        "Read or unread started/ended trip notification opens that trip. A deleted trip shows “Trip not found” and leaves the inbox open"
     ]
 }

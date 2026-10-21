@@ -121,6 +121,35 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(tripsTab.exists)
     }
 
+    func testTripDetailSwipeBackStaysOnList() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let firstTrip = app.buttons["trips.row.first"]
+        XCTAssertTrue(firstTrip.waitForExistence(timeout: uiTimeout))
+        firstTrip.tap()
+
+        let detail = app.otherElements["tripDetail.screen"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 15))
+        let start = detail.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.4))
+        let end = detail.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.4))
+        start.press(forDuration: 0.05, thenDragTo: end)
+
+        XCTAssertTrue(firstTrip.waitForExistence(timeout: 5))
+        XCTAssertFalse(detail.waitForExistence(timeout: 2))
+    }
+
+    func testReadTripNotificationOpensDetail() throws {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let notifications = app.buttons["trips.notifications"]
+        XCTAssertTrue(notifications.waitForExistence(timeout: uiTimeout))
+        notifications.tap()
+        let ended = app.staticTexts["Trip ended"].firstMatch
+        guard ended.waitForExistence(timeout: 5) else {
+            throw XCTSkip("No ended-trip notification in this inbox.")
+        }
+        ended.tap()
+        XCTAssertTrue(app.otherElements["tripDetail.screen"].waitForExistence(timeout: 15))
+    }
+
     func testTripListOpensDetail() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
 

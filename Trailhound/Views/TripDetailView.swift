@@ -161,7 +161,8 @@ struct TripDetailView: View {
             }
         }
         .onDisappear {
-            endTripDetailSession()
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
+            DevLog.shared.log(.tripDetail, "disappear trip=\(trip.id.uuidString.prefix(8))")
         }
     }
 
@@ -440,14 +441,10 @@ struct TripDetailView: View {
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .navigationBarBackButtonHidden(true)
-        .background(NavigationInteractivePopEnabler())
+        .background(NavigationDismissProbe(onDidPop: endTripDetailSession))
+        .glassDetailBackNavigation(action: dismiss.callAsFunction)
         .toolbar {
             GlassToolbarNavTitleItem(title: L10n.tripDetailTitle)
-            ToolbarItem(placement: .topBarLeading) {
-                GlassToolbarBackButton(action: dismiss.callAsFunction)
-            }
-            .hideSharedToolbarBackgroundIfAvailable()
             ToolbarItem(placement: .topBarTrailing) {
                 GlassToolbarCluster {
                     GlassToolbarCircleButton(
@@ -525,6 +522,7 @@ struct TripDetailView: View {
     }
 
     private func beginTripDetailSession() {
+        DevLog.shared.log(.tripDetail, "appear trip=\(trip.id.uuidString.prefix(8))")
         UIDevice.current.beginGeneratingDeviceOrientationNotifications()
         if tripDetailViewModel == nil {
             tripDetailViewModel = TripDetailViewModel(
@@ -533,6 +531,20 @@ struct TripDetailView: View {
                 privacyRadius: settings.privacyRadiusMeters,
                 displayPieces: nil
             )
+        }
+
+        if TripDetailRevealSession.hasCompleted(trip.id),
+           tripDetailViewModel?.displayPieces != nil {
+            mapClarity = 1
+            panelRisen = true
+            didStartDetailReveal = true
+            routeRevealProgress = 1
+            startPinVisible = true
+            endPinVisible = true
+            if !TrailhoundInterfaceRotation.shared.isRotating {
+                performCameraSettle(animated: false)
+            }
+            return
         }
 
         // Keep legend muted until the path is ready — map itself stays visible (no black veil).
@@ -562,7 +574,7 @@ struct TripDetailView: View {
     }
 
     private func endTripDetailSession() {
-        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+        DevLog.shared.log(.tripDetail, "popped trip=\(trip.id.uuidString.prefix(8))")
         logTripDetailDiagnostics(context: "disappear")
         if routeRevealProgress >= 0.95 {
             TripDetailRevealSession.markCompleted(trip.id)

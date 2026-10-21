@@ -92,9 +92,6 @@ struct TripListView: View {
     @State private var weekSummaryText = ""
     @State private var weekSummaryRefreshToken = 0
     @State private var isWeekSummaryRefreshing = false
-    @State private var showDeepLinkedTrip = false
-    @State private var deepLinkedTrip: Trip?
-
     private var isSearchBusy: Bool {
         TripListViewModel.isSearchActivityVisible(
             searchText: searchText,
@@ -210,18 +207,24 @@ struct TripListView: View {
 
     private func consumeTripDeepLink() {
         guard let id = tabSelection.consumePendingTripID() else { return }
-        if let existing = loadedTrips.first(where: { $0.id == id }) {
-            deepLinkedTrip = existing
-            showDeepLinkedTrip = true
-            return
-        }
-        var descriptor = FetchDescriptor<Trip>(
-            predicate: #Predicate { $0.id == id }
+        let resolution = TripDeepLinkResolver.resolve(
+            tripID: id,
+            in: modelContext,
+            activeTripID: recordingService.activeTripID
         )
-        descriptor.fetchLimit = 1
-        if let match = (try? modelContext.fetch(descriptor))?.first {
-            deepLinkedTrip = match
-            showDeepLinkedTrip = true
+        DevLog.shared.log(
+            .tripDetail,
+            "consume trip=\(id.uuidString.prefix(8)) path=\(tabSelection.tripsPath.count)"
+        )
+        switch resolution {
+        case .finished(let trip):
+            tabSelection.showFinishedTrip(trip)
+        case .recording:
+            tabSelection.focusRecordingCard()
+        case .unfinished:
+            break
+        case .missing:
+            ToastPresenter.shared.show(.tripNotFound)
         }
     }
 
@@ -676,6 +679,78 @@ struct TripListView: View {
             .animation(layoutChangeAnimation, value: layout.isLandscape)
             .navigationDestination(for: TravelJournal.self) { journal in
                 TravelJournalDetailView(journal: journal)
+            }
+            .navigationDestination(for: Trip.self) { trip in
+                TripDetailView(trip: trip)
+            }
+            .onChange(of: tabSelection.pendingTripID) { _, _ in
+                consumeTripDeepLink()
+            }
+            .onChange(of: tabSelection.tripsPath.count) { _, count in
+                DevLog.shared.log(.tripDetail, "tripsPath count=\(count)")
+            }
+            .toolbar {
+                if !showsStandaloneTripDetail, isMergeMode {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            presentMergeConfirm()
+                        } label: {
+                            GlassToolbarTitle(title: L10n.actionMerge)
+                        }
+                        .disabled(completedMergeSelectionCount < 2)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        GlassToolbarCluster(clustered: true) {
+                            TrailhoundNotificationBell()
+                            Button {
+                                isMergeMode = false
+                                mergeSelection.removeAll()
+                            } label: {
+                                GlassToolbarTitle(title: L10n.cancel)
+                            }
+                        }
+                    }
+                } else if !showsStandaloneTripDetail {
+                    if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                TrailhoundHaptics.selection()
+                                scrollToActiveTrip(scrollProxy: scrollProxy)
+                            } label: {
+                                TripListActiveRecordingNavIcon(
+                                    isPaused: recordingService.state == .paused,
+                                    reduceMotion: reduceMotion
+                                )
+                                .glassCircleChrome()
+                            }
+                            .buttonStyle(.glassPlainHit)
+                            .accessibilityLabel(L10n.string("trips.active_recording.show"))
+                            .accessibilityIdentifier("trips.active_recording.nav")
+                        }
+                        .hideSharedToolbarBackgroundIfAvailable()
+                    }
+                    if showsLibrarySplit {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            GlassToolbarCluster(clustered: true) {
+                                TrailhoundNotificationBell()
+                                Button {
+                                    journalEditor = .create()
+                                } label: {
+                                    GlassToolbarSymbol(systemName: "plus")
+                                }
+                                .accessibilityLabel(L10n.journalNew)
+                                .accessibilityIdentifier(SideColumnChromeID.newJournal)
+                                Button {
+                                    isMergeMode = true
+                                } label: {
+                                    GlassToolbarSymbol(systemName: "arrow.triangle.merge")
+                                }
+                                .accessibilityLabel(L10n.actionMerge)
+                                .accessibilityIdentifier(SideColumnChromeID.merge)
+                            }
+                        }
+                    }
+                }
             }
             .sheet(item: $journalEditor) { draft in
                 TravelJournalEditorSheet(draft: draft)
@@ -1293,14 +1368,6 @@ struct TripListView: View {
             guard endCredits != nil else { return }
             listLandingMinY = newY
         }
-        .navigationDestination(for: Trip.self) { trip in
-            TripDetailView(trip: trip)
-        }
-        .navigationDestination(isPresented: $showDeepLinkedTrip) {
-            if let trip = deepLinkedTrip {
-                TripDetailView(trip: trip)
-            }
-        }
         .navigationTitle("Trailhound")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -1397,69 +1464,6 @@ struct TripListView: View {
                 scrollToActiveTrip(scrollProxy: scrollProxy)
             } else {
                 performScrollToTop(scrollProxy: scrollProxy)
-            }
-        }
-        .toolbar {
-            if isMergeMode {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        presentMergeConfirm()
-                    } label: {
-                        GlassToolbarTitle(title: L10n.actionMerge)
-                    }
-                    .disabled(completedMergeSelectionCount < 2)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    GlassToolbarCluster(clustered: true) {
-                        TrailhoundNotificationBell()
-                        Button {
-                            isMergeMode = false
-                            mergeSelection.removeAll()
-                        } label: {
-                            GlassToolbarTitle(title: L10n.cancel)
-                        }
-                    }
-                }
-            } else {
-                if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            TrailhoundHaptics.selection()
-                            scrollToActiveTrip(scrollProxy: scrollProxy)
-                        } label: {
-                            TripListActiveRecordingNavIcon(
-                                isPaused: recordingService.state == .paused,
-                                reduceMotion: reduceMotion
-                            )
-                            .glassCircleChrome()
-                        }
-                        .buttonStyle(.glassPlainHit)
-                        .accessibilityLabel(L10n.string("trips.active_recording.show"))
-                        .accessibilityIdentifier("trips.active_recording.nav")
-                    }
-                    .hideSharedToolbarBackgroundIfAvailable()
-                }
-                if showsLibrarySplit {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        GlassToolbarCluster(clustered: true) {
-                            TrailhoundNotificationBell()
-                            Button {
-                                journalEditor = .create()
-                            } label: {
-                                GlassToolbarSymbol(systemName: "plus")
-                            }
-                            .accessibilityLabel(L10n.journalNew)
-                            .accessibilityIdentifier(SideColumnChromeID.newJournal)
-                            Button {
-                                isMergeMode = true
-                            } label: {
-                                GlassToolbarSymbol(systemName: "arrow.triangle.merge")
-                            }
-                            .accessibilityLabel(L10n.actionMerge)
-                            .accessibilityIdentifier(SideColumnChromeID.merge)
-                        }
-                    }
-                }
             }
         }
         .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)

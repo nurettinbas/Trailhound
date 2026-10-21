@@ -404,6 +404,7 @@
 		A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */; };
 		A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */; };
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
+		A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */; };
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */; };
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */; };
 				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLCHROME000001 /* SideColumnChrome.swift */; };
@@ -848,6 +849,7 @@
 		A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingEmptyState.swift; sourceTree = "<group>"; };
 		A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingVehicleEditorView.swift; sourceTree = "<group>"; };
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
+		A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDeepLinkResolver.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLayout.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundShellToolbar.swift; sourceTree = "<group>"; };
 		A2SIDECOLCHROME000001 /* SideColumnChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideColumnChrome.swift; sourceTree = "<group>"; };
@@ -1274,6 +1276,7 @@
 				A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */,
 				A20000000000000000000021 /* PreviewData.swift */,
 				A2TABSELECTION000001 /* TabSelection.swift */,
+				A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */,
 				A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */,
 				A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */,
 				A2SIDECOLCHROME000001 /* SideColumnChrome.swift */,
@@ -1992,6 +1995,7 @@
 				A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */,
 				A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */,
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
+				A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */,
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */,
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */,
 				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */,

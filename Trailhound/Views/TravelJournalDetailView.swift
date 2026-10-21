@@ -131,7 +131,6 @@ struct TravelJournalDetailView: View {
     @State private var dragTranslation: CGFloat = 0
     @State private var panelRisen = false
     @State private var editorDraft: TravelJournalEditorDraft?
-    @State private var openTrip: Trip?
     @State private var mapStyleOverride: TripDetailMapStyle?
     @State private var mapViewportSize: CGSize = CGSize(width: 390, height: 844)
     @State private var mapTopChromePoints: CGFloat = 96
@@ -159,17 +158,10 @@ struct TravelJournalDetailView: View {
             .navigationTitle(journal.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
-            .navigationBarBackButtonHidden(true)
-            .background(NavigationInteractivePopEnabler())
+            .glassDetailBackNavigation(action: dismiss.callAsFunction)
             .toolbar {
                 GlassToolbarNavTitleItem(title: journal.title)
-                backToolbar
                 mapExpandToolbar
-            }
-            .navigationDestination(isPresented: openTripBinding) {
-                if let trip = openTrip {
-                    TripDetailView(trip: trip)
-                }
             }
             .sheet(item: $editorDraft) { draft in
                 TravelJournalEditorSheet(draft: draft)
@@ -197,13 +189,6 @@ struct TravelJournalDetailView: View {
         }
     }
 
-    private var openTripBinding: Binding<Bool> {
-        Binding(
-            get: { openTrip != nil },
-            set: { if !$0 { openTrip = nil } }
-        )
-    }
-
     private var mapExpandIconName: String {
         isMapExpanded
             ? "arrow.down.right.and.arrow.up.left"
@@ -214,14 +199,6 @@ struct TravelJournalDetailView: View {
         isMapExpanded
             ? L10n.string("journal.map.collapse")
             : L10n.string("journal.map.expand")
-    }
-
-    @ToolbarContentBuilder
-    private var backToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            GlassToolbarBackButton(action: dismiss.callAsFunction)
-        }
-        .hideSharedToolbarBackgroundIfAvailable()
     }
 
     @ToolbarContentBuilder
@@ -337,7 +314,7 @@ struct TravelJournalDetailView: View {
                 isExpanded: panelDetent == .expanded,
                 reduceMotion: reduceMotion,
                 onSelectTrip: { selectedTripID = $0 },
-                onOpenTrip: { openTrip = $0 },
+                onOpenTrip: { TabSelection.shared.appendTrip($0) },
                 onRemoveTrip: removeFromJournal,
                 onEdit: { editorDraft = .edit(journal) },
                 onToggleExpanded: { togglePanelDetent() },

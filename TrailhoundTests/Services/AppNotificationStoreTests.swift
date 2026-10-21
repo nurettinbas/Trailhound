@@ -108,6 +108,30 @@ final class AppNotificationStoreTests: XCTestCase {
         XCTAssertEqual(store.items[0].target, "2026")
     }
 
+    func testReadTripNotificationsStillOpenTheTrip() {
+        let tripID = UUID()
+        store.record(
+            kind: .tripEnded,
+            title: "Ended",
+            body: "Done",
+            tripID: tripID,
+            action: TripNotificationService.openTripAction
+        )
+        store.markRead(store.items[0].id)
+        XCTAssertEqual(store.route(for: store.items[0]), .trip(tripID))
+
+        store.record(
+            kind: .tripStarted,
+            title: "Started",
+            body: "Go",
+            tripID: tripID,
+            action: TripNotificationService.openTripAction
+        )
+        store.markAllRead()
+        let started = store.items.first { store.kind(for: $0) == .tripStarted }
+        XCTAssertEqual(started.map { store.route(for: $0) }, .trip(tripID))
+    }
+
     func testNotificationRouteResolvesActions() {
         XCTAssertEqual(
             NotificationRoute.resolve(

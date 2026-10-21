@@ -106,6 +106,7 @@ enum ToastKind: Equatable {
     case shortcutsAutomationReached
     case categoryAccepted
     case journalTitleRequired
+    case tripNotFound
     case personalRecord(PersonalRecordBreak)
 
     var message: String {
@@ -126,6 +127,7 @@ enum ToastKind: Equatable {
         case .shortcutsAutomationReached: L10n.toastShortcutsAutomationReached
         case .categoryAccepted: L10n.toastCategoryAccepted
         case .journalTitleRequired: L10n.journalTitleRequired
+        case .tripNotFound: L10n.toastTripNotFound
         case .personalRecord(let payload): payload.accessibilityMessage
         }
     }
@@ -160,7 +162,7 @@ enum ToastKind: Equatable {
             "wand.and.stars"
         case .shortcutsAutomationReached:
             "antenna.radiowaves.left.and.right"
-        case .journalTitleRequired:
+        case .journalTitleRequired, .tripNotFound:
             "exclamationmark.triangle.fill"
         case .personalRecord:
             "trophy.fill"
@@ -169,7 +171,7 @@ enum ToastKind: Equatable {
 
     var symbolAnimation: ToastSymbolAnimation {
         switch self {
-        case .vehicleReminderSaved, .deleted, .categoryDeleted, .journalTitleRequired:
+        case .vehicleReminderSaved, .deleted, .categoryDeleted, .journalTitleRequired, .tripNotFound:
             .wiggle
         case .categoryAccepted, .shortcutsGuideFinished, .shortcutsAutomationReached:
             .pulse
@@ -184,7 +186,7 @@ enum ToastKind: Equatable {
         switch self {
         case .deleted, .categoryDeleted:
             .destructive
-        case .journalTitleRequired:
+        case .journalTitleRequired, .tripNotFound:
             .warning
         case .tripSaved, .vehicleSaved, .vehicleReminderSaved, .journalSaved, .categoryAccepted, .tripsMerged, .shortcutsGuideFinished, .shortcutsAutomationReached:
             .palette
@@ -199,7 +201,7 @@ enum ToastKind: Equatable {
         switch self {
         case .deleted, .categoryDeleted:
             .destructive
-        case .journalTitleRequired:
+        case .journalTitleRequired, .tripNotFound:
             .warning
         case .tripsMerged:
             .merge
