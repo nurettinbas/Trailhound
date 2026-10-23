@@ -604,9 +604,8 @@ final class TrailhoundTabBarCompactController: UIViewController {
     /// Clock and Wi-Fi bottom, in window coordinates.
     /// The navigation bar sits beside the column, so its maxY is not the cluster.
     /// A collapsed status bar still draws the clock and Wi-Fi in the tab column.
-    /// Landscape keeps that stack inside the column inset. Portrait top-aligns
-    /// it, so the Wi-Fi hangs one status row below the inset. A missing bar
-    /// has no stack.
+    /// `collapsedStatusBottom` places that stack, including the Wi-Fi dots.
+    /// A missing bar has no stack.
     private func statusClusterMaxY(in window: UIWindow, column: CGRect?) -> CGFloat? {
         let safe = window.safeAreaInsets
         guard let screen = window.windowScene?.screen,
@@ -631,12 +630,11 @@ final class TrailhoundTabBarCompactController: UIViewController {
             let onLeft = column.midX < window.bounds.midX
             let inset = onLeft ? safe.left : safe.right
             if inset > 20 {
-                // Landscape keeps the clock and Wi-Fi inside that corner.
-                // Portrait top-aligns the same stack to the inset, so the
-                // Wi-Fi hangs one status row (54pt) below it.
-                let statusRow: CGFloat = 54
-                let hangsBelow = window.bounds.height > window.bounds.width
-                return hangsBelow ? inset + statusRow : inset
+                let portrait = window.bounds.height > window.bounds.width
+                return SideColumnChromeResolver.collapsedStatusBottom(
+                    columnInset: inset,
+                    portrait: portrait
+                )
             }
         }
         return 0

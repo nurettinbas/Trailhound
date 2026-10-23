@@ -37,6 +37,17 @@ struct SideColumnChromeMetrics: Equatable {
 
 /// Pure placement for the side-column bell and merge (or new-travel) stack.
 enum SideColumnChromeResolver {
+    /// Clock and Wi-Fi bottom when the status bar is only a collapsed strip.
+    /// Landscape keeps the stack inside the column inset. Portrait top-aligns it,
+    /// then the Wi-Fi hangs one status row below. The glyph's dots extend past
+    /// that edge, so the capsule starts clear of them.
+    static func collapsedStatusBottom(columnInset: CGFloat, portrait: Bool) -> CGFloat {
+        let statusRow: CGFloat = 54
+        let glyphOverhang: CGFloat = 12
+        let cluster = portrait ? columnInset + statusRow : columnInset
+        return cluster + glyphOverhang
+    }
+
     /// Bottom of the clock and Wi-Fi cluster. Nil when the status bar frame was not measured.
     /// The safe top is included only as the other measured edge, never as a guess.
     static func measuredStatusClusterMaxY(statusBarMaxY: CGFloat?, safeTop: CGFloat) -> CGFloat? {
@@ -65,8 +76,25 @@ enum SideColumnChromeResolver {
             return .sideColumn(stackFrame: .zero, below: false)
         }
         guard let statusBottom = metrics.statusClusterMaxY, statusBottom >= 0 else { return .toolbar }
-        let frame = stackFrame(metrics: metrics, x: bar.midX - GlassTokens.toolbarControlCircleSide / 2, statusBottom: statusBottom)
+        let x = bar.midX - GlassTokens.toolbarControlCircleSide / 2
+        // No clock on the cover. The punch hole occupies the top of this column,
+        // and the system already drops the icon pill below it. Sit on that pill.
+        let frame = statusBottom <= 1
+            ? frameAboveIcons(metrics: metrics, x: x, bar: bar)
+            : stackFrame(metrics: metrics, x: x, statusBottom: statusBottom)
         return accept(frame, metrics: metrics, bar: bar)
+    }
+
+    /// The pair rests one gap above the icon pill.
+    private static func frameAboveIcons(metrics: SideColumnChromeMetrics, x: CGFloat, bar: CGRect) -> CGRect {
+        let side = GlassTokens.toolbarControlCircleSide
+        let height = side * CGFloat(metrics.buttonCount)
+        return CGRect(
+            x: x,
+            y: bar.minY - GlassTokens.sideColumnChromeGap - height,
+            width: side,
+            height: height
+        )
     }
 
     private static func stackFrame(metrics: SideColumnChromeMetrics, x: CGFloat, statusBottom: CGFloat) -> CGRect {

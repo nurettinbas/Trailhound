@@ -70,11 +70,31 @@ final class SideColumnChromeTests: XCTestCase {
             return XCTFail("Expected the pair above the side icons")
         }
         XCTAssertEqual(frame.midX, bar.midX, accuracy: 0.5)
-        XCTAssertEqual(frame.minY, gap, accuracy: 0.5)
+        XCTAssertEqual(frame.minY, bar.minY - gap - buttonSide * 2, accuracy: 0.5)
         XCTAssertEqual(frame.height, buttonSide * 2, accuracy: 0.5)
         XCTAssertGreaterThanOrEqual(bar.minY - frame.maxY, gap - 0.5)
         let camera = SideColumnChromeResolver.cameraRegion(windowSize: window, safeInsets: safe, column: bar)
         XCTAssertTrue(camera.isEmpty)
+        XCTAssertFalse(frame.intersects(bar))
+    }
+
+    func testCoverColumnClearsThePunchHole() {
+        let window = CGSize(width: 678, height: 466)
+        // The cover drops the left icon pill to 180 so it clears the punch hole.
+        // The hole itself ends at 65pt and is not in the safe area.
+        let bar = CGRect(x: 26, y: 180, width: 46, height: 260)
+        let safe = UIEdgeInsets(top: 0, left: 84, bottom: 34, right: 0)
+        let placement = SideColumnChromeResolver.resolve(
+            metrics(window: window, tabBar: bar, safe: safe, buttons: 2, status: 0)
+        )
+        guard case .sideColumn(let frame, _) = placement else {
+            return XCTFail("Expected the pair below the punch hole")
+        }
+        let punchHoleBottom: CGFloat = 65
+        XCTAssertEqual(frame.midX, bar.midX, accuracy: 0.5)
+        XCTAssertEqual(frame.minY, bar.minY - gap - buttonSide * 2, accuracy: 0.5)
+        XCTAssertGreaterThan(frame.minY, punchHoleBottom)
+        XCTAssertGreaterThanOrEqual(bar.minY - frame.maxY, gap - 0.5)
         XCTAssertFalse(frame.intersects(bar))
     }
 
@@ -94,7 +114,8 @@ final class SideColumnChromeTests: XCTestCase {
         let window = CGSize(width: 466, height: 678)
         let bar = CGRect(x: 394, y: 392, width: 46, height: 260)
         let safe = UIEdgeInsets(top: 0, left: 0, bottom: 34, right: 84)
-        let status = safe.right + 54
+        let status = SideColumnChromeResolver.collapsedStatusBottom(columnInset: safe.right, portrait: true)
+        XCTAssertEqual(status, safe.right + 54 + 12)
         let placement = SideColumnChromeResolver.resolve(
             metrics(window: window, tabBar: bar, safe: safe, buttons: 2, status: status)
         )
@@ -110,7 +131,8 @@ final class SideColumnChromeTests: XCTestCase {
         let window = CGSize(width: 951, height: 669)
         let bar = CGRect(x: 879, y: 383, width: 46, height: 260)
         let safe = UIEdgeInsets(top: 0, left: 0, bottom: 34, right: 84)
-        let status = safe.right
+        let status = SideColumnChromeResolver.collapsedStatusBottom(columnInset: safe.right, portrait: false)
+        XCTAssertEqual(status, safe.right + 12)
         let placement = SideColumnChromeResolver.resolve(
             metrics(window: window, tabBar: bar, safe: safe, buttons: 3, status: status)
         )
@@ -134,7 +156,7 @@ final class SideColumnChromeTests: XCTestCase {
             return XCTFail("Expected the pair above the left icons")
         }
         XCTAssertEqual(frame.midX, bar.midX, accuracy: 0.5)
-        XCTAssertEqual(frame.minY, gap, accuracy: 0.5)
+        XCTAssertEqual(frame.minY, bar.minY - gap - buttonSide * 2, accuracy: 0.5)
     }
 
     func testCameraOnTheOtherEdgeLeavesTheCapsuleUnderTheStatusCluster() {
