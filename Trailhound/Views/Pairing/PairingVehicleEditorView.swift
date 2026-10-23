@@ -903,21 +903,7 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
     @State private var showDiscardConfirm = false
 
     func body(content: Content) -> some View {
-        content
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    GlassToolbarBackButton {
-                        if hasUnsavedChanges {
-                            showDiscardConfirm = true
-                        } else {
-                            dismiss()
-                        }
-                    }
-                }
-                .hideSharedToolbarBackgroundIfAvailable()
-            }
-            .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
+        backChrome(content)
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {
                 Button(L10n.pairingTabDiscardVehicleEditsLeave, role: .destructive) {
                     dismiss()
@@ -926,6 +912,50 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
             } message: {
                 Text(L10n.pairingTabDiscardVehicleEditsMessage)
             }
+    }
+
+    /// iOS 26 owns swipe-back only while the system back button is visible. Hiding it
+    /// (the old always-on custom circle) turns off both the edge swipe and the full-screen
+    /// content pop, and putting our own delegate on those gestures breaks the content pop.
+    /// Keep the system button until there is something to discard. Then hide it, show the
+    /// glass circle, and block the pop.
+    @ViewBuilder
+    private func backChrome(_ content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .navigationBarBackButtonHidden(hasUnsavedChanges)
+                .toolbar {
+                    if hasUnsavedChanges {
+                        ToolbarItem(placement: .topBarLeading) {
+                            GlassToolbarBackButton {
+                                showDiscardConfirm = true
+                            }
+                        }
+                        .hideSharedToolbarBackgroundIfAvailable()
+                    }
+                }
+                .background {
+                    if hasUnsavedChanges {
+                        NavigationInteractivePopEnabler(disabled: true)
+                    }
+                }
+        } else {
+            content
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        GlassToolbarBackButton {
+                            if hasUnsavedChanges {
+                                showDiscardConfirm = true
+                            } else {
+                                dismiss()
+                            }
+                        }
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                }
+                .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
+        }
     }
 }
 

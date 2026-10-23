@@ -5,9 +5,12 @@ import UIKit
 /// (`navigationBarBackButtonHidden(true)`). Used on iOS 17–18 detail screens and on the
 /// vehicle editor, which must block the pop while there are unsaved edits.
 ///
-/// iOS 26 detail screens use the system back button and must not install this. The vehicle
-/// editor still does, and on iOS 26 it only disables the system pop gestures while `disabled`
-/// is true — it does not replace their delegate.
+/// iOS 26 detail screens use the system back button and must not install this. A hidden
+/// back button turns off the edge swipe and the full-screen content pop, and replacing
+/// their delegate breaks the content pop. The vehicle screen therefore keeps the system
+/// back button until there are unsaved edits, and only then installs this with
+/// `disabled: true`. On iOS 26 it only disables the system pop gestures — it does not
+/// replace their delegate.
 struct NavigationInteractivePopEnabler: UIViewControllerRepresentable {
     var disabled: Bool = false
 

@@ -1543,8 +1543,9 @@ extension View {
 
     /// Detail back. iOS 26 uses the system Liquid Glass back button and its own swipe-back,
     /// including the full-screen content pop. Older systems keep the custom glass circle and
-    /// the edge-swipe enabler. The vehicle editor does not use this — it must block the pop
-    /// while edits are unsaved.
+    /// the edge-swipe enabler. The vehicle editor does not use this. On iOS 26 it keeps this
+    /// system button until there are unsaved edits, then hides it. Older systems always use
+    /// the custom circle and block the pop while edits are unsaved.
     @ViewBuilder
     func glassDetailBackNavigation(action: @escaping () -> Void) -> some View {
         if #available(iOS 26.0, *) {
