@@ -300,7 +300,15 @@ struct StatsView: View {
     @ViewBuilder
     private func statsList(currencyCode: String) -> some View {
         if layout.layoutClass == .duoOpen {
-            TrailhoundPaneSplit {
+            TrailhoundPaneSplit(
+                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                    layoutClass: layout.layoutClass,
+                    isLandscape: layout.isLandscape,
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                )
+                    ? TrailhoundLayoutResolver.flatStatsLeadingFraction
+                    : nil
+            ) {
                 ScrollView {
                     wideStatsPrimary(currencyCode: currencyCode)
                         .padding(16)

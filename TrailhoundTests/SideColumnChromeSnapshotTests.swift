@@ -62,13 +62,15 @@ private struct SideColumnChromeSnapshotFixture {
                 for symbols in symbolSets {
                     for scheme in schemes {
                         let bar = tabBar(window: orientation.1, side: side, orientation: orientation.0)
+                        let sideColumn = bar.height > bar.width * 1.4
                         let metrics = SideColumnChromeMetrics(
                             windowSize: orientation.1,
                             safeInsets: orientation.2,
                             tabBarFrame: bar,
                             layoutDirection: side == "trailing" ? .rightToLeft : .leftToRight,
                             buttonCount: symbols.1.count,
-                            isTransitioning: false
+                            isTransitioning: false,
+                            statusClusterMaxY: sideColumn ? 54 : (orientation.2.top > 1 ? orientation.2.top : nil)
                         )
                         fixtures.append(
                             SideColumnChromeSnapshotFixture(
@@ -92,9 +94,9 @@ private struct SideColumnChromeSnapshotFixture {
                 return CGRect(x: 50, y: window.height - 70, width: 250, height: 50)
             }
         }
-        let height: CGFloat = 150
+        let height: CGFloat = 180
         let x = side == "leading" ? 12 : window.width - width - 12
-        return CGRect(x: x, y: 150, width: width, height: height)
+        return CGRect(x: x, y: 230, width: width, height: height)
     }
 }
 
@@ -142,21 +144,29 @@ private struct SideColumnChromeSnapshotHarness: View {
         case .pending:
             EmptyView()
         case .sideColumn(let frame, _):
-            VStack(spacing: GlassTokens.sideColumnChromeGap * scale) {
-                buttons(scale: scale)
+            VStack(spacing: 0) {
+                buttons(scale: scale, circled: false)
             }
+            .glassCapsuleChrome(frozen: true)
             .frame(width: frame.width * scale, height: frame.height * scale, alignment: .top)
             .offset(x: frame.minX * scale, y: frame.minY * scale)
         }
     }
 
-    private func buttons(scale: CGFloat) -> some View {
+    private func buttons(scale: CGFloat, circled: Bool = true) -> some View {
         ForEach(Array(fixture.symbols.enumerated()), id: \.offset) { _, symbol in
-            GlassNavCircleIcon(systemName: symbol, frozen: true, pointSize: symbol == "arrow.triangle.merge" ? 15 : nil)
-                .frame(
-                    width: GlassTokens.toolbarControlCircleSide * scale,
-                    height: GlassTokens.toolbarControlCircleSide * scale
-                )
+            let pointSize: CGFloat? = symbol == "arrow.triangle.merge" ? 15 : nil
+            Group {
+                if circled {
+                    GlassNavCircleIcon(systemName: symbol, frozen: true, pointSize: pointSize)
+                } else {
+                    GlassToolbarSymbol(systemName: symbol, sampling: .system, pointSize: pointSize)
+                }
+            }
+            .frame(
+                width: GlassTokens.toolbarControlCircleSide * scale,
+                height: GlassTokens.toolbarControlCircleSide * scale
+            )
         }
     }
 }

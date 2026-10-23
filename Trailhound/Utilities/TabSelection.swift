@@ -13,9 +13,13 @@ final class TabSelection {
     private(set) var scrollToRecordingToken = 0
     /// Trips action sits with the bell in the trailing capsule. Hidden in merge mode and on the split library.
     var wideBookTrailingVisible = false
+    /// Landscape book: bell, plus, and merge share one vertical capsule.
+    var wideBookShowsPlusAndMerge = false
     var wideBookTrailingSymbol = "arrow.triangle.merge"
     var wideBookTrailingLabel = ""
     private(set) var wideBookTrailingToken = 0
+    private(set) var wideBookJournalToken = 0
+    private(set) var wideBookMergeToken = 0
     /// Set by care notification deep link; consumed by PairingTabView.
     private(set) var pendingVehicleCareID: UUID?
     private(set) var pendingStatsAnchor: StatsPremiumAnchor?
@@ -47,6 +51,14 @@ final class TabSelection {
 
     func triggerWideBookTrailing() {
         wideBookTrailingToken += 1
+    }
+
+    func triggerNewJournal() {
+        wideBookJournalToken += 1
+    }
+
+    func triggerMerge() {
+        wideBookMergeToken += 1
     }
 
     func openVehicleCare(vehicleID: UUID) {

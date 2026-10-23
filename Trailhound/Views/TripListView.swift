@@ -37,6 +37,7 @@ struct TripListView: View {
     @State private var isMergeMode = false
     @State private var aggregatesRefreshTask: Task<Void, Never>?
     @Bindable private var tabSelection = TabSelection.shared
+    @Bindable private var sideColumnChrome = SideColumnChromeState.shared
 
     @State private var orphanTrips: [TripRecoveryService.OrphanTrip] = []
     @State private var searchText = ""
@@ -597,7 +598,20 @@ struct TripListView: View {
     /// Standalone trip detail draws its own bar; the shell bell stays there.
     private var pageOwnsTrailingBell: Bool {
         guard !showsStandaloneTripDetail else { return false }
-        return isMergeMode || showsLibrarySplit
+        if isMergeMode { return true }
+        if showsLibrarySplit { return !splitCapsuleOwnsTrailing }
+        return false
+    }
+
+    /// The landscape book draws bell, plus, and merge in the vertical capsule.
+    private var splitCapsuleOwnsTrailing: Bool {
+        showsLibrarySplit
+            && sideColumnChrome.uprightDuoCapsuleFrame(buttonCount: 3, layout: layout) != nil
+    }
+
+    /// The upright-Duo capsule already draws the bell. Merge and Cancel stay in the bar.
+    private var duoCapsuleOwnsBell: Bool {
+        sideColumnChrome.uprightDuoCapsuleFrame(buttonCount: 1, layout: layout) != nil
     }
 
     private var liveMapCoverPresented: Binding<Bool> {
@@ -647,6 +661,7 @@ struct TripListView: View {
             Group {
                 if showsStandaloneTripDetail, let trip = paneTrip {
                     TripDetailView(trip: trip)
+                        .id(trip.id)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
                                 Button {
@@ -682,6 +697,7 @@ struct TripListView: View {
             }
             .navigationDestination(for: Trip.self) { trip in
                 TripDetailView(trip: trip)
+                    .id(trip.id)
             }
             .onChange(of: tabSelection.pendingTripID) { _, _ in
                 consumeTripDeepLink()
@@ -701,7 +717,9 @@ struct TripListView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         GlassToolbarCluster(clustered: true) {
-                            TrailhoundNotificationBell()
+                            if !duoCapsuleOwnsBell {
+                                TrailhoundNotificationBell()
+                            }
                             Button {
                                 isMergeMode = false
                                 mergeSelection.removeAll()
@@ -729,7 +747,7 @@ struct TripListView: View {
                         }
                         .hideSharedToolbarBackgroundIfAvailable()
                     }
-                    if showsLibrarySplit {
+                    if showsLibrarySplit, !splitCapsuleOwnsTrailing {
                         ToolbarItem(placement: .topBarTrailing) {
                             GlassToolbarCluster(clustered: true) {
                                 TrailhoundNotificationBell()
@@ -801,6 +819,12 @@ struct TripListView: View {
             .onChange(of: tabSelection.wideBookTrailingToken) { _, _ in
                 performWideBookTrailing()
             }
+            .onChange(of: tabSelection.wideBookJournalToken) { _, _ in
+                journalEditor = .create()
+            }
+            .onChange(of: tabSelection.wideBookMergeToken) { _, _ in
+                isMergeMode = true
+            }
             .onChange(of: layout.isLandscape) { _, _ in
                 beginRecordingViewportSettle()
                 syncWideBookStatusActions()
@@ -871,6 +895,7 @@ struct TripListView: View {
         if recording, paneTripID != nil, !live, let trip = paneTrip {
             TrailhoundPaneSplit {
                 TripDetailView(trip: trip)
+                    .id(trip.id)
                     .environment(\.tripDetailRegion, .details)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -1098,6 +1123,7 @@ struct TripListView: View {
 
     private func syncWideBookStatusActions() {
         tabSelection.wideBookTrailingVisible = !isMergeMode && !showsLibrarySplit
+        tabSelection.wideBookShowsPlusAndMerge = showsLibrarySplit && !isMergeMode
         tabSelection.wideBookTrailingSymbol = listMode == .travels ? "plus" : "arrow.triangle.merge"
         tabSelection.wideBookTrailingLabel = listMode == .travels ? L10n.journalNew : L10n.actionMerge
     }

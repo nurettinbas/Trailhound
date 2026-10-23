@@ -228,6 +228,11 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         }
     }
 
+    /// Open Duo in landscape. The off-hinge 60/40 split also requires the hinge to be fully open.
+    var isOpenBookLandscape: Bool {
+        layoutClass == .duoOpen && isLandscape
+    }
+
     var storyStageMaxWidth: CGFloat? {
         switch layoutClass {
         case .phone:
@@ -284,6 +289,25 @@ enum TrailhoundSideTabGap {
 enum TrailhoundLayoutResolver {
     /// Open inner screen when a size class stays compact: the long side is two phones.
     static let openFoldSpan: CGFloat = 1100
+
+    /// Vehicles list share of the content on the fully flat widest book. The focus pane is the rest.
+    static let flatVehicleListFraction: CGFloat = 0.6
+
+    /// Vehicle profile share on that same book. Tracking and expenses take the rest.
+    static let flatVehicleProfileFraction: CGFloat = 0.4
+
+    /// Statistics, Recap, and Settings leading column on the fully open hinge. The trailing column is the rest.
+    static let flatStatsLeadingFraction: CGFloat = 0.45
+
+    /// Vehicles panes leave the hinge only when the Duo is landscape and the hinge is fully open.
+    /// A partially open hinge keeps the seam on the fold. iPad and phones have no such hinge.
+    static func usesOffHingeVehicleSplit(
+        layoutClass: TrailhoundLayoutClass,
+        isLandscape: Bool,
+        hingeFullyOpen: Bool
+    ) -> Bool {
+        layoutClass == .duoOpen && isLandscape && hingeFullyOpen
+    }
 
     /// A camera write while the window is turning cancels the orientation change.
     /// A sheet only changes height. A turn flips the aspect, or moves both axes together.
@@ -446,6 +470,21 @@ enum TrailhoundLayoutResolver {
         guard raw > 0, raw < contentWidth else { return fallback }
         let minimum = min(160, fallback)
         let maximum = max(minimum, contentWidth - gutter - minimum)
+        return min(max(raw, minimum), maximum)
+    }
+
+    /// Leading pane as a share of the content, with the gutter between the panes.
+    /// Used when the fully flat book does not need the seam on the hinge.
+    static func fractionLeadingPaneWidth(
+        contentWidth: CGFloat,
+        gutter: CGFloat,
+        leadingFraction: CGFloat
+    ) -> CGFloat {
+        let usable = max(0, contentWidth - gutter)
+        let fraction = min(max(leadingFraction, 0), 1)
+        let raw = usable * fraction
+        let minimum = min(160, usable / 2)
+        let maximum = max(minimum, usable - minimum)
         return min(max(raw, minimum), maximum)
     }
 }
@@ -813,10 +852,22 @@ struct TrailhoundHingeCardStack<Content: View>: View {
     }
 
     private var leadingWidth: CGFloat? {
-        let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
         let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : layout.size.width
+        guard contentWidth > 1 else { return nil }
+        if TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+            layoutClass: layout.layoutClass,
+            isLandscape: layout.isLandscape,
+            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+        ) {
+            return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: contentWidth,
+                gutter: GlassTokens.hingeGutter,
+                leadingFraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+            )
+        }
+        let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
         let origin = contentInWindow.width > 1 ? contentInWindow.minX : 0
-        guard contentWidth > 1, windowWidth > 1 else { return nil }
+        guard windowWidth > 1 else { return nil }
         return TrailhoundLayoutResolver.duoLeadingPaneWidth(
             contentOriginX: origin,
             contentWidth: contentWidth,
@@ -1355,6 +1406,8 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.layoutDirection) private var layoutDirection
     var gutter: CGFloat?
+    /// Share of the content for the leading pane. Nil keeps the gutter on the hinge.
+    var leadingFraction: CGFloat?
     /// Live map column. It covers the vertical safe area so the shell blue does not show above and below the map.
     var leadingFillsVertically: Bool = false
     var focusFillsVertically: Bool = false
@@ -1381,10 +1434,18 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
     }
 
     private func leadingWidth(gap: CGFloat) -> CGFloat? {
-        let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
         let contentWidth = contentInWindow.width
+        guard contentWidth > 1 else { return nil }
+        if let leadingFraction {
+            return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: contentWidth,
+                gutter: gap,
+                leadingFraction: leadingFraction
+            )
+        }
+        let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
         let origin = contentInWindow.minX
-        guard contentWidth > 1, windowWidth > 1 else { return nil }
+        guard windowWidth > 1 else { return nil }
         return TrailhoundLayoutResolver.duoLeadingPaneWidth(
             contentOriginX: origin,
             contentWidth: contentWidth,
@@ -1571,4 +1632,41 @@ extension View {
     func trailhoundAdaptiveSheet() -> some View {
         modifier(TrailhoundAdaptiveSheet())
     }
+}
+
+/// Fully open hinge versus a partially open fold. Vehicles uses this so the 60/40
+/// split stays off the seam while the Duo is only slightly folded.
+@MainActor
+@Observable
+final class TrailhoundHingeMonitor {
+    static let shared = TrailhoundHingeMonitor()
+
+    private(set) var isFullyOpen = false
+
+    @available(iOS 27.1, *)
+    func apply(status: UIHinge.Status?) {
+        let open = status == .fullyOpen
+        guard open != isFullyOpen else { return }
+        isFullyOpen = open
+    }
+}
+
+/// Sits in the window so UIKit can deliver hinge updates.
+struct TrailhoundHingeProbe: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        if #available(iOS 27.1, *) {
+            view.addInteraction(UIHingeInteraction { _, update in
+                let status = update.hinge?.status
+                Task { @MainActor in
+                    TrailhoundHingeMonitor.shared.apply(status: status)
+                }
+            })
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
 }

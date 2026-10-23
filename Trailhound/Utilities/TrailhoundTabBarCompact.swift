@@ -248,14 +248,83 @@ enum TrailhoundTabBarCompact {
         return false
     }
 
-    /// Glass platter in window coordinates. Falls back to the `UITabBar` frame
-    /// when iOS has not built a separate platter view.
+    /// Glass platter in window coordinates. A side tab's `UITabBar` is the full
+    /// column, including the empty space under the Wi-Fi. The visible icon pill
+    /// is the frame the capsule lines up with. Falls back to the bar itself.
+    private static var cachedSidePill: (bar: CGRect, pill: CGRect)?
+
     static func platterFrame(of tabBar: UITabBar, in window: UIWindow) -> CGRect {
+        if tabBar.bounds.height > tabBar.bounds.width * 1.4 {
+            let bar = tabBar.convert(tabBar.bounds, to: window)
+            if let cached = cachedSidePill, sameFrame(cached.bar, bar) {
+                return cached.pill
+            }
+            if let icons = sideIconUnion(in: window, column: bar) {
+                cachedSidePill = (bar, icons)
+                return icons
+            }
+            if let pill = sideIconPill(in: window, bar: bar) {
+                cachedSidePill = (bar, pill)
+                return pill
+            }
+        }
         if #available(iOS 26.0, *), let platter = glassPlatter(matching: tabBar) {
             let frame = platter.convert(platter.bounds, to: window)
             if frame.width > 8, frame.height > 8 { return frame }
         }
         return tabBar.convert(tabBar.bounds, to: window)
+    }
+
+    /// Union of the tab icons. The column view itself runs up under the clock;
+    /// the icons start lower, and that top is what the bell has to clear.
+    private static func sideIconUnion(in window: UIWindow, column: CGRect) -> CGRect? {
+        var union: CGRect?
+        func walk(_ view: UIView) {
+            let frame = view.convert(view.bounds, to: window)
+            let icon = frame.height >= 28 && frame.height <= 76
+                && frame.width >= 28 && frame.width <= column.width + 20
+                && frame.midX >= column.minX - 10 && frame.midX <= column.maxX + 10
+                && frame.minY > 120
+            if icon {
+                union = union.map { $0.union(frame) } ?? frame
+            }
+            for subview in view.subviews where subview.alpha > 0.01 && !subview.isHidden {
+                walk(subview)
+            }
+        }
+        walk(window)
+        guard let union, union.height > 100 else { return nil }
+        return union
+    }
+
+    /// Tall glass capsule of side-tab icons, in window coordinates.
+    /// The column itself runs under the Wi-Fi; the icons start lower.
+    private static func sideIconPill(in window: UIWindow, bar: CGRect) -> CGRect? {
+        var best: CGRect?
+        func walk(_ view: UIView) {
+            let frame = view.convert(view.bounds, to: window)
+            let isPill = frame.height > frame.width * 1.4
+                && frame.height > 120
+                && frame.height < bar.height * 0.9
+                && frame.width > 30
+                && frame.minX >= bar.minX - 20
+                && frame.maxX <= bar.maxX + 20
+            if isPill, best == nil || frame.height > (best?.height ?? 0) {
+                best = frame
+            }
+            for subview in view.subviews {
+                walk(subview)
+            }
+        }
+        walk(window)
+        return best
+    }
+
+    private static func sameFrame(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
+        abs(lhs.minX - rhs.minX) < 0.5
+            && abs(lhs.minY - rhs.minY) < 0.5
+            && abs(lhs.width - rhs.width) < 0.5
+            && abs(lhs.height - rhs.height) < 0.5
     }
 
     @available(iOS 26.0, *)
@@ -463,9 +532,16 @@ final class TrailhoundTabBarCompactController: UIViewController {
             chrome.endTransition()
             self?.publishChrome()
         }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(900))
+            guard chrome.isTransitioning else { return }
+            chrome.endTransition()
+            self?.publishChrome()
+        }
     }
 
     private var isPublishingChrome = false
+    private var cachedColumnCover: (column: CGRect, bottom: CGFloat?)?
 
     /// Writes the platter frame the bell and merge stack share with the toolbar.
     /// Skipped while a rotation is in flight so neither copy draws from a stale frame.
@@ -480,12 +556,90 @@ final class TrailhoundTabBarCompactController: UIViewController {
         let direction: LayoutDirection = window.effectiveUserInterfaceLayoutDirection == .rightToLeft
             ? .rightToLeft
             : .leftToRight
+        var status = statusClusterMaxY(in: window, column: frame)
+        if let frame, frame.height > frame.width * 1.4,
+           let cover = columnCoverBottom(in: window, column: frame) {
+            status = max(status ?? 0, cover)
+        }
         chrome.update(
             windowSize: window.bounds.size,
             safeInsets: window.safeAreaInsets,
             tabBarFrame: frame,
-            layoutDirection: direction
+            layoutDirection: direction,
+            statusClusterMaxY: status
         )
+    }
+
+    /// Lowest chrome sitting in the tab column above the icons: the clock or the Wi-Fi
+    /// when they hang below the status-bar frame.
+    private func columnCoverBottom(in window: UIWindow, column: CGRect) -> CGFloat? {
+        if let cached = cachedColumnCover,
+           abs(cached.column.minX - column.minX) < 0.5,
+           abs(cached.column.minY - column.minY) < 0.5,
+           abs(cached.column.width - column.width) < 0.5,
+           abs(cached.column.height - column.height) < 0.5 {
+            return cached.bottom
+        }
+        var bottom: CGFloat?
+        func walk(_ view: UIView) {
+            let frame = view.convert(view.bounds, to: window)
+            let inColumn = frame.midX >= column.minX - 16 && frame.midX <= column.maxX + 16
+            let cover = inColumn
+                && frame.maxY <= column.minY - 4
+                && frame.minY < 180
+                && frame.height >= 12 && frame.height <= 80
+                && frame.width >= 12 && frame.width <= 160
+            if cover {
+                bottom = max(bottom ?? 0, frame.maxY)
+            }
+            for subview in view.subviews where subview.alpha > 0.01 && !subview.isHidden {
+                walk(subview)
+            }
+        }
+        walk(window)
+        cachedColumnCover = (column, bottom)
+        return bottom
+    }
+
+    /// Clock and Wi-Fi bottom, in window coordinates.
+    /// The navigation bar sits beside the column, so its maxY is not the cluster.
+    /// A collapsed status bar still draws the clock and Wi-Fi in the tab column.
+    /// Landscape keeps that stack inside the column inset. Portrait top-aligns
+    /// it, so the Wi-Fi hangs one status row below the inset. A missing bar
+    /// has no stack.
+    private func statusClusterMaxY(in window: UIWindow, column: CGRect?) -> CGFloat? {
+        let safe = window.safeAreaInsets
+        guard let screen = window.windowScene?.screen,
+              let manager = window.windowScene?.statusBarManager
+        else { return safe.top <= 1 ? 0 : nil }
+        let screenFrame = manager.statusBarFrame
+        let inWindow = window.convert(screenFrame, from: screen.coordinateSpace)
+        if screenFrame.height > 1, inWindow.maxY > 24 {
+            return SideColumnChromeResolver.measuredStatusClusterMaxY(
+                statusBarMaxY: inWindow.maxY,
+                safeTop: safe.top
+            )
+        }
+        if safe.top > 1 {
+            return SideColumnChromeResolver.measuredStatusClusterMaxY(
+                statusBarMaxY: safe.top,
+                safeTop: safe.top
+            )
+        }
+        if screenFrame.height > 0, screenFrame.height <= 8,
+           let column, column.height > column.width * 1.4 {
+            let onLeft = column.midX < window.bounds.midX
+            let inset = onLeft ? safe.left : safe.right
+            if inset > 20 {
+                // Landscape keeps the clock and Wi-Fi inside that corner.
+                // Portrait top-aligns the same stack to the inset, so the
+                // Wi-Fi hangs one status row (54pt) below it.
+                let statusRow: CGFloat = 54
+                let hangsBelow = window.bounds.height > window.bounds.width
+                return hangsBelow ? inset + statusRow : inset
+            }
+        }
+        return 0
     }
 
     private func keyWindow() -> UIWindow? {

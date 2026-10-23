@@ -91,7 +91,7 @@ struct TripDetailView: View {
     private var panelVisible: Bool { panelRisen && !isMapExpanded }
 
     private var resolvedViewModel: TripDetailViewModel {
-        if let tripDetailViewModel {
+        if let tripDetailViewModel, tripDetailViewModel.belongs(to: trip) {
             return tripDetailViewModel
         }
         return TripDetailViewModel(
@@ -146,6 +146,14 @@ struct TripDetailView: View {
             noteMapPostureChange()
         }
         .onAppear {
+            beginTripDetailSession()
+        }
+        .onChange(of: trip.id) { oldID, newID in
+            DevLog.shared.log(
+                .tripDetail,
+                "trip changed \(oldID.uuidString.prefix(8)) -> \(newID.uuidString.prefix(8))"
+            )
+            resetTripDetailSession()
             beginTripDetailSession()
         }
         .onStoreSave {
@@ -438,6 +446,7 @@ struct TripDetailView: View {
         .glassNavigationChrome()
         .glassMapTopEdgeHidden()
         .accessibilityIdentifier("tripDetail.screen")
+        .overlay(alignment: .topLeading) { uiTestRouteProbe }
         .navigationTitle(L10n.tripDetailTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -521,10 +530,21 @@ struct TripDetailView: View {
         .animation(.easeInOut(duration: 0.2), value: isRenderingShareCard)
     }
 
+    @ViewBuilder
+    private var uiTestRouteProbe: some View {
+        if UITestSupport.isEnabled {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement()
+                .accessibilityIdentifier("tripDetail.routeIdentity")
+                .accessibilityLabel(resolvedViewModel.routeIdentityLabel(for: trip))
+        }
+    }
+
     private func beginTripDetailSession() {
         DevLog.shared.log(.tripDetail, "appear trip=\(trip.id.uuidString.prefix(8))")
         UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-        if tripDetailViewModel == nil {
+        if tripDetailViewModel?.belongs(to: trip) != true {
             tripDetailViewModel = TripDetailViewModel(
                 trip: trip,
                 places: places,
@@ -534,7 +554,7 @@ struct TripDetailView: View {
         }
 
         if TripDetailRevealSession.hasCompleted(trip.id),
-           tripDetailViewModel?.displayPieces != nil {
+           TripDetailViewModel.reusablePieces(from: tripDetailViewModel, for: trip) != nil {
             mapClarity = 1
             panelRisen = true
             didStartDetailReveal = true
@@ -579,6 +599,14 @@ struct TripDetailView: View {
         if routeRevealProgress >= 0.95 {
             TripDetailRevealSession.markCompleted(trip.id)
         }
+        resetTripDetailSession()
+        // The detail map is the only screen that needs every GPS point; holding them past
+        // dismissal is how browsing a long library grows memory without bound.
+        trip.invalidatePointCaches()
+    }
+
+    /// Drops every task and piece of state tied to the trip currently on screen.
+    private func resetTripDetailSession() {
         detailRevealTask?.cancel()
         detailRevealTask = nil
         routeLoadTask?.cancel()
@@ -593,17 +621,15 @@ struct TripDetailView: View {
         isMapExpanded = false
         isMapExpandTransitioning = false
         showExpandedMapChrome = false
-        // The detail map is the only screen that needs every GPS point; holding them past
-        // dismissal is how browsing a long library grows memory without bound.
-        trip.invalidatePointCaches()
     }
 
     private func loadDisplayPathAndReveal() async {
+        let requestedTripID = trip.id
         let pieces = await TripRoutePathCache.shared.path(
             for: trip,
             container: modelContext.container
         )
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, trip.id == requestedTripID else { return }
 
         tripDetailViewModel = TripDetailViewModel(
             trip: trip,
@@ -1207,7 +1233,7 @@ struct TripDetailView: View {
             trip: trip,
             places: places,
             privacyRadius: settings.privacyRadiusMeters,
-            displayPieces: tripDetailViewModel?.displayPieces
+            displayPieces: TripDetailViewModel.reusablePieces(from: tripDetailViewModel, for: trip)
         )
     }
 

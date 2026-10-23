@@ -33,7 +33,15 @@ struct PairingTabView: View {
                 if layout.showsPairingVehicleFocus {
                     // The split already paints one atmosphere. A second glow on the list
                     // shifts the color on the leading half. Portrait and closed landscape stay one list.
-                    TrailhoundPaneSplit {
+                    TrailhoundPaneSplit(
+                        leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                            layoutClass: layout.layoutClass,
+                            isLandscape: layout.isLandscape,
+                            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                        )
+                            ? TrailhoundLayoutResolver.flatVehicleListFraction
+                            : nil
+                    ) {
                         pairingList(paintsAtmosphere: false)
                     } focus: {
                         vehicleFocus

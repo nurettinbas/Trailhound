@@ -103,6 +103,76 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertEqual(openBook.recordingCardArrangement, .pane)
         XCTAssertTrue(openBook.hidesRecordingCardFromList)
         XCTAssertTrue(openBook.showsPairingVehicleFocus)
+        XCTAssertTrue(openBook.isOpenBookLandscape)
+    }
+
+    func testSlightlyOpenFoldKeepsTheVehicleSeamOnTheHinge() {
+        let slight = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 951, height: 669),
+            idiom: .phone
+        )
+        XCTAssertEqual(slight.layoutClass, .duoOpen)
+        XCTAssertTrue(slight.isLandscape)
+        XCTAssertTrue(slight.showsPairingVehicleFocus)
+        XCTAssertFalse(
+            TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                layoutClass: slight.layoutClass,
+                isLandscape: slight.isLandscape,
+                hingeFullyOpen: false
+            )
+        )
+        XCTAssertTrue(
+            TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                layoutClass: slight.layoutClass,
+                isLandscape: slight.isLandscape,
+                hingeFullyOpen: true
+            )
+        )
+
+        let padLand = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1366, height: 1024),
+            idiom: .pad
+        )
+        XCTAssertFalse(
+            TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                layoutClass: padLand.layoutClass,
+                isLandscape: padLand.isLandscape,
+                hingeFullyOpen: true
+            )
+        )
+    }
+
+    func testFlatBookVehicleListTakesSixtyPercentOfTheContent() {
+        let gutter: CGFloat = 24
+        let content: CGFloat = 900
+        let leading = TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+            contentWidth: content,
+            gutter: gutter,
+            leadingFraction: TrailhoundLayoutResolver.flatVehicleListFraction
+        )
+        let usable = content - gutter
+        XCTAssertEqual(leading, usable * 0.6, accuracy: 0.5)
+        XCTAssertEqual(usable - leading, usable * 0.4, accuracy: 0.5)
+
+        let profile = TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+            contentWidth: content,
+            gutter: gutter,
+            leadingFraction: TrailhoundLayoutResolver.flatVehicleProfileFraction
+        )
+        XCTAssertEqual(profile, usable * 0.4, accuracy: 0.5)
+        XCTAssertEqual(usable - profile, usable * 0.6, accuracy: 0.5)
+
+        let stats = TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+            contentWidth: content,
+            gutter: gutter,
+            leadingFraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+        )
+        XCTAssertEqual(stats, usable * 0.45, accuracy: 0.5)
+        XCTAssertEqual(usable - stats, usable * 0.55, accuracy: 0.5)
     }
 
     func testOpenFoldLandscapeIsHalfMapHalfDetails() {

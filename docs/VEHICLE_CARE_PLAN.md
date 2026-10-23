@@ -61,7 +61,7 @@ An expense can carry one receipt photo. Reading the amount from it is optional a
 
 1. **Vehicle info** — profile draft. Save sits under that card, not in the nav bar, so it is not confused with an expense or reminder save (`PairingVehicleEditorForm` embedded)
 2. **Tracking & reminders** — Add reminder is the same row button as before, at the top of the section, above the due list. Done stays on each row
-3. **Expenses** — Add expense is the same row button, at the top of the section, above the list. On the widest open book only, the profile stays on the leading half and Tracking & reminders plus expenses scroll together on the trailing half. Add reminder and Add expense slide in from the trailing edge and fill that half; back and Save slide it back out. They do not open as a sheet and do not take over the vehicle navigation bar. Other widths keep one list and a sheet
+3. **Expenses** — Add expense is the same row button, at the top of the section, above the list. On the open book, the profile stays on the leading side and Tracking & reminders plus expenses scroll together on the trailing side. When the Duo hinge is fully open, the profile is 40% and that trailing side is 60%. A partially open hinge keeps the seam on the fold. Add reminder and Add expense slide in from the trailing edge and fill that half; back and Save slide it back out. They do not open as a sheet and do not take over the vehicle navigation bar. Other widths keep one list and a sheet
 
 Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs).
 

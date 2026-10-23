@@ -8,8 +8,10 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Bindable private var settings = AppSettings.shared
     @Bindable private var tabSelection = TabSelection.shared
+    @Bindable private var sideColumnChrome = SideColumnChromeState.shared
     @State private var windowSize: CGSize = .zero
     /// Layout the current turn started with. The live size is applied when the turn ends.
     @State private var presentedLayout = TrailhoundLayoutSnapshot.phone
@@ -20,6 +22,10 @@ struct ContentView: View {
     /// The app is built only once the intro’s first frame is on screen, so the system launch screen
     /// does not wait for the whole tab hierarchy.
     @State private var contentMounted = false
+    /// Selected tab is on its root and nothing is presented over the window.
+    @State private var tabRootClear = true
+    /// `mainTabs` origin in window coordinates, so the window-space capsule lands on this view.
+    @State private var tabsOrigin: CGPoint = .zero
 
     var body: some View {
         ZStack {
@@ -61,6 +67,7 @@ struct ContentView: View {
                             publishWindowSize(newSize)
                         }
                 }
+                TrailhoundHingeProbe()
             }
             .allowsHitTesting(false)
         }
@@ -128,6 +135,28 @@ struct ContentView: View {
 
     private var isRecordingSession: Bool {
         tripRecordingService.state.isActiveSession
+    }
+
+    /// Bell, plus the Trips action when that action is in the bar. Nil keeps both in the toolbar.
+    private var duoStatusCapsuleFrame: CGRect? {
+        let count = sideColumnChrome.duoCapsuleButtonCount(
+            tripsTab: tabSelection.selectedTab == .trips,
+            splitPair: tabSelection.wideBookShowsPlusAndMerge,
+            singleTrailing: tabSelection.selectedTab == .trips && tabSelection.wideBookTrailingVisible
+        )
+        return sideColumnChrome.uprightDuoCapsuleFrame(
+            buttonCount: count,
+            layout: layoutSnapshot
+        )
+    }
+
+    private func noteTabsOrigin(_ origin: CGPoint) {
+        guard abs(origin.x - tabsOrigin.x) > 0.5 || abs(origin.y - tabsOrigin.y) > 0.5 else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            tabsOrigin = origin
+        }
     }
 
     private var layoutSnapshot: TrailhoundLayoutSnapshot {
@@ -358,6 +387,29 @@ struct ContentView: View {
         }
         .modifier(TrailhoundTabBarChrome())
         .modifier(TrailhoundRootTint())
+        .background {
+            TabRootClearReader { clear in
+                guard clear != tabRootClear else { return }
+                tabRootClear = clear
+                sideColumnChrome.setRootClear(clear)
+            }
+            .allowsHitTesting(false)
+        }
+        .background {
+            WindowOriginReader { origin in
+                noteTabsOrigin(origin)
+            }
+            .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topLeading) {
+            if let frame = duoStatusCapsuleFrame, tabRootClear {
+                DuoSideStatusCapsule()
+                    .id(colorScheme)
+                    .frame(width: frame.width, height: frame.height, alignment: .top)
+                    .offset(x: frame.minX - tabsOrigin.x, y: frame.minY - tabsOrigin.y)
+                    .transaction { $0.animation = nil }
+            }
+        }
         .task(id: launchIntroSettled) {
             guard launchIntroSettled else { return }
             await authenticateOnLaunch()

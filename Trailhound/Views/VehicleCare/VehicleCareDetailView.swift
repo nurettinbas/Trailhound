@@ -19,7 +19,7 @@ struct VehicleDetailView: View {
     @State private var editingScheduleID: UUID?
     @State private var editingExpenseID: UUID?
     @State private var completingScheduleID: UUID?
-    /// Add and edit forms fill the trailing half on the widest book.
+    /// Add and edit forms fill the trailing pane on the open book.
     @State private var trailingEditor: TrailingCareEditor?
     @State private var hasUnsavedVehicleEdits = false
     @State private var vehicleSaveTrigger = 0
@@ -31,8 +31,9 @@ struct VehicleDetailView: View {
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Widest open book only. The profile stays on the leading half.
-    /// Tracking and expenses scroll together on the trailing half.
+    /// Open book. The profile stays on the leading side.
+    /// Tracking and expenses scroll together on the trailing side.
+    /// A fully open hinge is 40/60. A partially open hinge stays on the fold.
     /// Phone, upright fold, and iPad stay one list.
     private var splitsAfterTracking: Bool {
         guard layout.isLandscape, layout.layoutClass != .pad else { return false }
@@ -150,7 +151,15 @@ struct VehicleDetailView: View {
     @ViewBuilder
     private func detailList(vehicle: VehicleProfile) -> some View {
         if splitsAfterTracking {
-            TrailhoundPaneSplit {
+            TrailhoundPaneSplit(
+                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                    layoutClass: layout.layoutClass,
+                    isLandscape: layout.isLandscape,
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                )
+                    ? TrailhoundLayoutResolver.flatVehicleProfileFraction
+                    : nil
+            ) {
                 careList(showsAtmosphere: false, widePane: true) {
                     profileBlock(vehicle: vehicle)
                 }
@@ -597,7 +606,7 @@ private struct CareTrackingCardRow: View {
 /// Compatibility alias used by older call sites / docs.
 typealias VehicleCareDetailView = VehicleDetailView
 
-/// Add and edit forms that fill the trailing half on the widest book.
+/// Add and edit forms that fill the trailing pane on the open book.
 private enum TrailingCareEditor: Hashable {
     case addExpense
     case editExpense(UUID)
@@ -606,7 +615,7 @@ private enum TrailingCareEditor: Hashable {
     case editSchedule(UUID)
 }
 
-/// Back, title, and Save for a care form that fills the trailing half.
+/// Back, title, and Save for a care form that fills the trailing pane.
 /// A nested navigation stack here blanks the whole vehicle screen.
 struct VehicleCarePaneEditorBar: View {
     let title: String

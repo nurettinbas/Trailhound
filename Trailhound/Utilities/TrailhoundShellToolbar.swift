@@ -12,8 +12,10 @@ struct TrailhoundShellToolbar: ViewModifier {
 
     @Environment(TripRecordingService.self) private var recordingService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.trailhoundLayout) private var layout
     @Query(sort: \VehicleProfile.name) private var vehicles: [VehicleProfile]
     @Bindable private var tabSelection = TabSelection.shared
+    @Bindable private var chrome = SideColumnChromeState.shared
 
     func body(content: Content) -> some View {
         content.toolbar {
@@ -22,12 +24,25 @@ struct TrailhoundShellToolbar: ViewModifier {
                     startCluster
                 }
             }
-            if !pageOwnsTrailing {
+            if !pageOwnsTrailing, sideCapsuleFrame == nil || !chrome.rootClear {
                 ToolbarItem(placement: .topBarTrailing) {
                     statusPair
                 }
             }
         }
+    }
+
+    /// Open Duo when the stack fits under the Wi-Fi. The window overlay draws it.
+    private var sideCapsuleFrame: CGRect? {
+        chrome.uprightDuoCapsuleFrame(buttonCount: capsuleButtonCount, layout: layout)
+    }
+
+    private var capsuleButtonCount: Int {
+        chrome.duoCapsuleButtonCount(
+            tripsTab: tabSelection.selectedTab == .trips,
+            splitPair: tabSelection.wideBookShowsPlusAndMerge,
+            singleTrailing: showsTripsTrailing
+        )
     }
 
     private var showsStart: Bool {
@@ -51,7 +66,7 @@ struct TrailhoundShellToolbar: ViewModifier {
         }
     }
 
-    /// Bell and the Trips merge (or new-travel) button. Their own trailing capsule, horizontal, every orientation.
+    /// Bell and the Trips action. Horizontal on the toolbar. The upright Duo overlay draws the vertical capsule.
     private var statusPair: some View {
         GlassToolbarCluster(clustered: true) {
             TrailhoundNotificationBell()
@@ -96,6 +111,206 @@ struct TrailhoundShellToolbar: ViewModifier {
 extension View {
     func trailhoundShellToolbar(pageOwnsLeading: Bool = false, pageOwnsTrailing: Bool = false) -> some View {
         modifier(TrailhoundShellToolbar(pageOwnsLeading: pageOwnsLeading, pageOwnsTrailing: pageOwnsTrailing))
+    }
+}
+
+/// Bell, then the Trips action when that action is showing. One vertical Liquid Glass capsule.
+struct DuoSideStatusCapsule: View {
+    @Bindable private var tabSelection = TabSelection.shared
+
+    private var showsTripsTrailing: Bool {
+        tabSelection.selectedTab == .trips && tabSelection.wideBookTrailingVisible
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TrailhoundNotificationBell()
+            if tabSelection.wideBookShowsPlusAndMerge {
+                splitAction(systemName: "plus", label: L10n.journalNew, identifier: SideColumnChromeID.newJournal) {
+                    tabSelection.triggerNewJournal()
+                }
+                splitAction(systemName: "arrow.triangle.merge", label: L10n.actionMerge, identifier: SideColumnChromeID.merge, pointSize: 15) {
+                    tabSelection.triggerMerge()
+                }
+            } else if showsTripsTrailing {
+                splitAction(
+                    systemName: tabSelection.wideBookTrailingSymbol,
+                    label: tabSelection.wideBookTrailingLabel,
+                    identifier: tripsTrailingIdentifier,
+                    pointSize: tabSelection.wideBookTrailingSymbol == "plus" ? nil : 15
+                ) {
+                    tabSelection.triggerWideBookTrailing()
+                }
+            }
+        }
+        .buttonStyle(.glassPlainHit)
+        .glassCapsuleChrome()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var tripsTrailingIdentifier: String {
+        tabSelection.wideBookTrailingSymbol == "plus"
+            ? SideColumnChromeID.newJournal
+            : SideColumnChromeID.merge
+    }
+
+    private func splitAction(
+        systemName: String,
+        label: String,
+        identifier: String,
+        pointSize: CGFloat? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            GlassToolbarSymbol(systemName: systemName, pointSize: pointSize)
+        }
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+/// True while the selected tab is on its root and nothing is presented over it.
+struct TabRootClearReader: UIViewRepresentable {
+    var onChange: (Bool) -> Void
+
+    func makeUIView(context: Context) -> Probe {
+        let view = Probe()
+        view.onChange = onChange
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+        return view
+    }
+
+    func updateUIView(_ uiView: Probe, context: Context) {
+        uiView.onChange = onChange
+        uiView.report()
+    }
+
+    final class Probe: UIView {
+        var onChange: ((Bool) -> Void)?
+        private var last: Bool?
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: Probe, _) in
+                view.last = nil
+                view.report()
+            }
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            report()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            report()
+        }
+
+        func report() {
+            guard let clear = Self.isClear(window) else { return }
+            guard clear != last else { return }
+            last = clear
+            let onChange = onChange
+            DispatchQueue.main.async {
+                onChange?(clear)
+            }
+        }
+
+        /// Nil while the probe has no window. A trait change drops the window for a
+        /// frame; latching that as "covered" hid the capsule and the toolbar together.
+        static func isClear(_ window: UIWindow?) -> Bool? {
+            guard let window else { return nil }
+            guard let root = window.rootViewController else { return false }
+            if hasPresented(root) { return false }
+            guard let navigation = navigationController(in: tabBarController(from: root)) else { return true }
+            return navigation.viewControllers.count <= 1
+        }
+
+        private static func hasPresented(_ controller: UIViewController) -> Bool {
+            if controller.presentedViewController != nil { return true }
+            return controller.children.contains { hasPresented($0) }
+        }
+
+        private static func tabBarController(from controller: UIViewController) -> UITabBarController? {
+            if let tab = controller as? UITabBarController { return tab }
+            for child in controller.children {
+                if let found = tabBarController(from: child) { return found }
+            }
+            return nil
+        }
+
+        private static func navigationController(in tab: UITabBarController?) -> UINavigationController? {
+            guard let selected = tab?.selectedViewController else { return nil }
+            return findNavigation(selected)
+        }
+
+        private static func findNavigation(_ controller: UIViewController) -> UINavigationController? {
+            if let navigation = controller as? UINavigationController { return navigation }
+            for child in controller.children {
+                if let found = findNavigation(child) { return found }
+            }
+            return nil
+        }
+    }
+}
+
+/// `mainTabs` origin in window coordinates. The capsule frame uses that same space.
+struct WindowOriginReader: UIViewRepresentable {
+    var onChange: (CGPoint) -> Void
+
+    func makeUIView(context: Context) -> Probe {
+        let view = Probe()
+        view.onChange = onChange
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+        return view
+    }
+
+    func updateUIView(_ uiView: Probe, context: Context) {
+        uiView.onChange = onChange
+        uiView.report()
+    }
+
+    final class Probe: UIView {
+        var onChange: ((CGPoint) -> Void)?
+        private var last: CGPoint?
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: Probe, _) in
+                view.last = nil
+                view.report()
+            }
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            report()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            report()
+        }
+
+        func report() {
+            guard let window else { return }
+            let origin = convert(bounds, to: window).origin
+            if let last, abs(last.x - origin.x) < 0.5, abs(last.y - origin.y) < 0.5 { return }
+            last = origin
+            let onChange = onChange
+            DispatchQueue.main.async {
+                onChange?(origin)
+            }
+        }
     }
 }
 

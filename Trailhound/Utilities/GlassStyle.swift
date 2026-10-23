@@ -687,6 +687,30 @@ struct GlassCircleChromeModifier: ViewModifier {
     }
 }
 
+/// Vertical Liquid Glass capsule. Same rule as `GlassCircleChromeModifier`:
+/// native glass in Light and Dark. The caller sizes the content (44pt hits).
+/// The glass sits behind the glyphs so a badge is not clipped by the capsule.
+struct GlassCapsuleChromeModifier: ViewModifier {
+    var frozen: Bool = false
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        let shape = Capsule()
+        if reduceTransparency || frozen {
+            content.background {
+                GlassToolbarControlBackground(shape: shape, frozen: true)
+            }
+        } else if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            content.background {
+                GlassToolbarControlBackground(shape: shape, frozen: false)
+            }
+        }
+    }
+}
+
 struct GlassFieldModifier: ViewModifier {
     var cornerRadius: CGFloat = 8
 
@@ -1424,6 +1448,11 @@ extension View {
         frozen: Bool = false
     ) -> some View {
         modifier(GlassCircleChromeModifier(side: side, frozen: frozen))
+    }
+
+    /// One vertical Liquid Glass capsule for the upright-Duo bell and Trips action.
+    func glassCapsuleChrome(frozen: Bool = false) -> some View {
+        modifier(GlassCapsuleChromeModifier(frozen: frozen))
     }
 
     /// Floating tab bar platter — Light Capsule `.clear` glass, Dark thin Material.

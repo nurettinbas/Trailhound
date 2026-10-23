@@ -206,6 +206,37 @@ struct TripDetailViewModel {
         self.routeFingerprint = TripRoutePathFingerprint.make(from: trip)
     }
 
+    /// SwiftUI can keep one `TripDetailView` alive while its `trip` changes (a replaced
+    /// navigation path, a new pane selection). A model built for another trip must never
+    /// draw, measure, or lend its route to the current one.
+    func belongs(to trip: Trip) -> Bool {
+        self.trip.id == trip.id
+    }
+
+    /// Route pieces safe to carry into a rebuilt model for `trip`; `nil` when `existing`
+    /// was built for a different trip.
+    static func reusablePieces(from existing: TripDetailViewModel?, for trip: Trip) -> [[RouteSample]]? {
+        guard let existing, existing.belongs(to: trip) else { return nil }
+        return existing.displayPieces
+    }
+
+    /// UI-test readout: which trip the drawn route came from and whether it starts at the
+    /// trip's own start pin (`loading`, `match`, `mismatch`).
+    func routeIdentityLabel(for trip: Trip) -> String {
+        let state: String
+        if let first = displayPieces?.first?.first?.coordinate {
+            if let lat = trip.startLatitude, let lon = trip.startLongitude {
+                let close = abs(first.latitude - lat) < 0.001 && abs(first.longitude - lon) < 0.001
+                state = belongs(to: trip) && close ? "match" : "mismatch"
+            } else {
+                state = belongs(to: trip) ? "match" : "mismatch"
+            }
+        } else {
+            state = "loading"
+        }
+        return "trip=\(trip.id.uuidString) model=\(self.trip.id.uuidString) route=\(state)"
+    }
+
     var durationText: String {
         guard let duration = trip.duration else { return "—" }
         return DateFormatters.formatDuration(duration)

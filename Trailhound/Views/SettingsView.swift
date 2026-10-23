@@ -74,7 +74,15 @@ struct SettingsView: View {
         case .form:
             settingsForm
         case .split:
-            TrailhoundPaneSplit {
+            TrailhoundPaneSplit(
+                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                    layoutClass: layout.layoutClass,
+                    isLandscape: layout.isLandscape,
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                )
+                    ? TrailhoundLayoutResolver.flatStatsLeadingFraction
+                    : nil
+            ) {
                 settingsIndex
             } focus: {
                 settingsForm
@@ -102,8 +110,9 @@ struct SettingsView: View {
     }
 
     private var settingsIndex: some View {
-        List {
-            ForEach(SettingsPane.allCases) { pane in
+        let panes = SettingsPane.allCases
+        return List {
+            ForEach(Array(panes.enumerated()), id: \.element.id) { index, pane in
                 Button {
                     settingsPane = pane
                 } label: {
@@ -118,9 +127,11 @@ struct SettingsView: View {
                     }
                 }
                 .buttonStyle(.glassPlainHit)
+                .glassRow(position: GlassRowPosition.index(index, in: panes.count))
             }
         }
-        .glassListChrome()
+        .listStyle(.insetGrouped)
+        .glassListChrome(showsAtmosphere: false)
     }
 
     private var settingsForm: some View {
