@@ -10,6 +10,7 @@ struct NotificationsListView: View {
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
     @Query private var vehicles: [VehicleProfile]
     @Query private var schedules: [VehicleSchedule]
+    @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Bindable private var store = AppNotificationStore.shared
     @Bindable private var tabSelection = TabSelection.shared
     @Environment(\.trailhoundLayout) private var layout
@@ -53,27 +54,42 @@ struct NotificationsListView: View {
                     selectedNotificationID = store.items.first?.id
                 }
             }
+            .onChange(of: store.items.map(\.id)) { _, ids in
+                guard let selectedNotificationID, !ids.contains(selectedNotificationID) else { return }
+                self.selectedNotificationID = ids.first
+            }
     }
 
     @ViewBuilder
     private var inboxRoot: some View {
         switch layout.layoutClass {
         case .phone:
-            inboxList
+            inboxList()
         case .duoOpen:
-            TrailhoundPaneSplit {
-                inboxList
-            } focus: {
-                notificationPreview
-            }
+            notificationSplit
+        case .phoneLandscape where layout.isPhoneBook:
+            notificationSplit
         case .phoneLandscape, .pad:
             HStack(spacing: GlassTokens.hingeGutter) {
                 notificationRail
                     .frame(width: layout.layoutClass == .pad && !layout.isLandscape ? 280 : nil)
                     .frame(maxWidth: layout.showsHeroRail ? nil : 320)
-                inboxList
+                inboxList()
             }
         }
+    }
+
+    private var notificationSplit: some View {
+        TrailhoundPaneSplit {
+            inboxList(paintsAtmosphere: false)
+        } focus: {
+            notificationPreview
+        }
+    }
+
+    /// Open book and a wide landscape phone. A row selects the notice; Open leaves the inbox.
+    private var usesSplitInbox: Bool {
+        layout.layoutClass == .duoOpen || layout.isPhoneBook
     }
 
     private var notificationRail: some View {
@@ -97,39 +113,193 @@ struct NotificationsListView: View {
         .trailhoundPaneCard()
     }
 
+    private var selectedNotification: StoredAppNotification? {
+        store.items.first(where: { $0.id == selectedNotificationID }) ?? store.items.first
+    }
+
     private var notificationPreview: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let item = store.items.first(where: { $0.id == selectedNotificationID }) ?? store.items.first {
-                Text(item.title)
-                    .font(.title3.weight(.semibold))
-                    .glassPrimaryInk()
-                Text(item.body)
-                    .font(.body)
-                    .glassSecondaryInk()
-                if store.route(for: item).opensDestination
-                    || (item.tripID != nil && Self.linksToTrip(store.kind(for: item))) {
-                    Button(L10n.notificationsOpen) {
-                        open(item)
-                    }
-                    .trailhoundProminentButton()
-                }
+        ScrollView {
+            if let item = selectedNotification {
+                previewCard(item)
+                    .padding(16)
             } else {
                 GlassEmptyState(
                     title: L10n.notificationsEmptyTitle,
                     systemImage: "bell.slash",
                     message: L10n.notificationsEmptyMessage
                 )
+                .frame(maxWidth: .infinity, minHeight: 280)
             }
-            Spacer(minLength: 0)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func previewCard(_ item: StoredAppNotification) -> some View {
+        let kind = store.kind(for: item)
+        let trip = resolvedTrip(for: item)
+        let showsOpen = store.route(for: item).opensDestination
+            || (item.tripID != nil && Self.linksToTrip(kind))
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: kind.systemImage)
+                    .font(.title2)
+                    .foregroundStyle(tint(for: kind, body: item.body))
+                    .frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title)
+                        .font(.title3.weight(.semibold))
+                        .glassPrimaryInk()
+                    Text(previewWhen(item, trip: trip))
+                        .font(.subheadline)
+                        .glassSecondaryInk()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let trip {
+                Text(TripListViewModel.routeSummary(for: trip))
+                    .font(.body.weight(.medium))
+                    .glassPrimaryInk()
+                previewMetrics(for: trip)
+                previewFacts(for: trip)
+            } else {
+                Text(item.body)
+                    .font(.body)
+                    .glassSecondaryInk()
+            }
+
+            if showsOpen {
+                Button(L10n.notificationsOpen) {
+                    open(item)
+                }
+                .trailhoundProminentButton()
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
-        .padding(16)
     }
 
     @ViewBuilder
-    private var inboxList: some View {
+    private func previewMetrics(for trip: Trip) -> some View {
+        let distance = trip.distanceMeters > 0 ? TripListViewModel.distanceText(for: trip) : nil
+        let duration = TripListViewModel.durationText(for: trip)
+        let durationText = duration == "—" ? nil : duration
+        let speed = TripListViewModel.averageSpeedText(for: trip)
+        if distance != nil || durationText != nil || speed != nil {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    metricChipRow(distance: distance, duration: durationText, speed: speed)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    metricChipRow(distance: distance, duration: durationText, speed: speed)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func metricChipRow(distance: String?, duration: String?, speed: String?) -> some View {
+        if let distance {
+            MetricChip(value: distance, systemImage: "road.lanes")
+        }
+        if let duration {
+            MetricChip(value: duration, systemImage: "clock")
+        }
+        if let speed {
+            MetricChip(value: speed, systemImage: "speedometer")
+        }
+    }
+
+    private struct MetricChip: View {
+        var value: String
+        var systemImage: String
+
+        var body: some View {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.caption)
+                    .glassSecondaryInk()
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .glassPrimaryInk()
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .glassNestedChoice(isSelected: false)
+            .fixedSize(horizontal: true, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private func previewFacts(for trip: Trip) -> some View {
+        let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
+        let category = categoryName(for: trip)
+        let maxSpeed = TripListViewModel.maxSpeedLabel(for: trip)
+        let fuel = TripListViewModel.fuelText(for: trip)
+        if vehicle != nil || category != nil || maxSpeed != nil || fuel != nil || trip.note?.isEmpty == false {
+            VStack(alignment: .leading, spacing: 6) {
+                if let vehicle {
+                    previewFact(systemImage: "car", text: vehicle.name)
+                }
+                if let category {
+                    previewFact(systemImage: "tag", text: category)
+                }
+                if let maxSpeed {
+                    previewFact(systemImage: "speedometer", text: maxSpeed)
+                }
+                if let fuel {
+                    previewFact(systemImage: "fuelpump", text: fuel)
+                }
+                if let note = trip.note, !note.isEmpty {
+                    Text(note)
+                        .font(.subheadline)
+                        .glassSecondaryInk()
+                }
+            }
+        }
+    }
+
+    private func previewFact(systemImage: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption)
+                .glassSecondaryInk()
+                .frame(width: 16)
+            Text(text)
+                .font(.subheadline)
+                .glassPrimaryInk()
+        }
+    }
+
+    private func previewWhen(_ item: StoredAppNotification, trip: Trip?) -> String {
+        let relative = relativeDate(item.createdAt)
+        if let trip {
+            return "\(relative) · \(TripListViewModel.dateText(for: trip))"
+        }
+        let clock = DateFormatters.tripDateFormatter().string(from: item.createdAt)
+        return "\(relative) · \(clock)"
+    }
+
+    private func categoryName(for trip: Trip) -> String? {
+        if let match = categories.first(where: { $0.id.uuidString == trip.categoryID }) {
+            return match.name
+        }
+        if trip.categoryID == BuiltInCategory.businessID.uuidString {
+            return L10n.categoryBusiness
+        }
+        if trip.categoryID == BuiltInCategory.personalID.uuidString {
+            return L10n.categoryPersonal
+        }
+        return nil
+    }
+
+    @ViewBuilder
+    private func inboxList(paintsAtmosphere: Bool = true) -> some View {
         Group {
             if store.items.isEmpty && !recordingService.state.isActiveSession {
                 GlassEmptyState(
@@ -138,7 +308,7 @@ struct NotificationsListView: View {
                     message: L10n.notificationsEmptyMessage
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassListChrome()
+                .glassListChrome(showsAtmosphere: paintsAtmosphere)
             } else {
                 List {
                     if recordingService.state.isActiveSession {
@@ -151,17 +321,18 @@ struct NotificationsListView: View {
 
                     ForEach(store.items) { item in
                         notificationRow(item)
-                            .glassCard(contentInset: 8)
+                            .glassCard(contentInset: 12)
                             // Unread tint on the full card — never as an inner content background
                             // (that created a smaller second layer inside the glass).
                             .overlay {
-                                if !item.isRead {
+                                let selected = usesSplitInbox && item.id == selectedNotificationID
+                                if !item.isRead || selected {
                                     RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous)
-                                        .fill(shellPalette.tintColor(for: colorScheme).opacity(0.10))
+                                        .fill(shellPalette.tintColor(for: colorScheme).opacity(selected ? 0.16 : 0.10))
                                         .allowsHitTesting(false)
                                 }
                             }
-                            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .confirmingDeleteSwipe {
@@ -171,7 +342,7 @@ struct NotificationsListView: View {
                     }
                 }
                 .listStyle(.plain)
-                .glassListChrome()
+                .glassListChrome(showsAtmosphere: paintsAtmosphere)
             }
         }
     }
@@ -221,6 +392,13 @@ struct NotificationsListView: View {
     private func leaveInbox(_ action: () -> Void) {
         tabSelection.closeNotifications()
         action()
+    }
+
+    private func select(_ item: StoredAppNotification) {
+        selectedNotificationID = item.id
+        if !item.isRead {
+            store.markRead(item.id)
+        }
     }
 
     private func open(_ item: StoredAppNotification) {
@@ -284,17 +462,28 @@ struct NotificationsListView: View {
         let opensTrip = Self.linksToTrip(kind) && item.tripID != nil && !showsOrphanActions
         let route = store.route(for: item)
         let opensRoute = !opensTrip && route.opensDestination && !showsOrphanActions
+        let choosesPreview = usesSplitInbox
 
         VStack(alignment: .leading, spacing: 6) {
             if opensTrip || opensRoute {
-                rowContent(item: item, kind: kind, showsChevron: true)
-                    .contentShape(Rectangle())
-                    .onTapGesture { open(item) }
-            } else {
-                rowContent(item: item, kind: kind, showsChevron: false)
+                rowContent(item: item, kind: kind, trip: trip, showsChevron: !choosesPreview)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        store.markRead(item.id)
+                        if choosesPreview {
+                            select(item)
+                        } else {
+                            open(item)
+                        }
+                    }
+            } else {
+                rowContent(item: item, kind: kind, trip: trip, showsChevron: false)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if choosesPreview {
+                            select(item)
+                        } else {
+                            store.markRead(item.id)
+                        }
                     }
             }
 
@@ -333,38 +522,85 @@ struct NotificationsListView: View {
     private func rowContent(
         item: StoredAppNotification,
         kind: AppNotificationKind,
+        trip: Trip?,
         showsChevron: Bool
     ) -> some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: kind.systemImage)
                 .font(.body)
                 .foregroundStyle(tint(for: kind, body: item.body))
-                .frame(width: 24)
+                .frame(width: 22, height: 20)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.subheadline.weight(item.isRead ? .regular : .semibold))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(item.title)
+                        .font(.subheadline.weight(item.isRead ? .medium : .semibold))
+                        .glassPrimaryInk()
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(relativeDate(item.createdAt))
+                        .font(.caption2)
+                        .glassSecondaryInk()
+                        .layoutPriority(1)
+                }
 
-                Text(item.body)
+                Text(rowSubtitle(item: item, kind: kind, trip: trip))
                     .font(.caption)
                     .glassSecondaryInk()
                     .lineLimit(2)
-                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let meta = rowMeta(kind: kind, trip: trip) {
+                    Text(meta)
+                        .font(.caption2.weight(.medium))
+                        .glassSecondaryInk()
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(relativeDate(item.createdAt))
-                .font(.caption2)
-                .glassSecondaryInk()
-                // Vertically centered against the full row (title + body), not the title line.
-                .accessibilityLabel(relativeDate(item.createdAt))
 
             if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
                     .glassDisclosureInk()
+                    .frame(height: 20)
             }
         }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Place names when the trip is still saved. The stored body keeps the coordinates from the moment it was written.
+    private func rowSubtitle(item: StoredAppNotification, kind: AppNotificationKind, trip: Trip?) -> String {
+        guard let trip else { return item.body }
+        switch kind {
+        case .tripStarted:
+            return TripListViewModel.displayName(
+                placeName: trip.startPlaceName,
+                address: trip.startAddress,
+                coordinate: trip.startCoordinate,
+                places: [],
+                privacyRadius: AppSettings.shared.privacyRadiusMeters
+            )
+        case .tripEnded, .tripsMerged:
+            return TripListViewModel.routeSummary(
+                for: trip,
+                privacyRadius: AppSettings.shared.privacyRadiusMeters
+            )
+        default:
+            return item.body
+        }
+    }
+
+    private func rowMeta(kind: AppNotificationKind, trip: Trip?) -> String? {
+        guard let trip, kind == .tripEnded || kind == .tripsMerged else { return nil }
+        let distance = TripListViewModel.distanceText(for: trip)
+        let duration = TripListViewModel.durationText(for: trip)
+        guard trip.distanceMeters > 0 || duration != "—" else { return nil }
+        if duration == "—" { return distance }
+        if trip.distanceMeters <= 0 { return duration }
+        return "\(distance) · \(duration)"
     }
 
     private func tint(for kind: AppNotificationKind, body: String = "") -> Color {

@@ -46,6 +46,7 @@ struct SettingsView: View {
     @State private var showAppLockUnavailableAlert = false
     @State private var showAddPlacePicker = false
     @State private var showReportProblem = false
+    @State private var showTipJar = false
     @State private var showMailComposer = false
     @State private var showReportShareSheet = false
     @State private var showReportShareFailed = false
@@ -56,6 +57,10 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.trailhoundLayout) private var layout
     @State private var settingsPane: SettingsPane = .recording
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
 
     /// One price row per fuel type on the saved vehicles. Empty garage keeps petrol, the new-car default.
     private var pricedFuelTypes: [VehicleFuelType] {
@@ -75,13 +80,13 @@ struct SettingsView: View {
             settingsForm
         case .split:
             TrailhoundPaneSplit(
-                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                    isPhoneBook: layout.isPhoneBook,
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
-                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                    fraction: TrailhoundLayoutResolver.flatSettingsLeadingFraction
                 )
-                    ? TrailhoundLayoutResolver.flatStatsLeadingFraction
-                    : nil
             ) {
                 settingsIndex
             } focus: {
@@ -118,20 +123,24 @@ struct SettingsView: View {
                 } label: {
                     HStack {
                         Text(pane.title)
+                            .font(.subheadline)
+                            .lineLimit(1)
                             .glassPrimaryInk()
                         Spacer()
                         if settingsPane == pane {
                             Image(systemName: "checkmark")
+                                .font(.subheadline.weight(.semibold))
                                 .glassAccentForeground()
                         }
                     }
                 }
                 .buttonStyle(.glassPlainHit)
-                .glassRow(position: GlassRowPosition.index(index, in: panes.count))
+                .glassCompactRow(position: GlassRowPosition.index(index, in: panes.count))
             }
         }
         .listStyle(.insetGrouped)
         .glassListChrome(showsAtmosphere: false)
+        .glassCompactIndexList()
     }
 
     private var settingsForm: some View {
@@ -419,7 +428,7 @@ struct SettingsView: View {
 
             Section(L10n.settingsAboutSection) {
                 EmptyView().id(SettingsPane.about)
-                LabeledContent(L10n.settingsVersion, value: "1.1.0")
+                LabeledContent(L10n.settingsVersion, value: appVersion)
                     .glassRow(position: .first)
                 Button(L10n.settingsPlayLaunchIntro) {
                     LaunchIntroSession.shared.replay()
@@ -431,12 +440,31 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.reportProblem")
                 .glassRow(position: .middle)
+                Button {
+                    showTipJar = true
+                } label: {
+                    GlassFeaturedRowLabel(
+                        systemImage: "heart.fill",
+                        title: L10n.settingsTipJar,
+                        subtitle: L10n.settingsTipJarSubtitle
+                    )
+                }
+                .buttonStyle(.glassPlainHit)
+                .accessibilityIdentifier("settings.tipJar")
+                .glassRow(position: .middle)
                 Link(L10n.settingsPrivacyPolicy, destination: SupportMail.privacyPolicyURL)
                     .accessibilityIdentifier("settings.privacyPolicy")
                     .glassRow(position: .middle)
                 Text(L10n.settingsAboutPrivacy)
                     .font(.footnote)
                     .glassSecondaryInk()
+                    .glassRow(position: .middle)
+                Text(L10n.settingsDevelopedBy(DeveloperInfo.name))
+                    .font(.footnote)
+                    .glassSecondaryInk()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("settings.developedBy")
                     .glassRow(position: .last)
             }
         }
@@ -449,7 +477,9 @@ struct SettingsView: View {
         .navigationDestination(isPresented: $showAddPlacePicker) {
             PlacePickerView()
         }
-        .glassListChrome()
+        // The split already paints the shell. A second atmosphere clipped to this
+        // pane is a different-colored plate behind the form.
+        .glassListChrome(showsAtmosphere: !layout.isPhoneBook)
         .dismissKeyboardOnTap(focus: $focusedField)
         .dismissKeyboardOnScroll()
         .fieldKeyboardAccessory(
@@ -464,6 +494,9 @@ struct SettingsView: View {
             runCleanupIfNeeded()
             refreshNotificationAuthorization()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }
+        }
+        .sheet(isPresented: $showTipJar) {
+            TipJarView()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -573,7 +606,7 @@ struct SettingsView: View {
     }
 
     private var diagnosticMailSubject: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let os = UIDevice.current.systemVersion
         return "Trailhound \(version) · iOS \(os)"
     }

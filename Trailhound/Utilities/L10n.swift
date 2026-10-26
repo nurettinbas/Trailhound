@@ -362,6 +362,15 @@ enum L10n {
     static var settingsReportProblemFailedTitle: String { string("settings.report_problem.failed.title") }
     static var settingsReportProblemFailedMessage: String { string("settings.report_problem.failed.message") }
     static var settingsPrivacyPolicy: String { string("settings.privacy_policy") }
+    static var settingsTipJar: String { string("settings.tip_jar") }
+    static var settingsTipJarSubtitle: String { string("settings.tip_jar.subtitle") }
+    static var settingsTipJarMessage: String { string("settings.tip_jar.message") }
+    static var settingsTipJarUnavailable: String { string("settings.tip_jar.unavailable") }
+    static var settingsTipJarFailed: String { string("settings.tip_jar.failed") }
+
+    static func settingsDevelopedBy(_ name: String) -> String {
+        String(format: string("settings.developed_by"), name)
+    }
 
     static func settingsReportProblemShareHint(_ address: String) -> String {
         String(format: string("settings.report_problem.share_hint"), address)
@@ -662,6 +671,7 @@ enum L10n {
     static var infoTitle: String { string("alert.info.title") }
 
     static var toastSaved: String { string("toast.saved") }
+    static var toastTipThanks: String { string("toast.tip_thanks") }
     static var toastDeleted: String { string("toast.deleted") }
     static var toastPlaceSaved: String { string("toast.place.saved") }
     static var toastVehicleSaved: String { string("toast.vehicle.saved") }

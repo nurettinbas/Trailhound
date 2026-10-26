@@ -1,3 +1,4 @@
+import SnapshotTesting
 import SwiftUI
 import UIKit
 import XCTest
@@ -69,20 +70,171 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertFalse(book.pinsRecordingCardToFold)
         XCTAssertEqual(book.recordingCardArrangement, .list)
         XCTAssertFalse(book.hidesRecordingCardFromList)
+        XCTAssertFalse(book.isPhoneBook)
+        XCTAssertFalse(book.usesBookPanes)
+        XCTAssertFalse(book.showsPairingVehicleFocus)
+        XCTAssertEqual(book.settingsChrome, .split)
+    }
 
-        let phoneLand = TrailhoundLayoutResolver.snapshot(
+    func testWidePhoneLandscapeUsesTheOpenBook() {
+        let phone = TrailhoundLayoutResolver.snapshot(
             horizontal: .compact,
             vertical: .compact,
-            size: CGSize(width: 844, height: 390),
+            size: CGSize(width: 874, height: 402),
             idiom: .phone
         )
-        XCTAssertFalse(phoneLand.splitsIdleLibrary)
-        XCTAssertFalse(phoneLand.splitsRecording)
-        XCTAssertFalse(phoneLand.recordingCardLeads)
-        XCTAssertEqual(phoneLand.recordingCardArrangement, .list)
-        XCTAssertFalse(phoneLand.hidesRecordingCardFromList)
-        XCTAssertFalse(book.showsPairingVehicleFocus)
-        XCTAssertFalse(phoneLand.showsPairingVehicleFocus)
+        XCTAssertEqual(phone.layoutClass, .phoneLandscape)
+        XCTAssertTrue(phone.isPhoneBook)
+        XCTAssertTrue(phone.usesBookPanes)
+        XCTAssertFalse(phone.isOpenBookLandscape)
+        XCTAssertTrue(phone.splitsIdleLibrary)
+        XCTAssertTrue(phone.splitsRecording)
+        XCTAssertTrue(phone.recordingCardLeads)
+        XCTAssertEqual(phone.recordingCardArrangement, .pane)
+        XCTAssertTrue(phone.hidesRecordingCardFromList)
+        XCTAssertEqual(phone.tripDetailStyle, .split)
+        XCTAssertEqual(phone.mapChrome, .splitPane)
+        XCTAssertEqual(phone.settingsChrome, .split)
+        XCTAssertTrue(phone.showsPairingVehicleFocus)
+        XCTAssertEqual(phone.badgeColumnCount, 4)
+        XCTAssertFalse(
+            TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                layoutClass: phone.layoutClass,
+                isLandscape: phone.isLandscape,
+                hingeFullyOpen: true
+            )
+        )
+
+        let plus = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .compact,
+            size: CGSize(width: 956, height: 440),
+            idiom: .phone
+        )
+        XCTAssertTrue(plus.isPhoneBook)
+        XCTAssertTrue(plus.usesBookPanes)
+    }
+
+    func testNarrowPhoneLandscapeStaysOneColumn() {
+        let cover = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .compact,
+            size: CGSize(width: 678, height: 466),
+            idiom: .phone
+        )
+        XCTAssertEqual(cover.layoutClass, .phoneLandscape)
+        XCTAssertFalse(cover.isPhoneBook)
+        XCTAssertFalse(cover.usesBookPanes)
+        XCTAssertFalse(cover.splitsIdleLibrary)
+        XCTAssertFalse(cover.splitsRecording)
+        XCTAssertFalse(cover.recordingCardLeads)
+        XCTAssertEqual(cover.recordingCardArrangement, .list)
+        XCTAssertEqual(cover.tripDetailStyle, .floatingPanel)
+        XCTAssertEqual(cover.settingsChrome, .form)
+        XCTAssertFalse(cover.showsPairingVehicleFocus)
+
+        let se = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .compact,
+            size: CGSize(width: 667, height: 375),
+            idiom: .phone
+        )
+        XCTAssertFalse(se.isPhoneBook)
+        XCTAssertFalse(se.splitsIdleLibrary)
+        XCTAssertFalse(se.splitsRecording)
+        XCTAssertEqual(se.tripDetailStyle, .floatingPanel)
+        XCTAssertEqual(se.settingsChrome, .form)
+        XCTAssertFalse(se.showsPairingVehicleFocus)
+    }
+
+    func testPhoneBookSeamIgnoresTheIslandInset() {
+        let gutter: CGFloat = 24
+        let content: CGFloat = 800
+        let leading = TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+            contentWidth: content,
+            gutter: gutter,
+            leadingFraction: 0.5
+        )
+        let usable = content - gutter
+        XCTAssertEqual(leading, usable / 2, accuracy: 0.5)
+
+        let bounds = CGRect(x: 0, y: 0, width: content, height: 390)
+        let inset = CGRect(x: 59, y: 0, width: content, height: 390)
+        let window = CGSize(width: content + 59, height: 390)
+        let even = LibraryAxisPlacement.frames(
+            in: bounds,
+            gutter: gutter,
+            frameSplit: 1,
+            listOnVisualLeft: true,
+            contentInWindow: inset,
+            windowSize: window,
+            evenSplit: true
+        )
+        XCTAssertEqual(even.trips.width, usable / 2, accuracy: 0.5)
+        XCTAssertEqual(even.travels.width, usable / 2, accuracy: 0.5)
+
+        let hinged = LibraryAxisPlacement.frames(
+            in: bounds,
+            gutter: gutter,
+            frameSplit: 1,
+            listOnVisualLeft: true,
+            contentInWindow: inset,
+            windowSize: window,
+            evenSplit: false
+        )
+        XCTAssertNotEqual(hinged.trips.width, even.trips.width, accuracy: 1)
+    }
+
+    func testPhoneBookUsesTheFlatBookColumnShares() {
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: true,
+                layoutClass: .phoneLandscape,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+            ),
+            0.45
+        )
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: true,
+                layoutClass: .phoneLandscape,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatVehicleListFraction
+            ),
+            0.6
+        )
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: true,
+                layoutClass: .phoneLandscape,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatVehicleProfileFraction
+            ),
+            0.4
+        )
+        XCTAssertNil(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .duoOpen,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+            )
+        )
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .duoOpen,
+                isLandscape: true,
+                hingeFullyOpen: true,
+                fraction: TrailhoundLayoutResolver.flatVehicleListFraction
+            ),
+            0.6
+        )
     }
 
     func testOpenBookLandscapePutsTheRecordingCardOnTheLeadingHalf() {
@@ -104,6 +256,21 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertTrue(openBook.hidesRecordingCardFromList)
         XCTAssertTrue(openBook.showsPairingVehicleFocus)
         XCTAssertTrue(openBook.isOpenBookLandscape)
+        XCTAssertFalse(openBook.isPhoneBook)
+        XCTAssertTrue(openBook.usesBookPanes)
+        XCTAssertEqual(openBook.settingsChrome, .split)
+    }
+
+    func testUprightOpenFoldKeepsSettingsInOneColumn() {
+        let upright = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 680, height: 1100),
+            idiom: .phone
+        )
+        XCTAssertEqual(upright.layoutClass, .duoOpen)
+        XCTAssertFalse(upright.isLandscape)
+        XCTAssertEqual(upright.settingsChrome, .form)
     }
 
     func testSlightlyOpenFoldKeepsTheVehicleSeamOnTheHinge() {
@@ -115,6 +282,8 @@ final class TrailhoundLayoutTests: XCTestCase {
         )
         XCTAssertEqual(slight.layoutClass, .duoOpen)
         XCTAssertTrue(slight.isLandscape)
+        XCTAssertFalse(slight.isPhoneBook)
+        XCTAssertTrue(slight.usesBookPanes)
         XCTAssertTrue(slight.showsPairingVehicleFocus)
         XCTAssertFalse(
             TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
@@ -184,6 +353,8 @@ final class TrailhoundLayoutTests: XCTestCase {
         )
         XCTAssertEqual(book.layoutClass, .duoOpen)
         XCTAssertTrue(book.isLandscape)
+        XCTAssertFalse(book.isPhoneBook)
+        XCTAssertTrue(book.usesBookPanes)
         XCTAssertEqual(book.tripDetailStyle, .split)
         XCTAssertEqual(book.duoSheetLeadingInset(matchingTrailingSafeArea: 80), 0)
 
@@ -491,6 +662,12 @@ final class TrailhoundLayoutTests: XCTestCase {
             1,
             accuracy: 0.001
         )
+        XCTAssertEqual(
+            LibraryAxisPlacement.splitAmount(width: 874, height: 402, requiresBookSpan: false),
+            1,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(LibraryAxisPlacement.splitAmount(width: 874, height: 402), 0, accuracy: 0.001)
     }
 
     func testLibraryAxisFadesTheTrailingLibraryBeforeTheColumnWidens() {
@@ -544,4 +721,155 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertTrue(LibraryAxisPlacement.pinsTripsLibrary(1))
     }
 
+}
+
+@MainActor
+final class RecordingListCardWidthTests: XCTestCase {
+    func testInnerDuoFoldInsetIsTheListMargin() {
+        XCTAssertEqual(GlassTokens.recordingFoldExtraInset(contentWidth: 669), 20)
+        XCTAssertEqual(GlassTokens.recordingFoldExtraInset(contentWidth: 402), GlassTokens.panelHorizontalInset)
+    }
+
+    func testInnerDuoFoldCardMeetsTheTripPlate() {
+        let extra = GlassTokens.recordingFoldExtraInset(contentWidth: 669)
+        let laid = measureFold(extraInset: extra, width: 669, sizeClass: .regular)
+        XCTAssertEqual(laid.card.minX, laid.plate.minX, accuracy: 0.5, "card \(laid.card) plate \(laid.plate)")
+        XCTAssertEqual(laid.card.maxX, laid.plate.maxX, accuracy: 0.5, "card \(laid.card) plate \(laid.plate)")
+        let plain = measureFold(extraInset: 0, width: 669, sizeClass: .regular)
+        XCTAssertEqual(laid.card.minX, plain.card.minX + extra, accuracy: 0.5)
+        XCTAssertEqual(laid.card.maxX, plain.card.maxX - extra, accuracy: 0.5)
+        recordSnapshot(of: laid.controller, named: "duo-portrait-fold", size: laid.canvas)
+    }
+
+    func testPhoneWidthFoldUsesOnePanelInset() {
+        let extra = GlassTokens.recordingFoldExtraInset(contentWidth: 402)
+        let laid = measureFold(extraInset: extra, width: 402, sizeClass: .compact)
+        XCTAssertEqual(laid.card.minX, laid.plate.minX, accuracy: 0.5, "card \(laid.card) plate \(laid.plate)")
+        XCTAssertEqual(laid.card.maxX, laid.plate.maxX, accuracy: 0.5, "card \(laid.card) plate \(laid.plate)")
+    }
+
+    private func recordSnapshot(of controller: UIViewController, named: String, size: CGSize) {
+        withSnapshotTesting(record: .missing) {
+            assertSnapshot(
+                of: controller,
+                as: .image(precision: 0.99, perceptualPrecision: 0.98, size: size),
+                named: named
+            )
+        }
+    }
+
+    private func measureFold(
+        extraInset: CGFloat,
+        width: CGFloat,
+        sizeClass: UserInterfaceSizeClass
+    ) -> LaidOutRecordingList {
+        let store = RecordingListFrameStore()
+        let canvas = CGSize(width: width, height: 520)
+        let root = FoldRecordingWidthHarness(extraInset: extraInset, store: store)
+            .environment(\.horizontalSizeClass, sizeClass)
+            .frame(width: canvas.width, height: canvas.height)
+        let controller = UIHostingController(rootView: root)
+        controller.view.bounds = CGRect(origin: .zero, size: canvas)
+        controller.view.backgroundColor = UIColor(red: 0.31, green: 0.61, blue: 0.86, alpha: 1)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: canvas))
+        window.rootViewController = controller
+        window.isHidden = false
+        controller.view.layoutIfNeeded()
+        let ready = expectation(description: "fold layout \(width) \(sizeClass)")
+        DispatchQueue.main.async {
+            controller.view.layoutIfNeeded()
+            ready.fulfill()
+        }
+        wait(for: [ready], timeout: 2)
+        return LaidOutRecordingList(
+            card: store.card,
+            plate: store.plate,
+            controller: controller,
+            window: window,
+            canvas: canvas
+        )
+    }
+}
+
+private struct LaidOutRecordingList {
+    var card: CGRect
+    var plate: CGRect
+    var controller: UIViewController
+    var window: UIWindow
+    var canvas: CGSize
+}
+
+private final class RecordingListFrameStore {
+    var card = CGRect.null
+    var plate = CGRect.null
+    var pad = CGRect.null
+}
+
+private struct RecordingListFrameKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+/// Upright fold: the recording card is a sibling of the list, not a row in it.
+private struct FoldRecordingWidthHarness: View {
+    var extraInset: CGFloat
+    var store: RecordingListFrameStore
+
+    var body: some View {
+        VStack(spacing: GlassTokens.hingeGutter) {
+            RoundedRectangle(cornerRadius: GlassTokens.cardRadius, style: .continuous)
+                .fill(Color.white)
+                .frame(height: 120)
+                .background {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: RecordingListFrameKey.self,
+                            value: ["card": geo.frame(in: .global)]
+                        )
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.horizontal, extraInset)
+
+            List {
+                Section {
+                    Text("Trip")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: 44)
+                }
+                .listRowInsets(
+                    EdgeInsets(
+                        top: 14,
+                        leading: GlassTokens.listContentHorizontalInset,
+                        bottom: 14,
+                        trailing: GlassTokens.listContentHorizontalInset
+                    )
+                )
+                .listRowBackground(
+                    Color.white
+                        .background {
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: RecordingListFrameKey.self,
+                                    value: ["plate": geo.frame(in: .global)]
+                                )
+                            }
+                        }
+                        .padding(.horizontal, GlassTokens.panelHorizontalInset)
+                )
+                .listRowSeparator(.hidden)
+            }
+            .listSectionSpacing(6)
+            .scrollContentBackground(.hidden)
+        }
+        .background(Color(red: 0.31, green: 0.61, blue: 0.86))
+        .environment(\.colorScheme, .light)
+        .environment(\.shellPalette, .sky)
+        .onPreferenceChange(RecordingListFrameKey.self) { frames in
+            if let card = frames["card"] { store.card = card }
+            if let plate = frames["plate"] { store.plate = plate }
+        }
+    }
 }

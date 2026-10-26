@@ -359,7 +359,7 @@ struct TripListView: View {
     private var usesLibraryOrientation: Bool {
         guard paneTripID == nil, !showLiveFollowMap else { return false }
         guard !recordingService.state.isActiveSession else { return false }
-        return layout.layoutClass == .duoOpen || layout.layoutClass == .pad
+        return layout.layoutClass == .duoOpen || layout.layoutClass == .pad || layout.isPhoneBook
     }
 
     /// Open book and iPad landscape show both libraries. Phone landscape stays one column.
@@ -547,6 +547,11 @@ struct TripListView: View {
     /// Live map on the wide book covers the title row. A recording keeps the row so the bell stays.
     private var hidesWideBookNavigationBar: Bool {
         layout.isWideBook && !isMergeMode && showLiveFollowMap
+    }
+
+    /// The phone book is short. The Trailhound title sits in the only free row above the card.
+    private var phoneBookRecordingHidesTitle: Bool {
+        layout.isPhoneBook && recordingService.state.isActiveSession && endCredits == nil
     }
 
     /// Off-screen has to last, and a turn does not count. The list is rebuilt while the
@@ -883,8 +888,10 @@ struct TripListView: View {
             },
             isRecordingCardVisible: true
         )
+        .padding(.horizontal, folds ? GlassTokens.recordingFoldExtraInset(contentWidth: layout.size.width) : 0)
         .frame(maxWidth: folds ? .infinity : GlassTokens.paneCardMaxWidth)
-        .padding(folds ? 0 : 16)
+        .padding(folds ? 0 : (layout.isPhoneBook ? 8 : 16))
+        .modifier(PhoneBookRecordingClearance(active: layout.isPhoneBook))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
@@ -970,6 +977,7 @@ struct TripListView: View {
             },
             isRecordingCardVisible: true
         )
+        .padding(.horizontal, GlassTokens.recordingFoldExtraInset(contentWidth: layout.size.width))
         .frame(
             maxWidth: .infinity,
             maxHeight: expands ? .infinity : nil,
@@ -1394,7 +1402,7 @@ struct TripListView: View {
             guard endCredits != nil else { return }
             listLandingMinY = newY
         }
-        .navigationTitle("Trailhound")
+        .navigationTitle(phoneBookRecordingHidesTitle ? "" : "Trailhound")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             PerformanceSignposts.measure("TripsTabAppear") {
@@ -2423,6 +2431,24 @@ private struct CreditsListLandingYKey: PreferenceKey {
     static var defaultValue: CGFloat { 0 }
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+/// The phone-book pane runs under the floating tab bar. Keep the recording card in the clear.
+private struct PhoneBookRecordingClearance: ViewModifier {
+    var active: Bool
+
+    func body(content: Content) -> some View {
+        if active {
+            GeometryReader { geo in
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .padding(.bottom, geo.safeAreaInsets.bottom)
+                    .frame(width: geo.size.width, height: geo.size.height)
+            }
+        } else {
+            content
+        }
     }
 }
 

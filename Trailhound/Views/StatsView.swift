@@ -201,7 +201,7 @@ struct StatsView: View {
         statsList(currencyCode: settings.fuelCurrency.rawValue)
             .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
             .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
-            .glassListChrome()
+            .glassListChrome(showsAtmosphere: !layout.isPhoneBook)
             .navigationTitle(L10n.string("stats.title"))
             .navigationBarTitleDisplayMode(.inline)
             .onPreferenceChange(StatsChartPlotWidthKey.self) { width in
@@ -299,15 +299,15 @@ struct StatsView: View {
 
     @ViewBuilder
     private func statsList(currencyCode: String) -> some View {
-        if layout.layoutClass == .duoOpen {
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook {
             TrailhoundPaneSplit(
-                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                    isPhoneBook: layout.isPhoneBook,
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
-                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                    fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
                 )
-                    ? TrailhoundLayoutResolver.flatStatsLeadingFraction
-                    : nil
             ) {
                 ScrollView {
                     wideStatsPrimary(currencyCode: currencyCode)
@@ -1614,13 +1614,13 @@ struct StatsView: View {
     /// A week of `d MMM` labels overlaps once each bar is narrower than caption size.
     /// Open-fold panes are always in that range; a normal phone chart is not.
     private func chartAxisUsesCompactDates(slots: Int) -> Bool {
-        if layout.layoutClass == .duoOpen { return true }
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook { return true }
         return chartAxisSlotWidth(slots: slots) < 40
     }
 
     private var chartPlotEstimate: CGFloat {
         if chartPlotWidth > 1 { return chartPlotWidth }
-        if layout.layoutClass == .duoOpen {
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook {
             return max(140, (layout.size.width - GlassTokens.hingeGutter) / 2 - 32)
         }
         return max(140, layout.size.width - 64)

@@ -4,18 +4,30 @@ import UIKit
 
 enum UITestSupport {
     static var isEnabled: Bool {
+        #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-UITesting")
+        #else
+        false
+        #endif
     }
 
     static var seedsSmartCategory: Bool {
+        #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-UITesting.smartCategorySeed")
+        #else
+        false
+        #endif
     }
 
     static let smartCategorySeedTripID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000ca")!
 
     /// Two finished trips plus a read "Trip ended" inbox row for the older one.
     static var seedsTripSwitch: Bool {
+        #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-UITesting.tripSwitchSeed")
+        #else
+        false
+        #endif
     }
 
     static let tripSwitchNewestID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000a1")!

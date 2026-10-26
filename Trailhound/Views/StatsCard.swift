@@ -442,7 +442,7 @@ struct StatsCardPairRow<Left: View, Right: View>: View {
     @State private var measuredWindowWidth: CGFloat = 0
 
     private var alignsToHinge: Bool {
-        layout.layoutClass == .duoOpen && layout.isLandscape
+        layout.usesBookPanes
     }
 
     private var gap: CGFloat {
@@ -455,6 +455,19 @@ struct StatsCardPairRow<Left: View, Right: View>: View {
         let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : layout.size.width
         let origin = contentInWindow.width > 1 ? contentInWindow.minX : 0
         guard contentWidth > 1, windowWidth > 1 else { return nil }
+        if let fraction = TrailhoundLayoutResolver.flatBookLeadingFraction(
+            isPhoneBook: layout.isPhoneBook,
+            layoutClass: layout.layoutClass,
+            isLandscape: layout.isLandscape,
+            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+        ) {
+            return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: contentWidth,
+                gutter: gap,
+                leadingFraction: fraction
+            )
+        }
         return TrailhoundLayoutResolver.duoLeadingPaneWidth(
             contentOriginX: origin,
             contentWidth: contentWidth,

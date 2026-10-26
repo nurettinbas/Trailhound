@@ -187,9 +187,9 @@ struct YearView: View {
         }
     }
 
-    /// Widest open fold. Cards pack down whichever side of the hinge is shorter.
+    /// Open book and a wide landscape phone. Cards pack down whichever side is shorter.
     private var pairsWideCards: Bool {
-        layout.layoutClass == .duoOpen && layout.isLandscape
+        layout.usesBookPanes
     }
 
     private var yearAwardsCard: some View {
@@ -306,6 +306,9 @@ struct YearView: View {
         if recapLoader == nil {
             recapLoader = YearRecapSnapshotLoader(modelContainer: modelContext.container)
         }
+        if recapSnapshot == nil {
+            recapSnapshot = YearRecapCache.load(year: RecapYearPolicy.displayYear())
+        }
         refreshEarliestTripStart()
         schedulePremiumRefresh()
         scheduleYearAwardsRefresh(delayMilliseconds: 0)
@@ -325,26 +328,16 @@ struct YearView: View {
         let recapActor = recapLoader ?? YearRecapSnapshotLoader(modelContainer: modelContext.container)
         if recapLoader == nil { recapLoader = recapActor }
         let year = RecapYearPolicy.displayYear()
+        let version = storeVersion
         let request = MonthCostForecastRequest(
-            storeVersion: storeVersion,
+            storeVersion: version,
             selectedVehicleID: nil,
             now: Date()
         )
         Task {
-            let builtForecast = await forecastActor.forecast(for: request)
-            let builtRecap = await recapActor.snapshot(year: year, storeVersion: storeVersion)
+            let builtRecap = await recapActor.snapshot(year: year, storeVersion: version)
             await MainActor.run {
-                forecast = builtForecast
                 recapSnapshot = builtRecap
-                _ = AchievementEvaluator.displays(in: modelContext)
-                if !UITestSupport.isEnabled {
-                    _ = AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: modelContext)
-                }
-                achievements = AchievementEvaluator.displays(in: modelContext)
-                routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
-                let pending = achievements.filter(\.needsCelebration)
-                unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
-                PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
                 if pendingRecapPlay {
                     pendingRecapPlay = false
                     if RecapYearPolicy.shouldPresent(builtRecap) {
@@ -353,6 +346,20 @@ struct YearView: View {
                 } else {
                     maybePresentRecapPromo()
                 }
+            }
+        }
+        Task {
+            let builtForecast = await forecastActor.forecast(for: request)
+            await MainActor.run {
+                forecast = builtForecast
+                if !UITestSupport.isEnabled {
+                    _ = AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: modelContext)
+                }
+                achievements = AchievementEvaluator.displays(in: modelContext)
+                routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
+                let pending = achievements.filter(\.needsCelebration)
+                unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
+                PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
             }
         }
     }

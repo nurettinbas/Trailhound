@@ -17,6 +17,7 @@ struct YearRecapStoryView: View {
     @State private var displayedDistance: Double = 0
     @State private var advanceTask: Task<Void, Never>?
     @State private var shareItem = RecapShareItem.empty
+    @State private var renderedShareKey: String?
     @State private var showShareSheet = false
     @State private var routeImage: UIImage?
     @State private var clockStartedAt = Date()
@@ -146,14 +147,10 @@ struct YearRecapStoryView: View {
             await warmRoute()
         }
         .task(id: shareRenderKey) {
-            await Task.yield()
-            shareItem = RecapShareRenderer.item(
-                for: frozen,
-                page: currentPage,
-                palette: shellPalette,
-                scheme: colorScheme,
-                routeImage: routeImage
-            )
+            let key = shareRenderKey
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, key == shareRenderKey, renderedShareKey != key else { return }
+            publishShareItem()
         }
         .sheet(isPresented: $showShareSheet, onDismiss: resumePlayback) {
             if shareItem.image.size.width >= 2 {
@@ -258,6 +255,22 @@ struct YearRecapStoryView: View {
         "\(playback.pageIndex)-\(routeImage != nil)-\(colorScheme)-\(shellPalette.rawValue)"
     }
 
+    private func publishShareItem() {
+        shareItem = RecapShareRenderer.item(
+            for: frozen,
+            page: currentPage,
+            palette: shellPalette,
+            scheme: colorScheme,
+            routeImage: routeImage
+        )
+        renderedShareKey = shareRenderKey
+    }
+
+    private func ensureShareItem() {
+        guard renderedShareKey != shareRenderKey || shareItem.image.size.width < 2 else { return }
+        publishShareItem()
+    }
+
     private func topChrome(now: Date) -> some View {
         VStack(alignment: .trailing, spacing: 8) {
             RecapStoryProgressBar(
@@ -274,12 +287,12 @@ struct YearRecapStoryView: View {
                 GlassToolbarCluster {
                     Button {
                         pausePlayback()
+                        ensureShareItem()
                         showShareSheet = true
                     } label: {
                         GlassNavCircleIcon(systemName: "square.and.arrow.up")
                     }
                     .buttonStyle(.glassPlainHit)
-                    .disabled(shareItem.image.size.width < 2)
                     .accessibilityIdentifier("stats.premium.recap.share")
                     .accessibilityLabel(L10n.share)
                     Button(action: close) {

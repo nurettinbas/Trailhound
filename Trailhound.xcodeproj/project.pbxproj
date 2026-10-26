@@ -248,6 +248,11 @@
 		A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */; };
 		A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MAILCOMPOSE00000001 /* MailComposeView.swift */; };
 		A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SUPPORTMAIL00000001 /* SupportMail.swift */; };
+		A1DEVELOPERINFO000001 /* DeveloperInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DEVELOPERINFO000001 /* DeveloperInfo.swift */; };
+		A1TIPJARSTORE00000001 /* TipJarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARSTORE00000001 /* TipJarStore.swift */; };
+		A1TIPJARVIEW000000001 /* TipJarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARVIEW000000001 /* TipJarView.swift */; };
+		A1TIPJARSTORETEST0001 /* TipJarStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */; };
+		B1WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */; };
 		A1SYSSETLINK00000001 /* SystemSettingsLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SYSSETLINK00000001 /* SystemSettingsLink.swift */; };
 		S1YSSETLINKTESTBUILD1 /* SystemSettingsLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S0YSSETLINKTESTFILE1 /* SystemSettingsLinkTests.swift */; };
 		A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */; };
@@ -701,6 +706,12 @@
 		A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationStore.swift; sourceTree = "<group>"; };
 		A2MAILCOMPOSE00000001 /* MailComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposeView.swift; sourceTree = "<group>"; };
 		A2SUPPORTMAIL00000001 /* SupportMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportMail.swift; sourceTree = "<group>"; };
+		A2DEVELOPERINFO000001 /* DeveloperInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperInfo.swift; sourceTree = "<group>"; };
+		A2TIPJARSTORE00000001 /* TipJarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarStore.swift; sourceTree = "<group>"; };
+		A2TIPSSTOREKIT0000001 /* TrailhoundTips.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TrailhoundTips.storekit; sourceTree = "<group>"; };
+		A2TIPJARVIEW000000001 /* TipJarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarView.swift; sourceTree = "<group>"; };
+		A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/TipJarStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A2SYSSETLINK00000001 /* SystemSettingsLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSettingsLink.swift; sourceTree = "<group>"; };
 		S0YSSETLINKTESTFILE1 /* SystemSettingsLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/SystemSettingsLinkTests.swift; sourceTree = SOURCE_ROOT; };
 		A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsListView.swift; sourceTree = "<group>"; };
@@ -951,6 +962,7 @@
 				A2INFOPLISTXC0000001 /* InfoPlist.xcstrings */,
 				A20000000000000000000026 /* Trailhound.entitlements */,
 				A20000000000000000000027 /* PrivacyInfo.xcprivacy */,
+				A2TIPSSTOREKIT0000001 /* TrailhoundTips.storekit */,
 				A2LOCALIZABLE00000000001 /* Localizable.xcstrings */,
 			);
 			path = Trailhound;
@@ -1027,6 +1039,7 @@
 				A2ACHIEVECAT000000001 /* AchievementCatalog.swift */,
 				A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */,
 				A2PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift */,
+				A2TIPJARSTORE00000001 /* TipJarStore.swift */,
 				A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
 				4B6254BADAB2452485AC086C /* TripMergeService.swift */,
@@ -1209,6 +1222,7 @@
 				A5VCAREGRP000000000001 /* VehicleCare */,
 				A5PAIRINGGRP00000000001 /* Pairing */,
 				A20000000000000000000017 /* SettingsView.swift */,
+				A2TIPJARVIEW000000001 /* TipJarView.swift */,
 				A2CATMGMT00000000000001 /* CategoryManagementView.swift */,
 			);
 			path = Views;
@@ -1292,6 +1306,7 @@
 				A2CATEGORYSEEDER00000001 /* CategorySeeder.swift */,
 				A2L10N00000000000000001 /* L10n.swift */,
 				A2SUPPORTMAIL00000001 /* SupportMail.swift */,
+				A2DEVELOPERINFO000001 /* DeveloperInfo.swift */,
 				A2SYSSETLINK00000001 /* SystemSettingsLink.swift */,
 				A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */,
 				A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */,
@@ -1343,6 +1358,7 @@
 				B20000000000000000000006 /* WidgetRecordingIntents.swift */,
 				B20000000000000000000007 /* Info.plist */,
 				B20000000000000000000008 /* TrailhoundWidget.entitlements */,
+				B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */,
 			);
 			path = TrailhoundWidget;
 			sourceTree = "<group>";
@@ -1389,6 +1405,7 @@
 				0F522128C2A8428A9F29352F /* TripMergeServiceTests.swift */,
 				DC9C492887764166B97747AC /* TripPostProcessorTests.swift */,
 				A2PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift */,
+				A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */,
 				87991671D44840E8B8E37C84 /* SharedUtilityTests.swift */,
 				89194A972A9D445CA328EC8B /* AsyncTestHelpers.swift */,
 				CD488383E993421084D17FEB /* DeviceTestChecklist.swift */,
@@ -1618,6 +1635,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000013 /* Localizable.xcstrings in Resources */,
+				B1WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1660,6 +1678,7 @@
 				EEB93D176AC04A399D62976C /* TripMergeServiceTests.swift in Sources */,
 				A0521629B6B1436EAD50C50D /* TripPostProcessorTests.swift in Sources */,
 				A1PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift in Sources */,
+				A1TIPJARSTORETEST0001 /* TipJarStoreTests.swift in Sources */,
 				1D9267C59ACB415A91AEDE29 /* SharedUtilityTests.swift in Sources */,
 				99589AB9DEC14224BFA11E93 /* AsyncTestHelpers.swift in Sources */,
 				A97D083820FA41BDAA20AFFA /* DeviceTestChecklist.swift in Sources */,
@@ -1772,6 +1791,7 @@
 				A1RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift in Sources */,
 				A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */,
 				A10000000000000000000017 /* SettingsView.swift in Sources */,
+				A1TIPJARVIEW000000001 /* TipJarView.swift in Sources */,
 				A10000000000000000000018 /* DistanceCalculator.swift in Sources */,
 				A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */,
 				A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */,
@@ -1901,6 +1921,7 @@
 				A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */,
 				A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */,
 				A1PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift in Sources */,
+				A1TIPJARSTORE00000001 /* TipJarStore.swift in Sources */,
 				A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */,
 				A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */,
 				A1FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift in Sources */,
@@ -1959,6 +1980,7 @@
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,
 				A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */,
 				A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */,
+				A1DEVELOPERINFO000001 /* DeveloperInfo.swift in Sources */,
 				A1SYSSETLINK00000001 /* SystemSettingsLink.swift in Sources */,
 				A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */,
 				A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */,
@@ -2062,7 +2084,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2188,14 +2210,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos to choose one for your vehicle avatar or an expense receipt.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Records your route when the screen is off or a Shortcut starts a trip. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Records the route of the trip you start in Trailhound. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a recent photo for your vehicle avatar or an expense receipt. If you decline, you can still pick one photo at a time.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -2205,7 +2227,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2233,14 +2255,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos to choose one for your vehicle avatar or an expense receipt.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Records your route when the screen is off or a Shortcut starts a trip. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Records the route of the trip you start in Trailhound. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a recent photo for your vehicle avatar or an expense receipt. If you decline, you can still pick one photo at a time.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -2250,7 +2272,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2281,7 +2303,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2289,7 +2311,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2311,7 +2333,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2319,7 +2341,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -2331,7 +2353,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2348,7 +2370,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2365,7 +2387,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

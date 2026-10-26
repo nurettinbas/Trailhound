@@ -25,23 +25,6 @@
         }
       }
     },
-    "NSBluetoothAlwaysUsageDescription" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bluetooth is used to start recording automatically when your vehicle connects."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aracınıza bağlandığında otomatik kayıt için Bluetooth kullanılır."
-          }
-        }
-      }
-    },
     "NSCameraUsageDescription" : {
       "comment" : "Privacy - Camera Usage Description",
       "extractionState" : "manual",
@@ -83,13 +66,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Location access is required for background trip recording."
+            "value" : "Records your route when the screen is off or a Shortcut starts a trip. Location stays on this iPhone."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arka planda sürüş kaydı için konum erişimi gerekir."
+            "value" : "Ekran kapalıyken veya bir Kestirme yolculuk başlattığında rotanı kaydeder. Konum bu iPhone’dan çıkmaz."
           }
         }
       }
@@ -100,13 +83,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "We need your location to record your trips."
+            "value" : "Records the route of the trip you start in Trailhound. Location stays on this iPhone."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yolculuklarınızı kaydetmek için konumunuza ihtiyacımız var."
+            "value" : "Trailhound’da başlattığın yolculuğun rotasını kaydeder. Konum bu iPhone’dan çıkmaz."
           }
         }
       }
@@ -117,13 +100,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Browse recent photos to choose one for your vehicle avatar or an expense receipt."
+            "value" : "Choose a recent photo for your vehicle avatar or an expense receipt. If you decline, you can still pick one photo at a time."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Son fotoğraflarına bakıp araç avatarı ya da gider fişi için bir fotoğraf seçebilirsin."
+            "value" : "Araç avatarı veya gider fişi için son fotoğraflarından birini seçmen için. İzin vermezsen yine tek tek fotoğraf seçebilirsin."
           }
         }
       }

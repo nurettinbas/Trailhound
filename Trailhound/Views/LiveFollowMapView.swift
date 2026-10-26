@@ -588,7 +588,7 @@ struct LiveFollowMapView: View {
 
     /// Closed landscape Duo. The cover is the whole screen, so the card stays small and leading.
     private var landscapeDuoCover: Bool {
-        !fillsPane && layout.layoutClass == .phoneLandscape
+        !fillsPane && layout.layoutClass == .phoneLandscape && !layout.isPhoneBook
     }
 
     private var pinsHUDToLeadingCorner: Bool {

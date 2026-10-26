@@ -91,6 +91,7 @@ enum ToastEmblemTone: Equatable {
 
 enum ToastKind: Equatable {
     case saved
+    case tipThanks
     case deleted
     case placeSaved
     case vehicleSaved
@@ -112,6 +113,7 @@ enum ToastKind: Equatable {
     var message: String {
         switch self {
         case .saved: L10n.toastSaved
+        case .tipThanks: L10n.toastTipThanks
         case .deleted: L10n.toastDeleted
         case .placeSaved: L10n.toastPlaceSaved
         case .vehicleSaved: L10n.toastVehicleSaved
@@ -136,6 +138,8 @@ enum ToastKind: Equatable {
         switch self {
         case .saved:
             "checkmark.circle.fill"
+        case .tipThanks:
+            "heart.fill"
         case .tripSaved:
             "map.fill"
         case .orphanSaved:
@@ -188,7 +192,7 @@ enum ToastKind: Equatable {
             .destructive
         case .journalTitleRequired, .tripNotFound:
             .warning
-        case .tripSaved, .vehicleSaved, .vehicleReminderSaved, .journalSaved, .categoryAccepted, .tripsMerged, .shortcutsGuideFinished, .shortcutsAutomationReached:
+        case .tripSaved, .vehicleSaved, .vehicleReminderSaved, .journalSaved, .categoryAccepted, .tripsMerged, .shortcutsGuideFinished, .shortcutsAutomationReached, .tipThanks:
             .palette
         case .personalRecord:
             .gold

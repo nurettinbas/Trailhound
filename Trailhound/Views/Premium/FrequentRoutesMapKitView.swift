@@ -359,6 +359,22 @@ final class FrequentRoutesSnapshotCache {
         try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
     }
 
+    /// Stable across equivalent coordinates. Rounded so a later open hits the same disk file.
+    nonisolated static func cacheKey(
+        start: CLLocationCoordinate2D,
+        end: CLLocationCoordinate2D,
+        count: Int,
+        isBusiness: Bool,
+        size: CGSize
+    ) -> String {
+        func rounded(_ value: Double) -> String {
+            String(format: "%.5f", locale: Locale(identifier: "en_US_POSIX"), value)
+        }
+        let startToken = "\(rounded(start.latitude)),\(rounded(start.longitude))"
+        let endToken = "\(rounded(end.latitude)),\(rounded(end.longitude))"
+        return "pair:\(startToken):\(endToken):\(count):\(isBusiness):\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
+    }
+
     func snapshot(
         start: CLLocationCoordinate2D,
         end: CLLocationCoordinate2D,
@@ -366,12 +382,32 @@ final class FrequentRoutesSnapshotCache {
         isBusiness: Bool,
         size: CGSize = CGSize(width: 280, height: 160)
     ) async -> UIImage? {
-        let path = await FrequentRouteRoadPathCache.shared.path(
-            pairKey: "snapshot",
-            start: start,
-            end: end
-        )
-        return await Self.render(path: path, count: count, isBusiness: isBusiness, size: size)
+        let key = Self.cacheKey(start: start, end: end, count: count, isBusiness: isBusiness, size: size)
+        if let cached = memory[key] { return cached }
+        if let existing = inFlight[key] { return await existing.value }
+        let diskURL = cacheDirectory.appendingPathComponent("\(Self.stableName(for: key)).jpg")
+        if let data = try? Data(contentsOf: diskURL), let image = UIImage(data: data) {
+            memory[key] = image
+            return image
+        }
+        let task = Task<UIImage?, Never> {
+            let path = await FrequentRouteRoadPathCache.shared.path(
+                pairKey: "snapshot",
+                start: start,
+                end: end
+            )
+            return await Self.render(path: path, count: count, isBusiness: isBusiness, size: size)
+        }
+        inFlight[key] = task
+        let image = await task.value
+        inFlight[key] = nil
+        if let image {
+            memory[key] = image
+            if let data = image.jpegData(compressionQuality: 0.72) {
+                try? data.write(to: diskURL, options: .atomic)
+            }
+        }
+        return image
     }
 
     func snapshot(

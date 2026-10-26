@@ -645,6 +645,88 @@ final class LiveFollowCameraTests: XCTestCase {
         XCTAssertLessThan(travelled, 50)
     }
 
+    func testVisuallySamePoseIgnoresSubPixelDeltas() {
+        let origin = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let pose = LiveFollowCamera.Pose(
+            center: origin,
+            headingDegrees: 90,
+            distanceMeters: 220,
+            pitchDegrees: 62
+        )
+        XCTAssertTrue(pose.isVisuallySame(as: pose))
+
+        let nudged = LiveFollowCamera.coordinate(from: origin, headingDegrees: 0, distanceMeters: 0.01)
+        XCTAssertTrue(pose.isVisuallySame(as: copy(pose, center: nudged)))
+        XCTAssertTrue(pose.isVisuallySame(as: copy(pose, headingDegrees: 90.005)))
+        XCTAssertTrue(pose.isVisuallySame(as: copy(pose, distanceMeters: 220.05)))
+        XCTAssertTrue(pose.isVisuallySame(as: copy(pose, pitchDegrees: 62.005)))
+    }
+
+    func testVisuallySamePoseRejectsVisibleDeltas() {
+        let origin = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let pose = LiveFollowCamera.Pose(
+            center: origin,
+            headingDegrees: 90,
+            distanceMeters: 220,
+            pitchDegrees: 62
+        )
+        let moved = LiveFollowCamera.coordinate(from: origin, headingDegrees: 0, distanceMeters: 1)
+        XCTAssertFalse(pose.isVisuallySame(as: copy(pose, center: moved)))
+        XCTAssertFalse(pose.isVisuallySame(as: copy(pose, headingDegrees: 90.5)))
+        XCTAssertFalse(pose.isVisuallySame(as: copy(pose, distanceMeters: 221)))
+        XCTAssertFalse(pose.isVisuallySame(as: copy(pose, pitchDegrees: 63)))
+    }
+
+    func testVisuallySamePoseWrapsHeading() {
+        let origin = CLLocationCoordinate2D(latitude: 41.0, longitude: 29.0)
+        let nearNorth = LiveFollowCamera.Pose(
+            center: origin,
+            headingDegrees: 359.999,
+            distanceMeters: 220,
+            pitchDegrees: 62
+        )
+        XCTAssertTrue(nearNorth.isVisuallySame(as: copy(nearNorth, headingDegrees: 0)))
+        XCTAssertFalse(nearNorth.isVisuallySame(as: copy(nearNorth, headingDegrees: 1)))
+    }
+
+    func testMotorwayTicksAreNeverVisuallySame() throws {
+        var camera = LiveFollowCamera()
+        let speedMps = 30.0
+        camera.ingest(
+            location: location(lat: 41.0, lon: 29.0, speedMps: speedMps, course: 0, courseAccuracy: 5),
+            isPaused: false,
+            now: baseDate
+        )
+        XCTAssertTrue(camera.tick(dt: frame, now: baseDate))
+        var previous = try XCTUnwrap(camera.pose)
+
+        for step in 1...45 {
+            let now = baseDate.addingTimeInterval(Double(step) * frame)
+            XCTAssertTrue(camera.tick(dt: frame, now: now))
+            let pose = try XCTUnwrap(camera.pose)
+            XCTAssertFalse(
+                previous.isVisuallySame(as: pose),
+                "frame \(step) was sub-pixel; a moving follow frame must still write the camera"
+            )
+            previous = pose
+        }
+    }
+
+    private func copy(
+        _ pose: LiveFollowCamera.Pose,
+        center: CLLocationCoordinate2D? = nil,
+        headingDegrees: CLLocationDirection? = nil,
+        distanceMeters: CLLocationDistance? = nil,
+        pitchDegrees: Double? = nil
+    ) -> LiveFollowCamera.Pose {
+        LiveFollowCamera.Pose(
+            center: center ?? pose.center,
+            headingDegrees: headingDegrees ?? pose.headingDegrees,
+            distanceMeters: distanceMeters ?? pose.distanceMeters,
+            pitchDegrees: pitchDegrees ?? pose.pitchDegrees
+        )
+    }
+
     private func location(
         lat: Double,
         lon: Double,

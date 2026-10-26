@@ -259,6 +259,9 @@ struct TrailhoundApp: App {
                     await Task.yield()
                     runtime.bootstrap(container: modelContainer)
                     runtime.processPendingRecordingRequests()
+                    if !UITestSupport.shouldSkipExternalEffects {
+                        TipJarStore.shared.observeTransactionUpdates()
+                    }
                 }
                 .onChange(of: scenePhase) { _, phase in
                     handleScenePhase(phase)

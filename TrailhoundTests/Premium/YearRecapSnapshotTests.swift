@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftData
 import XCTest
 @testable import Trailhound
@@ -254,6 +255,76 @@ final class YearRecapSnapshotTests: XCTestCase {
         try stale.write(to: url.appendingPathComponent("2026.json"))
         XCTAssertNil(YearRecapCache.load(year: 2026))
         YearRecapCache.invalidate(year: 2026)
+    }
+
+    func testDiskCacheRoundTripsSnapshot() {
+        YearRecapCache.invalidate(year: 2026)
+        var snapshot = YearRecapSnapshot.empty(year: 2026)
+        snapshot.tripCount = 3
+        snapshot.distanceMeters = 12_345
+        snapshot.topCities = ["Istanbul"]
+        snapshot.topRouteCount = 4
+        snapshot.topRouteStartLatitude = 41.0082
+        snapshot.topRouteEndLatitude = 41.0422
+        YearRecapCache.save(snapshot)
+        XCTAssertEqual(YearRecapCache.load(year: 2026), snapshot)
+        YearRecapCache.invalidate(year: 2026)
+        XCTAssertNil(YearRecapCache.load(year: 2026))
+    }
+
+    func testRouteSnapshotCacheKeyIsStable() {
+        let start = CLLocationCoordinate2D(latitude: 41.0082, longitude: 28.9784)
+        let end = CLLocationCoordinate2D(latitude: 41.0422, longitude: 29.0094)
+        let size = CGSize(width: 280, height: 160)
+        let key = FrequentRoutesSnapshotCache.cacheKey(
+            start: start,
+            end: end,
+            count: 4,
+            isBusiness: false,
+            size: size
+        )
+        XCTAssertEqual(
+            key,
+            FrequentRoutesSnapshotCache.cacheKey(
+                start: start,
+                end: end,
+                count: 4,
+                isBusiness: false,
+                size: size
+            )
+        )
+        XCTAssertEqual(key, "pair:41.00820,28.97840:41.04220,29.00940:4:false:280x160")
+        let nudged = CLLocationCoordinate2D(latitude: 41.0082004, longitude: 28.9783996)
+        XCTAssertEqual(
+            key,
+            FrequentRoutesSnapshotCache.cacheKey(
+                start: nudged,
+                end: end,
+                count: 4,
+                isBusiness: false,
+                size: size
+            )
+        )
+        XCTAssertNotEqual(
+            key,
+            FrequentRoutesSnapshotCache.cacheKey(
+                start: start,
+                end: end,
+                count: 5,
+                isBusiness: false,
+                size: size
+            )
+        )
+        XCTAssertNotEqual(
+            key,
+            FrequentRoutesSnapshotCache.cacheKey(
+                start: start,
+                end: end,
+                count: 4,
+                isBusiness: true,
+                size: size
+            )
+        )
     }
 
     func testExpenseInvalidateRebuildsPaidTotal() async throws {

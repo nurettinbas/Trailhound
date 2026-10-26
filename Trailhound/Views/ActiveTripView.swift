@@ -340,7 +340,7 @@ struct ActiveTripView: View {
 
     private var recordingCard: some View {
         arrangedRecordingStack
-        .padding(14)
+        .padding(screenLayout.isPhoneBook ? 10 : 14)
         .frame(
             maxWidth: presentedArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
             alignment: .leading
@@ -427,19 +427,27 @@ struct ActiveTripView: View {
 
     private var arrangedRecordingStack: some View {
         let arrangement = presentedArrangement
-        let compactRoad = screenLayout.layoutClass == .phoneLandscape || arrangement == .list
+        // The phone book is only ~400pt tall once the tab bar is in. The Duo road
+        // and the 2×2 grid push Pause and Stop under that bar.
+        let phoneBook = screenLayout.isPhoneBook
+        let compactRoad = phoneBook
+            || (screenLayout.layoutClass == .phoneLandscape && !screenLayout.isPhoneBook)
+            || arrangement == .list
         let capsRoadHeight = compactRoad || arrangement == .banner
         let actionsBeside = arrangement == .banner
         let reveals = arrangement == .list
+        let statsArrangement: ActiveTripStatsArrangement = phoneBook
+            ? .strip
+            : (arrangement == .pane ? .grid : .inline)
         return HStack(alignment: .center, spacing: actionsBeside ? 16 : 0) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: phoneBook ? 8 : 10) {
                 statusRow
                 roadScene(compact: compactRoad, reportsMorph: arrangement != .pane)
                     .frame(maxWidth: .infinity)
                     .frame(height: capsRoadHeight ? 72 : nil)
                     .opacity(reveals ? detailsReveal : 1)
                     .scaleEffect(reveals ? 0.92 + 0.08 * detailsReveal : 1)
-                ActiveTripLiveStats(arrangement: arrangement == .pane ? .grid : .inline)
+                ActiveTripLiveStats(compact: phoneBook, arrangement: statsArrangement)
                     .opacity(reveals ? detailsReveal : 1)
                     .offset(y: reveals ? (1 - detailsReveal) * 10 : 0)
                 if !actionsBeside {
@@ -846,6 +854,8 @@ private struct RecordingLocationChromeRow: View {
 /// Live duration / speed / distance — only this subtree tracks display sampler (~4 Hz).
 enum ActiveTripStatsArrangement {
     case inline
+    /// One row of four metrics. The phone book is too short for the 2×2 grid.
+    case strip
     case grid
 }
 
@@ -881,18 +891,37 @@ struct ActiveTripLiveStats: View {
                 columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
                 spacing: 8
             ) {
-                statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
-                statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
-                statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
-                statPill(icon: "gauge.with.dots.needle.33percent", label: L10n.averageSpeed, text: averageText)
+                durationPill
+                distancePill
+                speedPill
+                averagePill
             }
         } else {
             HStack(alignment: .top, spacing: compact ? 4 : 6) {
-                statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
-                statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
-                statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+                durationPill
+                speedPill
+                distancePill
+                if arrangement == .strip {
+                    averagePill
+                }
             }
         }
+    }
+
+    private var durationPill: some View {
+        statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
+    }
+
+    private var distancePill: some View {
+        statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+    }
+
+    private var speedPill: some View {
+        statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
+    }
+
+    private var averagePill: some View {
+        statPill(icon: "gauge.with.dots.needle.33percent", label: L10n.averageSpeed, text: averageText)
     }
 
     private func statPill(icon: String, label: String, text: String) -> some View {

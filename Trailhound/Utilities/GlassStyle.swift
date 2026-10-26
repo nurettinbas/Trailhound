@@ -16,6 +16,10 @@ enum GlassTokens {
     /// Used until the tab platter frame is published.
     static let toastTabBarFallbackClearance: CGFloat = 68
     static let sectionSpacing: CGFloat = 14
+    /// `glassCompactRow` vertical padding and minimum height. Six Settings sections fit a landscape phone pane.
+    static let compactRowVerticalInset: CGFloat = 7
+    static let compactRowMinHeight: CGFloat = 34
+    static let compactIndexTopMargin: CGFloat = 8
     /// Distance from screen edge to the glass card rim.
     static let panelHorizontalInset: CGFloat = 16
     /// Padding between the glass card rim and its content (both sides).
@@ -23,8 +27,17 @@ enum GlassTokens {
     /// List row content inset from the screen edge (`panel` + inner content padding).
     static var listContentHorizontalInset: CGFloat { panelHorizontalInset + cardContentInset }
 
+    /// Extra side inset for the recording card pinned in the top half of the upright open fold.
+    /// The card already pads by `panelHorizontalInset`. Below about 420pt the trip plate is one
+    /// more panel inset in; the inner Duo is wider and its list margin is 20pt.
+    static func recordingFoldExtraInset(contentWidth: CGFloat) -> CGFloat {
+        contentWidth >= 420 ? 20 : panelHorizontalInset
+    }
+
     /// Nested frost tiles inside a glass card (wizard choices, instruction rows).
     static let nestedChoiceRadius: CGFloat = 12
+    /// Tinted glyph disc on a featured list row (Settings → Support the developer).
+    static let featuredRowDiscSide: CGFloat = 32
 
     /// Compact frozen circle on a live map (Stats overlay collapse).
     static let toolbarFrozenCircleSide: CGFloat = 36
@@ -1486,6 +1499,23 @@ extension View {
             .listRowSeparator(.hidden)
     }
 
+    /// Short glass row for a section index beside a form (Settings on the book split).
+    func glassCompactRow(position: GlassRowPosition) -> some View {
+        let horizontal = GlassTokens.listContentHorizontalInset
+        let vertical = GlassTokens.compactRowVerticalInset
+        return listRowBackground(GlassSectionRowBackground(position: position))
+            .listRowInsets(EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal))
+            .listRowSeparator(.hidden)
+    }
+
+    /// Section index list that fits the pane: short rows, a small top margin, and no bounce
+    /// when every row is visible. Large Dynamic Type still scrolls once the rows overflow.
+    func glassCompactIndexList() -> some View {
+        environment(\.defaultMinListRowHeight, GlassTokens.compactRowMinHeight)
+            .contentMargins(.top, GlassTokens.compactIndexTopMargin, for: .scrollContent)
+            .scrollBounceBehavior(.basedOnSize)
+    }
+
     /// Single-row glass panel (banners, one-off cards in lists).
     func glassListRow() -> some View {
         glassRow(position: .only)
@@ -1638,6 +1668,72 @@ struct GlassNoticeCallout: View {
         case .info: return GlassText.primary(for: colorScheme)
         case .caution: return GlassSemantic.paused(for: colorScheme)
         }
+    }
+}
+
+/// One standout row in a plain glass list: palette disc + white glyph, semibold title,
+/// optional footnote, trailing chevron. Use as a `Button` label; the row stays `glassRow`.
+struct GlassFeaturedRowLabel: View {
+    let systemImage: String
+    let title: String
+    var subtitle: String? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: GlassTokens.featuredRowDiscSide, height: GlassTokens.featuredRowDiscSide)
+                .background {
+                    Circle()
+                        .fill(shellPalette.tintColor(for: colorScheme))
+                        .overlay { Circle().strokeBorder(Color.white.opacity(0.72), lineWidth: 1) }
+                }
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .glassPrimaryInk()
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .glassSecondaryInk()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .glassSecondaryInk()
+                .accessibilityHidden(true)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Raised option tile inside a glass card (Support the developer tips): nested frost
+/// lifted by a soft shadow. Pair with a prominent button inside; not a second Material.
+private struct GlassElevatedTileModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .glassNestedChoice(isSelected: true)
+            .compositingGroup()
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16),
+                radius: 10,
+                y: 5
+            )
+    }
+}
+
+extension View {
+    func glassElevatedTile() -> some View {
+        modifier(GlassElevatedTileModifier())
     }
 }
 

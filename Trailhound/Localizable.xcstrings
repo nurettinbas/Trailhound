@@ -14626,13 +14626,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to."
+            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to. Support payments are handled by Apple; Trailhound does not see your payment details."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir."
+            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir. Destek ödemelerini Apple yönetir; Trailhound ödeme bilgilerini görmez."
           }
         }
       }
@@ -15500,6 +15500,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İzinler"
+          }
+        }
+      }
+    },
+    "settings.developed_by" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Developed by %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geliştiren: %@"
           }
         }
       }
@@ -16605,6 +16622,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İş saati başlangıç"
+          }
+        }
+      }
+    },
+    "settings.tip_jar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support the developer"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geliştiriciye destek ol"
+          }
+        }
+      }
+    },
+    "settings.tip_jar.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The payment could not be completed. You were not charged."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ödeme tamamlanamadı. Senden ücret alınmadı."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trailhound is free, with no ads and no tracking. If it helps you, you can leave an optional tip. A tip unlocks nothing; every feature stays the same. Apple handles the payment."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trailhound ücretsizdir; reklam ve izleme yoktur. İşine yarıyorsa isteğe bağlı destek bırakabilirsin. Destek hiçbir özellik açmaz; her şey aynı kalır. Ödemeyi Apple yönetir."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional tip. Unlocks nothing."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İsteğe bağlı destek. Hiçbir özellik açmaz."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support options are not available right now. Try again later."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destek seçenekleri şu an kullanılamıyor. Daha sonra tekrar dene."
           }
         }
       }
@@ -20228,6 +20330,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Shortcuts kurulumu tamamlandı"
+          }
+        }
+      }
+    },
+    "toast.tip_thanks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you for your support"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desteğin için teşekkürler"
           }
         }
       }

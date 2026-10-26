@@ -31,13 +31,13 @@ struct VehicleDetailView: View {
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Open book. The profile stays on the leading side.
+    /// Open book and a wide landscape phone. The profile stays on the leading side.
     /// Tracking and expenses scroll together on the trailing side.
     /// A fully open hinge is 40/60. A partially open hinge stays on the fold.
-    /// Phone, upright fold, and iPad stay one list.
+    /// A wide phone splits in half. The closed cover, a narrower phone, the upright fold, and iPad stay one list.
     private var splitsAfterTracking: Bool {
         guard layout.isLandscape, layout.layoutClass != .pad else { return false }
-        if layout.layoutClass == .duoOpen { return true }
+        if layout.usesBookPanes { return true }
         return layout.size.width >= TrailhoundLayoutResolver.openFoldSpan
     }
 
@@ -152,13 +152,13 @@ struct VehicleDetailView: View {
     private func detailList(vehicle: VehicleProfile) -> some View {
         if splitsAfterTracking {
             TrailhoundPaneSplit(
-                leadingFraction: TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                    isPhoneBook: layout.isPhoneBook,
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
-                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                    fraction: TrailhoundLayoutResolver.flatVehicleProfileFraction
                 )
-                    ? TrailhoundLayoutResolver.flatVehicleProfileFraction
-                    : nil
             ) {
                 careList(showsAtmosphere: false, widePane: true) {
                     profileBlock(vehicle: vehicle)

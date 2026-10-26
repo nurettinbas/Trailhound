@@ -74,6 +74,15 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         }
     }
 
+    /// Landscape phone wider than the closed Duo cover and narrower than the open fold.
+    /// Column shares match the fully flat book. Trips and the recording card stay half
+    /// the content, because that book keeps them on the hinge. There is no hinge here.
+    var isPhoneBook: Bool {
+        layoutClass == .phoneLandscape
+            && size.width >= TrailhoundLayoutResolver.phoneBookMinWidth
+            && size.width < TrailhoundLayoutResolver.openFoldSpan
+    }
+
     var splitsTrips: Bool {
         switch layoutClass {
         case .phone:
@@ -98,13 +107,14 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         case .duoOpen:
             return isLandscape ? .split : .overlay
         case .phoneLandscape:
-            return .floatingPanel
+            return isPhoneBook ? .split : .floatingPanel
         case .pad:
             return isLandscape ? .floatingPanel : .stacked
         }
     }
 
     var recordingCardArrangement: RecordingCardArrangement {
+        if isPhoneBook { return .pane }
         switch layoutClass {
         case .phone, .phoneLandscape:
             return .list
@@ -127,23 +137,26 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         switch layoutClass {
         case .duoOpen, .pad:
             return isLandscape
-        case .phone, .phoneLandscape:
+        case .phoneLandscape:
+            return isPhoneBook
+        case .phone:
             return false
         }
     }
 
-    /// Open book, landscape: the recording card takes the leading half, the trip list the trailing half.
+    /// Open book, and a wide landscape phone: the recording card takes the leading half, the trip list the trailing half.
     var recordingCardLeads: Bool {
-        layoutClass == .duoOpen && isLandscape
+        usesBookPanes
     }
 
     /// Idle Trips on the leading half, Travels on the trailing half.
     /// The open book is the widest fold. A compact height size class can still label that
-    /// window phone landscape, so the fold span decides it. A normal phone landscape stays one list.
+    /// window phone landscape, so the fold span decides the closed cover. A phone wider
+    /// than that cover uses the same two panes. A narrower phone landscape stays one list.
     var splitsIdleLibrary: Bool {
         if layoutClass == .pad, isLandscape { return true }
         guard isLandscape else { return false }
-        if layoutClass == .duoOpen { return true }
+        if layoutClass == .duoOpen || isPhoneBook { return true }
         return size.width >= TrailhoundLayoutResolver.openFoldSpan
     }
 
@@ -188,7 +201,9 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
             return .bottomSheet
         case .duoOpen:
             return isLandscape ? .splitPane : .bottomSheet
-        case .phoneLandscape, .pad:
+        case .phoneLandscape:
+            return isPhoneBook ? .splitPane : .floatingTrailing
+        case .pad:
             return .floatingTrailing
         }
     }
@@ -197,8 +212,13 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         switch layoutClass {
         case .phone:
             return .form
-        case .phoneLandscape, .duoOpen:
-            return .split
+        case .phoneLandscape:
+            if isPhoneBook || size.width >= TrailhoundLayoutResolver.openFoldSpan {
+                return .split
+            }
+            return .form
+        case .duoOpen:
+            return isLandscape ? .split : .form
         case .pad:
             return isLandscape ? .split : .grid
         }
@@ -206,7 +226,7 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
 
     var badgeColumnCount: Int {
         TrailhoundLayoutResolver.badgeColumnCount(
-            layout: layoutClass,
+            layout: isPhoneBook ? .duoOpen : layoutClass,
             isLandscape: isLandscape,
             accessibility: false
         )
@@ -216,14 +236,16 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         layoutClass == .phoneLandscape || (layoutClass == .pad && isLandscape)
     }
 
-    /// Open book and iPad landscape. Closed cover landscape, including its widest
-    /// span, stays the portrait list so shortcuts and saved vehicles use the width.
+    /// Open book, a wide landscape phone, and iPad landscape. Closed cover landscape,
+    /// including its widest span, stays the portrait list so shortcuts and saved vehicles use the width.
     var showsPairingVehicleFocus: Bool {
         guard isLandscape else { return false }
         switch layoutClass {
         case .duoOpen, .pad:
             return true
-        case .phone, .phoneLandscape:
+        case .phoneLandscape:
+            return isPhoneBook
+        case .phone:
             return false
         }
     }
@@ -232,6 +254,9 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
     var isOpenBookLandscape: Bool {
         layoutClass == .duoOpen && isLandscape
     }
+
+    /// Open Duo landscape, or a wide iPhone landscape that uses the same panes.
+    var usesBookPanes: Bool { isOpenBookLandscape || isPhoneBook }
 
     var storyStageMaxWidth: CGFloat? {
         switch layoutClass {
@@ -290,6 +315,10 @@ enum TrailhoundLayoutResolver {
     /// Open inner screen when a size class stays compact: the long side is two phones.
     static let openFoldSpan: CGFloat = 1100
 
+    /// Landscape phones wider than the closed Duo cover use the open-book panes.
+    /// The cover is about 678 pt. The open fold span stays the upper bound, so that cover keeps one column.
+    static let phoneBookMinWidth: CGFloat = 700
+
     /// Vehicles list share of the content on the fully flat widest book. The focus pane is the rest.
     static let flatVehicleListFraction: CGFloat = 0.6
 
@@ -299,14 +328,36 @@ enum TrailhoundLayoutResolver {
     /// Statistics, Recap, and Settings leading column on the fully open hinge. The trailing column is the rest.
     static let flatStatsLeadingFraction: CGFloat = 0.45
 
+    /// Settings section list on that same book. The form takes the rest.
+    static let flatSettingsLeadingFraction: CGFloat = 0.4
+
     /// Vehicles panes leave the hinge only when the Duo is landscape and the hinge is fully open.
     /// A partially open hinge keeps the seam on the fold. iPad and phones have no such hinge.
+    /// A wide landscape phone uses `flatBookLeadingFraction` instead: the same shares, with no hinge.
     static func usesOffHingeVehicleSplit(
         layoutClass: TrailhoundLayoutClass,
         isLandscape: Bool,
         hingeFullyOpen: Bool
     ) -> Bool {
         layoutClass == .duoOpen && isLandscape && hingeFullyOpen
+    }
+
+    /// Fully flat column share. A wide landscape phone always uses it. A Duo uses it only
+    /// when the hinge is fully open; a partial fold stays on the hinge and returns nil.
+    static func flatBookLeadingFraction(
+        isPhoneBook: Bool,
+        layoutClass: TrailhoundLayoutClass,
+        isLandscape: Bool,
+        hingeFullyOpen: Bool,
+        fraction: CGFloat
+    ) -> CGFloat? {
+        if isPhoneBook { return fraction }
+        guard usesOffHingeVehicleSplit(
+            layoutClass: layoutClass,
+            isLandscape: isLandscape,
+            hingeFullyOpen: hingeFullyOpen
+        ) else { return nil }
+        return fraction
     }
 
     /// A camera write while the window is turning cancels the orientation change.
@@ -854,15 +905,17 @@ struct TrailhoundHingeCardStack<Content: View>: View {
     private var leadingWidth: CGFloat? {
         let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : layout.size.width
         guard contentWidth > 1 else { return nil }
-        if TrailhoundLayoutResolver.usesOffHingeVehicleSplit(
+        if let fraction = TrailhoundLayoutResolver.flatBookLeadingFraction(
+            isPhoneBook: layout.isPhoneBook,
             layoutClass: layout.layoutClass,
             isLandscape: layout.isLandscape,
-            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
+            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
         ) {
             return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
                 contentWidth: contentWidth,
                 gutter: GlassTokens.hingeGutter,
-                leadingFraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+                leadingFraction: fraction
             )
         }
         let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width
@@ -992,7 +1045,8 @@ enum RecordingAxisPlacement {
         liveLeads: Bool,
         listOnVisualLeft: Bool,
         contentInWindow: CGRect,
-        windowSize: CGSize
+        windowSize: CGSize,
+        evenSplit: Bool = false
     ) -> Frames {
         let width = bounds.width
         let height = bounds.height
@@ -1007,7 +1061,8 @@ enum RecordingAxisPlacement {
             liveLeads: liveLeads,
             listOnVisualLeft: listOnVisualLeft,
             contentInWindow: contentInWindow,
-            windowSize: windowSize
+            windowSize: windowSize,
+            evenSplit: evenSplit
         )
         let portrait = portraitFrames(
             in: bounds,
@@ -1027,20 +1082,27 @@ enum RecordingAxisPlacement {
         liveLeads: Bool,
         listOnVisualLeft: Bool,
         contentInWindow: CGRect,
-        windowSize: CGSize
+        windowSize: CGSize,
+        evenSplit: Bool
     ) -> Frames {
         let width = bounds.width
         let height = bounds.height
         let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : width
         let originX = contentInWindow.width > 1 ? contentInWindow.minX : 0
         let windowWidth = windowSize.width > 1 ? windowSize.width : width
-        let leading = TrailhoundLayoutResolver.duoLeadingPaneWidth(
-            contentOriginX: originX,
-            contentWidth: contentWidth,
-            windowWidth: windowWidth,
-            gutter: gap,
-            listOnVisualLeft: listOnVisualLeft
-        )
+        let leading = evenSplit
+            ? TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: width,
+                gutter: gap,
+                leadingFraction: 0.5
+            )
+            : TrailhoundLayoutResolver.duoLeadingPaneWidth(
+                contentOriginX: originX,
+                contentWidth: contentWidth,
+                windowWidth: windowWidth,
+                gutter: gap,
+                listOnVisualLeft: listOnVisualLeft
+            )
         let leadingWidth = min(max(0, leading), max(0, width - gap))
         let visualLeftWidth = listOnVisualLeft
             ? leadingWidth
@@ -1109,6 +1171,7 @@ struct RecordingAxisLayout: Layout {
     var listOnVisualLeft: Bool
     var contentInWindow: CGRect
     var windowSize: CGSize
+    var evenSplit: Bool
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         proposal.replacingUnspecifiedDimensions()
@@ -1122,7 +1185,8 @@ struct RecordingAxisLayout: Layout {
             liveLeads: liveLeads,
             listOnVisualLeft: listOnVisualLeft,
             contentInWindow: contentInWindow,
-            windowSize: windowSize
+            windowSize: windowSize,
+            evenSplit: evenSplit
         )
         subviews[0].place(
             at: frames.live.origin,
@@ -1143,6 +1207,7 @@ struct RecordingOrientationStage<Live: View, List: View>: View {
     @ViewBuilder var live: () -> Live
     @ViewBuilder var list: () -> List
 
+    @Environment(\.trailhoundLayout) private var layout
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var contentInWindow: CGRect = .zero
     @State private var measuredWindow: CGSize = .zero
@@ -1153,7 +1218,8 @@ struct RecordingOrientationStage<Live: View, List: View>: View {
             liveLeads: liveLeads,
             listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection),
             contentInWindow: contentInWindow,
-            windowSize: measuredWindow
+            windowSize: measuredWindow,
+            evenSplit: layout.isPhoneBook
         ) {
             live()
                 .clipped()
@@ -1221,7 +1287,8 @@ enum LibraryAxisPlacement {
         frameSplit: CGFloat,
         listOnVisualLeft: Bool,
         contentInWindow: CGRect,
-        windowSize: CGSize
+        windowSize: CGSize,
+        evenSplit: Bool = false
     ) -> Frames {
         let width = bounds.width
         let height = bounds.height
@@ -1233,7 +1300,8 @@ enum LibraryAxisPlacement {
             gap: max(0, gutter),
             listOnVisualLeft: listOnVisualLeft,
             contentInWindow: contentInWindow,
-            windowSize: windowSize
+            windowSize: windowSize,
+            evenSplit: evenSplit
         )
         let full = CGRect(x: bounds.minX, y: bounds.minY, width: width, height: height)
         return Frames(
@@ -1247,20 +1315,27 @@ enum LibraryAxisPlacement {
         gap: CGFloat,
         listOnVisualLeft: Bool,
         contentInWindow: CGRect,
-        windowSize: CGSize
+        windowSize: CGSize,
+        evenSplit: Bool
     ) -> Frames {
         let width = bounds.width
         let height = bounds.height
         let contentWidth = contentInWindow.width > 1 ? contentInWindow.width : width
         let originX = contentInWindow.width > 1 ? contentInWindow.minX : 0
         let windowWidth = windowSize.width > 1 ? windowSize.width : width
-        let leading = TrailhoundLayoutResolver.duoLeadingPaneWidth(
-            contentOriginX: originX,
-            contentWidth: contentWidth,
-            windowWidth: windowWidth,
-            gutter: gap,
-            listOnVisualLeft: listOnVisualLeft
-        )
+        let leading = evenSplit
+            ? TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: width,
+                gutter: gap,
+                leadingFraction: 0.5
+            )
+            : TrailhoundLayoutResolver.duoLeadingPaneWidth(
+                contentOriginX: originX,
+                contentWidth: contentWidth,
+                windowWidth: windowWidth,
+                gutter: gap,
+                listOnVisualLeft: listOnVisualLeft
+            )
         let leadingWidth = min(max(0, leading), max(0, width - gap))
         let visualLeftWidth = listOnVisualLeft
             ? leadingWidth
@@ -1303,6 +1378,7 @@ struct LibraryAxisLayout: Layout {
     var listOnVisualLeft: Bool
     var contentInWindow: CGRect
     var windowSize: CGSize
+    var evenSplit: Bool
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         proposal.replacingUnspecifiedDimensions()
@@ -1316,7 +1392,8 @@ struct LibraryAxisLayout: Layout {
             frameSplit: frameSplit,
             listOnVisualLeft: listOnVisualLeft,
             contentInWindow: contentInWindow,
-            windowSize: windowSize
+            windowSize: windowSize,
+            evenSplit: evenSplit
         )
         subviews[0].place(
             at: frames.trips.origin,
@@ -1337,6 +1414,7 @@ struct LibraryOrientationStage<Trips: View, Travels: View>: View {
     @ViewBuilder var trips: (CGFloat) -> Trips
     @ViewBuilder var travels: () -> Travels
 
+    @Environment(\.trailhoundLayout) private var layout
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var contentInWindow: CGRect = .zero
     @State private var measuredWindow: CGSize = .zero
@@ -1352,7 +1430,8 @@ struct LibraryOrientationStage<Trips: View, Travels: View>: View {
                 frameSplit: LibraryAxisPlacement.frameSplit(split),
                 listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection),
                 contentInWindow: contentInWindow,
-                windowSize: measuredWindow == .zero ? geo.size : measuredWindow
+                windowSize: measuredWindow == .zero ? geo.size : measuredWindow,
+                evenSplit: layout.isPhoneBook
             ) {
                 trips(split)
                     .clipped()
@@ -1387,7 +1466,7 @@ struct LibraryOrientationStage<Trips: View, Travels: View>: View {
     }
 
     /// Reduce Motion snaps at the midpoint. The slide and the in-between widths stay off.
-    /// The stage is only mounted on the open book and on iPad, so a side-tab inset must
+    /// The stage is only mounted on the open book, a wide landscape phone, and iPad, so a side-tab inset must
     /// not fail the phone-width gate and collapse a landscape book.
     private func resolvedSplit(in size: CGSize) -> CGFloat {
         let live = LibraryAxisPlacement.splitAmount(
@@ -1441,6 +1520,13 @@ struct TrailhoundPaneSplit<Leading: View, Focus: View>: View {
                 contentWidth: contentWidth,
                 gutter: gap,
                 leadingFraction: leadingFraction
+            )
+        }
+        if layout.isPhoneBook {
+            return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
+                contentWidth: contentWidth,
+                gutter: gap,
+                leadingFraction: 0.5
             )
         }
         let windowWidth = measuredWindowWidth > 1 ? measuredWindowWidth : layout.size.width

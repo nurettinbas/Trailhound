@@ -311,6 +311,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         /// cancels the orientation change and the Duo stays landscape.
         private var lastMapBounds: CGSize = .zero
         private var suppressCameraUntil: CFTimeInterval = 0
+        /// Last follow pose actually written to `map.camera`. Cleared whenever something
+        /// else may have moved the camera, so the next follow tick is never skipped.
+        private var lastFollowCameraPose: LiveFollowCamera.Pose?
 
         private var cameraWritesPaused: Bool {
             CACurrentMediaTime() < suppressCameraUntil
@@ -324,6 +327,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 || abs(size.height - previous.height) > 48
             if jumped {
                 suppressCameraUntil = CACurrentMediaTime() + 0.75
+                lastFollowCameraPose = nil
             }
         }
 
@@ -393,6 +397,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private func breakFollow() {
             session.isFollowing = false
             isFollowing = false
+            lastFollowCameraPose = nil
         }
 
         private var isFollowLocked: Bool {
@@ -407,10 +412,24 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 if following, CACurrentMediaTime() >= self.cameraEaseUntil, !self.cameraWritesPaused {
-                    self.applyCamera(pose, on: map, withinTransaction: true)
+                    // Sub-pixel pose: skip the camera assignment. MapKit re-renders the
+                    // whole scene on every write, including while stopped at a light.
+                    if self.lastFollowCameraPose?.isVisuallySame(as: pose) != true {
+                        self.applyCamera(pose, on: map, withinTransaction: true)
+                        // A bounds jump during the write clears the cache and pauses
+                        // follow. Don't store a pose the map may no longer be showing.
+                        if !self.cameraWritesPaused {
+                            self.lastFollowCameraPose = pose
+                        }
+                    }
                 }
                 if let vehicle, let puck = self.puckAnnotation {
-                    puck.coordinate = vehicle
+                    // `coordinate` is KVO-observable; an equal assignment still relayouts the puck.
+                    if abs(puck.coordinate.latitude - vehicle.latitude) > 1e-9
+                        || abs(puck.coordinate.longitude - vehicle.longitude) > 1e-9
+                    {
+                        puck.coordinate = vehicle
+                    }
                     puck.headingDegrees = pose.headingDegrees
                 }
                 if CACurrentMediaTime() >= self.cameraEaseUntil {
@@ -462,6 +481,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 CATransaction.commit()
             }
             isApplyingCamera = false
+            // Follow-path caller stores the pose after this returns. Every other caller
+            // (bootstrap, ease, reduce-motion snap) leaves it nil so follow rewrites.
+            lastFollowCameraPose = nil
         }
 
         /// Pulls the live route straight from the session (recording service) when its
@@ -614,6 +636,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 contentInsets: overviewContentInsets(on: map),
                 visibleHeightPerDistance: pitch0VisibleHeightPerDistance(on: map)
             ) else { return }
+            lastFollowCameraPose = nil
             breakFollow()
             onUserBreakFollow()
             let target = MKMapCamera(
@@ -699,6 +722,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
         /// Fly back to heading follow from whatever the map currently shows.
         func applyRecenterCamera(on map: MKMapView) {
+            lastFollowCameraPose = nil
             if let location = session.locationService?.lastLocation {
                 session.camera.forceRecenter(location: location)
             } else {
@@ -774,6 +798,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             cameraEase = nil
             cameraEaseUntil = 0
             easeClock.stop()
+            lastFollowCameraPose = nil
         }
 
         private func tickCameraEase() {
@@ -1090,6 +1115,8 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     /// Opaque plate so the traveled path cannot show through the photo.
     private var plateColor = UIColor(ShellPalette.sky.tintColor(for: .light))
     private var lastChevronSignature: String = ""
+    /// Last non-animated heading transform. Equal writes still open a CATransaction.
+    private var lastAppliedRadians: CGFloat?
 
     /// Artwork rotates around the photo-circle centre so the trail still meets the puck.
     private let headingContent = UIView()
@@ -1110,6 +1137,11 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        lastAppliedRadians = nil
     }
 
     private func setup() {
@@ -1182,6 +1214,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         zPriority = .max
         displayPriority = .required
         isHidden = false
+        lastAppliedRadians = nil
         if let photo = annotation.vehiclePhoto {
             photoView.image = photo
             photoView.isHidden = false
@@ -1203,6 +1236,11 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             travelHeadingDegrees: travelHeading,
             mapHeadingDegrees: mapHeading
         )
+        // Animated handoff always runs. A settled follow frame is identity every tick.
+        if !animated, let lastAppliedRadians, abs(radians - lastAppliedRadians) < 0.0005 {
+            return
+        }
+        lastAppliedRadians = radians
         let transform = CGAffineTransform(rotationAngle: radians)
         let apply = {
             CATransaction.begin()

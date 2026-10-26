@@ -169,6 +169,19 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(toggle.isEnabled)
     }
 
+    func testSettingsTipJarOpensAndCloses() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+        let row = app.buttons["settings.tipJar"]
+        revealSettingsControl(row)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let close = app.buttons["tipJar.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10))
+        close.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+    }
+
     func testTravelsSegmentOpensJournalEmptyState() throws {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
         let segment = app.segmentedControls["trips.segment"]
