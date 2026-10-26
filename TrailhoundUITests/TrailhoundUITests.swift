@@ -500,8 +500,8 @@ final class TripDetailTripSwitchUITests: TrailhoundUITestCase {
         let bell = app.buttons["trips.notifications"].firstMatch
         XCTAssertTrue(bell.waitForExistence(timeout: uiTimeout))
         bell.tap()
-        let row = app.staticTexts["Switch B ended"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout))
+        let row = app.descendants(matching: .any)["notifications.row.trip.\(olderID)"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Seeded Switch B inbox row should be listed")
         row.tap()
 
         XCTAssertTrue(app.otherElements["tripDetail.screen"].waitForExistence(timeout: uiTimeout))

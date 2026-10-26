@@ -569,6 +569,15 @@ struct NotificationsListView: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(Self.rowIdentifier(for: item))
+    }
+
+    /// Keyed by trip when linked: the visible subtitle is rewritten from the trip, so row text is not stable.
+    static func rowIdentifier(for item: StoredAppNotification) -> String {
+        if let tripID = item.tripID {
+            return "notifications.row.trip.\(tripID.uuidString)"
+        }
+        return "notifications.row.\(item.id.uuidString)"
     }
 
     /// Place names when the trip is still saved. The stored body keeps the coordinates from the moment it was written.
