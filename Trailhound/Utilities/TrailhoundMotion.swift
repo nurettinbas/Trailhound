@@ -19,6 +19,8 @@ enum TrailhoundMotion {
     static let launchIntroLowPowerDuration: TimeInterval = 1.19
     static let launchIntroReduceMotionDuration: TimeInterval = 0.25
     static let launchIntroSkipDuration: TimeInterval = 0.25
+    /// One gallop stride of the launch hound’s legs (`LaunchIntroHoundRig`).
+    static let launchIntroGallopStride: TimeInterval = 0.42
     /// App underneath settles from this scale to 1 as the plate closes into the icon.
     static let launchIntroContentSettleScale: CGFloat = 1.04
     /// Same curve and length as the plate closing, so the app and the icon move as one.

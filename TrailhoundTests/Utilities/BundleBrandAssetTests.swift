@@ -19,6 +19,19 @@ final class BundleBrandAssetTests: XCTestCase {
         XCTAssertNotNil(UIImage(named: "TrailhoundHound"))
     }
 
+    func testLaunchHoundPartsShareTheHoundCanvas() throws {
+        let hound = try XCTUnwrap(UIImage(named: "TrailhoundHound")?.cgImage)
+        let rig = LaunchIntroHoundRig.standard
+        XCTAssertEqual(CGFloat(hound.width), rig.canvas.width)
+        XCTAssertEqual(CGFloat(hound.height), rig.canvas.height)
+        for name in rig.bones.map(\.asset) {
+            let part = try XCTUnwrap(UIImage(named: name)?.cgImage, name)
+            XCTAssertEqual(part.width, hound.width, name)
+            XCTAssertEqual(part.height, hound.height, name)
+        }
+        XCTAssertNotNil(LaunchIntroHoundParts.load())
+    }
+
     func testThemedLogoSkyLightIsPrimaryAsset() {
         let sky = TrailhoundThemedLogo.image(palette: .sky, scheme: .light)
         let sand = TrailhoundThemedLogo.image(palette: .sand, scheme: .light)

@@ -12,7 +12,7 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 
 ## Cold-launch intro
 
-- The cold-launch intro (`LaunchIntroSceneView`) is the real app icon on a `CALayer`: road, hound, and corner stopwatch. Scale, the stopwatch rock and hands, and the corner close are `CAKeyframeAnimation`s. Nothing writes SwiftUI state per frame, so the first SwiftData fetch and tab build cannot hitch it.
+- The cold-launch intro (`LaunchIntroSceneView`) is the real app icon on a `CALayer`: road, hound, and corner stopwatch. Scale, the stopwatch rock and hands, the hound's joint swings (`LaunchIntroHoundRig`: 11 nested part layers, each sampled 16 times per stride), and the corner close are `CAKeyframeAnimation`s. Nothing writes SwiftUI state per frame, so the first SwiftData fetch and tab build cannot hitch it.
 - The app hierarchy (onboarding, lock, tabs) is built only after the intro’s first frame is committed (`onStarted`), so the system launch screen waits for one CALayer tree, not every tab. Time before `didFinishLaunching` is the system loading the process; app code before the first intro frame is about 150 ms.
 - The system launch screen is `LaunchBackground` (white / black). It cannot follow the theme because it is drawn before app code runs; the intro eases from it into the theme plate.
 - No offscreen passes: the close animates the plate’s `bounds` and `cornerRadius` (no full-screen shape mask), and the picture and content fade with `allowsGroupOpacity = false`. The stopwatch body (ring, ticks, button) is one filled shape; only the two hands and the dash phase change per frame, and those stop when the icon lands.

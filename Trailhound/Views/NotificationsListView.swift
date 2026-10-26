@@ -118,20 +118,20 @@ struct NotificationsListView: View {
     }
 
     private var notificationPreview: some View {
-        ScrollView {
+        Group {
             if let item = selectedNotification {
                 previewCard(item)
                     .padding(16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
                 GlassEmptyState(
                     title: L10n.notificationsEmptyTitle,
                     systemImage: "bell.slash",
                     message: L10n.notificationsEmptyMessage
                 )
-                .frame(maxWidth: .infinity, minHeight: 280)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -140,140 +140,50 @@ struct NotificationsListView: View {
         let trip = resolvedTrip(for: item)
         let showsOpen = store.route(for: item).opensDestination
             || (item.tripID != nil && Self.linksToTrip(kind))
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: kind.systemImage)
-                    .font(.title2)
-                    .foregroundStyle(tint(for: kind, body: item.body))
-                    .frame(width: 32, height: 32)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title)
-                        .font(.title3.weight(.semibold))
-                        .glassPrimaryInk()
-                    Text(previewWhen(item, trip: trip))
-                        .font(.subheadline)
-                        .glassSecondaryInk()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let trip {
-                Text(TripListViewModel.routeSummary(for: trip))
-                    .font(.body.weight(.medium))
-                    .glassPrimaryInk()
-                previewMetrics(for: trip)
-                previewFacts(for: trip)
-            } else {
-                Text(item.body)
-                    .font(.body)
-                    .glassSecondaryInk()
-            }
-
-            if showsOpen {
-                Button(L10n.notificationsOpen) {
-                    open(item)
-                }
-                .trailhoundProminentButton()
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        return NotificationPreviewCard(
+            title: item.title,
+            when: previewWhen(item, trip: trip),
+            systemImage: kind.systemImage,
+            tint: tint(for: kind, body: item.body),
+            route: trip.map { TripListViewModel.routeSummary(for: $0) },
+            message: trip == nil ? item.body : nil,
+            metrics: trip.map(previewMetrics(for:)) ?? [],
+            facts: trip.map(previewFacts(for:)) ?? [],
+            note: trip?.note,
+            onOpen: showsOpen ? { open(item) } : nil
+        )
     }
 
-    @ViewBuilder
-    private func previewMetrics(for trip: Trip) -> some View {
-        let distance = trip.distanceMeters > 0 ? TripListViewModel.distanceText(for: trip) : nil
+    private func previewMetrics(for trip: Trip) -> [NotificationPreviewCard.Item] {
         let duration = TripListViewModel.durationText(for: trip)
-        let durationText = duration == "—" ? nil : duration
-        let speed = TripListViewModel.averageSpeedText(for: trip)
-        if distance != nil || durationText != nil || speed != nil {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    metricChipRow(distance: distance, duration: durationText, speed: speed)
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    metricChipRow(distance: distance, duration: durationText, speed: speed)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        var metrics: [NotificationPreviewCard.Item] = []
+        if trip.distanceMeters > 0 {
+            metrics.append(.init(systemImage: "road.lanes", text: TripListViewModel.distanceText(for: trip)))
         }
+        if duration != "—" {
+            metrics.append(.init(systemImage: "clock", text: duration))
+        }
+        if let speed = TripListViewModel.averageSpeedText(for: trip) {
+            metrics.append(.init(systemImage: "speedometer", text: speed))
+        }
+        return metrics
     }
 
-    @ViewBuilder
-    private func metricChipRow(distance: String?, duration: String?, speed: String?) -> some View {
-        if let distance {
-            MetricChip(value: distance, systemImage: "road.lanes")
+    private func previewFacts(for trip: Trip) -> [NotificationPreviewCard.Item] {
+        var facts: [NotificationPreviewCard.Item] = []
+        if let vehicle = trip.vehicleID.flatMap({ id in vehicles.first(where: { $0.id == id }) }) {
+            facts.append(.init(systemImage: "car", text: vehicle.name))
         }
-        if let duration {
-            MetricChip(value: duration, systemImage: "clock")
+        if let category = categoryName(for: trip) {
+            facts.append(.init(systemImage: "tag", text: category))
         }
-        if let speed {
-            MetricChip(value: speed, systemImage: "speedometer")
+        if let maxSpeed = TripListViewModel.maxSpeedLabel(for: trip) {
+            facts.append(.init(systemImage: "speedometer", text: maxSpeed))
         }
-    }
-
-    private struct MetricChip: View {
-        var value: String
-        var systemImage: String
-
-        var body: some View {
-            HStack(spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(.caption)
-                    .glassSecondaryInk()
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .glassPrimaryInk()
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .glassNestedChoice(isSelected: false)
-            .fixedSize(horizontal: true, vertical: true)
+        if let fuel = TripListViewModel.fuelText(for: trip) {
+            facts.append(.init(systemImage: "fuelpump", text: fuel))
         }
-    }
-
-    @ViewBuilder
-    private func previewFacts(for trip: Trip) -> some View {
-        let vehicle = trip.vehicleID.flatMap { id in vehicles.first(where: { $0.id == id }) }
-        let category = categoryName(for: trip)
-        let maxSpeed = TripListViewModel.maxSpeedLabel(for: trip)
-        let fuel = TripListViewModel.fuelText(for: trip)
-        if vehicle != nil || category != nil || maxSpeed != nil || fuel != nil || trip.note?.isEmpty == false {
-            VStack(alignment: .leading, spacing: 6) {
-                if let vehicle {
-                    previewFact(systemImage: "car", text: vehicle.name)
-                }
-                if let category {
-                    previewFact(systemImage: "tag", text: category)
-                }
-                if let maxSpeed {
-                    previewFact(systemImage: "speedometer", text: maxSpeed)
-                }
-                if let fuel {
-                    previewFact(systemImage: "fuelpump", text: fuel)
-                }
-                if let note = trip.note, !note.isEmpty {
-                    Text(note)
-                        .font(.subheadline)
-                        .glassSecondaryInk()
-                }
-            }
-        }
-    }
-
-    private func previewFact(systemImage: String, text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.caption)
-                .glassSecondaryInk()
-                .frame(width: 16)
-            Text(text)
-                .font(.subheadline)
-                .glassPrimaryInk()
-        }
+        return facts
     }
 
     private func previewWhen(_ item: StoredAppNotification, trip: Trip?) -> String {
@@ -525,50 +435,16 @@ struct NotificationsListView: View {
         trip: Trip?,
         showsChevron: Bool
     ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: kind.systemImage)
-                .font(.body)
-                .foregroundStyle(tint(for: kind, body: item.body))
-                .frame(width: 22, height: 20)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(item.title)
-                        .font(.subheadline.weight(item.isRead ? .medium : .semibold))
-                        .glassPrimaryInk()
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    Text(relativeDate(item.createdAt))
-                        .font(.caption2)
-                        .glassSecondaryInk()
-                        .layoutPriority(1)
-                }
-
-                Text(rowSubtitle(item: item, kind: kind, trip: trip))
-                    .font(.caption)
-                    .glassSecondaryInk()
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let meta = rowMeta(kind: kind, trip: trip) {
-                    Text(meta)
-                        .font(.caption2.weight(.medium))
-                        .glassSecondaryInk()
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .glassDisclosureInk()
-                    .frame(height: 20)
-            }
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+        NotificationRowContent(
+            title: item.title,
+            subtitle: rowSubtitle(item: item, kind: kind, trip: trip),
+            meta: rowMeta(kind: kind, trip: trip),
+            relativeTime: relativeDate(item.createdAt),
+            systemImage: kind.systemImage,
+            tint: tint(for: kind, body: item.body),
+            isRead: item.isRead,
+            showsChevron: showsChevron
+        )
         .accessibilityIdentifier(Self.rowIdentifier(for: item))
     }
 
@@ -653,6 +529,211 @@ struct NotificationsListView: View {
         )
         descriptor.fetchLimit = 1
         return try? modelContext.fetch(descriptor).first
+    }
+}
+
+/// Inbox row: always two lines — title and time, then place or route with trailing meta.
+/// The route truncates; the meta never does, so every kind has the same height.
+struct NotificationRowContent: View {
+    var title: String
+    var subtitle: String
+    var meta: String?
+    var relativeTime: String
+    var systemImage: String
+    var tint: Color
+    var isRead: Bool
+    var showsChevron: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(tint)
+                .frame(width: 22, height: 20)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.subheadline.weight(isRead ? .medium : .semibold))
+                        .glassPrimaryInk()
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(relativeTime)
+                        .font(.caption2)
+                        .glassSecondaryInk()
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(subtitle.isEmpty ? " " : subtitle)
+                        .font(.caption)
+                        .glassSecondaryInk()
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let meta {
+                        Text(meta)
+                            .font(.caption2.weight(.medium))
+                            .glassSecondaryInk()
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .layoutPriority(1)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .glassDisclosureInk()
+                    .frame(height: 20)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Split-inbox focus card. Never scrolls: when the pane is short it drops the note, then the facts.
+struct NotificationPreviewCard: View {
+    struct Item: Hashable {
+        var systemImage: String
+        var text: String
+    }
+
+    var title: String
+    var when: String
+    var systemImage: String
+    var tint: Color
+    var route: String?
+    var message: String?
+    var metrics: [Item]
+    var facts: [Item]
+    var note: String?
+    var onOpen: (() -> Void)?
+
+    private enum Density {
+        case full, compact, minimal
+    }
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            content(.full)
+            content(.compact)
+            content(.minimal)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(contentInset: 16)
+    }
+
+    private func content(_ density: Density) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            header
+
+            if let route {
+                Text(route)
+                    .font(.body.weight(.medium))
+                    .glassPrimaryInk()
+                    .lineLimit(density == .full ? 2 : 1)
+            }
+            if let message, !message.isEmpty {
+                Text(message)
+                    .font(.subheadline)
+                    .glassSecondaryInk()
+                    .lineLimit(density == .full ? 4 : 2)
+            }
+
+            if !metrics.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(metrics, id: \.self) { metric in
+                        metricTile(metric)
+                    }
+                }
+            }
+
+            if density != .minimal, !facts.isEmpty {
+                factsGrid(density == .full ? facts : Array(facts.prefix(2)))
+            }
+
+            if density == .full, let note, !note.isEmpty {
+                Text(note)
+                    .font(.subheadline)
+                    .glassSecondaryInk()
+                    .lineLimit(2)
+            }
+
+            if let onOpen {
+                Button(L10n.notificationsOpen, action: onOpen)
+                    .trailhoundProminentButton()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                    .glassPrimaryInk()
+                    .lineLimit(1)
+                Text(when)
+                    .font(.subheadline)
+                    .glassSecondaryInk()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func metricTile(_ metric: Item) -> some View {
+        Text(metric.text)
+            .font(.subheadline.weight(.semibold))
+            .glassPrimaryInk()
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+        .glassNestedChoice(isSelected: false)
+    }
+
+    private func factsGrid(_ items: [Item]) -> some View {
+        let rows = stride(from: 0, to: items.count, by: 2).map { Array(items[$0..<min($0 + 2, items.count)]) }
+        return Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+            ForEach(rows, id: \.self) { row in
+                GridRow {
+                    ForEach(row, id: \.self) { fact in
+                        factCell(fact)
+                    }
+                    if row.count == 1 {
+                        Color.clear
+                            .gridCellUnsizedAxes([.horizontal, .vertical])
+                    }
+                }
+            }
+        }
+    }
+
+    private func factCell(_ fact: Item) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: fact.systemImage)
+                .font(.caption)
+                .glassSecondaryInk()
+                .frame(width: 16)
+            Text(fact.text)
+                .font(.subheadline)
+                .glassPrimaryInk()
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

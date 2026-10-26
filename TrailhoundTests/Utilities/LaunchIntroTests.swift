@@ -44,6 +44,75 @@ final class LaunchIntroTimelineTests: XCTestCase {
     }
 }
 
+final class LaunchIntroHoundRigTests: XCTestCase {
+    private let rig = LaunchIntroHoundRig.standard
+
+    func testGaitStartsAndEndsOnTheLogoPose() {
+        for timeline in [LaunchIntroTimeline.standard, .lowPower] {
+            for curve in curves {
+                XCTAssertEqual(rig.offset(curve, at: 0, timeline: timeline), 0, accuracy: 1e-6)
+                XCTAssertEqual(rig.offset(curve, at: timeline.closeEnd, timeline: timeline), 0, accuracy: 1e-6)
+                XCTAssertEqual(rig.offset(curve, at: timeline.total, timeline: timeline), 0, accuracy: 1e-6)
+            }
+        }
+    }
+
+    func testEveryBoneMovesDuringTheRunWithoutSpinning() {
+        let timeline = LaunchIntroTimeline.standard
+        for bone in rig.bones {
+            let swings = stride(from: timeline.enterEnd, through: timeline.runEnd, by: 0.01)
+                .map { abs(rig.offset(bone.swing, at: $0, timeline: timeline)) }
+            let peak = swings.max() ?? 0
+            XCTAssertGreaterThan(peak, 0.04, bone.asset)
+            XCTAssertLessThan(peak, 2, bone.asset)
+        }
+    }
+
+    func testCurvesLoopOncePerStride() {
+        for curve in curves {
+            XCTAssertEqual(curve.value(at: 0), curve.value(at: 1), accuracy: 1e-9)
+            XCTAssertEqual(curve.value(at: 0.3), curve.value(at: 2.3), accuracy: 1e-9)
+        }
+        XCTAssertEqual(LaunchIntroHoundRig.Curve.still.value(at: 0.4), 0)
+        let held = LaunchIntroHoundRig.Curve(bias: 0.3, cosines: [0.1], sines: [0])
+        XCTAssertEqual(held.value(at: 0), 0.4, accuracy: 1e-9)
+        XCTAssertEqual(held.value(at: 0.5), 0.2, accuracy: 1e-9)
+    }
+
+    func testEnvelopeHoldsThroughTheRunThenDiesOut() {
+        let timeline = LaunchIntroTimeline.standard
+        XCTAssertEqual(LaunchIntroHoundRig.envelope(at: timeline.enterEnd, timeline: timeline), 1, accuracy: 1e-6)
+        XCTAssertEqual(LaunchIntroHoundRig.envelope(at: timeline.runEnd, timeline: timeline), 1, accuracy: 1e-6)
+        XCTAssertEqual(LaunchIntroHoundRig.envelope(at: timeline.closeEnd, timeline: timeline), 0, accuracy: 1e-6)
+        var previous: CGFloat = 1
+        for time in stride(from: timeline.runEnd, through: timeline.closeEnd, by: 0.02) {
+            let value = LaunchIntroHoundRig.envelope(at: time, timeline: timeline)
+            XCTAssertLessThanOrEqual(value, previous + 1e-9)
+            previous = value
+        }
+    }
+
+    func testReduceMotionNeverMoves() {
+        for curve in curves {
+            XCTAssertEqual(rig.offset(curve, at: 0.1, timeline: .reduceMotion), 0)
+        }
+    }
+
+    func testBonesAreUniqueAndJointsSitOnTheCanvas() {
+        XCTAssertEqual(rig.bones.count, 11)
+        XCTAssertEqual(Set(rig.bones.map(\.asset)).count, rig.bones.count)
+        let canvas = CGRect(origin: .zero, size: rig.canvas)
+        for bone in rig.bones {
+            XCTAssertTrue(canvas.contains(bone.joint), bone.asset)
+        }
+        XCTAssertEqual(rig.stride, TrailhoundMotion.launchIntroGallopStride)
+    }
+
+    private var curves: [LaunchIntroHoundRig.Curve] {
+        rig.bones.map(\.swing) + [rig.bob]
+    }
+}
+
 final class LaunchIntroGateTests: XCTestCase {
     func testPlaysOnANormalColdLaunch() {
         let decision = LaunchIntroGate.decide(

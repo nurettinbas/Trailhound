@@ -30,6 +30,7 @@ struct LaunchIntroOverlay: View {
             plate: uiColor(shellPalette.homeScreenIconFillRGB(for: colorScheme)),
             logo: TrailhoundThemedLogo.image(palette: shellPalette, scheme: colorScheme),
             hound: UIImage(named: "TrailhoundHound"),
+            houndParts: LaunchIntroHoundParts.load(),
             skipped: skipped,
             onReveal: {
                 guard timeline.allowsMotion, !skipped else { return }

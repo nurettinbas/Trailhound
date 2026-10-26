@@ -11,6 +11,7 @@ struct LaunchIntroSceneView: UIViewRepresentable {
     var plate: UIColor
     var logo: UIImage?
     var hound: UIImage?
+    var houndParts: LaunchIntroHoundParts?
     var skipped: Bool
     var onReveal: () -> Void
     var onStarted: () -> Void
@@ -37,6 +38,7 @@ struct LaunchIntroSceneView: UIViewRepresentable {
             plate: plate,
             logo: logo,
             hound: hound,
+            houndParts: houndParts,
             skipped: skipped
         ))
     }
@@ -49,6 +51,7 @@ final class LaunchIntroSceneUIView: UIView {
         var plate: UIColor
         var logo: UIImage?
         var hound: UIImage?
+        var houndParts: LaunchIntroHoundParts?
         var skipped: Bool
     }
 
@@ -236,13 +239,16 @@ final class LaunchIntroSceneUIView: UIView {
         picture.allowsGroupOpacity = false
         content.addSublayer(picture)
         addLogoRoad(on: picture, side: side, dash: snapshot.plate)
-        addRunningHound(snapshot.hound, on: picture, side: side)
+        addRunningHound(snapshot.hound, parts: snapshot.houndParts, on: picture, side: side)
         addStopwatch(on: picture, side: side)
         let end = iconSide / side
         picture.transform = CATransform3DMakeScale(end, end, 1)
-        picture.opacity = 0
         keyframes(picture, "transform.scale", [1.06, 1, 1, end, end], [0, enter, run, close, 1], [enterCurve, linear, closeCurve, linear])
-        keyframes(picture, "opacity", [0, 1, 1, 0, 0], [0, enter * 0.8, hand, close, 1], [enterCurve, linear, linear, linear])
+        // Each mark fades on its own; the hound fades as one so its overlapping parts do not show.
+        for mark in picture.sublayers ?? [] {
+            mark.opacity = 0
+            keyframes(mark, "opacity", [0, 1, 1, 0, 0], [0, enter * 0.8, hand, close, 1], [enterCurve, linear, linear, linear])
+        }
 
         let logo = logoLayer(snapshot.logo)
         content.addSublayer(logo)
@@ -335,10 +341,59 @@ final class LaunchIntroSceneUIView: UIView {
         coast(marks, "lineDashPhase", from: 0, speed: -speed, startAt: 0)
     }
 
-    /// The icon’s hound, in the icon’s place, running without traveling.
-    private func addRunningHound(_ image: UIImage?, on picture: CALayer, side: CGFloat) {
-        guard let image else { return }
+    /// The icon’s hound, in the icon’s place, galloping without traveling. Legs bend at the knee and hock,
+    /// the back flexes, the body pitches and lifts, and everything dies out on the logo pose as the plate closes.
+    private func addRunningHound(_ image: UIImage?, parts: LaunchIntroHoundParts?, on picture: CALayer, side: CGFloat) {
         let dog = CGRect(x: side * 0.145, y: side * 0.105, width: side * 0.681, height: side * 0.365)
+        guard let parts else {
+            addFlatHound(image, in: dog, on: picture)
+            return
+        }
+        let rig = parts.rig
+        let scale = min(dog.width / rig.canvas.width, dog.height / rig.canvas.height)
+        let art = CGSize(width: rig.canvas.width * scale, height: rig.canvas.height * scale)
+
+        let root = CALayer()
+        root.bounds = CGRect(origin: .zero, size: art)
+        root.position = CGPoint(x: dog.midX, y: dog.midY)
+        root.allowsGroupOpacity = true
+        picture.addSublayer(root)
+
+        addBone(rig.torso, parts: parts, scale: scale, to: root)
+        root.add(gait("transform.translation.y", rig: rig, curve: rig.bob, unit: art.height), forKey: "bob")
+    }
+
+    /// The bone turns around its joint and carries its children; its own image sits between `behind` and `front`.
+    private func addBone(_ bone: LaunchIntroHoundRig.Bone, parts: LaunchIntroHoundParts, scale: CGFloat, to parent: CALayer) {
+        let rig = parts.rig
+        let layer = houndPart(nil, pivot: bone.joint, canvas: rig.canvas, scale: scale)
+        parent.addSublayer(layer)
+        for child in bone.behind {
+            addBone(child, parts: parts, scale: scale, to: layer)
+        }
+        let image = houndPart(parts.images[bone.asset], pivot: bone.joint, canvas: rig.canvas, scale: scale)
+        layer.addSublayer(image)
+        for child in bone.front {
+            addBone(child, parts: parts, scale: scale, to: layer)
+        }
+        layer.add(gait("transform.rotation.z", rig: rig, curve: bone.swing), forKey: "swing")
+    }
+
+    /// A full-canvas layer that turns around `pivot` (canvas pixels).
+    private func houndPart(_ image: CGImage?, pivot: CGPoint, canvas: CGSize, scale: CGFloat) -> CALayer {
+        let layer = CALayer()
+        layer.bounds = CGRect(x: 0, y: 0, width: canvas.width * scale, height: canvas.height * scale)
+        layer.anchorPoint = CGPoint(x: pivot.x / canvas.width, y: pivot.y / canvas.height)
+        layer.position = CGPoint(x: pivot.x * scale, y: pivot.y * scale)
+        layer.contents = image
+        layer.contentsGravity = .resize
+        layer.contentsScale = traitCollection.displayScale
+        return layer
+    }
+
+    /// Single-image hound for when the rig parts are missing: squash and bob in place.
+    private func addFlatHound(_ image: UIImage?, in dog: CGRect, on picture: CALayer) {
+        guard let image else { return }
         let root = CALayer()
         root.frame = dog
         let mark = CALayer()
@@ -456,6 +511,34 @@ final class LaunchIntroSceneUIView: UIView {
         times.append(1)
         values.append(0)
         let animation = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        animation.values = values
+        animation.keyTimes = times
+        animation.calculationMode = .cubic
+        stamp(animation, begin: 0, duration: length)
+        return animation
+    }
+
+    /// Samples a rig curve across the run and close, so the gait dies out on the logo pose at `closeEnd`.
+    private func gait(
+        _ keyPath: String,
+        rig: LaunchIntroHoundRig,
+        curve: LaunchIntroHoundRig.Curve,
+        unit: CGFloat = 1,
+        samplesPerStride: Int = 16
+    ) -> CAKeyframeAnimation {
+        let length = max(timeline.closeEnd, 0.01)
+        let step = max(rig.stride / Double(samplesPerStride), 0.005)
+        var times: [NSNumber] = []
+        var values: [CGFloat] = []
+        var time: TimeInterval = 0
+        while length - time > step * 0.25 {
+            times.append(ns(time / length))
+            values.append(rig.offset(curve, at: time, timeline: timeline) * unit)
+            time += step
+        }
+        times.append(1)
+        values.append(rig.offset(curve, at: length, timeline: timeline) * unit)
+        let animation = CAKeyframeAnimation(keyPath: keyPath)
         animation.values = values
         animation.keyTimes = times
         animation.calculationMode = .cubic
@@ -649,6 +732,21 @@ final class LaunchIntroSceneUIView: UIView {
 
     private func ns(_ value: Double) -> NSNumber {
         NSNumber(value: min(1, max(0, value)))
+    }
+}
+
+/// Images for `LaunchIntroHoundRig`. Nil when any part is missing, so the flat hound plays instead.
+struct LaunchIntroHoundParts {
+    var rig: LaunchIntroHoundRig
+    var images: [String: CGImage]
+
+    static func load(rig: LaunchIntroHoundRig = .standard) -> LaunchIntroHoundParts? {
+        var images: [String: CGImage] = [:]
+        for bone in rig.bones {
+            guard let image = UIImage(named: bone.asset)?.cgImage else { return nil }
+            images[bone.asset] = image
+        }
+        return LaunchIntroHoundParts(rig: rig, images: images)
     }
 }
 
