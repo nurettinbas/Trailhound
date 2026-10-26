@@ -76,17 +76,6 @@ struct PairingVehicleEditorView: View {
                     }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    saveTrigger += 1
-                } label: {
-                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
-                }
-                .disabled(saveDisabled)
-                .opacity(saveDisabled ? 0.45 : 1)
-            }
-        }
         .vehicleEditorUnsavedChangesGuard($hasUnsavedChanges)
         .vehiclePhotoFlowSheets(
             photoSheet: $photoSheet,
@@ -242,6 +231,8 @@ struct PairingVehicleEditorForm: View {
                 .listRowSeparator(.hidden)
 
             vehicleProfileFields(compactTop: true)
+
+            saveProfileButton
         }
     }
 
@@ -311,6 +302,22 @@ struct PairingVehicleEditorForm: View {
         }
         .buttonStyle(.glassPlainHit)
         .disabled(isOnlyVehicle)
+    }
+
+    private var saveProfileButton: some View {
+        let busy = isSaving || isProcessingPhoto || isFraming
+        return Button {
+            Task { await saveVehicle() }
+        } label: {
+            Text(L10n.pairingTabSave)
+        }
+        .buttonStyle(.glassPlainHit)
+        .trailhoundCompactProminentButton()
+        .disabled(busy)
+        .opacity(busy ? 0.45 : 1)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     private var photoSection: some View {
@@ -896,21 +903,7 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
     @State private var showDiscardConfirm = false
 
     func body(content: Content) -> some View {
-        content
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    GlassToolbarBackButton {
-                        if hasUnsavedChanges {
-                            showDiscardConfirm = true
-                        } else {
-                            dismiss()
-                        }
-                    }
-                }
-                .hideSharedToolbarBackgroundIfAvailable()
-            }
-            .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
+        backChrome(content)
             .alert(L10n.pairingTabDiscardVehicleEditsTitle, isPresented: $showDiscardConfirm) {
                 Button(L10n.pairingTabDiscardVehicleEditsLeave, role: .destructive) {
                     dismiss()
@@ -919,6 +912,50 @@ private struct VehicleEditorUnsavedChangesGuard: ViewModifier {
             } message: {
                 Text(L10n.pairingTabDiscardVehicleEditsMessage)
             }
+    }
+
+    /// iOS 26 owns swipe-back only while the system back button is visible. Hiding it
+    /// (the old always-on custom circle) turns off both the edge swipe and the full-screen
+    /// content pop, and putting our own delegate on those gestures breaks the content pop.
+    /// Keep the system button until there is something to discard. Then hide it, show the
+    /// glass circle, and block the pop.
+    @ViewBuilder
+    private func backChrome(_ content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .navigationBarBackButtonHidden(hasUnsavedChanges)
+                .toolbar {
+                    if hasUnsavedChanges {
+                        ToolbarItem(placement: .topBarLeading) {
+                            GlassToolbarBackButton {
+                                showDiscardConfirm = true
+                            }
+                        }
+                        .hideSharedToolbarBackgroundIfAvailable()
+                    }
+                }
+                .background {
+                    if hasUnsavedChanges {
+                        NavigationInteractivePopEnabler(disabled: true)
+                    }
+                }
+        } else {
+            content
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        GlassToolbarBackButton {
+                            if hasUnsavedChanges {
+                                showDiscardConfirm = true
+                            } else {
+                                dismiss()
+                            }
+                        }
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                }
+                .background(NavigationInteractivePopEnabler(disabled: hasUnsavedChanges))
+        }
     }
 }
 

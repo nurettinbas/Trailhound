@@ -13,11 +13,18 @@ struct RecordToastView: View {
     @State private var glintID = "record.toast"
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            medalDisc
+        HStack(alignment: .center, spacing: 12) {
+            ToastEmblemDisc(
+                systemImage: discSymbol,
+                animation: .bounce,
+                fill: tone.fill(scheme: colorScheme, palette: shellPalette),
+                glow: tone.glow(scheme: colorScheme, palette: shellPalette),
+                token: iconBounceToken,
+                settled: settled
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.toastRecordKicker)
-                    .font(.caption2.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .tracking(1.1)
                     .foregroundStyle(GlassText.secondary(for: colorScheme))
                     .opacity(settled ? 1 : 0.55)
@@ -27,21 +34,23 @@ struct RecordToastView: View {
             }
             .frame(maxWidth: 260, alignment: .leading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .fixedSize()
-        .glassChrome(cornerRadius: GlassTokens.chipRadius)
+        .padding(.horizontal, GlassTokens.toastHorizontalPadding)
+        .padding(.vertical, GlassTokens.toastVerticalPadding)
+        .frame(minHeight: GlassTokens.toastMinHeight)
+        .frame(maxWidth: GlassTokens.toastMaxWidth)
+        .fixedSize(horizontal: true, vertical: false)
+        .glassChrome(cornerRadius: GlassTokens.toastCornerRadius)
         .glassEntranceGlint(
-            cornerRadius: GlassTokens.chipRadius,
+            cornerRadius: GlassTokens.toastCornerRadius,
             id: glintID,
             isEnabled: !reduceMotion && !UITestSupport.isEnabled
         )
         .shadow(
-            color: .black.opacity(settled ? 0.16 : 0.05),
-            radius: settled ? 16 : 6,
-            y: settled ? 6 : 2
+            color: .black.opacity(settled ? 0.18 : 0.05),
+            radius: settled ? 18 : 6,
+            y: settled ? 8 : 2
         )
-        .scaleEffect(settled ? 1 : 0.96)
+        .scaleEffect(settled ? 1 : 0.96, anchor: .bottom)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
         .accessibilityLabel(payload.accessibilityMessage)
@@ -56,36 +65,19 @@ struct RecordToastView: View {
         VStack(alignment: .leading, spacing: 1) {
             if let longest = payload.longestText {
                 Text(L10n.toastRecordLongest(longest))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(GlassText.primary(for: colorScheme))
                     .lineLimit(1)
             }
             if let fastest = payload.fastestText {
                 Text(L10n.toastRecordFastest(fastest))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(GlassText.primary(for: colorScheme))
                     .lineLimit(1)
             }
         }
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var medalDisc: some View {
-        ZStack {
-            Circle()
-                .fill(discFill)
-            Circle()
-                .strokeBorder(.white.opacity(0.42), lineWidth: 1)
-            Image(systemName: discSymbol)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white)
-                .symbolEffect(.bounce, value: iconBounceToken)
-        }
-        .frame(width: 28, height: 28)
-        .scaleEffect(settled ? 1 : 0.72)
-        .shadow(color: discGlow.opacity(settled ? 0.55 : 0.12), radius: settled ? 8 : 2, y: 1)
-        .accessibilityHidden(true)
     }
 
     private var discSymbol: String {
@@ -98,36 +90,8 @@ struct RecordToastView: View {
         }
     }
 
-    private var usesGoldDisc: Bool {
-        payload.longestDistanceMeters != nil
-    }
-
-    private var discFill: LinearGradient {
-        if usesGoldDisc {
-            let dark = colorScheme == .dark
-            return LinearGradient(
-                colors: [
-                    AchievementTheme.hex(dark ? 0xD4A84A : 0xF3D08A),
-                    AchievementTheme.hex(dark ? 0x9A6A12 : 0xC48A1A)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        let tint = shellPalette.tintColor(for: colorScheme)
-        return LinearGradient(
-            colors: [tint.opacity(0.95), tint.opacity(0.72)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private var discGlow: Color {
-        if usesGoldDisc {
-            AchievementTheme.hex(colorScheme == .dark ? 0xD4A84A : 0xF3D08A)
-        } else {
-            shellPalette.tintColor(for: colorScheme)
-        }
+    private var tone: ToastEmblemTone {
+        payload.longestDistanceMeters != nil ? .gold : .palette
     }
 
     private func playEntrance() {

@@ -214,6 +214,7 @@ struct TravelJournalEditorSheet: View {
         }
         TravelJournalTotals.refresh(journal)
         try? modelContext.save()
+        ToastPresenter.shared.show(.journalSaved)
         dismiss()
     }
 }

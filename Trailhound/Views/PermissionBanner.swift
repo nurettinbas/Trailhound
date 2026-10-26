@@ -170,9 +170,7 @@ struct LocationAlwaysRequiredBanner: View {
       .font(.caption.bold())
     case .denied, .restricted:
       Button(L10n.locationBannerSettings) {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-          UIApplication.shared.open(url)
-        }
+        SystemSettingsLink.openLocationPermission()
       }
       .font(.caption.bold())
     case .authorizedAlways:
@@ -220,30 +218,46 @@ struct LocationPermissionBanner: View {
     actionTitle: String? = nil,
     action: (() -> Void)? = nil
   ) -> some View {
-    HStack(alignment: .top, spacing: 10) {
-      Image(systemName: systemImage)
-        .foregroundStyle(.orange)
-      Text(message)
-        .font(.caption)
-        .foregroundStyle(GlassText.primary(for: colorScheme))
-      Spacer(minLength: 0)
-      if let actionTitle, let action {
-        Button(actionTitle, action: action)
-          .font(.caption.bold())
-      } else if openSettings {
-        Button(L10n.string("location.banner.settings")) {
-          if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-          }
-        }
-        .font(.caption.bold())
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: systemImage)
+          .foregroundStyle(.orange)
+        Text(message)
+          .font(.caption)
+          .foregroundStyle(GlassText.primary(for: colorScheme))
+          .fixedSize(horizontal: false, vertical: true)
+          .frame(maxWidth: .infinity, alignment: .leading)
       }
+      bannerAction(openSettings: openSettings, actionTitle: actionTitle, action: action)
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, 12)
     .padding(.vertical, 10)
     .background(Color.orange.opacity(0.12))
     .glassCard(cornerRadius: 12, contentInset: 0)
     .padding(.horizontal)
+  }
+
+  private func bannerButton(_ title: String, action: @escaping () -> Void) -> some View {
+    Button(title, action: action)
+      .font(.caption.bold())
+      .buttonStyle(.plain)
+      .frame(maxWidth: .infinity, alignment: .trailing)
+  }
+
+  @ViewBuilder
+  private func bannerAction(
+    openSettings: Bool,
+    actionTitle: String?,
+    action: (() -> Void)?
+  ) -> some View {
+    if let actionTitle, let action {
+      bannerButton(actionTitle, action: action)
+    } else if openSettings {
+      bannerButton(L10n.string("location.banner.settings")) {
+        SystemSettingsLink.openLocationPermission()
+      }
+    }
   }
 }
 

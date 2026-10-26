@@ -8,6 +8,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        if launchOptions?[.remoteNotification] != nil {
+            MainActor.assumeIsolated {
+                LaunchIntroSession.shared.noteNotificationTap()
+            }
+        }
+        AppIconSync.installRotationHook()
         if UITestSupport.isEnabled {
             UIView.setAnimationsEnabled(false)
         } else {
@@ -30,7 +36,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         configurationForConnecting connectingSceneSession: UISceneSession,
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
-        UISceneConfiguration(
+        if options.notificationResponse != nil {
+            MainActor.assumeIsolated {
+                LaunchIntroSession.shared.noteNotificationTap()
+            }
+        }
+        if !options.urlContexts.isEmpty {
+            MainActor.assumeIsolated {
+                LaunchIntroSession.shared.noteURLOpen()
+            }
+        }
+        return UISceneConfiguration(
             name: "Default Configuration",
             sessionRole: connectingSceneSession.role
         )
@@ -89,6 +105,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             ?? (userInfo[VehicleCareNotificationScheduler.vehicleIDUserInfoKey] as? String)
         let route = NotificationRoute.resolve(action: action, target: target, tripID: tripID)
         Task { @MainActor in
+            LaunchIntroSession.shared.noteNotificationTap()
             route.perform()
         }
         completionHandler()

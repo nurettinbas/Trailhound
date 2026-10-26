@@ -112,6 +112,16 @@ final class AppSettings {
         let resolvedDefaults = userDefaults ?? RecordingControlBridge.sharedDefaults()
         defaults = resolvedDefaults
         hasCompletedOnboarding = resolvedDefaults.bool(forKey: Key.hasCompletedOnboarding)
+        #if DEBUG
+        if userDefaults == nil {
+            let replayKey = "debug.onboardingReplay.layoutCheck"
+            if !resolvedDefaults.bool(forKey: replayKey) {
+                resolvedDefaults.set(false, forKey: Key.hasCompletedOnboarding)
+                hasCompletedOnboarding = false
+                resolvedDefaults.set(true, forKey: replayKey)
+            }
+        }
+        #endif
         hasCompletedCarSetup = resolvedDefaults.bool(forKey: Key.hasCompletedCarSetup)
         hasCompletedShortcutsGuide = resolvedDefaults.bool(forKey: Key.hasCompletedShortcutsGuide)
         resolvedDefaults.removeObject(forKey: Key.preferredLanguageCode)
@@ -289,11 +299,22 @@ final class AppSettings {
     }
 
     var fuelPricePerLiter: Double {
-        get {
-            let value = defaults.double(forKey: Key.fuelPricePerLiter)
-            return value > 0 ? value : 65.0
-        }
-        set { defaults.set(newValue, forKey: Key.fuelPricePerLiter) }
+        get { FuelUnitPrices.resolved(fuelType: .petrol, defaults: defaults) }
+        set { FuelUnitPrices.set(newValue, fuelType: .petrol, defaults: defaults) }
+    }
+
+    /// Round fallback when unset, same kind of default as petrol 65 — not a live pump price.
+    var lpgPricePerLiter: Double {
+        get { FuelUnitPrices.resolved(fuelType: .lpg, defaults: defaults) }
+        set { FuelUnitPrices.set(newValue, fuelType: .lpg, defaults: defaults) }
+    }
+
+    func unitPrice(for fuelType: VehicleFuelType) -> Double {
+        FuelUnitPrices.resolved(fuelType: fuelType, defaults: defaults)
+    }
+
+    func setUnitPrice(_ value: Double, for fuelType: VehicleFuelType) {
+        FuelUnitPrices.set(value, fuelType: fuelType, defaults: defaults)
     }
 
     /// Currency the liter / kWh price is denominated in. Drives every fuel cost label in the app.
@@ -309,11 +330,8 @@ final class AppSettings {
     }
 
     var evChargePricePerKWh: Double {
-        get {
-            let value = defaults.double(forKey: Key.evChargePricePerKWh)
-            return value > 0 ? value : 8.5
-        }
-        set { defaults.set(newValue, forKey: Key.evChargePricePerKWh) }
+        get { FuelUnitPrices.resolved(fuelType: .electric, defaults: defaults) }
+        set { FuelUnitPrices.set(newValue, fuelType: .electric, defaults: defaults) }
     }
 
     var appLockEnabled: Bool {

@@ -15,6 +15,7 @@ struct StatsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.trailhoundLayout) private var layout
 
     @State private var selectedPeriod: StatsPeriod = .week
     @State private var selectedCategoryID: String?
@@ -38,6 +39,7 @@ struct StatsView: View {
     @State private var costRefreshTask: Task<Void, Never>?
     @Bindable private var tabSelection = TabSelection.shared
     @State private var dailyChartPage = 0
+    @State private var chartPlotWidth: CGFloat = 0
     @State private var weekdayChartPage = 0
     @State private var mixChartPage = 0
     @State private var vehicleChartPage = 0
@@ -199,9 +201,13 @@ struct StatsView: View {
         statsList(currencyCode: settings.fuelCurrency.rawValue)
             .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
             .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
-            .glassListChrome()
+            .glassListChrome(showsAtmosphere: !layout.isPhoneBook)
             .navigationTitle(L10n.string("stats.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .onPreferenceChange(StatsChartPlotWidthKey.self) { width in
+                guard width > 1, abs(width - chartPlotWidth) > 1 else { return }
+                chartPlotWidth = width
+            }
             .onAppear(perform: handleStatsAppear)
             .onStoreSave(perform: handleStatsStoreSave)
             .onDisappear {
@@ -293,6 +299,144 @@ struct StatsView: View {
 
     @ViewBuilder
     private func statsList(currencyCode: String) -> some View {
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook {
+            TrailhoundPaneSplit(
+                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                    isPhoneBook: layout.isPhoneBook,
+                    layoutClass: layout.layoutClass,
+                    isLandscape: layout.isLandscape,
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                    fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+                )
+            ) {
+                ScrollView {
+                    wideStatsPrimary(currencyCode: currencyCode)
+                        .padding(16)
+                }
+            } focus: {
+                ScrollView {
+                    wideStatsDistributions(currencyCode: currencyCode)
+                        .padding(16)
+                }
+            }
+        } else if layout.showsHeroRail {
+            HStack(alignment: .top, spacing: GlassTokens.hingeGutter) {
+                VStack(alignment: .leading, spacing: 12) {
+                    statsFilterCard
+                        .statsFullCard()
+                    statsHeroCard(currencyCode: currencyCode)
+                        .statsHalfCard()
+                }
+                .frame(maxWidth: layout.size.width * GlassTokens.railWidthFraction)
+                .padding(.leading, 16)
+                phoneStatsList(currencyCode: currencyCode)
+            }
+        } else {
+            phoneStatsList(currencyCode: currencyCode)
+        }
+    }
+
+    @ViewBuilder
+    private func wideStatsPrimary(currencyCode: String) -> some View {
+        VStack(spacing: 12) {
+            statsFilterCard
+                .statsFullCard()
+            StatsCardPair {
+                statsGoalCard
+            } right: {
+                statsHeroCard(currencyCode: currencyCode)
+            }
+            summaryMetricsGrid(currencyCode: currencyCode)
+                .statsFullCard(contentInset: StatsCardTokens.summaryGridInset)
+            if !placesDailyChartOnRight {
+                wideDailyChartCard
+            }
+        }
+    }
+
+    /// Landscape book keeps Daily distance with the right-hand charts.
+    /// The upright fold still stacks it under the summary on the top pane.
+    private var placesDailyChartOnRight: Bool {
+        layout.isLandscape
+    }
+
+    @ViewBuilder
+    private var wideDailyChartCard: some View {
+        if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
+            StatsChartPager(
+                pageCount: dailyChartKinds.count,
+                contentHeight: dailyChartKinds.contains(.expenses)
+                    ? StatsChartPagerMetrics.costContentHeight
+                    : StatsChartPagerMetrics.dailyContentHeight,
+                selection: $dailyChartPage,
+                reduceMotion: reduceMotion
+            ) { index in
+                dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
+            }
+            .statsFullCard()
+            .moduleSpan(.feature)
+        }
+    }
+
+    @ViewBuilder
+    private func wideStatsDistributions(currencyCode: String) -> some View {
+        VStack(spacing: 12) {
+            if placesDailyChartOnRight {
+                wideDailyChartCard
+            }
+            if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
+                StatsChartPager(
+                    pageCount: weekdayChartKinds.count,
+                    contentHeight: StatsChartPagerMetrics.dailyContentHeight,
+                    selection: $weekdayChartPage,
+                    reduceMotion: reduceMotion
+                ) { index in
+                    weekdayChartPageContent(kind: weekdayChartKinds[index], pageIndex: index)
+                }
+                .statsFullCard()
+            }
+            if snap.hasMixCharts, !mixChartKinds.isEmpty {
+                StatsChartPager(
+                    pageCount: mixChartKinds.count,
+                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                    selection: $mixChartPage,
+                    reduceMotion: reduceMotion
+                ) { index in
+                    mixChartPageContent(kind: mixChartKinds[index], pageIndex: index)
+                }
+                .statsFullCard()
+            }
+            if showsVehicleCompareList {
+                StatsVehicleCompareList(rows: vehicleCompareRows, currencyCode: currencyCode)
+                    .statsFullCard()
+            }
+            if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+                StatsChartPager(
+                    pageCount: vehicleChartKinds.count,
+                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                    selection: $vehicleChartPage,
+                    reduceMotion: reduceMotion
+                ) { index in
+                    vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
+                }
+                .statsFullCard()
+            }
+            if snap.hasCategoryCharts || costSnapshot.hasCategoryBreakdown {
+                StatsChartPager(
+                    pageCount: categoryChartKinds.count,
+                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                    selection: $categoryChartPage,
+                    reduceMotion: reduceMotion
+                ) { index in
+                    categoryChartPageContent(kind: categoryChartKinds[index], pageIndex: index)
+                }
+                .statsFullCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func phoneStatsList(currencyCode: String) -> some View {
         List {
             Section(L10n.string("filter.title")) {
                 statsFilterCard
@@ -1369,8 +1513,7 @@ struct StatsView: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 16,
-                        sheetHeight: 320
+                        side: 16
                     )
                 }
                 Spacer(minLength: 0)
@@ -1468,16 +1611,48 @@ struct StatsView: View {
         }
     }
 
+    /// A week of `d MMM` labels overlaps once each bar is narrower than caption size.
+    /// Open-fold panes are always in that range; a normal phone chart is not.
+    private func chartAxisUsesCompactDates(slots: Int) -> Bool {
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook { return true }
+        return chartAxisSlotWidth(slots: slots) < 40
+    }
+
+    private var chartPlotEstimate: CGFloat {
+        if chartPlotWidth > 1 { return chartPlotWidth }
+        if layout.layoutClass == .duoOpen || layout.isPhoneBook {
+            return max(140, (layout.size.width - GlassTokens.hingeGutter) / 2 - 32)
+        }
+        return max(140, layout.size.width - 64)
+    }
+
+    private func chartAxisSlotWidth(slots: Int) -> CGFloat {
+        let usable = max(72, chartPlotEstimate - 40)
+        return max(14, usable / CGFloat(max(slots, 1)))
+    }
+
+    @ViewBuilder
+    private func chartAxisLabel(_ text: String, slots: Int) -> some View {
+        let compact = chartAxisUsesCompactDates(slots: slots)
+        let label = Text(text)
+            .font(compact ? Font.system(size: 9, weight: .medium) : Font.caption2)
+            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+            .lineLimit(1)
+            .minimumScaleFactor(compact ? 0.5 : 0.75)
+            .allowsTightening(true)
+        if compact {
+            label.frame(width: chartAxisSlotWidth(slots: slots))
+        } else {
+            label
+        }
+    }
+
     @AxisContentBuilder
     private func dailyChartXAxis(days: [Date]) -> some AxisContent {
         AxisMarks(values: dailyAxisLabelDates(from: days)) { value in
             if let date = value.as(Date.self) {
                 AxisValueLabel(centered: true) {
-                    Text(dailyAxisDayLabel(date))
-                        .font(.caption2)
-                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                    chartAxisLabel(dailyAxisDayLabel(date), slots: max(days.count, 1))
                 }
             }
         }
@@ -1776,8 +1951,7 @@ struct StatsView: View {
                 titleAccessory: {
                     HelpPopoverButton(
                         accessibilityLabel: L10n.dynamicFuelHelpTitle,
-                        message: L10n.statsDynamicFuelHelpBody,
-                        sheetHeight: 320
+                        message: L10n.statsDynamicFuelHelpBody
                     )
                 }
             ) {
@@ -2103,12 +2277,8 @@ struct StatsView: View {
         .chartStatsQuietYAxisStyle()
         .chartXAxis {
             AxisMarks { value in
-                AxisValueLabel {
-                    Text(value.as(String.self) ?? "")
-                        .font(.caption2)
-                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                AxisValueLabel(centered: true) {
+                    chartAxisLabel(value.as(String.self) ?? "", slots: labels.count)
                 }
             }
         }
@@ -2131,12 +2301,8 @@ struct StatsView: View {
         .chartStatsQuietYAxisStyle()
         .chartXAxis {
             AxisMarks { value in
-                AxisValueLabel {
-                    Text(value.as(String.self) ?? "")
-                        .font(.caption2)
-                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                AxisValueLabel(centered: true) {
+                    chartAxisLabel(value.as(String.self) ?? "", slots: labels.count)
                 }
             }
         }
@@ -2240,8 +2406,7 @@ struct StatsView: View {
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
-                        message: helpBody,
-                        sheetHeight: 320
+                        message: helpBody
                     )
                 }
             }

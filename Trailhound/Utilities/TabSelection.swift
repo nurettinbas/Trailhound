@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -6,10 +7,25 @@ final class TabSelection {
     static let shared = TabSelection()
 
     var selectedTab: AppTab = .trips
+    /// Inbox is a root cover, not a page on the Trips stack.
+    var showNotificationsCover = false
+    /// Bumped when Start should reveal the recording card on Trips.
+    private(set) var scrollToRecordingToken = 0
+    /// Trips action sits with the bell in the trailing capsule. Hidden in merge mode and on the split library.
+    var wideBookTrailingVisible = false
+    /// Landscape book: bell, plus, and merge share one vertical capsule.
+    var wideBookShowsPlusAndMerge = false
+    var wideBookTrailingSymbol = "arrow.triangle.merge"
+    var wideBookTrailingLabel = ""
+    private(set) var wideBookTrailingToken = 0
+    private(set) var wideBookJournalToken = 0
+    private(set) var wideBookMergeToken = 0
     /// Set by care notification deep link; consumed by PairingTabView.
     private(set) var pendingVehicleCareID: UUID?
     private(set) var pendingStatsAnchor: StatsPremiumAnchor?
     private(set) var pendingTripID: UUID?
+    /// Trips tab stack. Trip rows, travel rows, and notification deep links all write here.
+    var tripsPath = NavigationPath()
 
     func openPairing() {
         selectedTab = .pairing
@@ -17,6 +33,32 @@ final class TabSelection {
 
     func openTrips() {
         selectedTab = .trips
+    }
+
+    func openNotifications() {
+        showNotificationsCover = true
+    }
+
+    func closeNotifications() {
+        showNotificationsCover = false
+    }
+
+    /// Switch to Trips and ask the list to show the recording card.
+    func focusRecordingCard() {
+        openTrips()
+        scrollToRecordingToken += 1
+    }
+
+    func triggerWideBookTrailing() {
+        wideBookTrailingToken += 1
+    }
+
+    func triggerNewJournal() {
+        wideBookJournalToken += 1
+    }
+
+    func triggerMerge() {
+        wideBookMergeToken += 1
     }
 
     func openVehicleCare(vehicleID: UUID) {
@@ -43,6 +85,24 @@ final class TabSelection {
     func openTrip(id: UUID) {
         pendingTripID = id
         selectedTab = .trips
+        DevLog.shared.log(.tripDetail, "openTrip pending=\(id.uuidString.prefix(8)) path=\(tripsPath.count)")
+    }
+
+    /// Notification deep link: one trip on top of the list, never a second copy.
+    func showFinishedTrip(_ trip: Trip) {
+        var path = NavigationPath()
+        path.append(trip)
+        tripsPath = path
+        selectedTab = .trips
+        DevLog.shared.log(.tripDetail, "showFinishedTrip \(trip.id.uuidString.prefix(8)) path=\(tripsPath.count)")
+    }
+
+    /// Travel detail opens a member trip above the travel, on the same stack.
+    func appendTrip(_ trip: Trip) {
+        var path = tripsPath
+        path.append(trip)
+        tripsPath = path
+        DevLog.shared.log(.tripDetail, "appendTrip \(trip.id.uuidString.prefix(8)) path=\(tripsPath.count)")
     }
 
     func consumePendingStatsAnchor() -> StatsPremiumAnchor? {

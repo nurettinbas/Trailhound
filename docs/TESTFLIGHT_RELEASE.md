@@ -27,10 +27,8 @@
 4. Screenshots: list, detail map, stats, recap, settings
 5. Privacy Policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md`
 6. Support URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/SUPPORT.md`
-7. App Privacy (nutrition label), aligned with `docs/PRIVACY.md`:
-   - Precise Location — not linked, not used for tracking, App Functionality (on-device recording)
-   - If declaring the optional report flow: Customer Support + Other Diagnostic Data, linked to the user via their email, App Functionality only, not tracking. Collection is user-initiated each time (Mail / share sheet). Do not also claim “we collect no data.”
-8. App Review Notes: Report a problem opens system Mail or the share sheet only after the user confirms. There is no automatic upload, analytics, or tracking. The attachment has no coordinates, names, or photos. Reviewer devices without Apple Mail should use the share-sheet fallback.
+7. App Privacy (nutrition label), aligned with `PrivacyInfo.xcprivacy` and `docs/PRIVACY.md`: **Data Not Collected**. Location, photos, and receipts stay on the device. A diagnostic report leaves only when the user sends Mail or the share sheet themselves, which is not app collection. Do not also declare Precise Location as collected.
+8. App Review Notes: Report a problem opens system Mail or the share sheet only after the user confirms. There is no automatic upload, analytics, or tracking. The attachment has no coordinates, names, or photos. Reviewer devices without Apple Mail should use the share-sheet fallback. Settings → About → Support the developer opens three optional consumable tips (In-App Purchase). They unlock nothing. Say that in the notes so the row is documented, not hidden from review.
 
 ## TestFlight
 
@@ -54,7 +52,7 @@ These items are also mirrored in code as `DeviceTestChecklist` (`DeviceTestCheck
 Optional smoke:
 
 - [ ] **Manual recording** — start / pause / end from the app
-- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** fits start + trail (north-up; vehicle photo + chevron still face travel) → pause: map and 2D/3D tools lock, vehicle stays put, Resume/Stop/close still work
+- [ ] **Live follow map** — recording card map button → heading follow → pan then recenter → **Show entire route** pulls back just enough that the traveled path stays readable above the recording card (phone, landscape cover, open Duo; follow glide unchanged) → pause: map and 2D/3D tools lock, vehicle stays put, Resume/Stop/close still work
 - [ ] **Live follow map feel** — vehicle mark at screen center while following; single blue path appears immediately (no blank window); fills in behind you with no duplicate stroke, no 1 Hz “chunk” at the puck, and never draws ahead of the puck; pan keeps puck + trail updating
 - [ ] **Live follow open at speed** — open while moving fast: curved vehicle→puck flight lands on the puck; blue path does not race ahead of a frozen camera during the fade
 - [ ] **Live follow map stroke** — path thickness identical in 2D and 3D, and uniform end-to-end while panning a pitched (3D) camera; motion glides with no per-second stall/surge (camera, vehicle mark, and blue path together); camera pulls back at highway speed
@@ -109,6 +107,21 @@ Optional smoke:
 - “Not working” checklist: Ask Before Running off, Run Shortcut (not a bare Start trip), Location Always, silent start.
 - In-app Bluetooth audio-route matching was removed; no extra Bluetooth entitlement is required.
 - Location + background location mode are used only during an active recording.
+
+## App Store submission
+
+- [ ] **Paid Apps Agreement** — signed in App Store Connect → Business, with banking and tax forms complete. Tips do not load without it
+- [ ] **Tips** — create the consumables `com.trailhound.app.tip.small`, `.medium`, and `.large` (names and prices as in `Trailhound/TrailhoundTips.storekit`). Add a review screenshot of the Support sheet to each and submit them with this version
+- [ ] **Small Business Program** — enroll (later) for 15% instead of 30% commission
+- [ ] **Marketing URL** — `https://github.com/nurettinbas/Trailhound#support-the-developer` (the README section, not the in-app Privacy or Support pages)
+- [ ] **Store text** — description, screenshots, creative assets, and What’s New do not mention the IBAN or bank transfer
+- [ ] **Age rating** — answer the current App Store Connect questionnaire
+- [ ] **Screenshots** — iPhone set plus 13-inch iPad (the app supports iPad; widgets are iPhone and iPad)
+- [ ] **Privacy** — label is Data Not Collected, matching both `PrivacyInfo.xcprivacy` files (app and widget, UserDefaults reasons `CA92.1` and `1C8F.1`)
+- [ ] **Export compliance** — `ITSAppUsesNonExemptEncryption` is NO, so the upload question should not repeat
+- [ ] **EU DSA** — selling In-App Purchases makes you a trader on EU storefronts; enter the trader contact details, or leave EU storefronts off
+- [ ] **Review notes** — Shortcuts automation, background location (attach a short video), Live Activity and CarPlay tile, and the Settings → About → Support the developer row (tips unlock nothing)
+- [ ] **Encryption / permissions** — purpose strings name the trip or photo use and say location stays on the iPhone
 
 ## Release order (summary)
 

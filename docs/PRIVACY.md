@@ -9,7 +9,10 @@ This page is the public privacy policy for the App Store listing and the in-app 
 ## What stays on the device
 
 - GPS points, trip metadata, vehicle profiles, photos you attach to a vehicle, saved places, journals, and expenses
+- Receipt photos you attach to an expense, and any amount read from them
 - A rolling diagnostic log used only if you later choose **Report a problem**
+
+**Read Amount** on a receipt uses Apple’s on-device text recognition (Vision). The photo and the recognized text are processed on your iPhone. They are not sent to Trailhound, to an AI service, or to any server. The app shows what it read and fills the amount only after you confirm it.
 
 Location is used for recording drives (app functionality). It is not sent to Trailhound unless you explicitly mail a diagnostic report, and that report does **not** include coordinates, addresses, place names, vehicle names, photos, or your notes.
 
@@ -35,6 +38,10 @@ Mailed diagnostics are used only to debug the issue you described (app functiona
 
 **Retention after you send a report:** the mailbox copy is kept until the case is closed, and at most **90 days** after that, unless a legal claim or legal duty requires longer. You can ask for deletion at [nurettin.bas@icloud.com](mailto:nurettin.bas@icloud.com).
 
+## Support payments
+
+Settings → About → Support the developer offers optional tips through Apple In-App Purchase. Apple processes the payment under its own privacy policy. Trailhound does not receive your card number, Apple Account, or identity, and a tip unlocks nothing and is not stored in the app.
+
 ## Legal basis
 
 Sending a report is your informed, optional action for each submission. Recording trips uses location permission you grant in iOS Settings for the core recording feature.
@@ -45,6 +52,7 @@ Sending a report is your informed, optional action for each submission. Recordin
 - Delete the on-device log from the Report a problem sheet
 - Remove the attachment in Mail before sending
 - Email [nurettin.bas@icloud.com](mailto:nurettin.bas@icloud.com) to request deletion of a report you already sent
-- Delete the app to remove the local SwiftData store and remaining logs
+- Settings → recording retention can auto-delete trips after 30, 90, or 365 days, or keep them until you delete them (Never)
+- Delete the app to remove the local SwiftData store, receipt photos, and remaining logs
 
 See also [Support](SUPPORT.md).

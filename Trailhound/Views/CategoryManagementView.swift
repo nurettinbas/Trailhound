@@ -3,20 +3,20 @@ import SwiftUI
 
 enum SettingsFocusedField: Hashable {
     case newCategory
-    case fuelPrice
+    case fuelPrice(VehicleFuelType)
     case privacyRadius
 
     var previous: SettingsFocusedField? {
         switch self {
         case .newCategory: nil
         case .fuelPrice: .newCategory
-        case .privacyRadius: .fuelPrice
+        case .privacyRadius: nil
         }
     }
 
     var next: SettingsFocusedField? {
         switch self {
-        case .newCategory: .fuelPrice
+        case .newCategory: nil
         case .fuelPrice: .privacyRadius
         case .privacyRadius: nil
         }
@@ -25,7 +25,7 @@ enum SettingsFocusedField: Hashable {
     var title: String {
         switch self {
         case .newCategory: L10n.categoryNewPlaceholder
-        case .fuelPrice: L10n.settingsFuelPrice
+        case .fuelPrice(let type): type.displayName
         case .privacyRadius: L10n.settingsPrivacyRadius
         }
     }

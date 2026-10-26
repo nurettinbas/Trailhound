@@ -1,7 +1,40 @@
 import SwiftUI
 
+/// Titles for the Library / Camera source dialog. Vehicle avatar is the default; receipts reuse the sheet.
+struct PhotoSourceCopy: Equatable {
+    var title: String
+    var subtitle: String
+    var libraryTitle: String
+    var librarySubtitle: String
+    var cameraTitle: String
+    var cameraSubtitle: String
+
+    static var vehicle: PhotoSourceCopy {
+        PhotoSourceCopy(
+            title: L10n.pairingTabVehiclePhoto,
+            subtitle: L10n.pairingTabVehiclePhotoSourceSubtitle,
+            libraryTitle: L10n.pairingTabVehiclePhotoChoose,
+            librarySubtitle: L10n.pairingTabVehiclePhotoChooseSubtitle,
+            cameraTitle: L10n.pairingTabVehiclePhotoCamera,
+            cameraSubtitle: L10n.pairingTabVehiclePhotoCameraSubtitle
+        )
+    }
+
+    static var receipt: PhotoSourceCopy {
+        PhotoSourceCopy(
+            title: L10n.string("vehicles.care.expense.receipt"),
+            subtitle: L10n.string("vehicles.care.expense.receipt.source.subtitle"),
+            libraryTitle: L10n.pairingTabVehiclePhotoChoose,
+            librarySubtitle: L10n.string("vehicles.care.expense.receipt.choose.subtitle"),
+            cameraTitle: L10n.pairingTabVehiclePhotoCamera,
+            cameraSubtitle: L10n.string("vehicles.care.expense.receipt.camera.subtitle")
+        )
+    }
+}
+
 /// Premium photo source picker (library / camera) — same blue atmosphere as the rest of Trailhound.
 struct VehiclePhotoSourceSheet: View {
+    var copy: PhotoSourceCopy = .vehicle
     let canUseCamera: Bool
     let onLibrary: () -> Void
     let onCamera: () -> Void
@@ -20,13 +53,13 @@ struct VehiclePhotoSourceSheet: View {
                     .padding(.top, 10)
                     .padding(.bottom, 16)
 
-                Text(L10n.pairingTabVehiclePhoto)
+                Text(copy.title)
                     .font(.title3.weight(.semibold))
                     .glassPrimaryInk()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 22)
 
-                Text(L10n.pairingTabVehiclePhotoSourceSubtitle)
+                Text(copy.subtitle)
                     .font(.subheadline)
                     .glassSecondaryInk()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -38,8 +71,8 @@ struct VehiclePhotoSourceSheet: View {
                     sourceRow(
                         index: 0,
                         icon: "photo.on.rectangle.angled",
-                        title: L10n.pairingTabVehiclePhotoChoose,
-                        subtitle: L10n.pairingTabVehiclePhotoChooseSubtitle,
+                        title: copy.libraryTitle,
+                        subtitle: copy.librarySubtitle,
                         action: onLibrary
                     )
 
@@ -47,8 +80,8 @@ struct VehiclePhotoSourceSheet: View {
                         sourceRow(
                             index: 1,
                             icon: "camera.fill",
-                            title: L10n.pairingTabVehiclePhotoCamera,
-                            subtitle: L10n.pairingTabVehiclePhotoCameraSubtitle,
+                            title: copy.cameraTitle,
+                            subtitle: copy.cameraSubtitle,
                             action: onCamera
                         )
                     }

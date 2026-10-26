@@ -16,6 +16,7 @@ enum DeviceTestChecklist {
         "Trip detail edit fields: place/address/fuel/note stay above keyboard accessory; title chip hugs text (not full-bleed); Tamam glass chip; map does not jump; scroll dismisses keyboard; Reduce Motion settles instantly",
         "Appearance Light: every text field / search well has a thin white liquid-glass rim; Dark fields have no extra rim",
         "Form sheets (expense/schedule/settings/place/pairing): title chip + glass Tamam on first focus; tap/scroll dismiss; Trip Detail still grows panel without map jump",
+        "Expense receipt: Add Receipt opens Library/Camera sheet with receipt copy; camera and library both attach; thumbnail opens full-screen viewer (pinch, double-tap, glass Close); Read Amount outlines the total row, warning callout visible, Use This Amount fills the field, Not Right leaves it; Replace/Remove; Cancel deletes an unsaved photo; receipt glyph on the expense row; Light and Dark; airplane mode still reads",
         "Trip list search: keyboard shows hug-content title chip + glass Tamam; tap/scroll also dismisses",
         "50 km trip detail: colorSegs ≤ 60; route remains readable",
         "500 km trip detail (if available): opens smoothly, curves not oversimplified",
@@ -69,9 +70,15 @@ enum DeviceTestChecklist {
         "Stats summary: period % chips (green/red/frost plates + white type) match New capsule, not plain tinted text",
         "Stats summary: Total est. fuel and daily dual fuel chart readable (labels not overlapping)",
         "Cold open / onboarding: Trailhound logo 96 pt sharp; not blurry or pixelated",
+        "Cold launch: the system launch screen is plain white (Light) or black (Dark), never blue, and no app frame shows before the intro; it eases into the theme plate; road, hound, and corner stopwatch move large (crown press, hands sweep, watch rocks), coast to rest as the plate closes into the app icon with no jump at the handoff, a soft haptic lands with the icon, then it fades (phone, landscape, Duo, iPad, ProMotion, no hitch). Tap fades out. Reduce Motion is a still mark. Face ID waits until the intro ends",
+        "Cold launch from CarPlay / Shortcut / widget / deep link / notification: no intro. Returning from background does not replay it",
+        "Cold launch: Duo open and closed, iPhone landscape, iPad Stage Manager; Dark + Ember palette fades off the Sky launch color without a white flash",
         "Home screen icon matches previous look (corners, colors, halo)",
         "Recording start/stop sounds play; same tone as before, no cut-off",
-        "Appearance Light: floating tab bar is stable; white unselected, black selected icon + title; Dark keeps the deep shade",
-        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab"
+        "Appearance Light and Dark, portrait and landscape: tab bar stays the system Liquid Glass bar; the selected tab uses the current palette tint",
+        "Settings → Report a problem: disclosure, then Mail or share sheet with trailhound-debug.txt; no Dev Log tab",
+        "Trip detail swipe-back (edge and mid-screen, full and cancelled): returns to the list once, route does not redraw, bar shows Trailhound / Start / bell — never the detail back, share, or expand buttons",
+        "Vehicle detail swipe-back (edge and mid-screen, full and cancelled) returns to the vehicle list when nothing is unsaved. With unsaved edits, the swipe stays blocked and Back asks to discard",
+        "Read or unread started/ended trip notification opens that trip. A deleted trip shows “Trip not found” and leaves the inbox open"
     ]
 }

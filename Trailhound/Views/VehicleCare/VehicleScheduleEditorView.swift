@@ -17,6 +17,8 @@ private enum VehicleScheduleFocusedField: Hashable {
 struct VehicleScheduleEditorView: View {
     let vehicleID: UUID
     var scheduleID: UUID?
+    /// Wide-book trailing pane. Nil keeps the sheet dismiss.
+    var onFinish: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -57,6 +59,69 @@ struct VehicleScheduleEditorView: View {
     }
 
     var body: some View {
+        editorChrome
+            .dismissKeyboardOnTap(focus: $focusedField)
+            .dismissKeyboardOnScroll()
+            .fieldKeyboardAccessory(
+                title: focusedFieldTitle,
+                focusID: focusedField.map { AnyHashable($0) },
+                onDone: {
+                    focusedField = nil
+                    KeyboardDismiss.dismiss()
+                }
+            )
+            .onAppear {
+                if draft == nil {
+                    draft = schedule.map(VehicleScheduleEditorDraft.init(from:))
+                        ?? VehicleScheduleEditorDraft()
+                }
+            }
+            .deleteConfirmHost()
+    }
+
+    private var navigationTitleText: String {
+        scheduleID == nil
+            ? L10n.string("vehicles.care.schedule.add")
+            : L10n.string("vehicles.care.schedule.edit")
+    }
+
+    @ViewBuilder
+    private var editorChrome: some View {
+        if onFinish != nil {
+            VStack(spacing: 0) {
+                VehicleCarePaneEditorBar(
+                    title: navigationTitleText,
+                    saveDisabled: isSaving,
+                    onBack: close,
+                    onSave: save
+                )
+                editorForm
+                    .vehicleCareEmbeddedListChrome()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            editorForm
+                .glassListChrome()
+                .navigationTitle(navigationTitleText)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        GlassToolbarBackButton(action: close)
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            save()
+                        } label: {
+                            GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                        }
+                        .disabled(isSaving)
+                    }
+                }
+        }
+    }
+
+    private var editorForm: some View {
         Form {
             Section(L10n.string("vehicles.care.schedule.kind")) {
                 LabeledContent(L10n.string("vehicles.care.schedule.kind")) {
@@ -161,44 +226,6 @@ struct VehicleScheduleEditorView: View {
                 }
             }
         }
-        .glassListChrome()
-        .navigationTitle(
-            scheduleID == nil
-                ? L10n.string("vehicles.care.schedule.add")
-                : L10n.string("vehicles.care.schedule.edit")
-        )
-        .navigationBarTitleDisplayMode(.inline)
-        .dismissKeyboardOnTap(focus: $focusedField)
-        .dismissKeyboardOnScroll()
-        .fieldKeyboardAccessory(
-            title: focusedFieldTitle,
-            focusID: focusedField.map { AnyHashable($0) },
-            onDone: {
-                focusedField = nil
-                KeyboardDismiss.dismiss()
-            }
-        )
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                GlassToolbarBackButton(action: dismiss.callAsFunction)
-            }
-            .hideSharedToolbarBackgroundIfAvailable()
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    save()
-                } label: {
-                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
-                }
-                .disabled(isSaving)
-            }
-        }
-        .onAppear {
-            if draft == nil {
-                draft = schedule.map(VehicleScheduleEditorDraft.init(from:))
-                    ?? VehicleScheduleEditorDraft()
-            }
-        }
-        .deleteConfirmHost()
     }
 
     private func draftBinding<Value>(_ keyPath: WritableKeyPath<VehicleScheduleEditorDraft, Value>) -> Binding<Value> {
@@ -223,10 +250,18 @@ struct VehicleScheduleEditorView: View {
             }
             TripNotificationService.requestAuthorizationIfNeeded()
             ToastPresenter.shared.show(.vehicleReminderSaved)
-            dismiss()
+            close()
         } catch {
             AppErrorPresenter.shared.present(error.localizedDescription)
             isSaving = false
+        }
+    }
+
+    private func close() {
+        if let onFinish {
+            onFinish()
+        } else {
+            dismiss()
         }
     }
 
@@ -238,7 +273,7 @@ struct VehicleScheduleEditorView: View {
         modelContext.delete(schedule)
         try? modelContext.save()
         VehicleCareNotificationScheduler.rescheduleAll(in: modelContext)
-        dismiss()
+        close()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
         }

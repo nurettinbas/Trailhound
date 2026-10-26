@@ -16,6 +16,10 @@ The log does not include GPS coordinates, addresses, place/vehicle names, photos
 
 If Mail is not configured, Trailhound copies `nurettin.bas@icloud.com` to the clipboard and offers the system share sheet so you can send `trailhound-debug.txt` from Gmail or another app.
 
+## Tips and refunds
+
+**Settings → About → Support the developer** offers optional tips through Apple In-App Purchase. A tip unlocks nothing. Apple handles the payment, so refunds are requested from Apple at [reportaproblem.apple.com](https://reportaproblem.apple.com).
+
 ## App Store Support URL
 
 Use this page’s GitHub URL on the live `main` branch:

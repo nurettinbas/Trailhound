@@ -71,6 +71,8 @@
 		827CCD07A5334FA49B2E662E /* VehicleCostSnapshotLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */; };
 		5AD153B8CCD4406EADE9B0B6 /* VehicleExpenseCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */; };
 		D5AAC4B82D094E0C9FB8BD70 /* VehicleExpenseEditorDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */; };
+		C6CBF67AC0C546F0B1FA5F3C /* ExpenseReceiptStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */; };
+		31700934E0C74B38937C9D8E /* ReceiptAmountParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */; };
 		F6CB0070BE6C4AFAA87D54E2 /* VehicleExpenseInstallmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */; };
 		F47D9951692F49D1ABE964E0 /* SpeedChartSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */; };
 		355E3B97ED084EF794B2B0CA /* SpeedColoredSegmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */; };
@@ -157,6 +159,10 @@
 		A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */; };
 		A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */; };
 		A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */; };
+		A1LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */; };
+		A1LAUNCHINTROVIEW00001 /* LaunchIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */; };
+		A1LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */; };
+		L1AUNCHINTROTESTBUILD1 /* LaunchIntroTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */; };
 		A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSSTYLE000000000001 /* GlassStyle.swift */; };
 		A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSENGINE0000000001 /* GlassEngine.swift */; };
 		A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */; };
@@ -169,6 +175,8 @@
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
 		A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */; };
+		D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */; };
+		1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */; };
 		A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */; };
 		A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift */; };
 		A1VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */; };
@@ -240,6 +248,13 @@
 		A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */; };
 		A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MAILCOMPOSE00000001 /* MailComposeView.swift */; };
 		A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SUPPORTMAIL00000001 /* SupportMail.swift */; };
+		A1DEVELOPERINFO000001 /* DeveloperInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2DEVELOPERINFO000001 /* DeveloperInfo.swift */; };
+		A1TIPJARSTORE00000001 /* TipJarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARSTORE00000001 /* TipJarStore.swift */; };
+		A1TIPJARVIEW000000001 /* TipJarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARVIEW000000001 /* TipJarView.swift */; };
+		A1TIPJARSTORETEST0001 /* TipJarStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */; };
+		B1WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */; };
+		A1SYSSETLINK00000001 /* SystemSettingsLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SYSSETLINK00000001 /* SystemSettingsLink.swift */; };
+		S1YSSETLINKTESTBUILD1 /* SystemSettingsLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S0YSSETLINKTESTFILE1 /* SystemSettingsLinkTests.swift */; };
 		A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */; };
 		B10000000000000000000011 /* AppNotificationArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000011 /* AppNotificationArchive.swift */; };
 		B1DEVLOG0000000000001 /* DevLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DEVLOG0000000000001 /* DevLog.swift */; };
@@ -329,6 +344,7 @@
 		A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */; };
 		A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */; };
 		A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */; };
+		36D4DF0E85CA4826A7C22080 /* ReceiptTextRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */; };
 		A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */; };
 		A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */; };
 		A1CAREREMINDPLAN00001 /* CareReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */; };
@@ -342,6 +358,9 @@
 		A1VCAREDUCHIP00000001 /* VehicleCareDueChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */; };
 		A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */; };
 		A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */; };
+		9636DCBD04CA4C68A97D9C8E /* ExpenseReceiptScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */; };
+		30C25BFE25C5471DAD239FC6 /* ExpenseReceiptViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */; };
+		7B9DA8F1127F4BC2B8561DC0 /* ExpenseReceiptSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */; };
 		A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */; };
 		A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */; };
 		A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */; };
@@ -350,7 +369,8 @@
 		A1VCAREDETAIL0000001 /* VehicleCareDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VCAREDETAIL0000001 /* VehicleCareDetailView.swift */; };
 		A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */; };
 		A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */; };
-		A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */; };
+				A1TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */; };
 		A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */; };
 		A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */; };
 		A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */; };
@@ -388,7 +408,14 @@
 		A1PAIRINGTAB000000001 /* PairingTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGTAB000000001 /* PairingTabView.swift */; };
 		A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */; };
 		A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */; };
-		A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
+				A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
+		A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */; };
+				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */; };
+				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */; };
+				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLCHROME000001 /* SideColumnChrome.swift */; };
+				A1SIDECOLTEST000000001 /* SideColumnChromeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */; };
+				A1SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */; };
+				XCBLDSNAPfw00000000001 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = XCDEPSSNAP000000000001 /* SnapshotTesting */; };
 		A1PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */; };
 		A1SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */; };
 		A1SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */; };
@@ -499,6 +526,8 @@
 		181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleCostSnapshotLoaderTests.swift; sourceTree = SOURCE_ROOT; };
 		3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseCategoryTests.swift; sourceTree = SOURCE_ROOT; };
 		108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseEditorDraftTests.swift; sourceTree = SOURCE_ROOT; };
+		AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/ExpenseReceiptStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/ReceiptAmountParserTests.swift; sourceTree = SOURCE_ROOT; };
 		3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/VehicleCare/VehicleExpenseInstallmentTests.swift; sourceTree = SOURCE_ROOT; };
 		FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedChartSeriesTests.swift; sourceTree = SOURCE_ROOT; };
 		87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/SpeedColoredSegmentTests.swift; sourceTree = SOURCE_ROOT; };
@@ -586,6 +615,10 @@
 		A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceSignposts.swift; sourceTree = "<group>"; };
 		A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreChangeObserver.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundMotion.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroLayout.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroView.swift; sourceTree = "<group>"; };
+		A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntroSceneView.swift; sourceTree = "<group>"; };
+		L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LaunchIntroTests.swift; sourceTree = SOURCE_ROOT; };
 		A2GLASSSTYLE000000000001 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
 		A2GLASSENGINE0000000001 /* GlassEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEngine.swift; sourceTree = "<group>"; };
 		A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTabBarCompact.swift; sourceTree = "<group>"; };
@@ -598,6 +631,8 @@
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoStore.swift; sourceTree = "<group>"; };
+		894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptAmountParser.swift; sourceTree = "<group>"; };
+		349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptStore.swift; sourceTree = "<group>"; };
 		A2VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAvatarView.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOCAPTURE01 /* VehiclePhotoCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCaptureSheet.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSRCUI0001 /* VehiclePhotoSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoSourceSheet.swift; sourceTree = "<group>"; };
@@ -671,6 +706,14 @@
 		A2APPNOTIFSTORE00000001 /* AppNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationStore.swift; sourceTree = "<group>"; };
 		A2MAILCOMPOSE00000001 /* MailComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposeView.swift; sourceTree = "<group>"; };
 		A2SUPPORTMAIL00000001 /* SupportMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportMail.swift; sourceTree = "<group>"; };
+		A2DEVELOPERINFO000001 /* DeveloperInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperInfo.swift; sourceTree = "<group>"; };
+		A2TIPJARSTORE00000001 /* TipJarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarStore.swift; sourceTree = "<group>"; };
+		A2TIPSSTOREKIT0000001 /* TrailhoundTips.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TrailhoundTips.storekit; sourceTree = "<group>"; };
+		A2TIPJARVIEW000000001 /* TipJarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarView.swift; sourceTree = "<group>"; };
+		A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Services/TipJarStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A2SYSSETLINK00000001 /* SystemSettingsLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSettingsLink.swift; sourceTree = "<group>"; };
+		S0YSSETLINKTESTFILE1 /* SystemSettingsLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/SystemSettingsLinkTests.swift; sourceTree = SOURCE_ROOT; };
 		A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsListView.swift; sourceTree = "<group>"; };
 		B20000000000000000000011 /* AppNotificationArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationArchive.swift; sourceTree = "<group>"; };
 		B2DEVLOG0000000000001 /* DevLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevLog.swift; sourceTree = "<group>"; };
@@ -726,6 +769,7 @@
 		A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleCompletionService.swift; sourceTree = "<group>"; };
 		A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentPlan.swift; sourceTree = "<group>"; };
 		A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseInstallmentService.swift; sourceTree = "<group>"; };
+		3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptTextRecognizer.swift; sourceTree = "<group>"; };
 		A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapNotificationScheduler.swift; sourceTree = "<group>"; };
 		A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderPlanner.swift; sourceTree = "<group>"; };
@@ -739,6 +783,9 @@
 		A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareDueChip.swift; sourceTree = "<group>"; };
 		A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleScheduleEditorView.swift; sourceTree = "<group>"; };
 		A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleExpenseEditorView.swift; sourceTree = "<group>"; };
+		5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptScanSheet.swift; sourceTree = "<group>"; };
+		8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptViewer.swift; sourceTree = "<group>"; };
+		94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptSection.swift; sourceTree = "<group>"; };
 		A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCareMiniChart.swift; sourceTree = "<group>"; };
 		A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostDonutChart.swift; sourceTree = "<group>"; };
 		A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleCostCategoryChart.swift; sourceTree = "<group>"; };
@@ -748,6 +795,7 @@
 		A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/YearRecapSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementEvaluatorTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementThemeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/TrailhoundLayoutTests.swift; sourceTree = SOURCE_ROOT; };
 		A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/AchievementShareRendererTests.swift; sourceTree = SOURCE_ROOT; };
 		A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/MonthCostForecastTests.swift; sourceTree = SOURCE_ROOT; };
 		A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Premium/FrequentRouteAggregateTests.swift; sourceTree = SOURCE_ROOT; };
@@ -812,6 +860,12 @@
 		A2PAIRINGEMPTY000001 /* PairingEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingEmptyState.swift; sourceTree = "<group>"; };
 		A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingVehicleEditorView.swift; sourceTree = "<group>"; };
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
+		A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDeepLinkResolver.swift; sourceTree = "<group>"; };
+		A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLayout.swift; sourceTree = "<group>"; };
+		A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundShellToolbar.swift; sourceTree = "<group>"; };
+		A2SIDECOLCHROME000001 /* SideColumnChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideColumnChrome.swift; sourceTree = "<group>"; };
+		A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/SideColumnChromeTests.swift; sourceTree = SOURCE_ROOT; };
+		A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/SideColumnChromeSnapshotTests.swift; sourceTree = SOURCE_ROOT; };
 		A2PAIRINGSHCUT000001 /* PairingShortcutsAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingShortcutsAutomationGuideView.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSetupStore.swift; sourceTree = "<group>"; };
 		A2SHORTCUTSWIZARDTEST01 /* ShortcutsSetupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Pairing/ShortcutsSetupStoreTests.swift; sourceTree = SOURCE_ROOT; };
@@ -824,6 +878,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				XCBLDSNAPfw00000000001 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -907,6 +962,7 @@
 				A2INFOPLISTXC0000001 /* InfoPlist.xcstrings */,
 				A20000000000000000000026 /* Trailhound.entitlements */,
 				A20000000000000000000027 /* PrivacyInfo.xcprivacy */,
+				A2TIPSSTOREKIT0000001 /* TrailhoundTips.storekit */,
 				A2LOCALIZABLE00000000001 /* Localizable.xcstrings */,
 			);
 			path = Trailhound;
@@ -983,6 +1039,7 @@
 				A2ACHIEVECAT000000001 /* AchievementCatalog.swift */,
 				A2ACHIEVEEVAL00000001 /* AchievementEvaluator.swift */,
 				A2PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift */,
+				A2TIPJARSTORE00000001 /* TipJarStore.swift */,
 				A2PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift */,
 				A2VEHICLERESOLV000001 /* VehicleResolver.swift */,
 				4B6254BADAB2452485AC086C /* TripMergeService.swift */,
@@ -993,6 +1050,7 @@
 				A2VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift */,
 				A2VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift */,
 				A2VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift */,
+				3D02938B2227477D84177206 /* ReceiptTextRecognizer.swift */,
 				A2VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift */,
 				A2RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift */,
 				A2CAREREMINDPLAN00001 /* CareReminderPlanner.swift */,
@@ -1068,6 +1126,9 @@
 				A2VCAREDUCHIP00000001 /* VehicleCareDueChip.swift */,
 				A2VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift */,
 				A2VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift */,
+				5EB48765C84A441390A30A0E /* ExpenseReceiptScanSheet.swift */,
+				8A2272CD1BDA4EBCBAAE271B /* ExpenseReceiptViewer.swift */,
+				94EBA02861074F2F827EF19E /* ExpenseReceiptSection.swift */,
 				A2VCAREMINICHART0001 /* VehicleCareMiniChart.swift */,
 				A2VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift */,
 				A2VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift */,
@@ -1094,6 +1155,15 @@
 				A2PAIRINGEDIT000001 /* PairingVehicleEditorView.swift */,
 			);
 			path = Pairing;
+			sourceTree = "<group>";
+		};
+		A5LAUNCHINTROGRP000001 /* LaunchIntro */ = {
+			isa = PBXGroup;
+			children = (
+				A2LAUNCHINTROVIEW00001 /* LaunchIntroView.swift */,
+				A2LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift */,
+			);
+			path = LaunchIntro;
 			sourceTree = "<group>";
 		};
 		A50000000000000000000008 /* Views */ = {
@@ -1142,6 +1212,7 @@
 				A2ONBOARDHERO00000001 /* OnboardingHeroScene.swift */,
 				A2BRANDMARK0000000001 /* TrailhoundBrandMark.swift */,
 				A2RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift */,
+				A5LAUNCHINTROGRP000001 /* LaunchIntro */,
 				A2NOTIFLISTVIEW00000001 /* NotificationsListView.swift */,
 				A2MAILCOMPOSE00000001 /* MailComposeView.swift */,
 				A2PERMBANNER00000000001 /* PermissionBanner.swift */,
@@ -1151,6 +1222,7 @@
 				A5VCAREGRP000000000001 /* VehicleCare */,
 				A5PAIRINGGRP00000000001 /* Pairing */,
 				A20000000000000000000017 /* SettingsView.swift */,
+				A2TIPJARVIEW000000001 /* TipJarView.swift */,
 				A2CATMGMT00000000000001 /* CategoryManagementView.swift */,
 			);
 			path = Views;
@@ -1185,6 +1257,7 @@
 				A2PERFSIGNPOST00000001 /* PerformanceSignposts.swift */,
 				A2STORECHANGEOBS0001 /* StoreChangeObserver.swift */,
 				A2TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift */,
+				A2LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift */,
 				A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */,
 				A2APPICONSYNC000000001 /* AppIconSync.swift */,
 				A2GLASSSTYLE000000000001 /* GlassStyle.swift */,
@@ -1207,6 +1280,8 @@
 				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
 				A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
+				894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */,
+				349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */,
 				A2VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift */,
 				A2TRIPDETAILREVEAL00001 /* TripDetailRevealPolicy.swift */,
 				A2UITESTSUPPORT00000001 /* UITestSupport.swift */,
@@ -1215,6 +1290,10 @@
 				A2SHORTCUTSSETUPSTORE01 /* ShortcutsSetupStore.swift */,
 				A20000000000000000000021 /* PreviewData.swift */,
 				A2TABSELECTION000001 /* TabSelection.swift */,
+				A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */,
+				A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */,
+				A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */,
+				A2SIDECOLCHROME000001 /* SideColumnChrome.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
 				A2PREMWIDGETBRIDGE001 /* PremiumWidgetBridge.swift */,
 				A2TRIPLOCALITYRES0001 /* TripLocalityResolver.swift */,
@@ -1227,6 +1306,8 @@
 				A2CATEGORYSEEDER00000001 /* CategorySeeder.swift */,
 				A2L10N00000000000000001 /* L10n.swift */,
 				A2SUPPORTMAIL00000001 /* SupportMail.swift */,
+				A2DEVELOPERINFO000001 /* DeveloperInfo.swift */,
+				A2SYSSETLINK00000001 /* SystemSettingsLink.swift */,
 				A2ROUTEPRIVCLIP0000001 /* RoutePrivacyClipper.swift */,
 				A2TRIPSHARECARD0000001 /* TripShareCardRenderer.swift */,
 				A2SOCIALIMAGESHARE0001 /* SocialImageShare.swift */,
@@ -1277,6 +1358,7 @@
 				B20000000000000000000006 /* WidgetRecordingIntents.swift */,
 				B20000000000000000000007 /* Info.plist */,
 				B20000000000000000000008 /* TrailhoundWidget.entitlements */,
+				B2WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy */,
 			);
 			path = TrailhoundWidget;
 			sourceTree = "<group>";
@@ -1323,6 +1405,7 @@
 				0F522128C2A8428A9F29352F /* TripMergeServiceTests.swift */,
 				DC9C492887764166B97747AC /* TripPostProcessorTests.swift */,
 				A2PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift */,
+				A2TIPJARSTORETEST0001 /* TipJarStoreTests.swift */,
 				87991671D44840E8B8E37C84 /* SharedUtilityTests.swift */,
 				89194A972A9D445CA328EC8B /* AsyncTestHelpers.swift */,
 				CD488383E993421084D17FEB /* DeviceTestChecklist.swift */,
@@ -1332,6 +1415,8 @@
 				F171B4E520A447588E505253 /* DeleteConfirmPresenterTests.swift */,
 				409D7353D2A44C42B7947FCA /* DevLogTests.swift */,
 				3D4BDDBB10634E2DA79A4402 /* GlassContrastTests.swift */,
+				L0AUNCHINTROTESTFILE01 /* LaunchIntroTests.swift */,
+				S0YSSETLINKTESTFILE1 /* SystemSettingsLinkTests.swift */,
 				FD9240CF7F8442C2B6A65D5F /* GlassEngineTests.swift */,
 				603E4D4BA14744CF9C56F11D /* GlassPaletteTests.swift */,
 				B6CB16BB624C4307B0AA6296 /* KeyboardFieldTitleTests.swift */,
@@ -1359,6 +1444,8 @@
 				181B85E79D3041BC8B4AF978 /* VehicleCostSnapshotLoaderTests.swift */,
 				3C6156AFF0F64D6CA8F1ABFD /* VehicleExpenseCategoryTests.swift */,
 				108C6CB738F345FD87185053 /* VehicleExpenseEditorDraftTests.swift */,
+				AA2EEE09B1AA400C985A6BB5 /* ExpenseReceiptStoreTests.swift */,
+				2A2DEF086BDC423291F1751E /* ReceiptAmountParserTests.swift */,
 				3C1CB7BE1DB64FCEB2616A6C /* VehicleExpenseInstallmentTests.swift */,
 				FBE906134956484A8CA34BDF /* SpeedChartSeriesTests.swift */,
 				87C7130D7EB645F183090C07 /* SpeedColoredSegmentTests.swift */,
@@ -1370,6 +1457,9 @@
 				A2YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift */,
 				A2ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift */,
 				A2ACHIEVETHEMETEST001 /* AchievementThemeTests.swift */,
+				A2TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift */,
+				A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */,
+				A2SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift */,
 				A2ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift */,
 				A2MONTHFORECASTTEST01 /* MonthCostForecastTests.swift */,
 				A2FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift */,
@@ -1406,6 +1496,9 @@
 				B90000000000000000000002 /* PBXTargetDependency */,
 			);
 			name = TrailhoundTests;
+			packageProductDependencies = (
+				XCDEPSSNAP000000000001 /* SnapshotTesting */,
+			);
 			productName = TrailhoundTests;
 			productReference = 3C4D5673496049A7A905249D /* TrailhoundTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -1491,6 +1584,9 @@
 			productRefGroup = A50000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+			);
 			targets = (
 				A60000000000000000000001 /* Trailhound */,
 				B60000000000000000000001 /* TrailhoundWidgetExtension */,
@@ -1539,6 +1635,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000013 /* Localizable.xcstrings in Resources */,
+				B1WIDGETPRIVACY000001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1581,6 +1678,7 @@
 				EEB93D176AC04A399D62976C /* TripMergeServiceTests.swift in Sources */,
 				A0521629B6B1436EAD50C50D /* TripPostProcessorTests.swift in Sources */,
 				A1PERSRECORDEVALTEST0001 /* PersonalRecordEvaluatorTests.swift in Sources */,
+				A1TIPJARSTORETEST0001 /* TipJarStoreTests.swift in Sources */,
 				1D9267C59ACB415A91AEDE29 /* SharedUtilityTests.swift in Sources */,
 				99589AB9DEC14224BFA11E93 /* AsyncTestHelpers.swift in Sources */,
 				A97D083820FA41BDAA20AFFA /* DeviceTestChecklist.swift in Sources */,
@@ -1590,6 +1688,8 @@
 				AA68924BE60047878AFEA76D /* DeleteConfirmPresenterTests.swift in Sources */,
 				C5FF160D58744DEDAECC5E41 /* DevLogTests.swift in Sources */,
 				644CF1B5CF0441DA951620CC /* GlassContrastTests.swift in Sources */,
+				L1AUNCHINTROTESTBUILD1 /* LaunchIntroTests.swift in Sources */,
+				S1YSSETLINKTESTBUILD1 /* SystemSettingsLinkTests.swift in Sources */,
 				5C9157C85E6349CD83881ACC /* GlassEngineTests.swift in Sources */,
 				0312C000EFDE4B8E924D2D46 /* GlassPaletteTests.swift in Sources */,
 				B2ECDF28DAF743DB8D98C692 /* KeyboardFieldTitleTests.swift in Sources */,
@@ -1617,6 +1717,8 @@
 				827CCD07A5334FA49B2E662E /* VehicleCostSnapshotLoaderTests.swift in Sources */,
 				5AD153B8CCD4406EADE9B0B6 /* VehicleExpenseCategoryTests.swift in Sources */,
 				D5AAC4B82D094E0C9FB8BD70 /* VehicleExpenseEditorDraftTests.swift in Sources */,
+				C6CBF67AC0C546F0B1FA5F3C /* ExpenseReceiptStoreTests.swift in Sources */,
+				31700934E0C74B38937C9D8E /* ReceiptAmountParserTests.swift in Sources */,
 				F6CB0070BE6C4AFAA87D54E2 /* VehicleExpenseInstallmentTests.swift in Sources */,
 				F47D9951692F49D1ABE964E0 /* SpeedChartSeriesTests.swift in Sources */,
 				355E3B97ED084EF794B2B0CA /* SpeedColoredSegmentTests.swift in Sources */,
@@ -1628,6 +1730,9 @@
 				A1YEARRECAPTEST000001 /* YearRecapSnapshotTests.swift in Sources */,
 				A1ACHIEVEEVALTEST0001 /* AchievementEvaluatorTests.swift in Sources */,
 				A1ACHIEVETHEMETEST001 /* AchievementThemeTests.swift in Sources */,
+				A1TRAILHOUNDLAYTEST001 /* TrailhoundLayoutTests.swift in Sources */,
+				A1SIDECOLTEST000000001 /* SideColumnChromeTests.swift in Sources */,
+				A1SIDECOLSNAP000000001 /* SideColumnChromeSnapshotTests.swift in Sources */,
 				A1ACHIEVESHARETEST001 /* AchievementShareRendererTests.swift in Sources */,
 				A1MONTHFORECASTTEST01 /* MonthCostForecastTests.swift in Sources */,
 				A1FREQAGGTEST00000001 /* FrequentRouteAggregateTests.swift in Sources */,
@@ -1686,6 +1791,7 @@
 				A1RUNHOUNDICON00000001 /* TrailhoundRunningHoundIcon.swift in Sources */,
 				A1PERMBANNER00000000001 /* PermissionBanner.swift in Sources */,
 				A10000000000000000000017 /* SettingsView.swift in Sources */,
+				A1TIPJARVIEW000000001 /* TipJarView.swift in Sources */,
 				A10000000000000000000018 /* DistanceCalculator.swift in Sources */,
 				A1ROUTEDISPPATH00000001 /* RouteDisplayPath.swift in Sources */,
 				A1RECACCESSIBILITY00001 /* RecordingAccessibility.swift in Sources */,
@@ -1702,6 +1808,9 @@
 				A1PERFSIGNPOST00000001 /* PerformanceSignposts.swift in Sources */,
 				A1STORECHANGEOBS0001 /* StoreChangeObserver.swift in Sources */,
 				A1TRAILHOUNDMOTION00000001 /* TrailhoundMotion.swift in Sources */,
+				A1LAUNCHINTROLAY000001 /* LaunchIntroLayout.swift in Sources */,
+				A1LAUNCHINTROVIEW00001 /* LaunchIntroView.swift in Sources */,
+				A1LAUNCHINTROSCENE001 /* LaunchIntroSceneView.swift in Sources */,
 				A1GLASSSTYLE000000000001 /* GlassStyle.swift in Sources */,
 				A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */,
 				A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */,
@@ -1721,6 +1830,8 @@
 				A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
 				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
+				D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */,
+				1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */,
 				A1VEHICLEPHOTOCROPMATH1 /* VehiclePhotoCropMath.swift in Sources */,
 				A1VEHICLEAVATARVIEW0001 /* VehicleAvatarView.swift in Sources */,
 				A1VEHICLEPHOTOINLINE001 /* VehiclePhotoInlineFraming.swift in Sources */,
@@ -1810,6 +1921,7 @@
 				A1PREMDERIVED00000001 /* PremiumDerivedMaintenance.swift in Sources */,
 				A1ACHIEVEEVAL00000001 /* AchievementEvaluator.swift in Sources */,
 				A1PERSRECORDEVAL0000001 /* PersonalRecordEvaluator.swift in Sources */,
+				A1TIPJARSTORE00000001 /* TipJarStore.swift in Sources */,
 				A1ACHIEVECAT000000001 /* AchievementCatalog.swift in Sources */,
 				A1FREQAGGSVC000000001 /* FrequentRouteAggregateService.swift in Sources */,
 				A1FREQROADPATH0000001 /* FrequentRouteRoadPathCache.swift in Sources */,
@@ -1837,6 +1949,7 @@
 				A1VCAREDUCALC00000001 /* VehicleCareDueCalculator.swift in Sources */,
 				A1VSCHEDCOMPLETE00001 /* VehicleScheduleCompletionService.swift in Sources */,
 				A1VEXPINSTSVC0000001 /* VehicleExpenseInstallmentService.swift in Sources */,
+				36D4DF0E85CA4826A7C22080 /* ReceiptTextRecognizer.swift in Sources */,
 				A1VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift in Sources */,
 				A1VCARENOTIFS0000001 /* VehicleCareNotificationScheduler.swift in Sources */,
 				A1RECAPNOTIFS0000001 /* RecapNotificationScheduler.swift in Sources */,
@@ -1851,6 +1964,9 @@
 				A1VCAREDUCHIP00000001 /* VehicleCareDueChip.swift in Sources */,
 				A1VSCHEDEDITOR000001 /* VehicleScheduleEditorView.swift in Sources */,
 				A1VEXPEDITOR00000001 /* VehicleExpenseEditorView.swift in Sources */,
+				9636DCBD04CA4C68A97D9C8E /* ExpenseReceiptScanSheet.swift in Sources */,
+				30C25BFE25C5471DAD239FC6 /* ExpenseReceiptViewer.swift in Sources */,
+				7B9DA8F1127F4BC2B8561DC0 /* ExpenseReceiptSection.swift in Sources */,
 				A1VCAREMINICHART0001 /* VehicleCareMiniChart.swift in Sources */,
 				A1VCOSTDONUTCHART0001 /* VehicleCostDonutChart.swift in Sources */,
 				A1VCOSTCATCHART000001 /* VehicleCostCategoryChart.swift in Sources */,
@@ -1864,6 +1980,8 @@
 				A1APPNOTIFSTORE00000001 /* AppNotificationStore.swift in Sources */,
 				A1MAILCOMPOSE00000001 /* MailComposeView.swift in Sources */,
 				A1SUPPORTMAIL00000001 /* SupportMail.swift in Sources */,
+				A1DEVELOPERINFO000001 /* DeveloperInfo.swift in Sources */,
+				A1SYSSETLINK00000001 /* SystemSettingsLink.swift in Sources */,
 				A1NOTIFLISTVIEW00000001 /* NotificationsListView.swift in Sources */,
 				A1TRIPSHARECARD0000001 /* TripShareCardRenderer.swift in Sources */,
 				A1SOCIALIMAGESHARE0001 /* SocialImageShare.swift in Sources */,
@@ -1899,6 +2017,10 @@
 				A1PAIRINGEMPTY000001 /* PairingEmptyState.swift in Sources */,
 				A1PAIRINGEDIT000001 /* PairingVehicleEditorView.swift in Sources */,
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
+				A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */,
+				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */,
+				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */,
+				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */,
 				A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */,
 				B10000000000000000000004 /* TripRecordingAttributes.swift in Sources */,
 				B1LIVEACTMARK000000001 /* LiveActivityVehicleMarkStore.swift in Sources */,
@@ -1962,7 +2084,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2088,24 +2210,24 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Records your route when the screen is off or a Shortcut starts a trip. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Records the route of the trip you start in Trailhound. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a recent photo for your vehicle avatar or an expense receipt. If you decline, you can still pick one photo at a time.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2114,7 +2236,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2133,24 +2255,24 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Trailhound/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Trailhound;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle to use as its avatar.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo of your vehicle for its avatar, or of a receipt to attach to an expense.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used to protect your trip history.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location access is required for background trip recording.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to record your trips.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse recent photos and choose one of your vehicle for its avatar.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Records your route when the screen is off or a Shortcut starts a trip. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Records the route of the trip you start in Trailhound. Location stays on this iPhone.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a recent photo for your vehicle avatar or an expense receipt. If you decline, you can still pick one photo at a time.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Yolculuk başladığında ve bittiğinde bildirim göndermek için kullanılır.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2159,7 +2281,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -2181,7 +2303,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2189,7 +2311,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2211,7 +2333,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2219,7 +2341,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -2231,7 +2353,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2248,7 +2370,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2265,7 +2387,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trailhound.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -2324,6 +2446,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		XCDEPSSNAP000000000001 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = XCPKGSNAPref0000000001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A90000000000000000000001 /* Project object */;
 }

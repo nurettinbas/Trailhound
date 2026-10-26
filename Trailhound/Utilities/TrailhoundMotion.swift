@@ -14,6 +14,15 @@ enum TrailhoundMotion {
     static let recordingMorph = Animation.spring(response: 0.26, dampingFraction: 0.9)
     /// Recording card entrance — card rise + car drive-in.
     static let coldOpenFade = Animation.spring(response: 0.28, dampingFraction: 0.88)
+    /// Cold-launch hound intro budgets. Frames are Core Animation, not SwiftUI.
+    static let launchIntroDuration: TimeInterval = 1.715
+    static let launchIntroLowPowerDuration: TimeInterval = 1.19
+    static let launchIntroReduceMotionDuration: TimeInterval = 0.25
+    static let launchIntroSkipDuration: TimeInterval = 0.25
+    /// App underneath settles from this scale to 1 as the plate closes into the icon.
+    static let launchIntroContentSettleScale: CGFloat = 1.04
+    /// Same curve and length as the plate closing, so the app and the icon move as one.
+    static let launchIntroContentSettle = Animation.timingCurve(0.65, 0, 0.35, 1, duration: 0.56)
     /// Soft sheet rise for TripDetail panel.
     static let sheetRise = Animation.spring(response: 0.55, dampingFraction: 0.88)
     /// Trip detail: panel recedes + camera opens as one beat (no sheet modal).
@@ -24,9 +33,9 @@ enum TrailhoundMotion {
     static let mapClear = Animation.easeOut(duration: 0.9)
     /// Pin pop with a bit of overshoot.
     static let pinPop = Animation.spring(response: 0.36, dampingFraction: 0.72)
-    /// Toast chip drop-in — soft overshoot, matches pinPop energy.
-    static let toastSpring = Animation.spring(response: 0.42, dampingFraction: 0.78)
-    /// Toast chip exit — quick ease up/fade.
+    /// Toast card rise from the bottom — soft overshoot, matches pinPop energy.
+    static let toastSpring = Animation.spring(response: 0.44, dampingFraction: 0.76)
+    /// Toast card exit — quick ease down and fade.
     static let toastDismiss = Animation.easeIn(duration: 0.22)
     /// Recording card live-map CTA popout (label expands from the map chip).
     static let liveMapHintPop = Animation.spring(response: 0.48, dampingFraction: 0.72)
@@ -201,6 +210,38 @@ enum TrailhoundMotion {
         reduceMotion ? nil : .spring(response: 0.76, dampingFraction: 0.90)
     }
 
+    /// Fold, rotate, and pane changes. Same spring as the badge card.
+    /// Reduce Motion uses a short fade instead of a flight.
+    static func layoutReflow(reduceMotion: Bool) -> Animation? {
+        if reduceMotion {
+            return .easeOut(duration: 0.12)
+        }
+        return badgeCardExpand(reduceMotion: false)
+    }
+
+    /// Wide-book care form. Covers the trailing pane from the trailing edge.
+    /// Back and Save run the same move in reverse.
+    static func panePush(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? .easeOut(duration: 0.12) : .timingCurve(0.22, 0.86, 0.18, 1, duration: 0.42)
+    }
+
+    static func panePushCover(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: .trailing),
+            removal: .move(edge: .trailing)
+        )
+    }
+
+    /// The list under a pane push. It shifts off the leading edge as the form covers it.
+    static func panePushRecede(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: .leading),
+            removal: .move(edge: .leading)
+        )
+    }
+
     /// Gallery content fade after the card has grown — no vertical offset.
     static func badgeGalleryAppear(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeOut(duration: 0.22)
@@ -211,16 +252,16 @@ enum TrailhoundMotion {
         return .opacity.combined(with: .scale(scale: 0.98))
     }
 
-    /// Toast chip: drop from above + scale settle; leave upward with fade.
+    /// Toast card: rise from below and settle; leave downward with fade.
     static func toastTransition(reduceMotion: Bool) -> AnyTransition {
         guard !reduceMotion else { return .opacity }
         return .asymmetric(
             insertion: .opacity
-                .combined(with: .offset(y: -18))
-                .combined(with: .scale(scale: 0.88)),
+                .combined(with: .offset(y: 28))
+                .combined(with: .scale(scale: 0.90, anchor: .bottom)),
             removal: .opacity
-                .combined(with: .offset(y: -10))
-                .combined(with: .scale(scale: 0.94))
+                .combined(with: .offset(y: 16))
+                .combined(with: .scale(scale: 0.94, anchor: .bottom))
         )
     }
 }
@@ -300,8 +341,47 @@ enum TrailhoundHaptics {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
+    /// One soft tap as the cold-launch road hands off to the app.
+    static func launchSettled() {
+        guard !UITestSupport.isEnabled else { return }
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+    }
+
     static func destructive() {
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+    }
+
+    /// One haptic phrase per toast. Compound styles stagger so the impact is not swallowed by the notification.
+    static func playToast(_ style: ToastHapticStyle) {
+        switch style {
+        case .success:
+            playImpact(.soft, then: .success)
+        case .destructive:
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        case .warning:
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        case .merge:
+            playImpact(.medium, then: .success)
+        case .automation:
+            playImpact(.rigid, then: .success)
+        case .personalRecord:
+            playImpact(.heavy, then: .success)
+        }
+    }
+
+    private static func playImpact(
+        _ style: UIImpactFeedbackGenerator.FeedbackStyle,
+        then notification: UINotificationFeedbackGenerator.FeedbackType
+    ) {
+        let impact = UIImpactFeedbackGenerator(style: style)
+        impact.prepare()
+        impact.impactOccurred()
+        let note = UINotificationFeedbackGenerator()
+        note.prepare()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(45))
+            note.notificationOccurred(notification)
+        }
     }
 }
 

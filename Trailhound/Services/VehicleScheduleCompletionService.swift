@@ -12,6 +12,7 @@ enum VehicleScheduleCompletionService {
         odometerKm: Int? = nil,
         installmentCount: Int = 1,
         note: String? = nil,
+        receiptFileName: String? = nil,
         in context: ModelContext,
         rescheduleNotifications: Bool = true
     ) throws -> VehicleExpense {
@@ -25,6 +26,7 @@ enum VehicleScheduleCompletionService {
             startDate: occurredAt,
             installmentCount: installmentCount,
             note: note,
+            receiptFileName: receiptFileName,
             linkedScheduleID: schedule.id,
             odometerKm: odometerKm,
             source: .manual,

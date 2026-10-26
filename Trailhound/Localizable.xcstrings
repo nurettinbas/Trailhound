@@ -1512,6 +1512,23 @@
         }
       }
     },
+    "fuel.lpg" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LPG"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LPG"
+          }
+        }
+      }
+    },
     "fuel.hybrid" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4192,13 +4209,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mark all as read"
+            "value" : "Mark all read"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tümünü okundu işaretle"
+            "value" : "Tümünü okundu yap"
+          }
+        }
+      }
+    },
+    "notifications.open" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aç"
           }
         }
       }
@@ -7261,13 +7295,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default vehicle"
+            "value" : "Default"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varsayılan araç"
+            "value" : "Varsayılan"
           }
         }
       }
@@ -7499,13 +7533,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enable camera access in Settings to photograph your vehicle."
+            "value" : "Enable camera access in Settings to take a photo."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aracını fotoğraflamak için Ayarlar’dan kamera erişimine izin ver."
+            "value" : "Fotoğraf çekmek için Ayarlar’dan kamera erişimine izin ver."
           }
         }
       }
@@ -14569,19 +14603,36 @@
     "series" : {
 
     },
+    "settings.about.play_launch_intro" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play launch intro"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Açılış animasyonunu oynat"
+          }
+        }
+      }
+    },
     "settings.about.privacy" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to."
+            "value" : "Trip data stays on this device. Report a problem sends a diagnostic log only if you choose to. Support payments are handled by Apple; Trailhound does not see your payment details."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir."
+            "value" : "Yolculuk verileri yalnızca bu cihazda kalır. Sorun bildir, tanı günlüğünü yalnızca sen seçersen gönderir. Destek ödemelerini Apple yönetir; Trailhound ödeme bilgilerini görmez."
           }
         }
       }
@@ -15051,13 +15102,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter the liter price in the selected currency. Consumption is set per vehicle in the Pairing tab."
+            "value" : "One price for each fuel type on your vehicles, in the selected currency. Consumption is set per vehicle in the Pairing tab."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Litre fiyatını seçili para biriminde girin. Tüketim her araç için Eşleştirme sekmesinde ayarlanır."
+            "value" : "Araçlarındaki her yakıt tipi için bir fiyat, seçili para biriminde. Tüketim her araç için Eşleştirme sekmesinde ayarlanır."
+          }
+        }
+      }
+    },
+    "settings.fuel.lpg_price" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LPG"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LPG"
           }
         }
       }
@@ -15074,7 +15142,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Litre fiyatı"
+            "value" : "Yakıt fiyatı"
           }
         }
       }
@@ -15432,6 +15500,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İzinler"
+          }
+        }
+      }
+    },
+    "settings.developed_by" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Developed by %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geliştiren: %@"
           }
         }
       }
@@ -16537,6 +16622,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İş saati başlangıç"
+          }
+        }
+      }
+    },
+    "settings.tip_jar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support the developer"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geliştiriciye destek ol"
+          }
+        }
+      }
+    },
+    "settings.tip_jar.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The payment could not be completed. You were not charged."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ödeme tamamlanamadı. Senden ücret alınmadı."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trailhound is free, with no ads and no tracking. If it helps you, you can leave an optional tip. A tip unlocks nothing; every feature stays the same. Apple handles the payment."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trailhound ücretsizdir; reklam ve izleme yoktur. İşine yarıyorsa isteğe bağlı destek bırakabilirsin. Destek hiçbir özellik açmaz; her şey aynı kalır. Ödemeyi Apple yönetir."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional tip. Unlocks nothing."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İsteğe bağlı destek. Hiçbir özellik açmaz."
+          }
+        }
+      }
+    },
+    "settings.tip_jar.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support options are not available right now. Try again later."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destek seçenekleri şu an kullanılamıyor. Daha sonra tekrar dene."
           }
         }
       }
@@ -20011,6 +20181,23 @@
         }
       }
     },
+    "toast.journal.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel save completed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seyahat kaydı tamamlandı"
+          }
+        }
+      }
+    },
     "toast.orphan.saved" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -20143,6 +20330,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Shortcuts kurulumu tamamlandı"
+          }
+        }
+      }
+    },
+    "toast.tip_thanks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you for your support"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desteğin için teşekkürler"
+          }
+        }
+      }
+    },
+    "toast.trip.not_found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trip not found. It may have been deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlgili trip bulunamadı. Silinmiş olabilir."
           }
         }
       }
@@ -22594,6 +22815,499 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.source.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A flat, well-lit shot reads best"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Düz ve aydınlık bir kare en iyi okunur"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.choose.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a photo of the receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişin fotoğrafını seç"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.camera.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photograph the receipt now"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişi şimdi fotoğrafla"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo stays on this iPhone. Read Amount uses on-device text recognition, and nothing is sent anywhere."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğraf bu iPhone’da kalır. Tutarı Oku cihazdaki metin tanımayı kullanır, hiçbir şey bir yere gönderilmez."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.add" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş Ekle"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.remove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişi Kaldır"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.view" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişi görüntüle"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.attached" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receipt attached"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş eklendi"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.tap_to_view" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the photo to see it full screen"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tam ekran görmek için fotoğrafa dokun"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read Amount"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutarı Oku"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.replace" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace Photo"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğrafı Değiştir"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This receipt photo is no longer on this device."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu fiş fotoğrafı artık bu cihazda yok."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.save_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the receipt photo. Try again."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş fotoğrafı kaydedilemedi. Yeniden dene."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read Amount"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutarı Oku"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.on_device" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read on this iPhone. Not sent anywhere."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu iPhone’da okunur. Hiçbir yere gönderilmez."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.warning.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text recognition can make mistakes"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metin tanıma hata yapabilir"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.warning.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compare the amount with the receipt before you save."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydetmeden önce tutarı fişle karşılaştır."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.reading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading the receipt…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş okunuyor…"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The receipt couldn't be read."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiş okunamadı."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.not_found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No amount was found on this receipt."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu fişte tutar bulunamadı."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.type_it" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the amount in the form instead."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutarı formda kendin yaz."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total on receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişteki toplam"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.guess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Possible amount"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olası tutar"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.rounded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read as %@. Expenses are saved in whole units."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ olarak okundu. Giderler tam sayı olarak kaydedilir."
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.other" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other amounts on the receipt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fişteki diğer tutarlar"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.use" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use This Amount"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu Tutarı Kullan"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.reject" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Right"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doğru Değil"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.receipt.scan.close" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapat"
           }
         }
       }

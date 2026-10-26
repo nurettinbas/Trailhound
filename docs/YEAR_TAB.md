@@ -2,7 +2,7 @@
 
 Product layout for Trailhound’s **Recap** tab (Trips → Vehicles → Statistics → **Recap** → Settings). Same glass card language as Stats (`statsFullCard`, `StatsCard.swift`). Chrome follows the selected **shell palette**. Recap, badges, frequent routes, month forecast, and year awards live here — not on Statistics.
 
-Recap does **not** run `StatsSnapshotLoader`. Recap / forecast / badges start on tab appear. Year awards is first and loads on appear (rollups + expenses only). Forecast is unfiltered (all vehicles), matching recap.
+Recap does **not** run `StatsSnapshotLoader`. Recap / forecast / badges start on tab appear. Year awards is first and loads on appear (rollups + expenses only). Forecast is unfiltered (all vehicles), matching recap. When the Duo hinge is fully open, the leading card column is 45% of the content and the trailing column is 55%. A partially open hinge keeps the columns on the fold. Cards still drop into the shorter column.
 
 ## Card language
 

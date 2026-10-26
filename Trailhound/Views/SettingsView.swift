@@ -5,6 +5,28 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+private enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
+    case recording
+    case fuel
+    case privacy
+    case permissions
+    case backup
+    case about
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .recording: L10n.settingsRecordingSection
+        case .fuel: L10n.settingsFuelSection
+        case .privacy: L10n.settingsPrivacySection
+        case .permissions: L10n.settingsPermissionsSection
+        case .backup: L10n.settingsBackupSection
+        case .about: L10n.settingsAboutSection
+        }
+    }
+}
+
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
@@ -14,15 +36,17 @@ struct SettingsView: View {
     @Environment(AppLockService.self) private var appLockService
     @Query private var places: [SavedPlace]
     @Query(sort: \Trip.startedAt, order: .reverse) private var trips: [Trip]
+    @Query(sort: \VehicleProfile.name) private var vehicles: [VehicleProfile]
     @Bindable private var settings = AppSettings.shared
 
     @State private var exportURL: URL?
+    @State private var showShortcutsAutomationGuide = false
     @State private var showExportSheet = false
     @State private var isExporting = false
     @State private var showAppLockUnavailableAlert = false
-    @State private var showShortcutsAutomationGuide = false
     @State private var showAddPlacePicker = false
     @State private var showReportProblem = false
+    @State private var showTipJar = false
     @State private var showMailComposer = false
     @State private var showReportShareSheet = false
     @State private var showReportShareFailed = false
@@ -31,8 +55,96 @@ struct SettingsView: View {
 
     @State private var notificationAuthorization: UNAuthorizationStatus = .notDetermined
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.trailhoundLayout) private var layout
+    @State private var settingsPane: SettingsPane = .recording
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    /// One price row per fuel type on the saved vehicles. Empty garage keeps petrol, the new-car default.
+    private var pricedFuelTypes: [VehicleFuelType] {
+        FuelPriceRows.types(in: vehicles.map(\.fuelType))
+    }
+
+    private func unitPriceBinding(for fuelType: VehicleFuelType) -> Binding<Double> {
+        Binding(
+            get: { settings.unitPrice(for: fuelType) },
+            set: { settings.setUnitPrice($0, for: fuelType) }
+        )
+    }
 
     var body: some View {
+        switch layout.settingsChrome {
+        case .form:
+            settingsForm
+        case .split:
+            TrailhoundPaneSplit(
+                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                    isPhoneBook: layout.isPhoneBook,
+                    layoutClass: layout.layoutClass,
+                    isLandscape: layout.isLandscape,
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                    fraction: TrailhoundLayoutResolver.flatSettingsLeadingFraction
+                )
+            ) {
+                settingsIndex
+            } focus: {
+                settingsForm
+            }
+        case .grid:
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(SettingsPane.allCases) { pane in
+                        Button {
+                            settingsPane = pane
+                        } label: {
+                            Text(pane.title)
+                                .font(.headline)
+                                .glassPrimaryInk()
+                                .frame(maxWidth: .infinity, minHeight: 88)
+                        }
+                        .buttonStyle(.glassPlainHit)
+                        .glassCard()
+                    }
+                }
+                .padding(16)
+                settingsForm
+            }
+        }
+    }
+
+    private var settingsIndex: some View {
+        let panes = SettingsPane.allCases
+        return List {
+            ForEach(Array(panes.enumerated()), id: \.element.id) { index, pane in
+                Button {
+                    settingsPane = pane
+                } label: {
+                    HStack {
+                        Text(pane.title)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .glassPrimaryInk()
+                        Spacer()
+                        if settingsPane == pane {
+                            Image(systemName: "checkmark")
+                                .font(.subheadline.weight(.semibold))
+                                .glassAccentForeground()
+                        }
+                    }
+                }
+                .buttonStyle(.glassPlainHit)
+                .glassCompactRow(position: GlassRowPosition.index(index, in: panes.count))
+            }
+        }
+        .listStyle(.insetGrouped)
+        .glassListChrome(showsAtmosphere: false)
+        .glassCompactIndexList()
+    }
+
+    private var settingsForm: some View {
+        ScrollViewReader { proxy in
         Form {
             Section {
                 LocationPermissionBanner()
@@ -41,6 +153,7 @@ struct SettingsView: View {
             .listRowSeparator(.hidden)
 
             Section(L10n.settingsRecordingSection) {
+                EmptyView().id(SettingsPane.recording)
                 Toggle(L10n.settingsRecordingSounds, isOn: $settings.recordingSoundsEnabled)
                     .glassToggleStyle()
                     .accessibilityIdentifier("settings.recordingSounds")
@@ -62,11 +175,22 @@ struct SettingsView: View {
             }
 
             Section {
+                Button {
+                    showAddPlacePicker = true
+                } label: {
+                    Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .glassPrimaryInk()
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassPlainHit)
+                .glassRow(position: .first)
+
                 if places.isEmpty {
                     Text(L10n.settingsFavoritePlacesEmpty)
                         .font(.subheadline)
                         .glassSecondaryInk()
-                        .glassRow(position: favoritePlacesRowCount == 1 ? .only : .first)
+                        .glassRow(position: .last)
                 }
 
                 ForEach(Array(places.enumerated()), id: \.element.id) { index, place in
@@ -102,18 +226,6 @@ struct SettingsView: View {
                         deletePlace(place)
                     }
                 }
-
-                Button {
-                    showAddPlacePicker = true
-                } label: {
-                    Label(L10n.settingsAddPlace, systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .glassAccentForeground()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.glassPlainHit)
-                .glassRow(position: .last)
             } header: {
                 Text(L10n.settingsFavoritePlaces)
             } footer: {
@@ -178,9 +290,7 @@ struct SettingsView: View {
 
             Section {
                 Button(L10n.settingsOpenSystemSettings) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    SystemSettingsLink.openAppPage()
                 }
                 .glassRow(position: .only)
             } header: {
@@ -190,27 +300,37 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsFuelSection) {
-                LabeledContent(L10n.settingsFuelPrice) {
-                    HStack(spacing: 8) {
-                        Spacer(minLength: 0)
-                        TextField(settings.fuelCurrency.symbol, value: $settings.fuelPricePerLiter, format: .number)
+                EmptyView().id(SettingsPane.fuel)
+                let fuelTypes = pricedFuelTypes
+                ForEach(Array(fuelTypes.enumerated()), id: \.element) { index, type in
+                    LabeledContent(type.displayName) {
+                        HStack(spacing: 8) {
+                            Spacer(minLength: 0)
+                            TextField(
+                                settings.fuelCurrency.symbol,
+                                value: unitPriceBinding(for: type),
+                                format: .number
+                            )
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.leading)
-                            .focused($focusedField, equals: .fuelPrice)
+                            .focused($focusedField, equals: .fuelPrice(type))
                             .glassInputField()
                             .frame(width: 96)
-                        Picker(selection: $settings.fuelCurrency) {
-                            ForEach(FuelCurrency.allCases) { currency in
-                                Text(currency.symbol).tag(currency)
+                            if index == 0 {
+                                Picker(selection: $settings.fuelCurrency) {
+                                    ForEach(FuelCurrency.allCases) { currency in
+                                        Text(currency.symbol).tag(currency)
+                                    }
+                                } label: {
+                                    Text(L10n.settingsFuelCurrency)
+                                }
+                                .glassMenuPicker()
+                                .accessibilityLabel(L10n.settingsFuelCurrency)
                             }
-                        } label: {
-                            Text(L10n.settingsFuelCurrency)
                         }
-                        .glassMenuPicker()
-                        .accessibilityLabel(L10n.settingsFuelCurrency)
                     }
+                    .glassRow(position: index == 0 ? .first : .middle)
                 }
-                .glassRow(position: .first)
                 Text(L10n.settingsFuelHint)
                     .font(.footnote)
                     .glassSecondaryInk()
@@ -218,6 +338,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPrivacySection) {
+                EmptyView().id(SettingsPane.privacy)
                 Toggle(L10n.settingsAppLock, isOn: appLockEnabledBinding)
                     .glassToggleStyle()
                     .glassRow(position: .first)
@@ -254,6 +375,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPermissionsSection) {
+                EmptyView().id(SettingsPane.permissions)
                 LabeledContent(L10n.settingsLocationPermission) {
                     LocationPermissionBadge(state: locationService.authorizationState)
                 }
@@ -283,14 +405,13 @@ struct SettingsView: View {
                 }
 
                 Button(L10n.settingsOpenSystemSettings) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    SystemSettingsLink.openLocationPermission()
                 }
                 .glassRow(position: .last)
             }
 
             Section(L10n.settingsBackupSection) {
+                EmptyView().id(SettingsPane.backup)
                 Button(L10n.settingsExportJSON) { export(format: .json) }
                     .disabled(isExporting)
                     .glassRow(position: .first)
@@ -306,12 +427,30 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsAboutSection) {
-                LabeledContent(L10n.settingsVersion, value: "1.1.0")
+                EmptyView().id(SettingsPane.about)
+                LabeledContent(L10n.settingsVersion, value: appVersion)
                     .glassRow(position: .first)
+                Button(L10n.settingsPlayLaunchIntro) {
+                    LaunchIntroSession.shared.replay()
+                }
+                .accessibilityIdentifier("settings.playLaunchIntro")
+                .glassRow(position: .middle)
                 Button(L10n.settingsReportProblem) {
                     showReportProblem = true
                 }
                 .accessibilityIdentifier("settings.reportProblem")
+                .glassRow(position: .middle)
+                Button {
+                    showTipJar = true
+                } label: {
+                    GlassFeaturedRowLabel(
+                        systemImage: "heart.fill",
+                        title: L10n.settingsTipJar,
+                        subtitle: L10n.settingsTipJarSubtitle
+                    )
+                }
+                .buttonStyle(.glassPlainHit)
+                .accessibilityIdentifier("settings.tipJar")
                 .glassRow(position: .middle)
                 Link(L10n.settingsPrivacyPolicy, destination: SupportMail.privacyPolicyURL)
                     .accessibilityIdentifier("settings.privacyPolicy")
@@ -319,15 +458,28 @@ struct SettingsView: View {
                 Text(L10n.settingsAboutPrivacy)
                     .font(.footnote)
                     .glassSecondaryInk()
+                    .glassRow(position: .middle)
+                Text(L10n.settingsDevelopedBy(DeveloperInfo.name))
+                    .font(.footnote)
+                    .glassSecondaryInk()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("settings.developedBy")
                     .glassRow(position: .last)
             }
         }
         .navigationTitle(L10n.settingsTitle)
+        .onChange(of: settingsPane) { _, pane in
+            proxy.scrollTo(pane, anchor: .top)
+        }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showAddPlacePicker) {
             PlacePickerView()
         }
-        .glassListChrome()
+        // The split already paints the shell. A second atmosphere clipped to this
+        // pane is a different-colored plate behind the form.
+        .glassListChrome(showsAtmosphere: !layout.isPhoneBook)
         .dismissKeyboardOnTap(focus: $focusedField)
         .dismissKeyboardOnScroll()
         .fieldKeyboardAccessory(
@@ -342,6 +494,9 @@ struct SettingsView: View {
             runCleanupIfNeeded()
             refreshNotificationAuthorization()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }
+        }
+        .sheet(isPresented: $showTipJar) {
+            TipJarView()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -451,7 +606,7 @@ struct SettingsView: View {
     }
 
     private var diagnosticMailSubject: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let os = UIDevice.current.systemVersion
         return "Trailhound \(version) · iOS \(os)"
     }
@@ -480,8 +635,7 @@ struct SettingsView: View {
     }
 
     private func favoritePlacePosition(placeIndex: Int) -> GlassRowPosition {
-        let offset = places.isEmpty ? 1 : 0
-        return GlassRowPosition.index(placeIndex + offset, in: favoritePlacesRowCount)
+        GlassRowPosition.index(placeIndex + 1, in: favoritePlacesRowCount)
     }
 
     private static func hourLabel(_ hour: Int) -> String {

@@ -88,6 +88,34 @@ struct LiveFollowCamera {
                 && lhs.distanceMeters == rhs.distanceMeters
                 && lhs.pitchDegrees == rhs.pitchDegrees
         }
+
+        /// True when replacing this pose with `other` would not move the follow camera
+        /// by a visible pixel at the 220–1150 m eye distances. Strictly below one screen
+        /// point, so a moving frame never qualifies.
+        func isVisuallySame(as other: Pose) -> Bool {
+            let moved = CLLocation(latitude: center.latitude, longitude: center.longitude)
+                .distance(from: CLLocation(
+                    latitude: other.center.latitude,
+                    longitude: other.center.longitude
+                ))
+            if moved >= 0.02 { return false }
+            if abs(Self.wrappedHeadingDelta(from: headingDegrees, to: other.headingDegrees)) >= 0.01 {
+                return false
+            }
+            if abs(distanceMeters - other.distanceMeters) >= 0.1 { return false }
+            if abs(pitchDegrees - other.pitchDegrees) >= 0.01 { return false }
+            return true
+        }
+
+        private static func wrappedHeadingDelta(
+            from: CLLocationDirection,
+            to: CLLocationDirection
+        ) -> CLLocationDirection {
+            var delta = to - from
+            if delta > 180 { delta -= 360 }
+            if delta < -180 { delta += 360 }
+            return delta
+        }
     }
 
     /// Published vehicle position (puck). `pose.center` matches this coordinate.

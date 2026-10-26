@@ -10,6 +10,7 @@ struct YearView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.trailhoundLayout) private var layout
     @Bindable private var tabSelection = TabSelection.shared
 
     @State private var storeVersion = 0
@@ -44,7 +45,7 @@ struct YearView: View {
     @State private var badgeScrollRequest = 0
 
     var body: some View {
-        yearList(currencyCode: settings.fuelCurrency.rawValue)
+        yearList
             .glassListChrome()
             .navigationTitle(L10n.tabYear)
             .navigationBarTitleDisplayMode(.inline)
@@ -137,80 +138,43 @@ struct YearView: View {
     }
 
     @ViewBuilder
-    private func yearList(currencyCode: String) -> some View {
+    private var yearList: some View {
         ScrollViewReader { proxy in
             List {
             Section {
-                StatsYearAwardsCard(
-                    snapshot: yearAwards,
-                    medals: yearAwardsMedals,
-                    years: awardsYears,
-                    selectedYear: $selectedAwardsYear,
-                    reduceMotion: reduceMotion,
-                    onAppear: {
-                        scheduleYearAwardsRefresh(delayMilliseconds: 0)
+                if pairsWideCards {
+                    TrailhoundHingeCardStack {
+                        yearAwardsCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                        badgesCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                        routesCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                        forecastCard
+                            .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
+                        recapCard
                     }
-                )
-                .statsFullCard()
-            }
-
-            Section(L10n.string("premium.section.title")) {
-                StatsAchievementsStrip(
-                    achievements: achievements,
-                    isExpanded: showAchievements,
-                    onOpen: openAchievements
-                )
-                .id(YearListAnchor.badges)
-                .statsFullCard()
-                .opacity(showAchievements ? 0 : 1)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: AchievementCardGlobalFrameKey.self,
-                            value: proxy.frame(in: .global)
-                        )
-                    }
+                } else {
+                    yearAwardsCard
+                        .statsFullCard()
+                    badgesCard
+                        .statsFullCard()
+                    routesCard
+                        .statsFullCard()
+                    forecastCard
+                        .statsFullCard(contentInset: 0)
+                    recapCard
+                        .statsCardListRow()
                 }
-
-                FrequentRoutesPreviewCard(
-                    aggregates: routeAggregates,
-                    isExpanded: showRoutesMap,
-                    onOpen: openRoutesMap
-                )
-                .statsFullCard()
-                .opacity(showRoutesMap ? 0 : 1)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: FrequentRoutesCardGlobalFrameKey.self,
-                            value: proxy.frame(in: .global)
-                        )
-                    }
-                }
-
-                StatsForecastCard(
-                    forecast: forecast,
-                    currencyCode: currencyCode,
-                    isExpanded: showForecastDetail,
-                    onOpen: openForecastDetail
-                )
-                .statsFullCard(contentInset: 0)
-                .opacity(showForecastDetail ? 0 : 1)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: StatsForecastCardGlobalFrameKey.self,
-                            value: proxy.frame(in: .global)
-                        )
-                    }
-                }
-
-                YearRecapHubCard(
-                    snapshot: recapSnapshot ?? .empty(year: RecapYearPolicy.displayYear()),
-                    onPlay: { openRecapStory() },
-                    onPlayPage: { openRecapStory(at: $0) }
-                )
-                .statsCardListRow()
             }
             }
             .onChange(of: badgeScrollRequest) { _, _ in
@@ -221,6 +185,85 @@ struct YearView: View {
                 }
             }
         }
+    }
+
+    /// Open book and a wide landscape phone. Cards pack down whichever side is shorter.
+    private var pairsWideCards: Bool {
+        layout.usesBookPanes
+    }
+
+    private var yearAwardsCard: some View {
+        StatsYearAwardsCard(
+            snapshot: yearAwards,
+            medals: yearAwardsMedals,
+            years: awardsYears,
+            selectedYear: $selectedAwardsYear,
+            reduceMotion: reduceMotion,
+            onAppear: {
+                scheduleYearAwardsRefresh(delayMilliseconds: 0)
+            }
+        )
+    }
+
+    private var badgesCard: some View {
+        StatsAchievementsStrip(
+            achievements: achievements,
+            isExpanded: showAchievements,
+            onOpen: openAchievements
+        )
+        .id(YearListAnchor.badges)
+        .opacity(showAchievements ? 0 : 1)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: AchievementCardGlobalFrameKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        }
+    }
+
+    private var routesCard: some View {
+        FrequentRoutesPreviewCard(
+            aggregates: routeAggregates,
+            isExpanded: showRoutesMap,
+            onOpen: openRoutesMap
+        )
+        .opacity(showRoutesMap ? 0 : 1)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: FrequentRoutesCardGlobalFrameKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        }
+    }
+
+    private var forecastCard: some View {
+        StatsForecastCard(
+            forecast: forecast,
+            currencyCode: settings.fuelCurrency.rawValue,
+            isExpanded: showForecastDetail,
+            onOpen: openForecastDetail
+        )
+        .opacity(showForecastDetail ? 0 : 1)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: StatsForecastCardGlobalFrameKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        }
+    }
+
+    private var recapCard: some View {
+        YearRecapHubCard(
+            snapshot: recapSnapshot ?? .empty(year: RecapYearPolicy.displayYear()),
+            onPlay: { openRecapStory() },
+            onPlayPage: { openRecapStory(at: $0) }
+        )
     }
 
     @ViewBuilder
@@ -263,6 +306,9 @@ struct YearView: View {
         if recapLoader == nil {
             recapLoader = YearRecapSnapshotLoader(modelContainer: modelContext.container)
         }
+        if recapSnapshot == nil {
+            recapSnapshot = YearRecapCache.load(year: RecapYearPolicy.displayYear())
+        }
         refreshEarliestTripStart()
         schedulePremiumRefresh()
         scheduleYearAwardsRefresh(delayMilliseconds: 0)
@@ -282,26 +328,16 @@ struct YearView: View {
         let recapActor = recapLoader ?? YearRecapSnapshotLoader(modelContainer: modelContext.container)
         if recapLoader == nil { recapLoader = recapActor }
         let year = RecapYearPolicy.displayYear()
+        let version = storeVersion
         let request = MonthCostForecastRequest(
-            storeVersion: storeVersion,
+            storeVersion: version,
             selectedVehicleID: nil,
             now: Date()
         )
         Task {
-            let builtForecast = await forecastActor.forecast(for: request)
-            let builtRecap = await recapActor.snapshot(year: year, storeVersion: storeVersion)
+            let builtRecap = await recapActor.snapshot(year: year, storeVersion: version)
             await MainActor.run {
-                forecast = builtForecast
                 recapSnapshot = builtRecap
-                _ = AchievementEvaluator.displays(in: modelContext)
-                if !UITestSupport.isEnabled {
-                    _ = AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: modelContext)
-                }
-                achievements = AchievementEvaluator.displays(in: modelContext)
-                routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
-                let pending = achievements.filter(\.needsCelebration)
-                unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
-                PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
                 if pendingRecapPlay {
                     pendingRecapPlay = false
                     if RecapYearPolicy.shouldPresent(builtRecap) {
@@ -310,6 +346,20 @@ struct YearView: View {
                 } else {
                     maybePresentRecapPromo()
                 }
+            }
+        }
+        Task {
+            let builtForecast = await forecastActor.forecast(for: request)
+            await MainActor.run {
+                forecast = builtForecast
+                if !UITestSupport.isEnabled {
+                    _ = AchievementEvaluator.replayUnlockCelebrationsIfNeeded(in: modelContext)
+                }
+                achievements = AchievementEvaluator.displays(in: modelContext)
+                routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
+                let pending = achievements.filter(\.needsCelebration)
+                unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
+                PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
             }
         }
     }

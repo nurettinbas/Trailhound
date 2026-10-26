@@ -1,14 +1,104 @@
 import Foundation
 import SwiftUI
 
+enum ToastHapticStyle: Equatable {
+    case success
+    case destructive
+    case warning
+    case merge
+    case automation
+    case personalRecord
+}
+
+enum ToastSymbolAnimation: Equatable {
+    case bounce
+    case wiggle
+    case pulse
+    case rotate
+}
+
+enum ToastEmblemTone: Equatable {
+    case success
+    case destructive
+    case warning
+    case palette
+    case gold
+
+    func fill(scheme: ColorScheme, palette: ShellPalette) -> LinearGradient {
+        switch self {
+        case .success:
+            return LinearGradient(
+                colors: [
+                    LightGlassPalette.success,
+                    LightGlassPalette.success.opacity(0.72)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .destructive:
+            return LinearGradient(
+                colors: [
+                    LightGlassPalette.destructive,
+                    Color(red: 0.86, green: 0.22, blue: 0.24)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .warning:
+            return LinearGradient(
+                colors: [
+                    LightGlassPalette.paused,
+                    Color(red: 0.93, green: 0.48, blue: 0.12)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .palette:
+            let tint = palette.tintColor(for: scheme)
+            return LinearGradient(
+                colors: [tint.opacity(0.95), tint.opacity(0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .gold:
+            let dark = scheme == .dark
+            return LinearGradient(
+                colors: [
+                    AchievementTheme.hex(dark ? 0xD4A84A : 0xF3D08A),
+                    AchievementTheme.hex(dark ? 0x9A6A12 : 0xC48A1A)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    func glow(scheme: ColorScheme, palette: ShellPalette) -> Color {
+        switch self {
+        case .success:
+            LightGlassPalette.success
+        case .destructive:
+            LightGlassPalette.destructive
+        case .warning:
+            LightGlassPalette.paused
+        case .palette:
+            palette.tintColor(for: scheme)
+        case .gold:
+            AchievementTheme.hex(scheme == .dark ? 0xD4A84A : 0xF3D08A)
+        }
+    }
+}
+
 enum ToastKind: Equatable {
     case saved
+    case tipThanks
     case deleted
     case placeSaved
     case vehicleSaved
     case vehicleReminderSaved
     case vehicleExpenseSaved
     case tripSaved
+    case journalSaved
     case categoryAdded
     case categoryDeleted
     case orphanSaved
@@ -17,17 +107,20 @@ enum ToastKind: Equatable {
     case shortcutsAutomationReached
     case categoryAccepted
     case journalTitleRequired
+    case tripNotFound
     case personalRecord(PersonalRecordBreak)
 
     var message: String {
         switch self {
         case .saved: L10n.toastSaved
+        case .tipThanks: L10n.toastTipThanks
         case .deleted: L10n.toastDeleted
         case .placeSaved: L10n.toastPlaceSaved
         case .vehicleSaved: L10n.toastVehicleSaved
         case .vehicleReminderSaved: L10n.toastVehicleReminderSaved
         case .vehicleExpenseSaved: L10n.toastVehicleExpenseSaved
         case .tripSaved: L10n.toastTripSaved
+        case .journalSaved: L10n.toastJournalSaved
         case .categoryAdded: L10n.toastCategoryAdded
         case .categoryDeleted: L10n.toastCategoryDeleted
         case .orphanSaved: L10n.toastOrphanSaved
@@ -36,56 +129,93 @@ enum ToastKind: Equatable {
         case .shortcutsAutomationReached: L10n.toastShortcutsAutomationReached
         case .categoryAccepted: L10n.toastCategoryAccepted
         case .journalTitleRequired: L10n.journalTitleRequired
+        case .tripNotFound: L10n.toastTripNotFound
         case .personalRecord(let payload): payload.accessibilityMessage
         }
     }
 
     var systemImage: String {
         switch self {
-        case .saved, .tripSaved, .orphanSaved, .shortcutsGuideFinished, .shortcutsAutomationReached, .vehicleReminderSaved, .vehicleExpenseSaved, .categoryAccepted:
+        case .saved:
             "checkmark.circle.fill"
+        case .tipThanks:
+            "heart.fill"
+        case .tripSaved:
+            "map.fill"
+        case .orphanSaved:
+            "flag.checkered"
         case .placeSaved:
-            "mappin.circle.fill"
+            "mappin.and.ellipse"
         case .vehicleSaved:
-            "car.circle.fill"
+            "car.fill"
+        case .vehicleReminderSaved:
+            "bell.badge.fill"
+        case .vehicleExpenseSaved:
+            "creditcard.fill"
+        case .journalSaved:
+            "book.closed.fill"
         case .categoryAdded:
-            "folder.badge.plus"
+            "folder.fill.badge.plus"
+        case .categoryAccepted:
+            "sparkles"
         case .categoryDeleted, .deleted:
-            "trash.circle.fill"
+            "trash.fill"
         case .tripsMerged:
             "arrow.triangle.merge"
-        case .journalTitleRequired:
-            "exclamationmark.circle.fill"
+        case .shortcutsGuideFinished:
+            "wand.and.stars"
+        case .shortcutsAutomationReached:
+            "antenna.radiowaves.left.and.right"
+        case .journalTitleRequired, .tripNotFound:
+            "exclamationmark.triangle.fill"
         case .personalRecord:
             "trophy.fill"
         }
     }
 
-    var tint: Color {
+    var symbolAnimation: ToastSymbolAnimation {
         switch self {
-        case .deleted, .categoryDeleted, .journalTitleRequired:
-            .orange
-        case .tripsMerged:
-            TrailhoundBrandColors.brandBottom
+        case .vehicleReminderSaved, .deleted, .categoryDeleted, .journalTitleRequired, .tripNotFound:
+            .wiggle
+        case .categoryAccepted, .shortcutsGuideFinished, .shortcutsAutomationReached:
+            .pulse
         case .personalRecord:
-            TrailhoundBrandColors.brandBottom
+            .bounce
         default:
-            .green
+            .bounce
         }
     }
 
-    var usesSuccessHaptic: Bool {
+    var emblemTone: ToastEmblemTone {
         switch self {
-        case .deleted, .categoryDeleted, .journalTitleRequired, .personalRecord:
-            false
+        case .deleted, .categoryDeleted:
+            .destructive
+        case .journalTitleRequired, .tripNotFound:
+            .warning
+        case .tripSaved, .vehicleSaved, .vehicleReminderSaved, .journalSaved, .categoryAccepted, .tripsMerged, .shortcutsGuideFinished, .shortcutsAutomationReached, .tipThanks:
+            .palette
+        case .personalRecord:
+            .gold
         default:
-            true
+            .success
         }
     }
 
-    var usesBadgeHaptic: Bool {
-        if case .personalRecord = self { return true }
-        return false
+    var hapticStyle: ToastHapticStyle {
+        switch self {
+        case .deleted, .categoryDeleted:
+            .destructive
+        case .journalTitleRequired, .tripNotFound:
+            .warning
+        case .tripsMerged:
+            .merge
+        case .shortcutsAutomationReached:
+            .automation
+        case .personalRecord:
+            .personalRecord
+        default:
+            .success
+        }
     }
 
     var dwellSeconds: TimeInterval {
@@ -120,13 +250,7 @@ final class ToastPresenter {
             isPresented = true
         }
         if playHaptic, !UITestSupport.isEnabled {
-            if kind.usesBadgeHaptic {
-                TrailhoundHaptics.badgeUnlocked()
-            } else if kind.usesSuccessHaptic {
-                TrailhoundHaptics.pairingSucceeded()
-            } else {
-                TrailhoundHaptics.selection()
-            }
+            TrailhoundHaptics.playToast(kind.hapticStyle)
         }
         let dwell = kind.dwellSeconds
         dismissTask = Task { [weak self] in
@@ -189,21 +313,54 @@ final class ToastPresenter {
 }
 
 struct ToastHostModifier: ViewModifier {
+    var clearsTabBar: Bool = false
+    var extraBottomPadding: CGFloat = 0
+
     @Bindable private var presenter = ToastPresenter.shared
+    @Bindable private var chrome = SideColumnChromeState.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .top) {
-            if presenter.isPresented, let kind = presenter.kind {
-                toastContent(for: kind)
-                    .padding(.horizontal, GlassTokens.panelHorizontalInset)
-                    .padding(.top, 10)
-                    .frame(maxWidth: .infinity)
-                    .transition(TrailhoundMotion.toastTransition(reduceMotion: reduceMotion))
-                    .zIndex(999)
-                    .allowsHitTesting(false)
+        content.overlay(alignment: .bottom) {
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    if presenter.isPresented, let kind = presenter.kind {
+                        toastContent(for: kind)
+                            .padding(.horizontal, GlassTokens.panelHorizontalInset)
+                            .padding(.bottom, bottomPadding(in: proxy))
+                            .frame(maxWidth: .infinity)
+                            .transition(TrailhoundMotion.toastTransition(reduceMotion: reduceMotion))
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .zIndex(999)
         }
+    }
+
+    private func bottomPadding(in proxy: GeometryProxy) -> CGFloat {
+        let safeBottom = proxy.safeAreaInsets.bottom
+        if clearsTabBar, let lift = tabBarLift(windowHeight: proxy.size.height) {
+            return lift + extraBottomPadding
+        }
+        if clearsTabBar, chrome.tabBarFrame == nil {
+            return safeBottom + GlassTokens.toastTabBarFallbackClearance + extraBottomPadding
+        }
+        return max(safeBottom, 16) + extraBottomPadding
+    }
+
+    /// Distance from the window bottom to just above a bottom tab platter.
+    private func tabBarLift(windowHeight: CGFloat) -> CGFloat? {
+        guard let bar = chrome.tabBarFrame, bar.width > 1, bar.height > 1 else { return nil }
+        guard !SideColumnChromeResolver.isSideTabBar(bar) else { return nil }
+        let height = chrome.windowSize.height > 1 ? chrome.windowSize.height : windowHeight
+        guard height > 1 else {
+            return bar.height + GlassTokens.toastTabBarGap
+        }
+        return max(0, height - bar.minY) + GlassTokens.toastTabBarGap
     }
 
     @ViewBuilder
@@ -217,7 +374,7 @@ struct ToastHostModifier: ViewModifier {
 }
 
 extension View {
-    func toastHost() -> some View {
-        modifier(ToastHostModifier())
+    func toastHost(clearsTabBar: Bool = false, extraBottomPadding: CGFloat = 0) -> some View {
+        modifier(ToastHostModifier(clearsTabBar: clearsTabBar, extraBottomPadding: extraBottomPadding))
     }
 }

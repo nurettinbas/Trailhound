@@ -1,4 +1,5 @@
 import CoreLocation
+import SwiftData
 import SwiftUI
 import XCTest
 @testable import Trailhound
@@ -179,6 +180,47 @@ final class TabSelectionTests: XCTestCase {
         XCTAssertEqual(tabs.selectedTab, .trips)
         XCTAssertEqual(tabs.consumePendingTripID(), id)
         XCTAssertNil(tabs.consumePendingTripID())
+    }
+
+    func testShowFinishedTripReplacesTheStackWithOneTrip() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let trip = Trip(endedAt: Date())
+        container.mainContext.insert(trip)
+        let tabs = TabSelection.shared
+        tabs.tripsPath = NavigationPath()
+        tabs.showFinishedTrip(trip)
+        tabs.showFinishedTrip(trip)
+        XCTAssertEqual(tabs.tripsPath.count, 1)
+        tabs.tripsPath = NavigationPath()
+    }
+}
+
+@MainActor
+final class TripDeepLinkResolverTests: XCTestCase {
+    func testFinishedRecordingUnfinishedAndMissing() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let finished = Trip(endedAt: Date())
+        let live = Trip()
+        context.insert(finished)
+        context.insert(live)
+
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: finished.id, in: context, activeTripID: nil),
+            .finished(finished)
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: live.id, in: context, activeTripID: live.id),
+            .recording
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: live.id, in: context, activeTripID: nil),
+            .unfinished
+        )
+        XCTAssertEqual(
+            TripDeepLinkResolver.resolve(tripID: UUID(), in: context, activeTripID: nil),
+            .missing
+        )
     }
 }
 
@@ -364,6 +406,54 @@ final class FuelCostCalculatorTests: XCTestCase {
         defaults.set(65.0, forKey: "fuelPricePerLiter")
         let price = FuelCostCalculator.resolvedUnitPrice(fuelType: .electric)
         XCTAssertEqual(price, 9.25, accuracy: 0.01)
+    }
+
+    func testResolvedUnitPriceLpgIgnoresPetrolAndEvPrices() {
+        defaults.set(65.0, forKey: "fuelPricePerLiter")
+        defaults.set(9.25, forKey: "evChargePricePerKWh")
+        defaults.set(28.0, forKey: "lpgPricePerLiter")
+        defer { defaults.removeObject(forKey: "lpgPricePerLiter") }
+
+        let price = FuelCostCalculator.resolvedUnitPrice(fuelType: .lpg)
+        XCTAssertEqual(price, 28, accuracy: 0.01)
+
+        let vehicle = VehicleProfile(name: "LPG", fuelType: .lpg, consumption: 10, chargePricePerKWh: 9.25)
+        let cost = FuelCostCalculator.estimateCost(distanceMeters: 100_000, vehicle: vehicle)
+        // 100 km × 10 L/100 × 28 = 280. Petrol 65 or the EV kWh price must not apply.
+        XCTAssertEqual(cost, 280, accuracy: 0.1)
+
+        defaults.removeObject(forKey: "lpgPricePerLiter")
+        XCTAssertEqual(FuelCostCalculator.resolvedUnitPrice(fuelType: .lpg), 35, accuracy: 0.01)
+    }
+
+    func testDieselUsesSharedLiterPriceUntilItsOwnIsSet() {
+        defaults.set(55.0, forKey: "fuelPricePerLiter")
+        defaults.removeObject(forKey: "dieselPricePerLiter")
+        XCTAssertEqual(FuelCostCalculator.resolvedUnitPrice(fuelType: .diesel), 55, accuracy: 0.01)
+
+        defaults.set(48.0, forKey: "dieselPricePerLiter")
+        defer { defaults.removeObject(forKey: "dieselPricePerLiter") }
+        XCTAssertEqual(FuelCostCalculator.resolvedUnitPrice(fuelType: .diesel), 48, accuracy: 0.01)
+        XCTAssertEqual(FuelCostCalculator.resolvedUnitPrice(fuelType: .petrol), 55, accuracy: 0.01)
+    }
+
+    func testFuelPriceRowsFollowSavedVehicleTypes() {
+        XCTAssertEqual(FuelPriceRows.types(in: []), [.petrol])
+        XCTAssertEqual(FuelPriceRows.types(in: [.petrol, .petrol]), [.petrol])
+        XCTAssertEqual(FuelPriceRows.types(in: [.lpg, .petrol]), [.petrol, .lpg])
+        XCTAssertEqual(FuelPriceRows.types(in: [.electric]), [.electric])
+    }
+
+    func testLpgSpeedShapeMatchesPetrol() {
+        let petrol = PowertrainFuelProfile.profile(for: .petrol)
+        let lpg = PowertrainFuelProfile.profile(for: .lpg)
+        XCTAssertEqual(lpg.kTransient, petrol.kTransient, accuracy: 0.001)
+        XCTAssertEqual(lpg.regenCap, petrol.regenCap, accuracy: 0.001)
+        for kmh in [50.0, 120.0] {
+            XCTAssertEqual(lpg.shape(kmh), petrol.shape(kmh), accuracy: 0.0001)
+        }
+        XCTAssertEqual(lpg.idleLitresPerHour(c0: 8), petrol.idleLitresPerHour(c0: 8), accuracy: 0.0001)
+        XCTAssertEqual(lpg.maxColdLitres(c0: 8), petrol.maxColdLitres(c0: 8), accuracy: 0.0001)
     }
 
     func testResolvedCurrencyCodeDefaultsToTRY() {

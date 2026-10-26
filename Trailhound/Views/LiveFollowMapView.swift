@@ -12,6 +12,10 @@ struct LiveFollowMapView: View {
     var vehicleSystemImage: String = "car.fill"
     /// Card + road-vehicle frames for close morph / open hero flight.
     var cardAnchor: RecordingCardAnchor
+    /// Split / fold pane. The map fills that pane; the HUD stays inside it.
+    var fillsPane: Bool = false
+    /// Upright fold only. The Apple Maps mark sits in the pane's bottom corner, on the hinge.
+    var pinsAttributionToBottomCorner: Bool = false
     var onClose: () -> Void
     var onStop: (RecordingCardAnchor) -> Void
 
@@ -21,6 +25,8 @@ struct LiveFollowMapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
     @Bindable private var settings = AppSettings.shared
 
     @State private var session = LiveFollowSession()
@@ -51,6 +57,7 @@ struct LiveFollowMapView: View {
     @State private var idleLockHeld = false
     /// Local 2D/3D mirror — avoids rebuilding the MapKit host on every settings write.
     @State private var uses3DLocal = true
+    @Namespace private var mapToolMorph
     /// Bumped to ask MapKit to fit start + traveled path + puck (north-up 2D).
     @State private var overviewRequestToken = 0
     @State private var recenterRequestToken = 0
@@ -139,6 +146,7 @@ struct LiveFollowMapView: View {
 
                 if mapMounted {
                     mapLayer
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
                         .opacity(mapClarity)
 
@@ -155,7 +163,12 @@ struct LiveFollowMapView: View {
             // Chrome + hero above MapKit (Map often ignores sibling z-order).
             .overlay {
                 ZStack {
-                    settledChromeStack(topInset: topInset, bottomInset: bottomInset)
+                    settledChromeStack(
+                        topInset: topInset,
+                        bottomInset: bottomInset,
+                        width: geo.size.width,
+                        gpsClearance: gpsCameraClearance(safe: safe)
+                    )
 
                     if showHeroFlight {
                         LiveFollowVehicleHero(
@@ -176,7 +189,8 @@ struct LiveFollowMapView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .ignoresSafeArea()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(edges: fillsPane ? .vertical : .all)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isPaused)
         .statusBarHidden(false)
         .onAppear {
@@ -233,9 +247,30 @@ struct LiveFollowMapView: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    private func settledChromeStack(topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            topChrome
+    private func settledChromeStack(
+        topInset: CGFloat,
+        bottomInset: CGFloat,
+        width: CGFloat,
+        gpsClearance: CGFloat
+    ) -> some View {
+        let proportional = min(
+            width * LiveFollowPresentation.settledWidthSpan / LiveFollowPresentation.settledWidthCount,
+            max(0, width - 32)
+        )
+        // A wide book half used to stretch the card edge to edge. Keep the phone card's size.
+        // Landscape Duo cover is wider still — keep a short card in the leading corner.
+        let hudWidth: CGFloat = if landscapeDuoCover {
+            min(proportional, 250)
+        } else if fillsPane {
+            min(proportional, 320)
+        } else {
+            proportional
+        }
+        let hudBottom = pinsHUDToLeadingCorner
+            ? LiveFollowPresentation.settledBottomPadding + (landscapeDuoCover ? 10 : 28)
+            : LiveFollowPresentation.settledBottomPadding + bottomInset
+        return VStack(spacing: 0) {
+            topChrome(gpsClearance: gpsClearance)
                 .padding(.horizontal, GlassTokens.panelHorizontalInset)
                 .padding(.top, topInset + 10)
                 .opacity(chromeReveal)
@@ -243,16 +278,8 @@ struct LiveFollowMapView: View {
 
             Spacer(minLength: 0)
 
-            bottomHUD(useGlass: true)
-                .containerRelativeFrame(
-                    .horizontal,
-                    count: 12,
-                    span: 8,
-                    spacing: 0,
-                    alignment: .center
-                )
-                .padding(.bottom, LiveFollowPresentation.settledBottomPadding + bottomInset)
-                .opacity(chromeReveal)
+            bottomHUD(useGlass: true, tight: landscapeDuoCover)
+                .frame(width: hudWidth, alignment: .leading)
                 .background {
                     GeometryReader { geo in
                         let frame = geo.frame(in: .global)
@@ -263,14 +290,21 @@ struct LiveFollowMapView: View {
                             .onChange(of: frame.size.height) { _, _ in updateHUDAnchor(frame) }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: pinsHUDToLeadingCorner ? .leading : .center)
+                .padding(.leading, pinsHUDToLeadingCorner ? 12 : 0)
+                .padding(.bottom, hudBottom)
+                .opacity(chromeReveal)
         }
     }
 
     private var mapLayer: some View {
         LiveFollowMapKitView(
+            pinsAttributionToBottomCorner: pinsAttributionToBottomCorner,
+            centersOnScreenMidpoint: true,
             session: session,
             isFollowing: isFollowing && !isClosing,
             isPaused: isPaused,
+            hudAnchor: hudAnchorBox,
             overviewRequestToken: overviewRequestToken,
             recenterRequestToken: recenterRequestToken,
             pins: mapPins,
@@ -345,7 +379,7 @@ struct LiveFollowMapView: View {
         .accessibilityLabel(L10n.recordingPaused)
     }
 
-    private var topChrome: some View {
+    private func topChrome(gpsClearance: CGFloat) -> some View {
         HStack(spacing: 8) {
             if isPaused {
                 pauseStatusChip(font: .caption.weight(.bold), iconSize: 13, horizontal: 8, vertical: 6)
@@ -382,38 +416,59 @@ struct LiveFollowMapView: View {
             }
 
             GPSQualityBadge(quality: session.displayedGPSQuality, compact: true)
+                .padding(.trailing, gpsClearance)
         }
+    }
+
+    /// The punch-hole sits in the trailing corner, and the map ignores that inset.
+    /// Landscape reports it as the side safe area; portrait does not, so keep a fixed nudge.
+    private func gpsCameraClearance(safe: UIEdgeInsets) -> CGFloat {
+        let trailing = layoutDirection == .rightToLeft ? safe.left : safe.right
+        if trailing >= 20 { return trailing + 36 }
+        guard layout.pinsOverlayCloseLeading else { return 0 }
+        return layout.isLandscape ? 64 : 72
     }
 
     /// 2D/3D, overview/follow switch, and close — chips on the palette-tinted recording HUD.
     private var mapToolsRail: some View {
         HStack(spacing: 8) {
+            if layout.pinsOverlayCloseLeading {
+                liveMapCloseButton
+            }
             mapDimensionToggle
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.38 : 1)
                 .allowsHitTesting(!isPaused)
+                .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: uses3DLocal)
             mapFollowToggle
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.38 : 1)
                 .allowsHitTesting(!isPaused)
+                .animation(reduceMotion ? nil : TrailhoundMotion.recordingToggle, value: isFollowing)
 
             Spacer(minLength: 8)
 
-            Button {
-                TrailhoundHaptics.selection()
-                beginClose()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 33, height: 33)
-                    .background(GlassSemantic.notificationBadge, in: Capsule())
-                    .compositingGroup()
+            if !layout.pinsOverlayCloseLeading {
+                liveMapCloseButton
             }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityLabel(L10n.string("recording.live_map.close"))
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var liveMapCloseButton: some View {
+        Button {
+            TrailhoundHaptics.selection()
+            beginClose()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 33, height: 33)
+                .background(GlassSemantic.notificationBadge, in: Capsule())
+                .compositingGroup()
+        }
+        .buttonStyle(.glassPlainHit)
+        .accessibilityLabel(L10n.string("recording.live_map.close"))
     }
 
     private var mapDimensionToggle: some View {
@@ -451,9 +506,11 @@ struct LiveFollowMapView: View {
 
     private func mapCapsuleToggle<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 0, content: content)
-            .padding(2)
-            .frame(height: 33)
-            .background(.white.opacity(0.12), in: Capsule())
+            .recordingSegmentTrack()
+    }
+
+    private var mapToolNamespace: Namespace.ID? {
+        reduceMotion ? nil : mapToolMorph
     }
 
     private func mapDimensionSegment(
@@ -468,13 +525,12 @@ struct LiveFollowMapView: View {
         } label: {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
-                .background {
-                    if selected {
-                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
-                    }
-                }
+                .recordingSegmentThumb(
+                    isSelected: selected,
+                    morphID: "live.dimension",
+                    namespace: mapToolNamespace
+                )
         }
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(
@@ -499,13 +555,12 @@ struct LiveFollowMapView: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(selected ? Color.white : GlassText.secondary(for: colorScheme))
                 .frame(width: 33, height: 29)
-                .background {
-                    if selected {
-                        Capsule().fill(liveFollowPlateColor.opacity(0.45))
-                    }
-                }
+                .recordingSegmentThumb(
+                    isSelected: selected,
+                    morphID: "live.follow",
+                    namespace: mapToolNamespace
+                )
         }
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(accessibilityLabel)
@@ -531,15 +586,24 @@ struct LiveFollowMapView: View {
         recenterRequestToken += 1
     }
 
-    private func bottomHUD(useGlass: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+    /// Closed landscape Duo. The cover is the whole screen, so the card stays small and leading.
+    private var landscapeDuoCover: Bool {
+        !fillsPane && layout.layoutClass == .phoneLandscape && !layout.isPhoneBook
+    }
+
+    private var pinsHUDToLeadingCorner: Bool {
+        pinsAttributionToBottomCorner || landscapeDuoCover
+    }
+
+    private func bottomHUD(useGlass: Bool, tight: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: tight ? 6 : 9) {
             mapToolsRail
 
             Rectangle()
                 .fill(.white.opacity(0.16))
                 .frame(height: 1)
 
-            ActiveTripLiveStats(compact: true)
+            ActiveTripLiveStats(compact: true, arrangement: .inline)
 
             HStack(spacing: 8) {
                 Button {
@@ -587,7 +651,7 @@ struct LiveFollowMapView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(10)
+        .padding(tight ? 8 : 10)
         // Width fills the HUD slot; height stays intrinsic so settled layout does not
         // stretch into the Spacer (morphing phase applies an explicit height separately).
         .frame(maxWidth: .infinity, alignment: .topLeading)

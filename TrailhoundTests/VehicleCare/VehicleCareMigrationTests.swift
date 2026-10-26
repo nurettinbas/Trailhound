@@ -52,7 +52,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleSchedule>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 22)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
     }
 
     func testTripDataSurvivesAlongsideCareModels() throws {
@@ -86,7 +86,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         context.insert(VehicleFuelCalibration(vehicleID: vehicleID))
         try context.save()
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleFuelCalibration>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 22)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
     }
 
     func testSuccessorRecomputeUsesPreviousTripSoak() throws {
@@ -148,6 +148,70 @@ final class VehicleCareMigrationTests: XCTestCase {
             trip.points.append(point)
             context.insert(point)
         }
+    }
+
+    func testDiskStoreKeepsReceiptFileNameAcrossReopen() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ReceiptDisk-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Trailhound.store")
+        let schema = Schema(versionedSchema: TrailhoundSchemaV23.self)
+
+        do {
+            let container = try ModelContainer(for: schema, configurations: ModelConfiguration(url: storeURL))
+            let context = container.mainContext
+            let vehicle = VehicleProfile(name: "Disk Car")
+            context.insert(vehicle)
+            context.insert(VehicleExpense(category: .fuel, amount: 1_492, vehicle: vehicle, receiptFileName: "r.jpg"))
+            context.insert(VehicleExpense(category: .service, amount: 300, vehicle: vehicle))
+            try context.save()
+        }
+
+        let reopened = try ModelContainer(for: schema, configurations: ModelConfiguration(url: storeURL))
+        let rows = try reopened.mainContext.fetch(FetchDescriptor<VehicleExpense>(sortBy: [SortDescriptor(\.amount)]))
+        XCTAssertEqual(rows.map(\.amount), [300, 1_492])
+        XCTAssertEqual(rows.map(\.receiptFileName), [nil, "r.jpg"])
+    }
+
+    /// Opens a copy of a real pre-receipt (V22) on-disk store with the live V23 schema.
+    /// Run with `TEST_RUNNER_TRAILHOUND_MIGRATION_STORE=/path/Trailhound.store` and
+    /// `TEST_RUNNER_TRAILHOUND_MIGRATION_EXPECT="<expenses>|<amount sum>|<trips>"`.
+    /// The source store is copied first and never opened in place.
+    func testRealV22StoreOpensUnderV23WithoutDataLoss() throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let sourcePath = env["TRAILHOUND_MIGRATION_STORE"], !sourcePath.isEmpty else {
+            throw XCTSkip("Set TRAILHOUND_MIGRATION_STORE to a V22 Trailhound.store to run")
+        }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("V22Migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Trailhound.store")
+        for suffix in ["", "-wal", "-shm"] {
+            let source = URL(fileURLWithPath: sourcePath + suffix)
+            guard FileManager.default.fileExists(atPath: source.path) else { continue }
+            try FileManager.default.copyItem(at: source, to: URL(fileURLWithPath: storeURL.path + suffix))
+        }
+
+        let container = try ModelContainer(
+            for: Schema(versionedSchema: TrailhoundSchemaV23.self),
+            configurations: ModelConfiguration(url: storeURL)
+        )
+        let context = container.mainContext
+        let expenses = try context.fetch(FetchDescriptor<VehicleExpense>())
+        let trips = try context.fetchCount(FetchDescriptor<Trip>())
+        XCTAssertTrue(expenses.allSatisfy { $0.receiptFileName == nil })
+
+        if let expect = env["TRAILHOUND_MIGRATION_EXPECT"]?.split(separator: "|"), expect.count == 3 {
+            XCTAssertEqual(expenses.count, Int(expect[0]))
+            XCTAssertEqual(expenses.reduce(0) { $0 + $1.amount }, Double(expect[1]) ?? -1, accuracy: 0.01)
+            XCTAssertEqual(trips, Int(expect[2]))
+        }
+
+        expenses.first?.receiptFileName = "after-migration.jpg"
+        try context.save()
+        XCTAssertEqual(ExpenseReceiptStore.referenceCount(of: "after-migration.jpg", in: context), expenses.isEmpty ? 0 : 1)
     }
 
     func testV14KeepsExistingExpensesAsOneShot() throws {

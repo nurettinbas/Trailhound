@@ -340,4 +340,174 @@ final class LiveFollowMapPinTests: XCTestCase {
         let stop = RouteMapPinImage.uiImage(for: .stop)
         XCTAssertGreaterThan(start.size.width, stop.size.width)
     }
+
+    func testOverviewMapRectDoesNotFractionallyPadALongTrail() {
+        let start = CLLocationCoordinate2D(latitude: 37.33, longitude: -122.04)
+        let end = LiveFollowCamera.coordinate(from: start, headingDegrees: 0, distanceMeters: 3_000)
+        let rect = LiveFollowGrowingRoute.overviewMapRect(
+            historyPieces: [[start, end]],
+            vehicle: end
+        )
+        let meters = overviewMeters(of: rect)
+        XCTAssertLessThan(meters.width, 200)
+        XCTAssertGreaterThan(meters.height, 2_900)
+        XCTAssertLessThan(meters.height, 3_200)
+    }
+
+    func testOverviewFitKeepsAThreeKilometerTrailOnAPhone() {
+        let route = northRoute(meters: 3_000)
+        let insets = UIEdgeInsets(top: 88, left: 16, bottom: 300, right: 16)
+        let fit = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: CGSize(width: 390, height: 844),
+            contentInsets: insets,
+            visibleHeightPerDistance: LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+        )
+        let visible = overviewMeters(of: fit!.visibleRect)
+        XCTAssertLessThan(max(visible.width, visible.height), 3_000 * 2.5)
+        XCTAssertTrue(clearBandContainsRoute(fit!.visibleRect, route: route.rect, mapSize: CGSize(width: 390, height: 844), insets: insets))
+    }
+
+    func testOverviewFitChangesDistanceForALeadingCard() {
+        let route = northRoute(meters: 3_000)
+        let portrait = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: CGSize(width: 390, height: 844),
+            contentInsets: UIEdgeInsets(top: 88, left: 16, bottom: 300, right: 16),
+            visibleHeightPerDistance: 0.536
+        )
+        let landscape = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: CGSize(width: 852, height: 393),
+            contentInsets: UIEdgeInsets(top: 44, left: 270, bottom: 16, right: 16),
+            visibleHeightPerDistance: 0.536
+        )
+        XCTAssertNotEqual(portrait!.distanceMeters, landscape!.distanceMeters, accuracy: 1)
+        XCTAssertTrue(
+            clearBandContainsRoute(
+                landscape!.visibleRect,
+                route: route.rect,
+                mapSize: CGSize(width: 852, height: 393),
+                insets: UIEdgeInsets(top: 44, left: 270, bottom: 16, right: 16)
+            )
+        )
+    }
+
+    func testOverviewFitShiftsATallFoldAboveTheCard() {
+        let route = northRoute(meters: 3_000)
+        let size = CGSize(width: 402, height: 1_200)
+        let insets = UIEdgeInsets(top: 88, left: 16, bottom: 340, right: 16)
+        let fit = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: size,
+            contentInsets: insets,
+            visibleHeightPerDistance: 0.536
+        )
+        let routeMid = MKMapPoint(x: route.rect.midX, y: route.rect.midY).coordinate
+        XCTAssertGreaterThan(routeMid.latitude, fit!.center.latitude)
+        XCTAssertTrue(clearBandContainsRoute(fit!.visibleRect, route: route.rect, mapSize: size, insets: insets))
+    }
+
+    func testOverviewFitKeepsAPointSizedStartNearby() {
+        let start = CLLocationCoordinate2D(latitude: 37.33, longitude: -122.04)
+        let rect = LiveFollowGrowingRoute.overviewMapRect(historyPieces: [], vehicle: start)
+        let fit = LiveFollowOverviewFit.target(
+            routeRect: rect,
+            mapSize: CGSize(width: 390, height: 844),
+            contentInsets: UIEdgeInsets(top: 88, left: 16, bottom: 280, right: 16),
+            visibleHeightPerDistance: 0.536
+        )
+        let visible = overviewMeters(of: fit!.visibleRect)
+        XCTAssertGreaterThan(min(visible.width, visible.height), 300)
+        XCTAssertLessThan(max(visible.width, visible.height), 2_500)
+    }
+
+    func testOverviewEyeDistanceScalesWithTheLiveMapRatio() {
+        let route = northRoute(meters: 3_000)
+        let size = CGSize(width: 390, height: 844)
+        let insets = UIEdgeInsets(top: 88, left: 16, bottom: 280, right: 16)
+        let phone = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: size,
+            contentInsets: insets,
+            visibleHeightPerDistance: 0.536
+        )
+        let wider = LiveFollowOverviewFit.target(
+            routeRect: route.rect,
+            mapSize: size,
+            contentInsets: insets,
+            visibleHeightPerDistance: 2
+        )
+        XCTAssertLessThan(wider!.distanceMeters, phone!.distanceMeters)
+        XCTAssertEqual(phone!.visibleRect.size.height, wider!.visibleRect.size.height, accuracy: 1)
+    }
+
+    func testOverviewEaseDistanceIsLogarithmicAndRecenterStaysLinear() {
+        let from: CLLocationDistance = 600
+        let to: CLLocationDistance = 4_800
+        XCTAssertEqual(
+            LiveFollowOverviewFit.easedDistance(from: from, to: to, t: 0, logarithmic: true),
+            from,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            LiveFollowOverviewFit.easedDistance(from: from, to: to, t: 1, logarithmic: true),
+            to,
+            accuracy: 0.01
+        )
+        let mid = LiveFollowOverviewFit.easedDistance(from: from, to: to, t: 0.5, logarithmic: true)
+        XCTAssertEqual(mid, sqrt(from * to), accuracy: 0.5)
+        XCTAssertEqual(mid / from, to / mid, accuracy: 0.01)
+
+        let linear = LiveFollowOverviewFit.easedDistance(from: from, to: to, t: 0.5, logarithmic: false)
+        XCTAssertEqual(linear, (from + to) / 2, accuracy: 0.01)
+    }
+
+    func testOverviewDurationStaysInsideTheShortFlight() {
+        XCTAssertEqual(
+            LiveFollowOverviewFit.overviewDuration(fromDistance: 1_000, toDistance: 1_000),
+            LiveFollowOverviewFit.easeDuration,
+            accuracy: 0.001
+        )
+        let pulled = LiveFollowOverviewFit.overviewDuration(fromDistance: 600, toDistance: 6_000)
+        XCTAssertGreaterThan(pulled, LiveFollowOverviewFit.easeDuration)
+        XCTAssertLessThanOrEqual(pulled, LiveFollowOverviewFit.easeDurationMax)
+    }
+
+    private func northRoute(meters: CLLocationDistance) -> (rect: MKMapRect, end: CLLocationCoordinate2D) {
+        let start = CLLocationCoordinate2D(latitude: 37.33, longitude: -122.04)
+        let end = LiveFollowCamera.coordinate(from: start, headingDegrees: 0, distanceMeters: meters)
+        let rect = LiveFollowGrowingRoute.overviewMapRect(
+            historyPieces: [[start, end]],
+            vehicle: end
+        )
+        return (rect, end)
+    }
+
+    private func overviewMeters(of rect: MKMapRect) -> (width: CLLocationDistance, height: CLLocationDistance) {
+        let mid = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
+        let metersPerPoint = MKMetersPerMapPointAtLatitude(mid.latitude)
+        return (rect.size.width * metersPerPoint, rect.size.height * metersPerPoint)
+    }
+
+    private func clearBandContainsRoute(
+        _ visible: MKMapRect,
+        route: MKMapRect,
+        mapSize: CGSize,
+        insets: UIEdgeInsets
+    ) -> Bool {
+        let usableWidth = max(mapSize.width - insets.left - insets.right, 48)
+        let usableHeight = max(mapSize.height - insets.top - insets.bottom, 48)
+        let clear = MKMapRect(
+            x: visible.minX + visible.size.width * (insets.left / mapSize.width),
+            y: visible.minY + visible.size.height * (insets.top / mapSize.height),
+            width: visible.size.width * (usableWidth / mapSize.width),
+            height: visible.size.height * (usableHeight / mapSize.height)
+        )
+        let slop = 2.0
+        return clear.minX - slop <= route.minX
+            && clear.minY - slop <= route.minY
+            && clear.maxX + slop >= route.maxX
+            && clear.maxY + slop >= route.maxY
+    }
 }

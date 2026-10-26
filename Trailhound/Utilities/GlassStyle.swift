@@ -4,7 +4,22 @@ import UIKit
 enum GlassTokens {
     static let cardRadius: CGFloat = 22
     static let chipRadius: CGFloat = 14
+    /// Bottom confirmation toast. Same corner family as a glass card, larger than a chip.
+    static let toastCornerRadius: CGFloat = cardRadius
+    static let toastIconDiscSide: CGFloat = 38
+    static let toastMinHeight: CGFloat = 56
+    static let toastMaxWidth: CGFloat = 360
+    static let toastHorizontalPadding: CGFloat = 16
+    static let toastVerticalPadding: CGFloat = 12
+    /// Gap between a bottom toast and the top of the tab platter.
+    static let toastTabBarGap: CGFloat = 12
+    /// Used until the tab platter frame is published.
+    static let toastTabBarFallbackClearance: CGFloat = 68
     static let sectionSpacing: CGFloat = 14
+    /// `glassCompactRow` vertical padding and minimum height. Six Settings sections fit a landscape phone pane.
+    static let compactRowVerticalInset: CGFloat = 7
+    static let compactRowMinHeight: CGFloat = 34
+    static let compactIndexTopMargin: CGFloat = 8
     /// Distance from screen edge to the glass card rim.
     static let panelHorizontalInset: CGFloat = 16
     /// Padding between the glass card rim and its content (both sides).
@@ -12,8 +27,17 @@ enum GlassTokens {
     /// List row content inset from the screen edge (`panel` + inner content padding).
     static var listContentHorizontalInset: CGFloat { panelHorizontalInset + cardContentInset }
 
+    /// Extra side inset for the recording card pinned in the top half of the upright open fold.
+    /// The card already pads by `panelHorizontalInset`. Below about 420pt the trip plate is one
+    /// more panel inset in; the inner Duo is wider and its list margin is 20pt.
+    static func recordingFoldExtraInset(contentWidth: CGFloat) -> CGFloat {
+        contentWidth >= 420 ? 20 : panelHorizontalInset
+    }
+
     /// Nested frost tiles inside a glass card (wizard choices, instruction rows).
     static let nestedChoiceRadius: CGFloat = 12
+    /// Tinted glyph disc on a featured list row (Settings → Support the developer).
+    static let featuredRowDiscSide: CGFloat = 32
 
     /// Compact frozen circle on a live map (Stats overlay collapse).
     static let toolbarFrozenCircleSide: CGFloat = 36
@@ -22,10 +46,27 @@ enum GlassTokens {
     static let toolbarControlCircleSide: CGFloat = 44
     /// Gap between independent 44pt toolbar circles (Trip detail Share/collapse, Year recap).
     static let toolbarCircleClusterSpacing: CGFloat = 16
+    /// Gap between side-column circles, and between that stack and the tab bar platter.
+    static let sideColumnChromeGap: CGFloat = 16
     /// Gap between glyphs that share one system platter (Trips merge+bell).
     static let toolbarSharedClusterSpacing: CGFloat = 8
     /// Width of a glyph inside a shared platter. Height stays `toolbarControlCircleSide`.
     static let toolbarClusterGlyphWidth: CGFloat = 32
+
+    /// Wide-layout tokens. Phone portrait does not read these.
+    static let railWidthFraction: CGFloat = 0.36
+    static let hingeGutter: CGFloat = 24
+    static let padLandscapeGap: CGFloat = 48
+    static let floatingPanelWidth: CGFloat = 380
+    static let paneCardMaxWidth: CGFloat = 440
+    static let paneVerticalRhythm: CGFloat = 22
+    static let moduleMinHalf: CGFloat = 160
+    static let moduleMaxHalf: CGFloat = 300
+    static let featureHeight: CGFloat = 320
+    static let readableTextWidth: CGFloat = 440
+    static let heroFigureFont = Font.system(size: 44, weight: .light, design: .rounded)
+    /// Narrow iPad Split View / Slide Over stays the phone column.
+    static let compactWidthCeiling: CGFloat = 520
 
     static func fieldFill(for scheme: ColorScheme, palette: ShellPalette = .sky) -> Color {
         if scheme == .dark {
@@ -659,6 +700,30 @@ struct GlassCircleChromeModifier: ViewModifier {
     }
 }
 
+/// Vertical Liquid Glass capsule. Same rule as `GlassCircleChromeModifier`:
+/// native glass in Light and Dark. The caller sizes the content (44pt hits).
+/// The glass sits behind the glyphs so a badge is not clipped by the capsule.
+struct GlassCapsuleChromeModifier: ViewModifier {
+    var frozen: Bool = false
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        let shape = Capsule()
+        if reduceTransparency || frozen {
+            content.background {
+                GlassToolbarControlBackground(shape: shape, frozen: true)
+            }
+        } else if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            content.background {
+                GlassToolbarControlBackground(shape: shape, frozen: false)
+            }
+        }
+    }
+}
+
 struct GlassFieldModifier: ViewModifier {
     var cornerRadius: CGFloat = 8
 
@@ -1130,7 +1195,7 @@ final class GlassSegmentedProbeView: UIView {
     }
 }
 
-/// Frost fill inside a glass card — chip selected/unselected recipe, never a second Material.
+/// Frost fill inside a glass card. Light selection is a rim, not a second tint slab.
 private struct GlassNestedChoiceModifier: ViewModifier {
     var isSelected: Bool
 
@@ -1145,21 +1210,38 @@ private struct GlassNestedChoiceModifier: ViewModifier {
             .background {
                 RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
                     .fill(fill)
+                    .overlay {
+                        if showsSelectionRim {
+                            RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.72), lineWidth: 1)
+                        }
+                    }
             }
     }
 
+    /// Light shells are already a saturated wash. A mid-family fill there is the
+    /// same hue as the atmosphere and the primary capsule, so the row reads as
+    /// another button. Dark keeps the deep tint slab.
+    private var showsSelectionRim: Bool {
+        isSelected && colorScheme == .light
+    }
+
     private var fill: Color {
-        if isSelected {
-            return colorScheme == .dark
-                ? shellPalette.tintColor(for: .dark)
-                : LightGlassPalette.selectedChipFill(for: shellPalette)
+        if isSelected, colorScheme == .dark {
+            return shellPalette.tintColor(for: .dark)
         }
         if reduceTransparency {
             return shellPalette.opaquePanelFill(for: colorScheme)
         }
-        return colorScheme == .dark
+        let frost = colorScheme == .dark
             ? Color.white.opacity(0.10)
             : shellPalette.glassReadabilityTint(for: .light).opacity(GlassContrast.nestedTileTintOpacity)
+        if isSelected, colorScheme == .light {
+            return shellPalette.glassReadabilityTint(for: .light).opacity(
+                min(0.42, GlassContrast.nestedTileTintOpacity + 0.12)
+            )
+        }
+        return frost
     }
 }
 
@@ -1210,7 +1292,8 @@ private struct GlassNavigationChromeModifier: ViewModifier {
             content
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                .scrollEdgeEffectHidden(true, for: [.top, .bottom])
+                .scrollEdgeEffectStyle(.hard, for: .all)
+                .scrollEdgeEffectHidden(true, for: .all)
                 .background(GlassNavigationBarEdgeHider())
         } else if #available(iOS 18.0, *) {
             content
@@ -1251,7 +1334,10 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
 
         override func viewWillAppear(_ animated: Bool) {
             super.viewWillAppear(animated)
-            apply()
+            edgePassCount = 0
+            UIView.performWithoutAnimation {
+                apply()
+            }
         }
 
         override func viewDidAppear(_ animated: Bool) {
@@ -1289,27 +1375,29 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
                 item.compactAppearance = appearance
                 item.compactScrollEdgeAppearance = appearance
             }
-
-            if let bar = navigationController?.navigationBar {
-                bar.standardAppearance = appearance
-                bar.scrollEdgeAppearance = appearance
-                bar.compactAppearance = appearance
-                bar.compactScrollEdgeAppearance = appearance
-            }
         }
 
         private func hideScrollEdgeEffects() {
             guard #available(iOS 26.0, *) else { return }
-            hideScrollEdgeEffects(in: parent?.view)
-            hideScrollEdgeEffects(in: navigationController?.view)
+            UIView.performWithoutAnimation {
+                hideScrollEdgeEffects(in: parent?.view)
+                hideScrollEdgeEffects(in: navigationController?.view)
+            }
         }
 
         @available(iOS 26.0, *)
         private func hideScrollEdgeEffects(in view: UIView?) {
             guard let view else { return }
             if let scrollView = view as? UIScrollView {
-                scrollView.topEdgeEffect.isHidden = true
-                scrollView.bottomEdgeEffect.isHidden = true
+                let effects = [
+                    scrollView.topEdgeEffect,
+                    scrollView.bottomEdgeEffect,
+                    scrollView.leftEdgeEffect,
+                    scrollView.rightEdgeEffect
+                ]
+                for effect in effects where !effect.isHidden {
+                    effect.isHidden = true
+                }
             }
             for subview in view.subviews {
                 hideScrollEdgeEffects(in: subview)
@@ -1375,6 +1463,11 @@ extension View {
         modifier(GlassCircleChromeModifier(side: side, frozen: frozen))
     }
 
+    /// One vertical Liquid Glass capsule for the upright-Duo bell and Trips action.
+    func glassCapsuleChrome(frozen: Bool = false) -> some View {
+        modifier(GlassCapsuleChromeModifier(frozen: frozen))
+    }
+
     /// Floating tab bar platter — Light Capsule `.clear` glass, Dark thin Material.
     func glassTabBar() -> some View {
         modifier(GlassTabBarModifier())
@@ -1406,6 +1499,23 @@ extension View {
             .listRowSeparator(.hidden)
     }
 
+    /// Short glass row for a section index beside a form (Settings on the book split).
+    func glassCompactRow(position: GlassRowPosition) -> some View {
+        let horizontal = GlassTokens.listContentHorizontalInset
+        let vertical = GlassTokens.compactRowVerticalInset
+        return listRowBackground(GlassSectionRowBackground(position: position))
+            .listRowInsets(EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal))
+            .listRowSeparator(.hidden)
+    }
+
+    /// Section index list that fits the pane: short rows, a small top margin, and no bounce
+    /// when every row is visible. Large Dynamic Type still scrolls once the rows overflow.
+    func glassCompactIndexList() -> some View {
+        environment(\.defaultMinListRowHeight, GlassTokens.compactRowMinHeight)
+            .contentMargins(.top, GlassTokens.compactIndexTopMargin, for: .scrollContent)
+            .scrollBounceBehavior(.basedOnSize)
+    }
+
     /// Single-row glass panel (banners, one-off cards in lists).
     func glassListRow() -> some View {
         glassRow(position: .only)
@@ -1426,11 +1536,13 @@ extension View {
             .mask(Rectangle())
     }
 
-    func glassListChrome() -> some View {
+    func glassListChrome(showsAtmosphere: Bool = true) -> some View {
         scrollContentBackground(.hidden)
             .background {
-                AtmosphericBackground(style: .full)
-                    .ignoresSafeArea()
+                if showsAtmosphere {
+                    AtmosphericBackground(style: .full)
+                        .ignoresSafeArea()
+                }
             }
             .listSectionSpacing(GlassTokens.sectionSpacing)
             .glassNavigationChrome()
@@ -1457,6 +1569,28 @@ extension View {
 
     func glassFormListRow() -> some View {
         glassFormRow(position: .only)
+    }
+
+    /// Detail back. iOS 26 uses the system Liquid Glass back button and its own swipe-back,
+    /// including the full-screen content pop. Older systems keep the custom glass circle and
+    /// the edge-swipe enabler. The vehicle editor does not use this. On iOS 26 it keeps this
+    /// system button until there are unsaved edits, then hides it. Older systems always use
+    /// the custom circle and block the pop while edits are unsaved.
+    @ViewBuilder
+    func glassDetailBackNavigation(action: @escaping () -> Void) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            self
+                .navigationBarBackButtonHidden(true)
+                .background(NavigationInteractivePopEnabler())
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        GlassToolbarBackButton(action: action)
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                }
+        }
     }
 
     /// Keeps the nav bar visually merged with the atmospheric shell. Only the
@@ -1486,6 +1620,152 @@ extension View {
             return EdgeInsets(top: 10, leading: horizontal, bottom: 10, trailing: horizontal)
         case .last:
             return EdgeInsets(top: 10, leading: horizontal, bottom: 14, trailing: horizontal)
+        }
+    }
+}
+
+/// Informational / caution note inside a glass card or sheet (receipt OCR warning).
+/// Nested frost (`glassNestedChoice(isSelected: false)`) — not a second Material, not a banner plate.
+struct GlassNoticeCallout: View {
+    enum Tone {
+        case info
+        case caution
+    }
+
+    let systemImage: String
+    let title: String
+    var message: String? = nil
+    var tone: Tone = .caution
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(iconColor)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .glassPrimaryInk()
+                    .fixedSize(horizontal: false, vertical: true)
+                if let message {
+                    Text(message)
+                        .font(.footnote)
+                        .glassSecondaryInk()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .glassNestedChoice(isSelected: false)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var iconColor: Color {
+        switch tone {
+        case .info: return GlassText.primary(for: colorScheme)
+        case .caution: return GlassSemantic.paused(for: colorScheme)
+        }
+    }
+}
+
+/// One standout row in a plain glass list: palette disc + white glyph, semibold title,
+/// optional footnote, trailing chevron. Use as a `Button` label; the row stays `glassRow`.
+struct GlassFeaturedRowLabel: View {
+    let systemImage: String
+    let title: String
+    var subtitle: String? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: GlassTokens.featuredRowDiscSide, height: GlassTokens.featuredRowDiscSide)
+                .background {
+                    Circle()
+                        .fill(shellPalette.tintColor(for: colorScheme))
+                        .overlay { Circle().strokeBorder(Color.white.opacity(0.72), lineWidth: 1) }
+                }
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .glassPrimaryInk()
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .glassSecondaryInk()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .glassSecondaryInk()
+                .accessibilityHidden(true)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Raised option tile inside a glass card (Support the developer tips): nested frost
+/// lifted by a soft shadow. Pair with a prominent button inside; not a second Material.
+private struct GlassElevatedTileModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .glassNestedChoice(isSelected: true)
+            .compositingGroup()
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16),
+                radius: 10,
+                y: 5
+            )
+    }
+}
+
+extension View {
+    func glassElevatedTile() -> some View {
+        modifier(GlassElevatedTileModifier())
+    }
+}
+
+/// Receipt / document photo tile. Rounded nested radius + thin white rim; a frost
+/// placeholder with a document glyph while the image loads.
+struct ReceiptThumbnailTile: View {
+    let image: UIImage?
+    var width: CGFloat = 72
+    var height: CGFloat = 96
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: GlassTokens.nestedChoiceRadius, style: .continuous)
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .transition(.opacity)
+            } else {
+                shape
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.16))
+                Image(systemName: "doc.text.image")
+                    .font(.title3.weight(.semibold))
+                    .glassSecondaryInk()
+            }
+        }
+        .frame(width: width, height: height)
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.28 : 0.56), lineWidth: 1)
         }
     }
 }

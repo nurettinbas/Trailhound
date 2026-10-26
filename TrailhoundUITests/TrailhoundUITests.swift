@@ -121,6 +121,36 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(tripsTab.exists)
     }
 
+    func testTripDetailSwipeBackStaysOnList() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let firstTrip = app.buttons["trips.row.first"]
+        XCTAssertTrue(firstTrip.waitForExistence(timeout: uiTimeout))
+        firstTrip.tap()
+
+        let detail = app.otherElements["tripDetail.screen"].firstMatch
+        XCTAssertTrue(detail.waitForExistence(timeout: 15))
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.7))
+        let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.7))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
+
+        XCTAssertTrue(firstTrip.waitForExistence(timeout: 5))
+        XCTAssertFalse(detail.waitForExistence(timeout: 2))
+    }
+
+    func testReadTripNotificationOpensDetail() throws {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let notifications = app.buttons["trips.notifications"]
+        XCTAssertTrue(notifications.waitForExistence(timeout: uiTimeout))
+        notifications.tap()
+        let ended = app.staticTexts["Trip ended"].firstMatch
+        guard ended.waitForExistence(timeout: 5) else {
+            throw XCTSkip("No ended-trip notification in this inbox.")
+        }
+        ended.tap()
+        XCTAssertTrue(app.otherElements["tripDetail.screen"].waitForExistence(timeout: 15))
+    }
+
     func testTripListOpensDetail() {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
 
@@ -137,6 +167,19 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         let toggle = app.switches["settings.recordingSounds"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 15))
         XCTAssertTrue(toggle.isEnabled)
+    }
+
+    func testSettingsTipJarOpensAndCloses() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+        let row = app.buttons["settings.tipJar"]
+        revealSettingsControl(row)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let close = app.buttons["tipJar.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10))
+        close.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
     }
 
     func testTravelsSegmentOpensJournalEmptyState() throws {
@@ -271,6 +314,57 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(week.waitForExistence(timeout: uiTimeout), "Last 7 days filter should remain after Light appearance")
         XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: uiTimeout))
     }
+
+    func testSideColumnChromeSurvivesRotation() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let orientations: [(UIDeviceOrientation, String)] = [
+            (.portrait, "portrait"),
+            (.landscapeLeft, "landscapeLeft"),
+            (.landscapeRight, "landscapeRight"),
+            (.portraitUpsideDown, "portraitUpsideDown"),
+            (.portrait, "portraitAgain")
+        ]
+        for (orientation, name) in orientations {
+            XCUIDevice.shared.orientation = orientation
+            let bells = app.buttons.matching(identifier: "trips.notifications")
+            XCTAssertTrue(bells.firstMatch.waitForExistence(timeout: uiTimeout), "Bell missing after \(name)")
+            XCTAssertEqual(bells.count, 1, "Bell duplicated after \(name)")
+
+            let merges = app.buttons.matching(identifier: "trips.merge")
+            if merges.firstMatch.waitForExistence(timeout: 2) {
+                XCTAssertEqual(merges.count, 1, "Merge duplicated after \(name)")
+            }
+
+            let shot = XCUIScreen.main.screenshot()
+            let attachment = XCTAttachment(screenshot: shot)
+            attachment.name = "side-column-\(name)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+
+            let bell = bells.firstMatch.frame
+            XCTAssertLessThan(bell.midY, app.frame.height * 0.28, "Bell is not on the top row after \(name)")
+            XCTAssertGreaterThan(bell.midX, app.frame.width * 0.45, "Bell is not on the trailing side after \(name)")
+            // A hidden tab can leave a second Start with an empty frame. The visible one has a real frame.
+            let starts = app.buttons.matching(identifier: "shell.start").allElementsBoundByIndex
+            let visibleStart = starts.first { $0.frame.width > 1 && $0.frame.maxX.isFinite }
+            if starts.contains(where: \.exists) {
+                XCTAssertNotNil(visibleStart, "Start has no frame after \(name)")
+                if let visibleStart {
+                    XCTAssertLessThan(visibleStart.frame.maxX, bell.minX, "Start is joined to the bell after \(name)")
+                }
+            }
+            if merges.count == 1 {
+                let merge = merges.firstMatch.frame
+                let stacked = abs(merge.midX - bell.midX) < 24 && merge.minY >= bell.maxY - 8
+                if stacked {
+                    XCTAssertLessThan(merge.maxY, app.frame.height * 0.45, "Stacked pair is not under the status cluster after \(name)")
+                } else {
+                    XCTAssertEqual(merge.midY, bell.midY, accuracy: CGFloat(12), "Merge is not beside the bell after \(name)")
+                    XCTAssertGreaterThan(merge.midX, bell.midX, "Merge is not to the right of the bell after \(name)")
+                }
+            }
+        }
+    }
 }
 
 final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {
@@ -367,5 +461,56 @@ final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {
 
     private func waitForIdentifierGone(_ identifier: String) -> Bool {
         app.descendants(matching: .any)[identifier].waitForNonExistence(timeout: 5)
+    }
+}
+
+/// Trip A open on the Trips stack, user switches tab, then opens trip B from a read
+/// notification. B must draw B's own route — never A's route under B's pins.
+final class TripDetailTripSwitchUITests: TrailhoundUITestCase {
+    private let newestID = "AAAAAAAA-0000-4000-8000-0000000000A1"
+    private let olderID = "AAAAAAAA-0000-4000-8000-0000000000B2"
+
+    override var extraLaunchArguments: [String] { ["-UITesting.tripSwitchSeed"] }
+
+    private var routeIdentity: XCUIElement {
+        app.descendants(matching: .any)["tripDetail.routeIdentity"].firstMatch
+    }
+
+    private func waitForRoute(of tripID: String, file: StaticString = #filePath, line: UInt = #line) {
+        let expected = "trip=\(tripID) model=\(tripID) route=match"
+        let predicate = NSPredicate(format: "label == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: routeIdentity)
+        let result = XCTWaiter().wait(for: [expectation], timeout: uiTimeout)
+        XCTAssertEqual(
+            result, .completed,
+            "Route readout was '\(routeIdentity.exists ? routeIdentity.label : "missing")', expected '\(expected)'",
+            file: file, line: line
+        )
+    }
+
+    func testNotificationOpenAfterTabSwitchDrawsTheNewTripsRoute() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let firstRow = app.buttons["trips.row.first"]
+        XCTAssertTrue(firstRow.waitForExistence(timeout: uiTimeout))
+        firstRow.tap()
+        XCTAssertTrue(app.otherElements["tripDetail.screen"].waitForExistence(timeout: uiTimeout))
+        waitForRoute(of: newestID)
+
+        pairingTab.tap()
+        let bell = app.buttons["trips.notifications"].firstMatch
+        XCTAssertTrue(bell.waitForExistence(timeout: uiTimeout))
+        bell.tap()
+        let row = app.staticTexts["Switch B ended"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout))
+        row.tap()
+
+        XCTAssertTrue(app.otherElements["tripDetail.screen"].waitForExistence(timeout: uiTimeout))
+        waitForRoute(of: olderID)
+
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(firstRow.waitForExistence(timeout: uiTimeout), "One back must land on the list")
+
+        firstRow.tap()
+        waitForRoute(of: newestID)
     }
 }

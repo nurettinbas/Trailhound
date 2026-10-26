@@ -36,6 +36,8 @@ enum L10n {
     static var notificationsEmptyTitle: String { string("notifications.empty.title") }
     static var notificationsEmptyMessage: String { string("notifications.empty.message") }
     static var notificationsClearAll: String { string("notifications.clear_all") }
+    static var notificationsMarkAllRead: String { string("notifications.mark_all_read") }
+    static var notificationsOpen: String { string("notifications.open") }
 
     static var pause: String { string("action.pause") }
     static var resume: String { string("action.resume") }
@@ -236,6 +238,7 @@ enum L10n {
     static var stopDuration: String { string("label.stop_duration") }
     static var fuelPetrol: String { string("fuel.petrol") }
     static var fuelDiesel: String { string("fuel.diesel") }
+    static var fuelLpg: String { string("fuel.lpg") }
     static var fuelElectric: String { string("fuel.electric") }
     static var fuelHybrid: String { string("fuel.hybrid") }
     static var tripLocationOverrides: String { string("trip.location.overrides") }
@@ -347,6 +350,7 @@ enum L10n {
     static var settingsExportPreparing: String { string("settings.backup.exporting") }
     static var settingsShareFile: String { string("settings.backup.share") }
     static var settingsAboutSection: String { string("settings.about.section") }
+    static var settingsPlayLaunchIntro: String { string("settings.about.play_launch_intro") }
     static var settingsVersion: String { string("settings.about.version") }
     static var settingsAboutPrivacy: String { string("settings.about.privacy") }
     static var settingsReportProblem: String { string("settings.report_problem") }
@@ -358,6 +362,15 @@ enum L10n {
     static var settingsReportProblemFailedTitle: String { string("settings.report_problem.failed.title") }
     static var settingsReportProblemFailedMessage: String { string("settings.report_problem.failed.message") }
     static var settingsPrivacyPolicy: String { string("settings.privacy_policy") }
+    static var settingsTipJar: String { string("settings.tip_jar") }
+    static var settingsTipJarSubtitle: String { string("settings.tip_jar.subtitle") }
+    static var settingsTipJarMessage: String { string("settings.tip_jar.message") }
+    static var settingsTipJarUnavailable: String { string("settings.tip_jar.unavailable") }
+    static var settingsTipJarFailed: String { string("settings.tip_jar.failed") }
+
+    static func settingsDevelopedBy(_ name: String) -> String {
+        String(format: string("settings.developed_by"), name)
+    }
 
     static func settingsReportProblemShareHint(_ address: String) -> String {
         String(format: string("settings.report_problem.share_hint"), address)
@@ -658,12 +671,15 @@ enum L10n {
     static var infoTitle: String { string("alert.info.title") }
 
     static var toastSaved: String { string("toast.saved") }
+    static var toastTipThanks: String { string("toast.tip_thanks") }
     static var toastDeleted: String { string("toast.deleted") }
     static var toastPlaceSaved: String { string("toast.place.saved") }
     static var toastVehicleSaved: String { string("toast.vehicle.saved") }
     static var toastVehicleReminderSaved: String { string("toast.vehicle.reminder.saved") }
     static var toastVehicleExpenseSaved: String { string("toast.vehicle.expense.saved") }
     static var toastTripSaved: String { string("toast.trip.saved") }
+    static var toastTripNotFound: String { string("toast.trip.not_found") }
+    static var toastJournalSaved: String { string("toast.journal.saved") }
     static var toastCategoryAdded: String { string("toast.category.added") }
     static var toastCategoryDeleted: String { string("toast.category.deleted") }
     static var toastCategoryAccepted: String { string("toast.category.accepted") }

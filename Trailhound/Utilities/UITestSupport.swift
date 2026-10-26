@@ -4,14 +4,34 @@ import UIKit
 
 enum UITestSupport {
     static var isEnabled: Bool {
+        #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-UITesting")
+        #else
+        false
+        #endif
     }
 
     static var seedsSmartCategory: Bool {
+        #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-UITesting.smartCategorySeed")
+        #else
+        false
+        #endif
     }
 
     static let smartCategorySeedTripID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000ca")!
+
+    /// Two finished trips plus a read "Trip ended" inbox row for the older one.
+    static var seedsTripSwitch: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-UITesting.tripSwitchSeed")
+        #else
+        false
+        #endif
+    }
+
+    static let tripSwitchNewestID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000a1")!
+    static let tripSwitchOlderID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000b2")!
 
     /// `TrailhoundTests` runs inside the app process (`TEST_HOST`); side effects must not touch host UI.
     static var isUnitTesting: Bool {
@@ -48,6 +68,11 @@ enum UITestSupport {
         let existing = (try? context.fetch(descriptor)) ?? []
         // Smart-category UI tests need the commute fixture to be the newest row. Skip the
         // generic sample trip on a fresh store so "first row" is unambiguous.
+        if seedsTripSwitch {
+            seedTripSwitchFixtures(in: context)
+            try? context.save()
+            return
+        }
         if existing.isEmpty, !seedsSmartCategory {
             let trip = PreviewData.sampleTrip
             context.insert(trip)
@@ -126,6 +151,79 @@ enum UITestSupport {
         context.insert(trip)
         context.insert(startPoint)
         context.insert(endPoint)
+    }
+
+    @MainActor
+    static func seedTripSwitchFixtures(in context: ModelContext) {
+        let now = Date()
+        insertStraightTrip(
+            id: tripSwitchNewestID,
+            name: "Switch A",
+            startLatitude: 38.40,
+            startLongitude: 27.10,
+            endedAt: now.addingTimeInterval(-3_600),
+            in: context
+        )
+        insertStraightTrip(
+            id: tripSwitchOlderID,
+            name: "Switch B",
+            startLatitude: 38.30,
+            startLongitude: 27.20,
+            endedAt: now.addingTimeInterval(-86_400),
+            in: context
+        )
+        let store = AppNotificationStore.shared
+        store.record(
+            kind: .tripEnded,
+            title: "Trip ended",
+            body: "Switch B ended",
+            tripID: tripSwitchOlderID,
+            createdAt: now.addingTimeInterval(-86_400)
+        )
+        store.markAllRead()
+    }
+
+    @MainActor
+    private static func insertStraightTrip(
+        id: UUID,
+        name: String,
+        startLatitude: Double,
+        startLongitude: Double,
+        endedAt: Date,
+        in context: ModelContext
+    ) {
+        let pointCount = 60
+        let step = 0.0005
+        let startedAt = endedAt.addingTimeInterval(-Double(pointCount) * 5)
+        let trip = Trip(
+            id: id,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            distanceMeters: Double(pointCount) * 60,
+            category: .personal,
+            startPlaceName: "\(name) start",
+            endPlaceName: "\(name) end"
+        )
+        trip.startLatitude = startLatitude
+        trip.startLongitude = startLongitude
+        trip.endLatitude = startLatitude + Double(pointCount - 1) * step
+        trip.endLongitude = startLongitude + Double(pointCount - 1) * step
+        context.insert(trip)
+        var points: [TripPoint] = []
+        for index in 0..<pointCount {
+            let point = TripPoint(
+                timestamp: startedAt.addingTimeInterval(Double(index) * 5),
+                latitude: startLatitude + Double(index) * step,
+                longitude: startLongitude + Double(index) * step,
+                sequence: index,
+                speedMps: 12,
+                trip: trip
+            )
+            context.insert(point)
+            points.append(point)
+        }
+        trip.points = points
+        TripRollupService.add(trip, in: context)
     }
 
     /// Newest completed personal commute with a pending Business suggestion.

@@ -85,6 +85,8 @@ struct GlassToolbarSymbol: View {
     let systemName: String
     var isLoading: Bool = false
     var sampling: GlassToolbarSampling = .system
+    /// Wider glyphs (merge) sit smaller so the circle matches the bell.
+    var pointSize: CGFloat? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
@@ -105,7 +107,7 @@ struct GlassToolbarSymbol: View {
                 .tint(tint)
         } else {
             Image(systemName: systemName)
-                .font(.body.weight(.semibold))
+                .font(pointSize.map { Font.system(size: $0, weight: .semibold) } ?? .body.weight(.semibold))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(tint)
                 .tint(tint)
@@ -209,9 +211,10 @@ struct GlassNavCircleIcon: View {
     let systemName: String
     var isLoading: Bool = false
     var frozen: Bool = false
+    var pointSize: CGFloat? = nil
 
     var body: some View {
-        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading)
+        GlassToolbarSymbol(systemName: systemName, isLoading: isLoading, pointSize: pointSize)
             .glassCircleChrome(frozen: frozen)
             .contentShape(Circle())
     }

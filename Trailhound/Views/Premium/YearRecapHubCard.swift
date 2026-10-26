@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 struct YearRecapHubCard: View {
@@ -34,6 +35,32 @@ struct YearRecapHubCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("stats.premium.recap")
+        .task(id: routePrewarmID, priority: .utility) {
+            await prewarmRouteSnapshot()
+        }
+    }
+
+    /// Year alone does not change when the empty card is replaced by a real snapshot.
+    private var routePrewarmID: String {
+        let start = snapshot.topRouteStartLatitude ?? 0
+        let end = snapshot.topRouteEndLatitude ?? 0
+        return "\(snapshot.year)-\(snapshot.topRouteCount)-\(start)-\(end)"
+    }
+
+    private func prewarmRouteSnapshot() async {
+        guard
+            snapshot.topRouteCount >= 2,
+            let startLatitude = snapshot.topRouteStartLatitude,
+            let startLongitude = snapshot.topRouteStartLongitude,
+            let endLatitude = snapshot.topRouteEndLatitude,
+            let endLongitude = snapshot.topRouteEndLongitude
+        else { return }
+        _ = await FrequentRoutesSnapshotCache.shared.snapshot(
+            start: CLLocationCoordinate2D(latitude: startLatitude, longitude: startLongitude),
+            end: CLLocationCoordinate2D(latitude: endLatitude, longitude: endLongitude),
+            count: snapshot.topRouteCount,
+            isBusiness: snapshot.businessDistanceMeters > snapshot.otherDistanceMeters
+        )
     }
 
     @ViewBuilder

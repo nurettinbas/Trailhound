@@ -1,6 +1,6 @@
 # Vehicle care & expenses
 
-> **Status:** Shipped (schema V14) — installments + UI layering  
+> **Status:** Shipped (schema V14) — installments + UI layering; receipt photos + on-device amount reading (schema V23)  
 > **Placement:** Vehicles tab → single detail screen
 
 ---
@@ -36,11 +36,32 @@ Existing V13 expenses stay one-shot (`installment*` fields `nil`). Additive V14 
 
 ---
 
+## Receipts (V23)
+
+An expense can carry one receipt photo. Reading the amount from it is optional and always needs the user's confirmation.
+
+| Rule | Behavior |
+|------|----------|
+| Storage | JPEG in Application Support `ExpenseReceipts/` (`ExpenseReceiptStore`), long edge ≤ 1600 px, file protection until first unlock. SwiftData stores only `VehicleExpense.receiptFileName`, never image bytes. |
+| Source | **Add Receipt** opens the same Library / Camera sheet as vehicle photos (`VehiclePhotoFlowSheet` with `PhotoSourceCopy.receipt`). No framing step. |
+| Form | Thumbnail opens a full-screen viewer (pinch, double-tap). **Read Amount**, **Replace Photo**, **Remove Receipt**. A new file is kept only after Save; Cancel or swipe-dismiss deletes it. A removed saved receipt is deleted only after Save. |
+| Installments | Every slice of one plan points at the same file. Deleting one slice keeps the file while any expense still references it. Deleting the plan or the vehicle removes it. |
+| Expenses list | A receipt glyph after the date marks rows with a photo. |
+| Read Amount | Apple Vision `VNRecognizeTextRequest` (`.accurate`, tr-TR / en-US when supported, language correction off so digits stay raw) on the device. No network, no AI model, no third-party SDK. |
+| Parser | `ReceiptAmountParser` — fixed rules. Total labels in priority order: GENEL TOPLAM, ÖDENECEK (TUTAR), TOPLAM TUTAR, GRAND TOTAL, AMOUNT DUE, TOTAL DUE, TOPLAM, TOTAL. Skips ARA TOPLAM, SUBTOTAL, TOPKDV / KDV / VAT / TAX, NAKİT / CASH, PARA ÜSTÜ / CHANGE, İNDİRİM / DISCOUNT (`TOPLAM (KDV DAHİL)` still counts as the total). Reads `1.234,56`, `1234,56`, `1,234.56`, `*1.234,56`, `TL` / `₺`; dates and times are not amounts. A label with the value on the next row is joined. With no label, the largest amount is offered as a guess. Up to four other amounts are offered as chips. |
+| Confirm | The sheet outlines the matched row on the photo, shows the amount large, and warns that text recognition can make mistakes. **Use This Amount** fills the field in whole units (1.234,56 → 1.235, as the field takes whole units). **Not Right** leaves the field alone. |
+
+**Limits:** thermal paper glare, crumpled or faded receipts, and handwriting read poorly. Receipts with several totals (tip, split payment) may highlight the wrong row. That is why nothing is written without confirmation.
+
+**Migration:** V23 only adds the optional `receiptFileName` column. Existing expenses open with `nil`; amounts, dates, and installments are untouched. Verified by opening a copy of a real V22 simulator store (`VehicleCareMigrationTests.testRealV22StoreOpensUnderV23WithoutDataLoss`).
+
+---
+
 ## Screen order
 
-1. **Vehicle info** — profile draft + Save (`PairingVehicleEditorForm` embedded)
-2. **Tracking & reminders** — due list, Add reminder, Done on each row
-3. **Expenses** — list + Add expense
+1. **Vehicle info** — profile draft. Save sits under that card, not in the nav bar, so it is not confused with an expense or reminder save (`PairingVehicleEditorForm` embedded)
+2. **Tracking & reminders** — Add reminder is the same row button as before, at the top of the section, above the due list. Done stays on each row
+3. **Expenses** — Add expense is the same row button, at the top of the section, above the list. On the open book, the profile stays on the leading side and Tracking & reminders plus expenses scroll together on the trailing side. When the Duo hinge is fully open, the profile is 40% and that trailing side is 60%. A partially open hinge keeps the seam on the fold. Add reminder and Add expense slide in from the trailing edge and fill that half; back and Save slide it back out. They do not open as a sheet and do not take over the vehicle navigation bar. Other widths keep one list and a sheet
 
 Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs).
 

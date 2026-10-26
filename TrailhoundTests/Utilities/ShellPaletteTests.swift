@@ -215,46 +215,32 @@ final class ShellPaletteTests: XCTestCase {
         )
     }
 
-    func testTabBarUnselectedIsWhiteInLight() {
-        let gold = TrailhoundTabBarTheme.unselectedUIColor(palette: .gold, scheme: .light)
-        let sky = TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .light)
-        XCTAssertEqual(gold, sky)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        sky.getRed(&r, green: &g, blue: &b, alpha: &a)
-        XCTAssertEqual(r, 1, accuracy: 0.01)
-        XCTAssertEqual(g, 1, accuracy: 0.01)
-        XCTAssertEqual(b, 1, accuracy: 0.01)
-        XCTAssertEqual(a, 1, accuracy: 0.01)
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.unselectedUIColor(palette: .sky, scheme: .dark),
-            UIColor.white
-        )
-    }
-
-    func testTabBarLightSelectedGlyphIsWhite() {
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
-            .white
-        )
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .light),
-            .white
-        )
-        XCTAssertEqual(
-            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .lime, scheme: .dark),
-            TrailhoundTabBarTheme.selectedUIColor(palette: .lime, scheme: .dark)
-        )
-    }
-
-    func testTabBarSelectedBlobGlassIsDarkAtmosphereMid() {
-        let coral = TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral)
-        let expected = TrailhoundTabBarTheme.uiColor(ShellPalette.coral.atmosphere(for: .dark).mid)
-        XCTAssertEqual(coral, expected)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        coral.getRed(&r, green: &g, blue: &b, alpha: &a)
-        XCTAssertLessThan((r + g + b) / 3, 0.35)
+    func testTabBarSelectedGlyphMatchesAppearanceTint() {
+        for palette in ShellPalette.allCases {
+            for scheme in [ColorScheme.light, ColorScheme.dark] {
+                let expected = TrailhoundTabBarTheme.uiColor(palette.atmosphere(for: scheme).tint)
+                XCTAssertEqual(
+                    TrailhoundTabBarTheme.selectionTintUIColor(palette: palette, scheme: scheme),
+                    expected,
+                    "\(palette.rawValue) \(scheme)"
+                )
+                XCTAssertEqual(
+                    TrailhoundTabBarTheme.selectedGlyphUIColor(palette: palette, scheme: scheme),
+                    expected,
+                    "\(palette.rawValue) \(scheme)"
+                )
+            }
+        }
         XCTAssertNotEqual(
-            TrailhoundTabBarTheme.selectedBlobGlassUIColor(palette: .coral),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .ocean, scheme: .light),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .ocean, scheme: .dark)
+        )
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .forest, scheme: .light),
+            TrailhoundTabBarTheme.selectionTintUIColor(palette: .sunset, scheme: .light)
+        )
+        XCTAssertNotEqual(
+            TrailhoundTabBarTheme.selectedGlyphUIColor(palette: .sky, scheme: .light),
             UIColor.white
         )
     }
@@ -289,6 +275,20 @@ final class ShellPaletteTests: XCTestCase {
             TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .pink),
             TrailhoundTabBarTheme.clearGlassTintUIColor(palette: .sky)
         )
+    }
+
+    @MainActor
+    func testSelectedTabSymbolKeepsSize() {
+        let tint = UIColor(red: 0.90, green: 0.28, blue: 0.22, alpha: 1)
+        let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        for symbol in TrailhoundTabBarTheme.itemSymbols {
+            let source = UIImage(systemName: symbol.fill, withConfiguration: config)
+            XCTAssertNotNil(source, symbol.fill)
+            let image = TrailhoundTabBarCompact.tintedSelectionImage(source!, tint: tint)
+            XCTAssertEqual(image.size, source!.size, symbol.fill)
+            XCTAssertEqual(image.scale, source!.scale, symbol.fill)
+            XCTAssertEqual(image.renderingMode, .alwaysTemplate, symbol.fill)
+        }
     }
 
     func testRecapTabFillSymbolExists() {

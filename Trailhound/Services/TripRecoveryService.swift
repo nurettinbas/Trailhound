@@ -30,15 +30,26 @@ enum TripRecoveryService {
 
     @MainActor
     static func scheduleOrphanStaleNotifications(
-        in context: ModelContext,
+        for orphans: [OrphanTrip],
         excludingTripID: UUID? = nil
     ) {
-        for orphan in findOrphanTrips(in: context) where !orphan.isStale && orphan.id != excludingTripID {
+        for orphan in orphans where !orphan.isStale && orphan.id != excludingTripID {
             TripNotificationService.scheduleOrphanStaleNotification(
                 tripID: orphan.id,
                 lastActivity: orphan.lastActivity
             )
         }
+    }
+
+    @MainActor
+    static func scheduleOrphanStaleNotifications(
+        in context: ModelContext,
+        excludingTripID: UUID? = nil
+    ) {
+        scheduleOrphanStaleNotifications(
+            for: findOrphanTrips(in: context),
+            excludingTripID: excludingTripID
+        )
     }
 
     @MainActor

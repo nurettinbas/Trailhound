@@ -17,6 +17,8 @@ struct PairingTabView: View {
     @State private var navigationPath = NavigationPath()
     @State private var showShortcutsAutomationGuide = false
     @State private var shortcutsGuideEntry: ShortcutsWizardEntry = .start
+    @Environment(\.trailhoundLayout) private var layout
+    @State private var focusedVehicleID: UUID?
 
     private var sortedVehicles: [VehicleProfile] {
         vehicles.sorted { lhs, rhs in
@@ -27,7 +29,33 @@ struct PairingTabView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            pairingList
+            Group {
+                if layout.showsPairingVehicleFocus {
+                    // The split already paints one atmosphere. A second glow on the list
+                    // shifts the color on the leading half. Portrait and closed landscape stay one list.
+                    TrailhoundPaneSplit(
+                        leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                            isPhoneBook: layout.isPhoneBook,
+                            layoutClass: layout.layoutClass,
+                            isLandscape: layout.isLandscape,
+                            hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
+                            fraction: TrailhoundLayoutResolver.flatVehicleListFraction
+                        )
+                    ) {
+                        pairingList(paintsAtmosphere: false)
+                    } focus: {
+                        vehicleFocus
+                    }
+                } else if layout.layoutClass == .pad {
+                    VStack(spacing: 12) {
+                        vehicleFocus
+                            .frame(maxHeight: 220)
+                        pairingList()
+                    }
+                } else {
+                    pairingList()
+                }
+            }
                 .navigationDestination(for: VehicleNavDestination.self) { destination in
                     switch destination {
                     case .detail(let id):
@@ -53,7 +81,44 @@ struct PairingTabView: View {
             .joined(separator: "|")
     }
 
-    private var pairingList: some View {
+    private var vehicleFocus: some View {
+        let vehicle = sortedVehicles.first { $0.id == focusedVehicleID } ?? sortedVehicles.first
+        return VStack(alignment: .leading, spacing: 8) {
+            if let vehicle {
+                HStack(alignment: .center, spacing: 16) {
+                    VehicleAvatarView(
+                        systemImage: vehicle.systemImage,
+                        photoFileName: vehicle.photoFileName,
+                        size: 96,
+                        cornerRadius: 18,
+                        showsBrandRing: true,
+                        symbolFitsFrame: true,
+                        showsPhotoShine: vehicle.photoFileName != nil
+                    )
+                    TrailhoundHeroRail(collapsed: false) {
+                        if vehicle.isDefault {
+                            Text(L10n.pairingTabDefaultVehicle)
+                        }
+                    } figure: {
+                        Text(vehicle.name)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    } detail: {
+                        Text(fuelSubtitle(vehicle))
+                    }
+                }
+                Button(L10n.string("vehicles.care.detail.title")) {
+                    navigationPath.append(VehicleNavDestination.detail(vehicle.id))
+                }
+                .trailhoundProminentButton()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func pairingList(paintsAtmosphere: Bool = true) -> some View {
         List {
             Section {
                 PairingShortcutsAutomationCard(
@@ -82,6 +147,9 @@ struct PairingTabView: View {
             } else {
                 Section(sortedVehicles.count == 1 ? L10n.pairingTabVehicleSection : L10n.pairingTabSavedVehicles) {
                     let rowCount = sortedVehicles.count + 1
+                    addVehicleButton
+                        .glassRow(position: .first)
+
                     ForEach(Array(sortedVehicles.enumerated()), id: \.element.id) { index, vehicle in
                         vehicleRow(vehicle)
                             .confirmingDeleteSwipe(
@@ -89,18 +157,16 @@ struct PairingTabView: View {
                             ) {
                                 deleteVehicle(vehicle.id)
                             }
-                            .glassRow(position: GlassRowPosition.index(index, in: rowCount))
+                            .glassRow(position: GlassRowPosition.index(index + 1, in: rowCount))
                     }
-
-                    addVehicleButton
-                        .glassRow(position: .last)
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .glassListChrome()
+        .glassListChrome(showsAtmosphere: paintsAtmosphere)
         .navigationTitle(L10n.string("vehicles.tab.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .trailhoundShellToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 LocationPermissionBadge(state: locationService.authorizationState)
@@ -118,7 +184,7 @@ struct PairingTabView: View {
         Button(action: addVehiclePrompt) {
             Label(L10n.pairingTabAddVehicle, systemImage: "plus.circle.fill")
                 .font(.body.weight(.semibold))
-                .glassAccentForeground()
+                .glassPrimaryInk()
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassPlainHit)

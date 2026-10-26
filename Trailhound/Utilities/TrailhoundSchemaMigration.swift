@@ -324,21 +324,48 @@ enum TrailhoundSchemaV22: VersionedSchema {
     }
 }
 
+/// Adds optional `VehicleExpense.receiptFileName` (receipt photo on disk, never image bytes in the
+/// store). Additive only: existing expenses open with `nil` and keep amounts, dates, and
+/// installments. Runtime opens the single live schema; lightweight migration adds the column.
+enum TrailhoundSchemaV23: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(23, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+            TravelJournal.self,
+            FrequentRouteAggregate.self,
+            AchievementProgress.self,
+            VisitedLocality.self,
+            VehicleFuelCalibration.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V22); V11–V21 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V23); V11–V22 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV22.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV23.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV22]
+        [migrateV5toV23]
     }
 
-    static let migrateV5toV22 = MigrationStage.lightweight(
+    static let migrateV5toV23 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV22.self
+        toVersion: TrailhoundSchemaV23.self
     )
 }

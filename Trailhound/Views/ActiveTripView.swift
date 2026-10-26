@@ -114,7 +114,6 @@ private struct RecordingLiveMapOpenButton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
-    @State private var glow: Double = 0.32
 
     var body: some View {
         Button {
@@ -154,16 +153,17 @@ private struct RecordingLiveMapOpenButton: View {
             .overlay {
                 Capsule(style: .continuous)
                     .strokeBorder(
-                        shellPalette.tintColor(for: colorScheme).opacity(hintExpanded ? 0.45 : 0.28),
+                        shellPalette.tintColor(for: colorScheme).opacity(hintExpanded ? 0.55 : 0.40),
                         lineWidth: 1
                     )
             }
             .contentShape(Capsule())
             .animation(reduceMotion ? nil : TrailhoundMotion.liveMapHintPop, value: hintExpanded)
+            .shadow(color: Color.black.opacity(0.32), radius: 8, y: 4)
             .shadow(
-                color: shellPalette.glowColor(for: colorScheme).opacity(glow),
-                radius: hintExpanded ? 10 : 6,
-                y: 1
+                color: shellPalette.glowColor(for: colorScheme).opacity(0.55),
+                radius: hintExpanded ? 12 : 8,
+                y: 2
             )
             .background {
                 SoftPulseRing(
@@ -178,13 +178,6 @@ private struct RecordingLiveMapOpenButton: View {
         .buttonStyle(LiveMapOpenPressStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(L10n.string("recording.live_map.open"))
         .accessibilityIdentifier("recording.live_map.open")
-        .task(id: reduceMotion) {
-            glow = reduceMotion ? 0.4 : 0.32
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
-                glow = 0.72
-            }
-        }
     }
 }
 
@@ -263,6 +256,7 @@ struct ActiveTripView: View {
     @Query private var schedules: [VehicleSchedule]
     @Bindable private var settings = AppSettings.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.trailhoundLayout) private var screenLayout
 
     @State private var cardReveal: CGFloat = 1
     @State private var carDriveIn: CGFloat = 1
@@ -274,6 +268,8 @@ struct ActiveTripView: View {
     @State private var displayedPaused = false
     /// Decoded thumb for the road scene — injected so TimelineView never hits disk.
     @State private var roadVehiclePhoto: UIImage?
+    /// Kept through a turn so the road, stats, and buttons are not rebuilt mid-slide.
+    @State private var settledArrangement: RecordingCardArrangement?
 
     init(
         morphNamespace: Namespace.ID? = nil,
@@ -343,64 +339,13 @@ struct ActiveTripView: View {
     }
 
     private var recordingCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            statusRow
-
-            HStack(alignment: .center, spacing: 10) {
-                RecordingCarAnimationView(
-                    compact: true,
-                    isAnimating: shouldRunRoadClock,
-                    isPaused: isPaused,
-                    driveInProgress: carDriveIn,
-                    systemImage: VehicleIconOption.default.rawValue,
-                    vehiclePhoto: roadVehiclePhoto,
-                    symbolScaleX: -1,
-                    allowsVerticalBounce: true
-                ) { layout in
-                    if let serviceDue = urgentServiceDue {
-                        RecordingVehicleServiceBadge(
-                            carSize: layout.carSize,
-                            isOverdue: serviceDue.state.isOverdue
-                        )
-                        .recordingVehicleServiceBadgePosition(layout: layout)
-                    }
-                }
-                .matchedGeometryEffectIfAvailable(
-                    stringID: RecordingMorphID.car,
-                    namespace: morphNamespace,
-                    isSource: true
-                )
-                .matchedGeometryEffectIfAvailable(
-                    id: morphID,
-                    namespace: morphNamespace,
-                    isSource: true
-                )
-                .frame(maxWidth: .infinity)
-                .background {
-                    GeometryReader { geo in
-                        let frame = geo.frame(in: .global)
-                        Color.clear
-                            .onAppear { updateCarAnchor(frame) }
-                            .onChange(of: frame.origin.y) { _, _ in updateCarAnchor(frame) }
-                            .onChange(of: frame.size.width) { _, _ in updateCarAnchor(frame) }
-                            .onChange(of: frame.size.height) { _, _ in updateCarAnchor(frame) }
-                    }
-                }
-            }
-            .frame(height: 72)
-            .opacity(detailsReveal)
-            .scaleEffect(0.92 + 0.08 * detailsReveal)
-
-            ActiveTripLiveStats()
-                .opacity(detailsReveal)
-                .offset(y: (1 - detailsReveal) * 10)
-
-            actionsRow
-                .opacity(detailsReveal)
-                .offset(y: (1 - detailsReveal) * 8)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        arrangedRecordingStack
+        .padding(screenLayout.isPhoneBook ? 10 : 14)
+        .frame(
+            maxWidth: presentedArrangement == .list ? .infinity : GlassTokens.paneCardMaxWidth,
+            alignment: .leading
+        )
+        .frame(maxWidth: .infinity, alignment: .top)
         .background {
             RecordingCardStyle.glassSurface(isPaused: isPaused)
         }
@@ -438,6 +383,21 @@ struct ActiveTripView: View {
         }
         .onAppear {
             displayedPaused = recordingService.state == .paused
+            if settledArrangement == nil {
+                settledArrangement = screenLayout.recordingCardArrangement
+            }
+        }
+        .onChange(of: screenLayout.recordingCardArrangement) { _, newValue in
+            guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
+            settledArrangement = newValue
+        }
+        .onChange(of: TrailhoundInterfaceRotation.shared.isRotating) { _, rotating in
+            guard !rotating else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                settledArrangement = screenLayout.recordingCardArrangement
+            }
         }
         .onChange(of: recordingService.state) { _, newState in
             if newState.isActiveSession {
@@ -452,6 +412,95 @@ struct ActiveTripView: View {
             Task {
                 await runEntranceIfNeeded()
                 await playLiveMapHintIfNeeded()
+            }
+        }
+    }
+
+    /// During a turn the card keeps the arrangement it started with. The panes
+    /// slide around it; swapping the road for a second copy is the ghost.
+    private var presentedArrangement: RecordingCardArrangement {
+        if TrailhoundInterfaceRotation.shared.isRotating, let settledArrangement {
+            return settledArrangement
+        }
+        return screenLayout.recordingCardArrangement
+    }
+
+    private var arrangedRecordingStack: some View {
+        let arrangement = presentedArrangement
+        // The phone book is only ~400pt tall once the tab bar is in. The Duo road
+        // and the 2×2 grid push Pause and Stop under that bar.
+        let phoneBook = screenLayout.isPhoneBook
+        let compactRoad = phoneBook
+            || (screenLayout.layoutClass == .phoneLandscape && !screenLayout.isPhoneBook)
+            || arrangement == .list
+        let capsRoadHeight = compactRoad || arrangement == .banner
+        let actionsBeside = arrangement == .banner
+        let reveals = arrangement == .list
+        let statsArrangement: ActiveTripStatsArrangement = phoneBook
+            ? .strip
+            : (arrangement == .pane ? .grid : .inline)
+        return HStack(alignment: .center, spacing: actionsBeside ? 16 : 0) {
+            VStack(alignment: .leading, spacing: phoneBook ? 8 : 10) {
+                statusRow
+                roadScene(compact: compactRoad, reportsMorph: arrangement != .pane)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: capsRoadHeight ? 72 : nil)
+                    .opacity(reveals ? detailsReveal : 1)
+                    .scaleEffect(reveals ? 0.92 + 0.08 * detailsReveal : 1)
+                ActiveTripLiveStats(compact: phoneBook, arrangement: statsArrangement)
+                    .opacity(reveals ? detailsReveal : 1)
+                    .offset(y: reveals ? (1 - detailsReveal) * 10 : 0)
+                if !actionsBeside {
+                    actionsRow
+                        .opacity(reveals ? detailsReveal : 1)
+                        .offset(y: reveals ? (1 - detailsReveal) * 8 : 0)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            if actionsBeside {
+                actionsRow
+                    .frame(maxWidth: 280)
+            }
+        }
+    }
+
+    private func roadScene(compact: Bool, reportsMorph: Bool) -> some View {
+        RecordingCarAnimationView(
+            compact: compact,
+            isAnimating: shouldRunRoadClock,
+            isPaused: isPaused,
+            driveInProgress: carDriveIn,
+            systemImage: VehicleIconOption.default.rawValue,
+            vehiclePhoto: roadVehiclePhoto,
+            symbolScaleX: -1,
+            allowsVerticalBounce: true
+        ) { carLayout in
+            if let serviceDue = urgentServiceDue {
+                RecordingVehicleServiceBadge(
+                    carSize: carLayout.carSize,
+                    isOverdue: serviceDue.state.isOverdue
+                )
+                .recordingVehicleServiceBadgePosition(layout: carLayout)
+            }
+        }
+        .matchedGeometryEffectIfAvailable(
+            stringID: RecordingMorphID.car,
+            namespace: morphNamespace,
+            isSource: true
+        )
+        .matchedGeometryEffectIfAvailable(
+            id: morphID,
+            namespace: morphNamespace,
+            isSource: reportsMorph
+        )
+        .background {
+            GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { updateCarAnchor(frame) }
+                    .onChange(of: frame.origin.y) { _, _ in updateCarAnchor(frame) }
+                    .onChange(of: frame.size.width) { _, _ in updateCarAnchor(frame) }
+                    .onChange(of: frame.size.height) { _, _ in updateCarAnchor(frame) }
             }
         }
     }
@@ -803,9 +852,17 @@ private struct RecordingLocationChromeRow: View {
 }
 
 /// Live duration / speed / distance — only this subtree tracks display sampler (~4 Hz).
+enum ActiveTripStatsArrangement {
+    case inline
+    /// One row of four metrics. The phone book is too short for the 2×2 grid.
+    case strip
+    case grid
+}
+
 struct ActiveTripLiveStats: View {
     /// Tighter pills for the live-follow HUD (more room for outer padding).
     var compact: Bool = false
+    var arrangement: ActiveTripStatsArrangement = .inline
 
     @Environment(TripRecordingService.self) private var recordingService
 
@@ -821,12 +878,50 @@ struct ActiveTripLiveStats: View {
         DateFormatters.formatDistance(recordingService.displayDistanceMeters)
     }
 
+    private var averageText: String {
+        let elapsed = recordingService.displayElapsedTime
+        guard elapsed > 1 else { return "—" }
+        let kmh = recordingService.displayDistanceMeters / elapsed * 3.6
+        return L10n.formatSpeedKmh(kmh)
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: compact ? 4 : 6) {
-            statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
-            statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
-            statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+        if arrangement == .grid {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                spacing: 8
+            ) {
+                durationPill
+                distancePill
+                speedPill
+                averagePill
+            }
+        } else {
+            HStack(alignment: .top, spacing: compact ? 4 : 6) {
+                durationPill
+                speedPill
+                distancePill
+                if arrangement == .strip {
+                    averagePill
+                }
+            }
         }
+    }
+
+    private var durationPill: some View {
+        statPill(icon: "clock.fill", label: L10n.duration, text: elapsedText)
+    }
+
+    private var distancePill: some View {
+        statPill(icon: "location.fill", label: L10n.string("label.distance"), text: distanceText)
+    }
+
+    private var speedPill: some View {
+        statPill(icon: "speedometer", label: L10n.currentSpeed, text: speedText)
+    }
+
+    private var averagePill: some View {
+        statPill(icon: "gauge.with.dots.needle.33percent", label: L10n.averageSpeed, text: averageText)
     }
 
     private func statPill(icon: String, label: String, text: String) -> some View {

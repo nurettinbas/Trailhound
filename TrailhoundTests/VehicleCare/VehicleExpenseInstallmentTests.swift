@@ -127,6 +127,7 @@ final class VehicleExpenseInstallmentServiceTests: XCTestCase {
             startDate: start,
             installmentCount: 3,
             note: "Adjusted",
+            receiptFileName: nil,
             in: context
         )
         var rows = try context.fetch(FetchDescriptor<VehicleExpense>())
@@ -141,6 +142,7 @@ final class VehicleExpenseInstallmentServiceTests: XCTestCase {
             startDate: start,
             installmentCount: 1,
             note: nil,
+            receiptFileName: nil,
             in: context
         )
         rows = try context.fetch(FetchDescriptor<VehicleExpense>())

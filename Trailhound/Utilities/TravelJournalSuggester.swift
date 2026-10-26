@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import SwiftData
 
 struct TravelJournalTripSnapshot: Equatable, Sendable {
     let id: UUID
@@ -19,6 +20,33 @@ struct TravelJournalHomeSnapshot: Equatable, Sendable {
     let latitude: Double
     let longitude: Double
     let radiusMeters: Double
+}
+
+struct TravelJournalDateRange: Equatable, Sendable {
+    let start: Date
+    let end: Date
+}
+
+/// Reads completed trips off the main actor. The trips tab must not scan the library
+/// just to decide whether a travel suggestion banner exists.
+@ModelActor
+actor TravelSuggestionLoader {
+    func suggestion(
+        homes: [TravelJournalHomeSnapshot],
+        existingJournalRanges: [TravelJournalDateRange],
+        dismissedFingerprints: Set<String>,
+        calendar: Calendar = .current
+    ) -> TravelJournalSuggestion? {
+        let completed = (try? modelContext.fetch(TripListPage.completedCountDescriptor())) ?? []
+        let snapshots = completed.map(TravelJournalSuggester.snapshot(from:))
+        return TravelJournalSuggester.suggest(
+            trips: snapshots,
+            homes: homes,
+            existingJournalRanges: existingJournalRanges.map { (start: $0.start, end: $0.end) },
+            dismissedFingerprints: dismissedFingerprints,
+            calendar: calendar
+        )
+    }
 }
 
 struct TravelJournalSuggestion: Equatable, Sendable {

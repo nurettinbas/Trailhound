@@ -1,5 +1,6 @@
 import CoreLocation
 import SwiftData
+import SwiftUI
 import XCTest
 @testable import Trailhound
 
@@ -204,6 +205,136 @@ final class TripRoutePathCacheTests: XCTestCase {
                 trip: trip
             )
             context.insert(point)
+        }
+        try context.save()
+        return trip
+    }
+}
+
+/// One `TripDetailView` can be handed a different trip (notification deep link replacing the
+/// stack, a new pane selection). Trip A's route must never be drawn under trip B's pins, and
+/// switching must never touch either trip's stored GPS points.
+@MainActor
+final class TripDetailTripSwitchTests: XCTestCase {
+    private var container: ModelContainer!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        container = try ModelContainerFactory.makeInMemory()
+    }
+
+    override func tearDown() {
+        let trips = (try? container?.mainContext.fetch(FetchDescriptor<Trip>())) ?? []
+        for trip in trips {
+            TripRoutePathCache.shared.remove(for: trip.id)
+        }
+        TripRoutePathCache.shared.clearMemory()
+        container = nil
+        super.tearDown()
+    }
+
+    func testModelBuiltForAnotherTripDoesNotLendItsRoute() async throws {
+        let tripA = try insertTrip(startLatitude: 38.40, pointCount: 30)
+        let tripB = try insertTrip(startLatitude: 38.30, pointCount: 50)
+        let piecesA = await TripRoutePathCache.shared.path(for: tripA, container: container)
+        let modelA = TripDetailViewModel(trip: tripA, places: [], privacyRadius: 0, displayPieces: piecesA)
+
+        XCTAssertTrue(modelA.belongs(to: tripA))
+        XCTAssertFalse(modelA.belongs(to: tripB))
+        XCTAssertNil(TripDetailViewModel.reusablePieces(from: modelA, for: tripB))
+        XCTAssertEqual(
+            TripDetailViewModel.reusablePieces(from: modelA, for: tripA)?.first?.first?.coordinate.latitude,
+            piecesA.first?.first?.coordinate.latitude
+        )
+        XCTAssertNil(TripDetailViewModel.reusablePieces(from: nil, for: tripA))
+    }
+
+    func testRouteIdentityLabelFlagsAForeignRoute() async throws {
+        let tripA = try insertTrip(startLatitude: 38.40, pointCount: 30)
+        let tripB = try insertTrip(startLatitude: 38.30, pointCount: 50)
+        let piecesA = await TripRoutePathCache.shared.path(for: tripA, container: container)
+        let modelA = TripDetailViewModel(trip: tripA, places: [], privacyRadius: 0, displayPieces: piecesA)
+        let loadingB = TripDetailViewModel(trip: tripB, places: [], privacyRadius: 0)
+
+        XCTAssertTrue(modelA.routeIdentityLabel(for: tripA).hasSuffix("route=match"))
+        XCTAssertTrue(modelA.routeIdentityLabel(for: tripB).hasSuffix("route=mismatch"))
+        XCTAssertTrue(loadingB.routeIdentityLabel(for: tripB).hasSuffix("route=loading"))
+    }
+
+    func testSwitchingTripsLoadsEachTripsOwnRoute() async throws {
+        let tripA = try insertTrip(startLatitude: 38.40, pointCount: 30)
+        let tripB = try insertTrip(startLatitude: 38.30, pointCount: 50)
+        let cache = TripRoutePathCache.shared
+
+        let piecesA = await cache.path(for: tripA, container: container)
+        let piecesB = await cache.path(for: tripB, container: container)
+        let piecesAAgain = await cache.path(for: tripA, container: container)
+
+        XCTAssertEqual(piecesA.first?.first?.coordinate.latitude ?? 0, 38.40, accuracy: 0.000_01)
+        XCTAssertEqual(piecesB.first?.first?.coordinate.latitude ?? 0, 38.30, accuracy: 0.000_01)
+        XCTAssertEqual(
+            piecesB.last?.last?.coordinate.latitude ?? 0,
+            tripB.sortedPoints.last?.latitude ?? -1,
+            accuracy: 0.000_01
+        )
+        XCTAssertEqual(piecesAAgain.first?.first?.coordinate.latitude, piecesA.first?.first?.coordinate.latitude)
+    }
+
+    func testSwitchingTripsNeverDeletesStoredPoints() async throws {
+        let tripA = try insertTrip(startLatitude: 38.40, pointCount: 30)
+        let tripB = try insertTrip(startLatitude: 38.30, pointCount: 50)
+        let cache = TripRoutePathCache.shared
+        let selection = TabSelection.shared
+
+        selection.showFinishedTrip(tripA)
+        let piecesA = await cache.path(for: tripA, container: container)
+        var model = TripDetailViewModel(trip: tripA, places: [], privacyRadius: 0, displayPieces: piecesA)
+
+        selection.showFinishedTrip(tripB)
+        XCTAssertEqual(selection.tripsPath.count, 1)
+        model = TripDetailViewModel(
+            trip: tripB,
+            places: [],
+            privacyRadius: 0,
+            displayPieces: TripDetailViewModel.reusablePieces(from: model, for: tripB)
+        )
+        XCTAssertNil(model.displayPieces)
+        _ = TripDerivedMetrics.refreshPersistedFuel(for: tripB, in: container.mainContext)
+        try container.mainContext.save()
+
+        XCTAssertEqual(try storedPointCount(for: tripA), 30)
+        XCTAssertEqual(try storedPointCount(for: tripB), 50)
+        selection.tripsPath = NavigationPath()
+    }
+
+    private func storedPointCount(for trip: Trip) throws -> Int {
+        let tripID = trip.id
+        let descriptor = FetchDescriptor<TripPoint>(predicate: #Predicate { $0.trip?.id == tripID })
+        return try container.mainContext.fetchCount(descriptor)
+    }
+
+    private func insertTrip(startLatitude: Double, pointCount: Int) throws -> Trip {
+        let context = container.mainContext
+        let startedAt = Date().addingTimeInterval(-Double(pointCount) * 5 - 60)
+        let trip = Trip(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(Double(pointCount) * 5),
+            distanceMeters: Double(pointCount) * 12
+        )
+        trip.startLatitude = startLatitude
+        trip.startLongitude = 27.0
+        trip.endLatitude = startLatitude + Double(pointCount - 1) * 0.0001
+        trip.endLongitude = 27.0 + Double(pointCount - 1) * 0.0001
+        context.insert(trip)
+        for index in 0..<pointCount {
+            context.insert(TripPoint(
+                timestamp: startedAt.addingTimeInterval(Double(index) * 5),
+                latitude: startLatitude + Double(index) * 0.0001,
+                longitude: 27.0 + Double(index) * 0.0001,
+                sequence: index,
+                speedMps: 12,
+                trip: trip
+            ))
         }
         try context.save()
         return trip

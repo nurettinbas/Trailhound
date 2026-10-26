@@ -17,6 +17,8 @@ List rows use a **clear** background. The card is `glassCard` only (native Light
 
 Year recap, badges, frequent routes, month forecast, and year awards live on the [Recap tab](YEAR_TAB.md).
 
+On an open Duo the summary column leads and the distribution charts trail. When the hinge is fully open the summary column is 45% of the content and the charts are 55%. A partially open hinge keeps the seam on the fold.
+
 Deep link `trailhound://stats/goal` opens this tab. Recap / forecast / routes / achievements URLs open Recap.
 
 See [PERFORMANCE.md](PERFORMANCE.md) Stats tab section.

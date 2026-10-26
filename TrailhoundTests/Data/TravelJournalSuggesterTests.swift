@@ -142,6 +142,42 @@ final class TravelJournalSuggesterTests: XCTestCase {
         XCTAssertNil(TravelJournalSuggester.suggest(trips: trips, homes: [home], calendar: calendar))
     }
 
+    @MainActor
+    func testLoaderMatchesSuggestForStoredTrips() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let friday = date(2026, 3, 6, 18)
+        let trip = Trip(
+            startedAt: friday,
+            endedAt: friday.addingTimeInterval(4 * 3600),
+            distanceMeters: 150_000,
+            startPlaceName: "Away",
+            endPlaceName: "Away"
+        )
+        trip.startLatitude = 40
+        trip.startLongitude = 29
+        trip.endLatitude = 40
+        trip.endLongitude = 29
+        context.insert(trip)
+        try context.save()
+
+        let homes = [home]
+        let loader = TravelSuggestionLoader(modelContainer: container)
+        let loaded = await loader.suggestion(
+            homes: homes,
+            existingJournalRanges: [],
+            dismissedFingerprints: [],
+            calendar: calendar
+        )
+        let direct = TravelJournalSuggester.suggest(
+            trips: [TravelJournalSuggester.snapshot(from: trip)],
+            homes: homes,
+            calendar: calendar
+        )
+        XCTAssertEqual(loaded, direct)
+        XCTAssertNotNil(loaded)
+    }
+
     func testWorkOnlyPlaceYieldsNoSuggestion() {
         let friday = date(2026, 3, 6, 18)
         let trips = [

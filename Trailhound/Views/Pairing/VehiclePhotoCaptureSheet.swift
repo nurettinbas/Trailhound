@@ -56,6 +56,7 @@ enum VehiclePhotoCaptureHandoff {
 /// Opens at source height (no empty 72% host). Content always fills the sheet so detent
 /// stretch + camera/gallery are one surface — never a tall blank layer behind a short card.
 struct VehiclePhotoFlowSheet: View {
+    var copy: PhotoSourceCopy = .vehicle
     var onPicked: (UIImage) -> Void
     var onCancel: () -> Void
 
@@ -77,9 +78,11 @@ struct VehiclePhotoFlowSheet: View {
     }
 
     init(
+        copy: PhotoSourceCopy = .vehicle,
         onPicked: @escaping (UIImage) -> Void,
         onCancel: @escaping () -> Void
     ) {
+        self.copy = copy
         self.onPicked = onPicked
         self.onCancel = onCancel
         let camera = VehicleInlineCameraView.isCameraAvailable
@@ -107,6 +110,7 @@ struct VehiclePhotoFlowSheet: View {
             }
 
             VehiclePhotoSourceSheet(
+                copy: copy,
                 canUseCamera: canUseCamera,
                 onLibrary: { expand(to: .gallery) },
                 onCamera: { expand(to: .camera) },
@@ -337,8 +341,7 @@ struct VehiclePhotoCaptureSheet: View {
     }
 
     private func openSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        SystemSettingsLink.openAppPage()
     }
 }
 

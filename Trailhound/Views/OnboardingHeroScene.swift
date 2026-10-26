@@ -148,17 +148,14 @@ private struct OnboardingHeroOverlay: View {
 
         return ZStack {
             SoftPulseRing(
-                color: UIColor(accent),
+                color: .white,
                 isActive: eased > 0.85,
                 reduceMotion: reduceMotion
             )
             .frame(width: 36, height: 36)
             .position(x: pinX, y: pinY)
 
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.white, accent)
-                .shadow(color: .black.opacity(0.28), radius: 3, y: 2)
+            OnboardingOutlinedSymbol(systemName: "mappin.circle.fill", size: 26)
                 .scaleEffect(0.86 + 0.14 * eased)
                 .opacity(pinOpacity)
                 .position(x: pinX, y: pinY)
@@ -185,39 +182,27 @@ private struct OnboardingHeroOverlay: View {
         )
 
         return ZStack {
-            Path { path in
-                path.move(to: CGPoint(x: calendarPoint.x, y: calendarY))
-                path.addQuadCurve(to: CGPoint(x: expensePoint.x, y: expenseY), control: mid)
-            }
-            .trim(from: 0, to: pathEased)
-            .stroke(
-                accent.opacity(0.95),
-                style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+            outlinedCurve(
+                from: CGPoint(x: calendarPoint.x, y: calendarY),
+                to: CGPoint(x: expensePoint.x, y: expenseY),
+                control: mid,
+                trim: pathEased
             )
-            .shadow(color: accent.opacity(0.45), radius: 4, y: 0)
 
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 26, weight: .semibold))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, accent)
-                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+            OnboardingOutlinedSymbol(systemName: "calendar.badge.clock", size: 26)
                 .scaleEffect(0.86 + 0.14 * calendarEased)
                 .opacity(Double(0.2 + 0.8 * calendarEased))
                 .position(x: calendarPoint.x, y: calendarY)
 
             SoftPulseRing(
-                color: UIColor(accent),
+                color: .white,
                 isActive: expenseEased > 0.85,
                 reduceMotion: reduceMotion
             )
             .frame(width: 38, height: 38)
             .position(x: expensePoint.x, y: expenseY)
 
-            Image(systemName: "creditcard.circle.fill")
-                .font(.system(size: 28, weight: .semibold))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, accent)
-                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+            OnboardingOutlinedSymbol(systemName: "creditcard.circle.fill", size: 28)
                 .scaleEffect(0.86 + 0.14 * expenseEased)
                 .opacity(Double(0.2 + 0.8 * expenseEased))
                 .position(x: expensePoint.x, y: expenseY)
@@ -238,22 +223,9 @@ private struct OnboardingHeroOverlay: View {
         )
 
         return ZStack {
-            Path { path in
-                path.move(to: boltPoint)
-                path.addQuadCurve(to: carPoint, control: mid)
-            }
-            .trim(from: 0, to: eased)
-            .stroke(
-                accent.opacity(0.95),
-                style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-            )
-            .shadow(color: accent.opacity(0.45), radius: 4, y: 0)
+            outlinedCurve(from: boltPoint, to: carPoint, control: mid, trim: eased)
 
-            Image(systemName: "bolt.horizontal.circle.fill")
-                .font(.system(size: 28, weight: .semibold))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, accent)
-                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+            OnboardingOutlinedSymbol(systemName: "bolt.horizontal.circle.fill", size: 28)
                 .scaleEffect(0.9 + 0.1 * eased)
                 .opacity(Double(0.35 + 0.65 * eased))
                 .position(boltPoint)
@@ -266,6 +238,28 @@ private struct OnboardingHeroOverlay: View {
                 .position(carPoint)
         }
         .allowsHitTesting(false)
+    }
+
+    private func outlinedCurve(from start: CGPoint, to end: CGPoint, control: CGPoint, trim: CGFloat) -> some View {
+        let curve = Path { path in
+            path.move(to: start)
+            path.addQuadCurve(to: end, control: control)
+        }
+        return curve
+            .trim(from: 0, to: trim)
+            .stroke(Color.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+    }
+}
+
+private struct OnboardingOutlinedSymbol: View {
+    var systemName: String
+    var size: CGFloat
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(Color.white)
     }
 }
 

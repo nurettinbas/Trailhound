@@ -89,6 +89,11 @@ struct StatsChartPager<Content: View>: View {
                 selection = newCount - 1
             }
         }
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(key: StatsChartPlotWidthKey.self, value: geo.size.width)
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             String(
@@ -113,5 +118,14 @@ struct StatsChartPager<Content: View>: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Width of the stats chart card, so date labels can scale to one bar on a narrow Duo pane.
+struct StatsChartPlotWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 1 { value = next }
     }
 }

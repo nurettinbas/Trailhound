@@ -20,6 +20,8 @@ struct VehicleExpenseEditorView: View {
     var prefillCategory: VehicleExpenseCategory = .fuel
     /// When set, save completes this schedule (tracking Mark done) instead of a plain expense insert.
     var completeScheduleID: UUID?
+    /// Wide-book trailing pane. Nil keeps the sheet dismiss.
+    var onFinish: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -32,6 +34,11 @@ struct VehicleExpenseEditorView: View {
 
     @State private var draft: VehicleExpenseEditorDraft?
     @State private var isSaving = false
+    @State private var didSave = false
+    @State private var isReceiptSourcePresented = false
+    @State private var isReceiptViewerPresented = false
+    @State private var isReceiptScanPresented = false
+    @State private var isImportingReceipt = false
     @FocusState private var focusedField: VehicleExpenseFocusedField?
 
     private var vehicle: VehicleProfile? {
@@ -66,6 +73,113 @@ struct VehicleExpenseEditorView: View {
     }
 
     var body: some View {
+        editorChrome
+            .dismissKeyboardOnTap(focus: $focusedField)
+            .dismissKeyboardOnScroll()
+            .fieldKeyboardAccessory(
+                title: focusedFieldTitle,
+                focusID: focusedField.map { AnyHashable($0) },
+                onDone: {
+                    focusedField = nil
+                    KeyboardDismiss.dismiss()
+                }
+            )
+            .onAppear {
+                if draft == nil {
+                    if let expense {
+                        let siblings = VehicleExpenseInstallmentService.siblings(of: expense, in: modelContext)
+                        draft = VehicleExpenseEditorDraft(from: expense, siblings: siblings)
+                    } else if let schedule = completeSchedule {
+                        draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
+                    } else {
+                        draft = VehicleExpenseEditorDraft(category: prefillCategory)
+                    }
+                }
+            }
+            .onDisappear {
+                // A full-screen cover hides the form without closing it.
+                guard !isReceiptViewerPresented else { return }
+                discardUnsavedReceipt()
+            }
+            .sheet(isPresented: $isReceiptSourcePresented) {
+                VehiclePhotoFlowSheet(
+                    copy: .receipt,
+                    onPicked: { image in
+                        isReceiptSourcePresented = false
+                        importReceipt(image)
+                    },
+                    onCancel: {
+                        isReceiptSourcePresented = false
+                    }
+                )
+            }
+            .sheet(isPresented: $isReceiptScanPresented) {
+                if let fileName = activeDraft.receiptFileName {
+                    ExpenseReceiptScanSheet(
+                        fileName: fileName,
+                        onUse: { wholeUnits in
+                            var next = activeDraft
+                            next.applyScannedAmount(wholeUnits)
+                            draft = next
+                            isReceiptScanPresented = false
+                        },
+                        onDismiss: {
+                            isReceiptScanPresented = false
+                        }
+                    )
+                }
+            }
+            .fullScreenCover(isPresented: $isReceiptViewerPresented) {
+                if let fileName = activeDraft.receiptFileName {
+                    ExpenseReceiptViewer(fileName: fileName) {
+                        isReceiptViewerPresented = false
+                    }
+                }
+            }
+            .deleteConfirmHost()
+    }
+
+    private var saveDisabled: Bool {
+        isSaving || activeDraft.amount == nil
+    }
+
+    @ViewBuilder
+    private var editorChrome: some View {
+        if onFinish != nil {
+            VStack(spacing: 0) {
+                VehicleCarePaneEditorBar(
+                    title: navigationTitle,
+                    saveDisabled: saveDisabled,
+                    onBack: close,
+                    onSave: save
+                )
+                editorForm
+                    .vehicleCareEmbeddedListChrome()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            editorForm
+                .glassListChrome()
+                .navigationTitle(navigationTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        GlassToolbarBackButton(action: close)
+                    }
+                    .hideSharedToolbarBackgroundIfAvailable()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            save()
+                        } label: {
+                            GlassToolbarSaveButton(title: L10n.pairingTabSave)
+                        }
+                        .disabled(saveDisabled)
+                    }
+                }
+        }
+    }
+
+    private var editorForm: some View {
         Form {
             Section {
                 if isCompletingSchedule, let schedule = completeSchedule {
@@ -146,6 +260,24 @@ struct VehicleExpenseEditorView: View {
                 }
             }
 
+            ExpenseReceiptSection(
+                fileName: activeDraft.receiptFileName,
+                isImporting: isImportingReceipt,
+                onAdd: {
+                    focusedField = nil
+                    isReceiptSourcePresented = true
+                },
+                onView: {
+                    focusedField = nil
+                    isReceiptViewerPresented = true
+                },
+                onScan: {
+                    focusedField = nil
+                    isReceiptScanPresented = true
+                },
+                onRemove: removeReceipt
+            )
+
             if expense != nil {
                 Section {
                     if expense?.isInstallment == true {
@@ -180,46 +312,6 @@ struct VehicleExpenseEditorView: View {
                 }
             }
         }
-        .glassListChrome()
-        .navigationTitle(navigationTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .dismissKeyboardOnTap(focus: $focusedField)
-        .dismissKeyboardOnScroll()
-        .fieldKeyboardAccessory(
-            title: focusedFieldTitle,
-            focusID: focusedField.map { AnyHashable($0) },
-            onDone: {
-                focusedField = nil
-                KeyboardDismiss.dismiss()
-            }
-        )
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                GlassToolbarBackButton(action: dismiss.callAsFunction)
-            }
-            .hideSharedToolbarBackgroundIfAvailable()
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    save()
-                } label: {
-                    GlassToolbarSaveButton(title: L10n.pairingTabSave)
-                }
-                .disabled(isSaving || activeDraft.amount == nil)
-            }
-        }
-        .onAppear {
-            if draft == nil {
-                if let expense {
-                    let siblings = VehicleExpenseInstallmentService.siblings(of: expense, in: modelContext)
-                    draft = VehicleExpenseEditorDraft(from: expense, siblings: siblings)
-                } else if let schedule = completeSchedule {
-                    draft = VehicleExpenseEditorDraft(category: .suggested(for: schedule.kind))
-                } else {
-                    draft = VehicleExpenseEditorDraft(category: prefillCategory)
-                }
-            }
-        }
-        .deleteConfirmHost()
     }
 
     private var navigationTitle: String {
@@ -304,14 +396,20 @@ struct VehicleExpenseEditorView: View {
                     note: activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? nil
                         : activeDraft.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                    receiptFileName: activeDraft.receiptFileName,
                     in: modelContext
                 )
             } else {
                 _ = try activeDraft.insert(for: vehicle, in: modelContext)
             }
+            didSave = true
+            ExpenseReceiptStore.shared.removeIfUnreferenced(
+                fileName: activeDraft.receiptToDeleteAfterSave,
+                in: modelContext
+            )
             ToastPresenter.shared.show(.vehicleExpenseSaved)
             TripStore.syncWidgetWeekDistance(in: modelContext)
-            dismiss()
+            close()
         } catch {
             AppErrorPresenter.shared.present(
                 error as? VehicleCareError == .invalidAmount
@@ -322,13 +420,59 @@ struct VehicleExpenseEditorView: View {
         }
     }
 
+    private func importReceipt(_ image: UIImage) {
+        isImportingReceipt = true
+        Task { @MainActor in
+            defer { isImportingReceipt = false }
+            do {
+                let fileName = try await ExpenseReceiptStore.shared.save(image)
+                var next = activeDraft
+                let orphan = next.attachReceipt(fileName)
+                draft = next
+                if let orphan {
+                    ExpenseReceiptStore.shared.remove(fileName: orphan)
+                }
+            } catch {
+                AppErrorPresenter.shared.present(L10n.string("vehicles.care.expense.receipt.save_failed"))
+            }
+        }
+    }
+
+    private func removeReceipt() {
+        var next = activeDraft
+        let orphan = next.removeReceipt()
+        draft = next
+        if let orphan {
+            ExpenseReceiptStore.shared.remove(fileName: orphan)
+        }
+    }
+
+    /// New receipt picked in this form, then the form closed without Save.
+    private func discardUnsavedReceipt() {
+        guard !didSave, let orphan = activeDraft.receiptToDeleteOnCancel else { return }
+        ExpenseReceiptStore.shared.removeIfUnreferenced(fileName: orphan, in: modelContext)
+        var next = activeDraft
+        _ = next.removeReceipt()
+        draft = next
+    }
+
     private func deleteExpense() {
         guard let expense else { return }
+        discardUnsavedReceipt()
         VehicleExpenseInstallmentService.deleteOne(expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
-        dismiss()
+        close()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
+        }
+    }
+
+    private func close() {
+        discardUnsavedReceipt()
+        if let onFinish {
+            onFinish()
+        } else {
+            dismiss()
         }
     }
 
@@ -338,9 +482,10 @@ struct VehicleExpenseEditorView: View {
 
     private func deletePlan() {
         guard let expense else { return }
+        discardUnsavedReceipt()
         VehicleExpenseInstallmentService.deleteGroup(of: expense, in: modelContext)
         TripStore.syncWidgetWeekDistance(in: modelContext)
-        dismiss()
+        close()
         Task { @MainActor in
             ToastPresenter.shared.show(.deleted)
         }

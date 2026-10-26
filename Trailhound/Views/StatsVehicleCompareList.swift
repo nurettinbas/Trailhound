@@ -19,8 +19,7 @@ struct StatsVehicleCompareList: View {
                 HelpPopoverButton(
                     accessibilityLabel: L10n.loggedVehicleExpensesHelpTitle,
                     message: L10n.loggedVehicleExpensesHelpBody,
-                    side: 18,
-                    sheetHeight: 280
+                    side: 18
                 )
                 Spacer(minLength: 0)
             }

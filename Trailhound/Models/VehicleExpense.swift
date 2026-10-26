@@ -17,6 +17,8 @@ final class VehicleExpense {
     var installmentIndex: Int?
     var installmentCount: Int?
     var installmentTotalAmount: Double?
+    /// File in `ExpenseReceiptStore`. Every slice of one installment plan shares the same name.
+    var receiptFileName: String?
 
     var vehicle: VehicleProfile?
 
@@ -34,7 +36,8 @@ final class VehicleExpense {
         installmentGroupID: UUID? = nil,
         installmentIndex: Int? = nil,
         installmentCount: Int? = nil,
-        installmentTotalAmount: Double? = nil
+        installmentTotalAmount: Double? = nil,
+        receiptFileName: String? = nil
     ) {
         self.id = id
         self.categoryRaw = category.rawValue
@@ -50,6 +53,7 @@ final class VehicleExpense {
         self.installmentIndex = installmentIndex
         self.installmentCount = installmentCount
         self.installmentTotalAmount = installmentTotalAmount
+        self.receiptFileName = receiptFileName
     }
 
     var category: VehicleExpenseCategory {

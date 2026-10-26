@@ -98,15 +98,17 @@ enum FuelMeasurementSource: String, Codable, Sendable {
 enum VehicleFuelType: String, Codable, CaseIterable {
     case petrol
     case diesel
-    case electric
+    case lpg
     case hybrid
+    case electric
 
     var displayName: String {
         switch self {
         case .petrol: L10n.fuelPetrol
         case .diesel: L10n.fuelDiesel
-        case .electric: L10n.fuelElectric
+        case .lpg: L10n.fuelLpg
         case .hybrid: L10n.fuelHybrid
+        case .electric: L10n.fuelElectric
         }
     }
 }

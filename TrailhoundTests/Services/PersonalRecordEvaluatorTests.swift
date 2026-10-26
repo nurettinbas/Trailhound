@@ -87,6 +87,9 @@ final class PersonalRecordEvaluatorTests: XCTestCase {
             ToastKind.personalRecord(payload).message,
             payload.accessibilityMessage
         )
+        XCTAssertEqual(ToastKind.personalRecord(payload).hapticStyle, .personalRecord)
+        XCTAssertEqual(ToastKind.personalRecord(payload).systemImage, "trophy.fill")
+        XCTAssertEqual(ToastKind.personalRecord(payload).emblemTone, .gold)
     }
 
     func testUnfinishedTripIsSilent() throws {

@@ -24,16 +24,118 @@ enum LiveFollowRouteStrokeStyle {
     }
 }
 
+/// Forwards bounds changes so live-follow can stop writing the camera while the
+/// window rotates. A camera write in that window cancels the orientation change.
+private final class RotationPassthroughMapView: MKMapView {
+    var onBoundsChange: ((CGSize) -> Void)?
+    /// Upright fold: the legal mark belongs in the pane corner, not above the tab-bar inset.
+    var pinAttributionToBottomCorner = false
+    /// Follow point sits on this map view's midpoint. A window camera inset
+    /// (the other pane, or the side tab) must not slide it left.
+    var centersOnScreenMidpoint = false
+    private var isApplyingSpeedLimitInset = false
+
+    override var safeAreaInsets: UIEdgeInsets {
+        guard centersOnScreenMidpoint else { return super.safeAreaInsets }
+        var insets = super.safeAreaInsets
+        insets.left = 0
+        insets.right = 0
+        return insets
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onBoundsChange?(bounds.size)
+        guard !isApplyingSpeedLimitInset else { return }
+        isApplyingSpeedLimitInset = true
+        if !centersOnScreenMidpoint {
+            pullSpeedLimitOffCamera()
+        }
+        pinLegalMarkToBottomCorner()
+        if centersOnScreenMidpoint {
+            keepFollowPointOnScreenMidpoint()
+        }
+        isApplyingSpeedLimitInset = false
+    }
+
+    /// Equal side margins. A wider trailing inset (the camera hole) otherwise
+    /// parks the followed route left of the screen midpoint.
+    private func keepFollowPointOnScreenMidpoint() {
+        insetsLayoutMarginsFromSafeArea = false
+        var margins = directionalLayoutMargins
+        guard margins.leading != 0 || margins.trailing != 0 else { return }
+        margins.leading = 0
+        margins.trailing = 0
+        directionalLayoutMargins = margins
+    }
+
+    /// The fold pane does not include the tab bar. Cancel that inset so "Maps" sits in the corner.
+    private func pinLegalMarkToBottomCorner() {
+        guard pinAttributionToBottomCorner else { return }
+        insetsLayoutMarginsFromSafeArea = false
+        var margins = directionalLayoutMargins
+        let leading: CGFloat = 8
+        let bottom: CGFloat = 6
+        if abs(margins.leading - leading) > 0.5
+            || abs(margins.bottom - bottom) > 0.5
+            || margins.top > 0.5
+        {
+            margins.top = 0
+            margins.leading = leading
+            margins.bottom = bottom
+            directionalLayoutMargins = margins
+        }
+        guard let label = attributionLabel(in: self), label.bounds.height > 1 else { return }
+        let x: CGFloat = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? bounds.width - label.bounds.width - leading
+            : leading
+        let y = bounds.height - label.bounds.height - bottom
+        guard abs(label.frame.minX - x) > 1 || abs(label.frame.minY - y) > 1 else { return }
+        label.frame.origin = CGPoint(x: x, y: y)
+    }
+
+    private func attributionLabel(in view: UIView) -> UIView? {
+        if NSStringFromClass(type(of: view)).contains("Attribution") { return view }
+        for child in view.subviews {
+            if let found = attributionLabel(in: child) { return found }
+        }
+        return nil
+    }
+
+    /// MapKit pins the speed-limit chip to the trailing corner. On a landscape
+    /// fold that corner is the camera housing, so the chip slides left of it.
+    private func pullSpeedLimitOffCamera() {
+        guard let window else { return }
+        let safe = window.safeAreaInsets
+        let cameraOnTrailing = safe.right >= safe.left && safe.right > 20
+        let cameraOnLeading = safe.left > safe.right && safe.left > 20
+        guard cameraOnTrailing || cameraOnLeading else { return }
+        var margins = directionalLayoutMargins
+        if cameraOnTrailing {
+            let next = safe.right + 12
+            guard margins.trailing < next - 0.5 else { return }
+            margins.trailing = next
+        } else {
+            let next = safe.left + 12
+            guard margins.leading < next - 0.5 else { return }
+            margins.leading = next
+        }
+        directionalLayoutMargins = margins
+    }
+}
 /// MapKit host for live follow — display-link camera, GPS history + growing tail tip, pins + puck.
-///
 /// Route geometry is pulled by the coordinator from the session on display ticks
 /// (see `syncRouteIfNeeded`), not passed through SwiftUI: a 1 Hz breadcrumb append
 /// used to trigger a body re-render + `updateUIView` + history-overlay swap every
 /// GPS fix, which dropped frames once a second at speed.
 struct LiveFollowMapKitView: UIViewRepresentable {
+    var pinsAttributionToBottomCorner: Bool = false
+    var centersOnScreenMidpoint: Bool = false
     var session: LiveFollowSession
     var isFollowing: Bool
     var isPaused: Bool
+    /// Card frame, written outside SwiftUI. Read only when overview is tapped.
+    var hudAnchor: RecordingCardAnchorBox
     /// Bumped when the user asks to fit start + traveled path + puck (north-up 2D).
     var overviewRequestToken: Int
     /// Bumped when the user asks to re-lock follow (animated, same ease as overview).
@@ -67,7 +169,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> MKMapView {
-        let map = MKMapView(frame: .zero)
+        let map = RotationPassthroughMapView(frame: .zero)
+        map.onBoundsChange = { [weak coordinator = context.coordinator] size in
+            coordinator?.noteMapBounds(size)
+        }
         map.delegate = context.coordinator
         map.showsUserLocation = false
         map.showsCompass = false
@@ -78,7 +183,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         if #available(iOS 16.0, *) {
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat)
         }
+        map.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
+        map.centersOnScreenMidpoint = centersOnScreenMidpoint
         context.coordinator.mapView = map
+        context.coordinator.hudAnchor = hudAnchor
         context.coordinator.bindSession()
         context.coordinator.installGestureBreak(on: map)
         context.coordinator.syncRouteIfNeeded(on: map)
@@ -89,6 +197,10 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        if let mapView = mapView as? RotationPassthroughMapView {
+            mapView.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
+            mapView.centersOnScreenMidpoint = centersOnScreenMidpoint
+        }
         let shouldRecenter = context.coordinator.lastRecenterRequestToken != recenterRequestToken
             && recenterRequestToken > 0
         if shouldRecenter {
@@ -98,6 +210,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             context.coordinator.beginCameraEase()
         }
         context.coordinator.session = session
+        context.coordinator.hudAnchor = hudAnchor
         context.coordinator.isFollowing = isFollowing
         let pauseChanged = context.coordinator.isPaused != isPaused
         context.coordinator.isPaused = isPaused
@@ -175,6 +288,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         ]
         var themeSignature = "sky-l"
         weak var mapView: MKMapView?
+        var hudAnchor: RecordingCardAnchorBox?
         private var isApplyingCamera = false
         private var pinAnnotations: [String: LiveFollowPinAnnotation] = [:]
         private var puckAnnotation: LiveFollowPuckAnnotation?
@@ -193,6 +307,29 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private var cameraEaseUntil: CFTimeInterval = 0
         private var cameraEase: CameraEase?
         private let easeClock = DisplayLinkClock()
+        /// Device rotation swaps the map bounds. Writing `camera` in that window
+        /// cancels the orientation change and the Duo stays landscape.
+        private var lastMapBounds: CGSize = .zero
+        private var suppressCameraUntil: CFTimeInterval = 0
+        /// Last follow pose actually written to `map.camera`. Cleared whenever something
+        /// else may have moved the camera, so the next follow tick is never skipped.
+        private var lastFollowCameraPose: LiveFollowCamera.Pose?
+
+        private var cameraWritesPaused: Bool {
+            CACurrentMediaTime() < suppressCameraUntil
+        }
+
+        func noteMapBounds(_ size: CGSize) {
+            let previous = lastMapBounds
+            lastMapBounds = size
+            guard previous != .zero else { return }
+            let jumped = abs(size.width - previous.width) > 48
+                || abs(size.height - previous.height) > 48
+            if jumped {
+                suppressCameraUntil = CACurrentMediaTime() + 0.75
+                lastFollowCameraPose = nil
+            }
+        }
 
         /// Ease-in-out camera flight. `setCamera(animated:)` jumps heading in the model
         /// and then starts the pan a beat later — that's the "appears from nowhere" hitch.
@@ -209,6 +346,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             var toHeading: CLLocationDirection
             var startedAt: CFTimeInterval
             var retargetFollow: Bool
+            /// Overview only. Recenter keeps a linear distance blend.
+            var logarithmicDistance: Bool
+            var duration: CFTimeInterval
         }
 
         /// History is cut into fixed-size polylines. Everything but the growing tail
@@ -257,6 +397,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         private func breakFollow() {
             session.isFollowing = false
             isFollowing = false
+            lastFollowCameraPose = nil
         }
 
         private var isFollowLocked: Bool {
@@ -270,11 +411,25 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                if following, CACurrentMediaTime() >= self.cameraEaseUntil {
-                    self.applyCamera(pose, on: map, withinTransaction: true)
+                if following, CACurrentMediaTime() >= self.cameraEaseUntil, !self.cameraWritesPaused {
+                    // Sub-pixel pose: skip the camera assignment. MapKit re-renders the
+                    // whole scene on every write, including while stopped at a light.
+                    if self.lastFollowCameraPose?.isVisuallySame(as: pose) != true {
+                        self.applyCamera(pose, on: map, withinTransaction: true)
+                        // A bounds jump during the write clears the cache and pauses
+                        // follow. Don't store a pose the map may no longer be showing.
+                        if !self.cameraWritesPaused {
+                            self.lastFollowCameraPose = pose
+                        }
+                    }
                 }
                 if let vehicle, let puck = self.puckAnnotation {
-                    puck.coordinate = vehicle
+                    // `coordinate` is KVO-observable; an equal assignment still relayouts the puck.
+                    if abs(puck.coordinate.latitude - vehicle.latitude) > 1e-9
+                        || abs(puck.coordinate.longitude - vehicle.longitude) > 1e-9
+                    {
+                        puck.coordinate = vehicle
+                    }
                     puck.headingDegrees = pose.headingDegrees
                 }
                 if CACurrentMediaTime() >= self.cameraEaseUntil {
@@ -326,6 +481,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 CATransaction.commit()
             }
             isApplyingCamera = false
+            // Follow-path caller stores the pose after this returns. Every other caller
+            // (bootstrap, ease, reduce-motion snap) leaves it nil so follow rewrites.
+            lastFollowCameraPose = nil
         }
 
         /// Pulls the live route straight from the session (recording service) when its
@@ -470,19 +628,92 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 vehicle: session.vehicleCoordinate ?? LiveFollowGrowingRoute.tipAnchor(from: lastCommittedPieces)
             )
             guard !rect.isNull else { return }
+            let size = map.bounds.size
+            guard size.width > 1, size.height > 1 else { return }
+            guard let fit = LiveFollowOverviewFit.target(
+                routeRect: rect,
+                mapSize: size,
+                contentInsets: overviewContentInsets(on: map),
+                visibleHeightPerDistance: pitch0VisibleHeightPerDistance(on: map)
+            ) else { return }
+            lastFollowCameraPose = nil
             breakFollow()
             onUserBreakFollow()
-            let center = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
-            let metersPerPoint = MKMetersPerMapPointAtLatitude(center.latitude)
-            let spanMeters = max(rect.size.width, rect.size.height) * metersPerPoint
-            let distance = max(spanMeters * 1.35, 220)
             let target = MKMapCamera(
-                lookingAtCenter: center,
-                fromDistance: distance,
+                lookingAtCenter: fit.center,
+                fromDistance: fit.distanceMeters,
                 pitch: 0,
                 heading: 0
             )
-            startCameraEase(to: target, retargetFollow: false, on: map)
+            startCameraEase(to: target, retargetFollow: false, logarithmicDistance: true, on: map)
+        }
+
+        /// Pitch 0 only. A read — the camera is not moved. Pitched follow uses the fallback.
+        private func pitch0VisibleHeightPerDistance(on map: MKMapView) -> Double {
+            let distance = map.camera.centerCoordinateDistance
+            guard map.camera.pitch < 1, distance > 1 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            let rect = map.visibleMapRect
+            guard !rect.isNull, rect.size.height > 1 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            let mid = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
+            let meters = rect.size.height * MKMetersPerMapPointAtLatitude(mid.latitude)
+            let ratio = meters / distance
+            guard ratio > 0.05, ratio < 20 else {
+                return LiveFollowOverviewFit.fallbackVisibleHeightPerDistance
+            }
+            return ratio
+        }
+
+        /// Top chips, the recording card, and a camera-hole side inset.
+        /// A wide card clears the bottom band. A corner card (landscape cover) clears that side.
+        private func overviewContentInsets(on map: MKMapView) -> UIEdgeInsets {
+            let bounds = map.bounds
+            var insets = UIEdgeInsets(
+                top: max(64, map.safeAreaInsets.top + 44),
+                left: 16,
+                bottom: 20,
+                right: 16
+            )
+            if map.safeAreaInsets.right >= 20 {
+                insets.right = max(insets.right, map.safeAreaInsets.right + 8)
+            } else if map.safeAreaInsets.left >= 20 {
+                insets.left = max(insets.left, map.safeAreaInsets.left + 8)
+            }
+
+            let card = hudAnchor?.value.rect ?? .zero
+            guard card.width > 1, card.height > 1 else {
+                insets.bottom = max(insets.bottom, 220)
+                return clampedOverviewInsets(insets, in: bounds)
+            }
+            let inMap = map.convert(card, from: map.window)
+            let overlap = inMap.intersection(bounds.insetBy(dx: -4, dy: -4))
+            guard overlap.width > 1, overlap.height > 1 else {
+                insets.bottom = max(insets.bottom, 220)
+                return clampedOverviewInsets(insets, in: bounds)
+            }
+            if overlap.width > bounds.width * 0.55 {
+                insets.bottom = max(insets.bottom, bounds.maxY - overlap.minY + 12)
+            } else if overlap.midX < bounds.midX {
+                insets.left = max(insets.left, overlap.maxX - bounds.minX + 12)
+            } else {
+                insets.right = max(insets.right, bounds.maxX - overlap.minX + 12)
+            }
+            return clampedOverviewInsets(insets, in: bounds)
+        }
+
+        private func clampedOverviewInsets(_ insets: UIEdgeInsets, in bounds: CGRect) -> UIEdgeInsets {
+            var insets = insets
+            if bounds.height - insets.top - insets.bottom < 48 {
+                insets.bottom = max(20, bounds.height - insets.top - 48)
+            }
+            if bounds.width - insets.left - insets.right < 48 {
+                insets.left = 16
+                insets.right = 16
+            }
+            return insets
         }
 
         func beginCameraEase() {
@@ -491,6 +722,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
         /// Fly back to heading follow from whatever the map currently shows.
         func applyRecenterCamera(on map: MKMapView) {
+            lastFollowCameraPose = nil
             if let location = session.locationService?.lastLocation {
                 session.camera.forceRecenter(location: location)
             } else {
@@ -503,13 +735,21 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 pitch: pose.pitchDegrees,
                 heading: pose.headingDegrees
             )
-            startCameraEase(to: target, retargetFollow: true, on: map)
+            startCameraEase(to: target, retargetFollow: true, logarithmicDistance: false, on: map)
         }
 
         /// Snapshot the *visible* camera and interpolate toward `target` on the display
         /// link. Never `setCamera(animated:)` — MapKit jumps heading in the model and
         /// then starts the pan a frame later, which reads as a hitch from nowhere.
-        private func startCameraEase(to target: MKMapCamera, retargetFollow: Bool, on map: MKMapView) {
+        ///
+        /// `logarithmicDistance` is the overview pull-back only. Recenter stays linear
+        /// over `cameraEaseDuration`.
+        private func startCameraEase(
+            to target: MKMapCamera,
+            retargetFollow: Bool,
+            logarithmicDistance: Bool,
+            on map: MKMapView
+        ) {
             if session.reduceMotion {
                 cameraEase = nil
                 easeClock.stop()
@@ -529,6 +769,12 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 return
             }
             let from = map.camera
+            let duration = logarithmicDistance
+                ? LiveFollowOverviewFit.overviewDuration(
+                    fromDistance: from.centerCoordinateDistance,
+                    toDistance: target.centerCoordinateDistance
+                )
+                : Self.cameraEaseDuration
             cameraEase = CameraEase(
                 fromCenter: MKMapPoint(from.centerCoordinate),
                 fromDistance: from.centerCoordinateDistance,
@@ -539,9 +785,11 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 toPitch: target.pitch,
                 toHeading: target.heading,
                 startedAt: CACurrentMediaTime(),
-                retargetFollow: retargetFollow
+                retargetFollow: retargetFollow,
+                logarithmicDistance: logarithmicDistance,
+                duration: duration
             )
-            cameraEaseUntil = CACurrentMediaTime() + Self.cameraEaseDuration
+            cameraEaseUntil = CACurrentMediaTime() + duration
             easeClock.start()
             tickCameraEase()
         }
@@ -550,6 +798,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             cameraEase = nil
             cameraEaseUntil = 0
             easeClock.stop()
+            lastFollowCameraPose = nil
         }
 
         private func tickCameraEase() {
@@ -565,12 +814,18 @@ struct LiveFollowMapKitView: UIViewRepresentable {
                 cameraEase = ease
             }
             let elapsed = CACurrentMediaTime() - ease.startedAt
-            let linear = min(1, max(0, elapsed / Self.cameraEaseDuration))
+            let duration = max(ease.duration, 0.01)
+            let linear = min(1, max(0, elapsed / duration))
             let t = Self.smootherstep(linear)
             let x = ease.fromCenter.x + (ease.toCenter.x - ease.fromCenter.x) * t
             let y = ease.fromCenter.y + (ease.toCenter.y - ease.fromCenter.y) * t
             let center = MKMapPoint(x: x, y: y).coordinate
-            let distance = ease.fromDistance + (ease.toDistance - ease.fromDistance) * t
+            let distance = LiveFollowOverviewFit.easedDistance(
+                from: ease.fromDistance,
+                to: ease.toDistance,
+                t: t,
+                logarithmic: ease.logarithmicDistance
+            )
             let pitch = ease.fromPitch + (ease.toPitch - ease.fromPitch) * t
             let heading = LiveFollowCamera.smoothedHeading(
                 from: ease.fromHeading,
@@ -860,6 +1115,8 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     /// Opaque plate so the traveled path cannot show through the photo.
     private var plateColor = UIColor(ShellPalette.sky.tintColor(for: .light))
     private var lastChevronSignature: String = ""
+    /// Last non-animated heading transform. Equal writes still open a CATransaction.
+    private var lastAppliedRadians: CGFloat?
 
     /// Artwork rotates around the photo-circle centre so the trail still meets the puck.
     private let headingContent = UIView()
@@ -880,6 +1137,11 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        lastAppliedRadians = nil
     }
 
     private func setup() {
@@ -952,6 +1214,7 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
         zPriority = .max
         displayPriority = .required
         isHidden = false
+        lastAppliedRadians = nil
         if let photo = annotation.vehiclePhoto {
             photoView.image = photo
             photoView.isHidden = false
@@ -973,6 +1236,11 @@ final class LiveFollowPuckAnnotationView: MKAnnotationView {
             travelHeadingDegrees: travelHeading,
             mapHeadingDegrees: mapHeading
         )
+        // Animated handoff always runs. A settled follow frame is identity every tick.
+        if !animated, let lastAppliedRadians, abs(radians - lastAppliedRadians) < 0.0005 {
+            return
+        }
+        lastAppliedRadians = radians
         let transform = CGAffineTransform(rotationAngle: radians)
         let apply = {
             CATransaction.begin()

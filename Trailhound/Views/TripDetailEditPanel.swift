@@ -17,11 +17,18 @@ struct TripSummaryMetricTile: View {
     var frozen: Bool = true
     var showsHelp: Bool = false
 
+    @Environment(\.trailhoundLayout) private var layout
+
+    /// Upright Duo sheet is much wider than a phone. The phone point size reads large there.
+    private var duoSheet: Bool {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: TripSummaryMetricCardLayout.titleValueSpacing) {
             HStack(alignment: .center, spacing: 4) {
                 Label(metric.title, systemImage: metric.icon)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: duoSheet ? 8 : 10, weight: .medium))
                     .glassSecondaryInk()
                     .labelStyle(.titleAndIcon)
                     .lineLimit(1)
@@ -31,8 +38,7 @@ struct TripSummaryMetricTile: View {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: TripSummaryMetricCardLayout.helpButtonSide,
-                        sheetHeight: 320
+                        side: TripSummaryMetricCardLayout.helpButtonSide
                     )
                 }
             }
@@ -95,6 +101,8 @@ struct TripDetailEditPanel: View {
     let panelRisen: Bool
     let restHeight: CGFloat
     let mapPeek: CGFloat
+    /// Phone overlay keeps the sheet handle. A full page hides it so the pane does not look closable.
+    var showsGrabber: Bool = true
     let reduceMotion: Bool
     let statCountProgress: [String: Double]
     let speedChartRevealProgress: Double
@@ -107,6 +115,8 @@ struct TripDetailEditPanel: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query private var places: [SavedPlace]
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @Query private var vehicles: [VehicleProfile]
@@ -130,6 +140,8 @@ struct TripDetailEditPanel: View {
     @State private var trimTailCount: Int = 0
     @State private var favoritePlaceSheet: FavoritePlaceSheetItem?
     @State private var journalEditor: TravelJournalEditorDraft?
+    /// Keeps the edit sheet from jumping the first time a travel menu choice saves.
+    @State private var menuScrollHold = TripDetailMenuScrollHold()
     @State private var keyboardOverlap: CGFloat = 0
     @State private var keyboardAnimationDuration: TimeInterval = 0.25
     @FocusState private var focusedField: TripDetailFocusedField?
@@ -153,7 +165,16 @@ struct TripDetailEditPanel: View {
     }
 
     private var scrollBottomInset: CGFloat {
-        TripDetailKeyboardLayout.scrollBottomInset(keyboardOverlap: keyboardOverlap)
+        let standard = TripDetailKeyboardLayout.scrollBottomInset(keyboardOverlap: keyboardOverlap)
+        guard !showsGrabber, keyboardOverlap <= 0 else { return standard }
+        return max(Self.keyWindowSafeBottom + 12, GlassTokens.paneVerticalRhythm)
+    }
+
+    private static var keyWindowSafeBottom: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first
+        return window?.safeAreaInsets.bottom ?? 0
     }
 
     private var sortedStops: [TripStop] {
@@ -240,14 +261,20 @@ struct TripDetailEditPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            panelGrabber
+            if showsGrabber {
+                panelGrabber
+            }
 
             if panelRisen {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
                         detailPanelContent
+                            .background(alignment: .top) {
+                                TripDetailMenuScrollHoldAnchor(hold: menuScrollHold)
+                            }
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    .modifier(FullPageVerticalBleed(enabled: !showsGrabber))
                     .dismissKeyboardOnScroll()
                     .onChange(of: focusedField) { _, field in
                         scrollToFocusedField(field, proxy: proxy)
@@ -292,6 +319,28 @@ struct TripDetailEditPanel: View {
         .onChange(of: trip.id) { _, _ in
             loadEditStateFromTrip()
         }
+        .environment(\.dynamicTypeSize, duoSheetTypeSize)
+    }
+
+    private var duoSheet: Bool {
+        layout.layoutClass == .duoOpen && layout.tripDetailStyle == .overlay
+    }
+
+    /// Section labels such as Trip times. Subheadline is too heavy on the wide Duo card.
+    private var sectionTitleFont: Font {
+        duoSheet ? .caption.weight(.semibold) : .subheadline.weight(.semibold)
+    }
+
+    /// Two steps under the reader's size, only on the upright Duo sheet.
+    /// The phone point size reads large on that wide card. Accessibility sizes stay put.
+    private var duoSheetTypeSize: DynamicTypeSize {
+        guard layout.layoutClass == .duoOpen, layout.tripDetailStyle == .overlay else {
+            return dynamicTypeSize
+        }
+        guard !dynamicTypeSize.isAccessibilitySize else { return dynamicTypeSize }
+        let sizes = Array(DynamicTypeSize.allCases)
+        guard let index = sizes.firstIndex(of: dynamicTypeSize) else { return dynamicTypeSize }
+        return sizes[max(0, index - 2)]
     }
 
     private var panelHeightAnimation: Animation? {
@@ -333,6 +382,19 @@ struct TripDetailEditPanel: View {
         editedEndedAt = trip.endedAt ?? Date()
         trimHeadCount = 0
         trimTailCount = 0
+    }
+
+    /// Full-page panes already sit on the book. The scroll view must not re-inset the status and home bands.
+    private struct FullPageVerticalBleed: ViewModifier {
+        var enabled: Bool
+
+        func body(content: Content) -> some View {
+            if enabled {
+                content.ignoresSafeArea(edges: .vertical)
+            } else {
+                content
+            }
+        }
     }
 
     private var panelGrabber: some View {
@@ -572,13 +634,14 @@ struct TripDetailEditPanel: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, GlassTokens.listContentHorizontalInset)
+        .padding(.top, showsGrabber ? 0 : GlassTokens.paneVerticalRhythm)
         .padding(.bottom, scrollBottomInset)
     }
 
     private var tripHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(viewModel.routeSummary)
-                .font(.headline)
+                .font(duoSheet ? .subheadline.weight(.semibold) : .headline)
                 .lineLimit(2)
 
             Text(viewModel.dateText)
@@ -593,8 +656,7 @@ struct TripDetailEditPanel: View {
         detailSection(
             title: L10n.journalAdd,
             helpTitle: L10n.journalAddHelpTitle,
-            helpBody: L10n.journalAddHelpBody,
-            helpSheetHeight: 380
+            helpBody: L10n.journalAddHelpBody
         ) {
             detailMenuPicker(
                 title: L10n.journalAdd,
@@ -643,11 +705,17 @@ struct TripDetailEditPanel: View {
                 return .journal(journalID)
             },
             set: { newValue in
+                // Resigning first responder here runs while the menu is closing and
+                // pulls the sheet down with the keyboard. Assign without that.
+                // The first choice after the sheet appears also yanks this scroll
+                // view while the menu dismisses and the save rebuilds the form.
                 switch newValue {
                 case .none:
-                    journalSelection.wrappedValue = nil
+                    menuScrollHold.pin()
+                    assignJournal(nil)
                 case .journal(let id):
-                    journalSelection.wrappedValue = id
+                    menuScrollHold.pin()
+                    assignJournal(id)
                 case .createNew:
                     openNewTravelEditor()
                 }
@@ -665,17 +733,15 @@ struct TripDetailEditPanel: View {
         }
     }
 
-    private var journalSelection: Binding<UUID?> {
-        Binding(
-            get: { trip.journalID },
-            set: { newValue in
-                dismissKeyboard()
-                let journal = newValue.flatMap { id in journals.first { $0.id == id } }
-                TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
-                try? modelContext.save()
-                TrailhoundHaptics.selection()
-            }
-        )
+    private func assignJournal(_ journalID: UUID?) {
+        let journal = journalID.flatMap { id in journals.first { $0.id == id } }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            TravelJournalTotals.assign(trip: trip, to: journal, in: modelContext)
+            try? modelContext.save()
+        }
+        ToastPresenter.shared.show(.tripSaved)
     }
 
     @ViewBuilder
@@ -699,8 +765,7 @@ struct TripDetailEditPanel: View {
                 HelpPopoverButton(
                     accessibilityLabel: L10n.fuelFactorsHelpTitle,
                     message: L10n.fuelFactorsHelpBody,
-                    side: TripSummaryMetricCardLayout.helpButtonSide,
-                    sheetHeight: 260
+                    side: TripSummaryMetricCardLayout.helpButtonSide
                 )
                 Spacer(minLength: 0)
             }
@@ -721,14 +786,22 @@ struct TripDetailEditPanel: View {
     }
 
     private func statsMetricGrid(metrics: [TripSummaryMetric]) -> some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8)
-        ]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(metrics) { metric in
-                statsMetricCard(for: metric)
+        // Eager rows. A lazy grid inside this sheet collapses the first time the
+        // travel menu saves (the tiles are off screen), and the scroll view jumps.
+        let rowIDs = stride(from: 0, to: metrics.count, by: 3).map { metrics[$0].id }
+        return VStack(spacing: 8) {
+            ForEach(rowIDs, id: \.self) { rowID in
+                let start = metrics.firstIndex(where: { $0.id == rowID }) ?? 0
+                let row = Array(metrics[start..<min(start + 3, metrics.count)])
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(row) { metric in
+                        statsMetricCard(for: metric)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                    ForEach(0..<max(0, 3 - row.count), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
     }
@@ -752,7 +825,7 @@ struct TripDetailEditPanel: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(L10n.tripSpeedChart)
-                .font(.subheadline.weight(.semibold))
+                .font(sectionTitleFont)
 
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .trailing, spacing: 0) {
@@ -793,10 +866,12 @@ struct TripDetailEditPanel: View {
 
             DatePicker(title, selection: selection, displayedComponents: .date)
                 .glassDatePicker()
+                .scaleEffect(0.75, anchor: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             DatePicker(title, selection: selection, displayedComponents: .hourAndMinute)
                 .glassDatePicker()
+                .scaleEffect(0.75, anchor: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -822,7 +897,7 @@ struct TripDetailEditPanel: View {
                 .disabled(value.wrappedValue <= range.lowerBound)
 
                 Text("\(value.wrappedValue)")
-                    .font(.body.weight(.semibold))
+                    .font(duoSheet ? .callout.weight(.semibold) : .body.weight(.semibold))
                     .foregroundStyle(fieldInk)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity)
@@ -894,6 +969,7 @@ struct TripDetailEditPanel: View {
                             .minimumScaleFactor(0.6)
                             .truncationMode(.tail)
                             .allowsTightening(true)
+                            .animation(nil, value: value)
                         Spacer(minLength: 2)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 8, weight: .bold))
@@ -936,19 +1012,17 @@ struct TripDetailEditPanel: View {
         title: String,
         helpTitle: String? = nil,
         helpBody: String? = nil,
-        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 4) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(sectionTitleFont)
                 if let helpTitle, let helpBody {
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody,
-                        side: 22,
-                        sheetHeight: helpSheetHeight
+                        side: 22
                     )
                 }
             }
@@ -964,14 +1038,12 @@ struct TripDetailEditPanel: View {
         title: String,
         helpTitle: String? = nil,
         helpBody: String? = nil,
-        helpSheetHeight: CGFloat = 240,
         @ViewBuilder content: () -> Content
     ) -> some View {
         detailSelectionSection(
             title: title,
             helpTitle: helpTitle,
-            helpBody: helpBody,
-            helpSheetHeight: helpSheetHeight
+            helpBody: helpBody
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 content()
@@ -1040,7 +1112,7 @@ struct TripDetailEditPanel: View {
                     existing == nil ? L10n.tripAddToFavorites : L10n.placeAlreadySaved,
                     systemImage: existing == nil ? "star" : "star.fill"
                 )
-                .font(.subheadline.weight(.medium))
+                .font(duoSheet ? .caption.weight(.medium) : .subheadline.weight(.medium))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderless)
@@ -1314,10 +1386,12 @@ private struct TripStopEditRow: View {
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .date)
                         .glassDatePicker()
+                        .scaleEffect(0.75, anchor: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DatePicker(L10n.tripStartedAt, selection: $startedAt, displayedComponents: .hourAndMinute)
                         .glassDatePicker()
+                        .scaleEffect(0.75, anchor: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -1416,5 +1490,132 @@ private struct TripDetailEditWell: ViewModifier {
 
     private var fill: Color {
         GlassTokens.fieldFill(for: colorScheme, palette: shellPalette)
+    }
+}
+
+/// Remembers where the trip-detail sheet was scrolled and puts it back if a
+/// travel-menu save moves it. The first change after opening the sheet is the
+/// one that jumps; later changes in the same visit do not.
+@MainActor
+private final class TripDetailMenuScrollHold {
+    fileprivate weak var view: TripDetailMenuScrollHoldView?
+    fileprivate var pinnedOffset: CGPoint?
+    fileprivate var pinUntil: CFTimeInterval = 0
+    fileprivate var lastStableOffset: CGPoint?
+
+    func pin() {
+        view?.beginPin()
+    }
+}
+
+private struct TripDetailMenuScrollHoldAnchor: UIViewRepresentable {
+    var hold: TripDetailMenuScrollHold
+
+    func makeUIView(context: Context) -> TripDetailMenuScrollHoldView {
+        let view = TripDetailMenuScrollHoldView()
+        view.hold = hold
+        hold.view = view
+        return view
+    }
+
+    func updateUIView(_ uiView: TripDetailMenuScrollHoldView, context: Context) {
+        uiView.hold = hold
+        hold.view = uiView
+        uiView.restoreIfNeeded()
+    }
+}
+
+private final class TripDetailMenuScrollHoldView: UIView {
+    weak var hold: TripDetailMenuScrollHold?
+    private var observation: NSKeyValueObservation?
+    private var isApplying = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        attachIfNeeded()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        attachIfNeeded()
+        if hold?.lastStableOffset == nil, let scroll = enclosingScrollView(), !scroll.isTracking {
+            hold?.lastStableOffset = scroll.contentOffset
+        }
+        restoreIfNeeded()
+    }
+
+    func beginPin() {
+        guard let scroll = enclosingScrollView(), let hold else { return }
+        attachIfNeeded()
+        let current = scroll.contentOffset
+        if let stable = hold.lastStableOffset, abs(current.y - stable.y) > 24 {
+            hold.pinnedOffset = stable
+        } else {
+            hold.pinnedOffset = current
+            hold.lastStableOffset = current
+        }
+        hold.pinUntil = CACurrentMediaTime() + 0.55
+        restoreIfNeeded()
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreIfNeeded()
+        }
+    }
+
+    func restoreIfNeeded() {
+        guard !isApplying, let hold else { return }
+        guard CACurrentMediaTime() < hold.pinUntil, let pinned = hold.pinnedOffset else { return }
+        guard let scroll = enclosingScrollView() else { return }
+        if scroll.isTracking || scroll.isDragging {
+            hold.pinUntil = 0
+            hold.pinnedOffset = nil
+            hold.lastStableOffset = scroll.contentOffset
+            return
+        }
+        guard abs(scroll.contentOffset.y - pinned.y) > 0.5 else { return }
+        isApplying = true
+        scroll.setContentOffset(pinned, animated: false)
+        isApplying = false
+    }
+
+    private func attachIfNeeded() {
+        guard observation == nil, let scroll = enclosingScrollView() else { return }
+        observation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                self?.noteOffset()
+            }
+        }
+    }
+
+    private func noteOffset() {
+        guard !isApplying, let hold, let scroll = enclosingScrollView() else { return }
+        if CACurrentMediaTime() < hold.pinUntil {
+            restoreIfNeeded()
+            return
+        }
+        hold.lastStableOffset = scroll.contentOffset
+    }
+
+    private func enclosingScrollView() -> UIScrollView? {
+        var view: UIView? = superview
+        while let current = view {
+            if let scroll = current as? UIScrollView { return scroll }
+            view = current.superview
+        }
+        return nil
+    }
+
+    deinit {
+        observation?.invalidate()
     }
 }

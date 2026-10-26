@@ -241,13 +241,8 @@ struct PlacePickerView: View {
     }
     .navigationTitle(isEditing ? L10n.placePickerEditTitle : L10n.placePickerNewTitle)
     .navigationBarTitleDisplayMode(.inline)
-    .navigationBarBackButtonHidden(true)
-    .background(NavigationInteractivePopEnabler())
+    .glassDetailBackNavigation(action: dismiss.callAsFunction)
     .toolbar {
-      ToolbarItem(placement: .topBarLeading) {
-        GlassToolbarBackButton(action: dismiss.callAsFunction)
-      }
-      .hideSharedToolbarBackgroundIfAvailable()
       ToolbarItem(placement: .topBarTrailing) {
         Button {
           dismissNameKeyboard()

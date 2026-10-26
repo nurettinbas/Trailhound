@@ -5,10 +5,11 @@ import XCTest
 final class KeyboardFieldTitleTests: XCTestCase {
     func testSettingsFocusedFieldTitlesMatchL10n() {
         XCTAssertEqual(SettingsFocusedField.newCategory.title, L10n.categoryNewPlaceholder)
-        XCTAssertEqual(SettingsFocusedField.fuelPrice.title, L10n.settingsFuelPrice)
+        XCTAssertEqual(SettingsFocusedField.fuelPrice(.petrol).title, L10n.fuelPetrol)
+        XCTAssertEqual(SettingsFocusedField.fuelPrice(.lpg).title, L10n.fuelLpg)
         XCTAssertEqual(SettingsFocusedField.privacyRadius.title, L10n.settingsPrivacyRadius)
 
-        for field in [SettingsFocusedField.newCategory, .fuelPrice, .privacyRadius] {
+        for field in [SettingsFocusedField.newCategory, .fuelPrice(.petrol), .fuelPrice(.lpg), .privacyRadius] {
             XCTAssertFalse(field.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
