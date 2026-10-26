@@ -663,118 +663,138 @@ struct TripListView: View {
 
     var body: some View {
         ScrollViewReader { scrollProxy in
-            Group {
-                if showsStandaloneTripDetail, let trip = paneTrip {
-                    TripDetailView(trip: trip)
-                        .id(trip.id)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarLeading) {
-                                Button {
-                                    paneTripID = nil
-                                } label: {
-                                    GlassToolbarSymbol(systemName: "chevron.backward")
-                                }
-                                .accessibilityLabel(L10n.cancel)
-                            }
-                        }
-                } else if showsRecordingBook {
-                    if recordingBookSlidesWithRotation {
-                        recordingOrientationBook(scrollProxy: scrollProxy)
-                    } else if layout.pinsRecordingCardToFold {
-                        recordingFoldStack(scrollProxy: scrollProxy)
-                    } else {
-                        tripsSplit(scrollProxy: scrollProxy)
-                    }
-                } else if layout.splitsTrips, paneTripID != nil {
-                    tripsSplit(scrollProxy: scrollProxy)
-                } else if usesLibraryOrientation {
-                    libraryOrientation(scrollProxy: scrollProxy)
-                } else if showsLibrarySplit {
-                    librarySplit(scrollProxy: scrollProxy)
-                } else {
-                    tripList(scrollProxy: scrollProxy)
-                }
-            }
-            .animation(layoutChangeAnimation, value: layout.layoutClass)
-            .animation(layoutChangeAnimation, value: layout.isLandscape)
-            .navigationDestination(for: TravelJournal.self) { journal in
-                TravelJournalDetailView(journal: journal)
-            }
-            .navigationDestination(for: Trip.self) { trip in
+            tripListRotationHooks(scrollProxy: scrollProxy)
+        }
+    }
+
+    private func tripListRoot(scrollProxy: ScrollViewProxy) -> some View {
+        Group {
+            if showsStandaloneTripDetail, let trip = paneTrip {
                 TripDetailView(trip: trip)
                     .id(trip.id)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                paneTripID = nil
+                            } label: {
+                                GlassToolbarSymbol(systemName: "chevron.backward")
+                            }
+                            .accessibilityLabel(L10n.cancel)
+                        }
+                    }
+            } else if showsRecordingBook {
+                recordingBook(scrollProxy: scrollProxy)
+            } else if layout.splitsTrips, paneTripID != nil {
+                tripsSplit(scrollProxy: scrollProxy)
+            } else if usesLibraryOrientation {
+                libraryOrientation(scrollProxy: scrollProxy)
+            } else if showsLibrarySplit {
+                librarySplit(scrollProxy: scrollProxy)
+            } else {
+                tripList(scrollProxy: scrollProxy)
             }
+        }
+        .animation(layoutChangeAnimation, value: layout.layoutClass)
+        .animation(layoutChangeAnimation, value: layout.isLandscape)
+        .navigationDestination(for: TravelJournal.self) { journal in
+            TravelJournalDetailView(journal: journal)
+        }
+        .navigationDestination(for: Trip.self) { trip in
+            TripDetailView(trip: trip)
+                .id(trip.id)
+        }
+    }
+
+    @ViewBuilder
+    private func recordingBook(scrollProxy: ScrollViewProxy) -> some View {
+        if recordingBookSlidesWithRotation {
+            recordingOrientationBook(scrollProxy: scrollProxy)
+        } else if layout.pinsRecordingCardToFold {
+            recordingFoldStack(scrollProxy: scrollProxy)
+        } else {
+            tripsSplit(scrollProxy: scrollProxy)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private func tripListBar(scrollProxy: ScrollViewProxy) -> some ToolbarContent {
+        if !showsStandaloneTripDetail, isMergeMode {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    presentMergeConfirm()
+                } label: {
+                    GlassToolbarTitle(title: L10n.actionMerge)
+                }
+                .disabled(completedMergeSelectionCount < 2)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                GlassToolbarCluster(clustered: true) {
+                    if !duoCapsuleOwnsBell {
+                        TrailhoundNotificationBell()
+                    }
+                    Button {
+                        isMergeMode = false
+                        mergeSelection.removeAll()
+                    } label: {
+                        GlassToolbarTitle(title: L10n.cancel)
+                    }
+                }
+            }
+        } else if !showsStandaloneTripDetail {
+            if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        TrailhoundHaptics.selection()
+                        scrollToActiveTrip(scrollProxy: scrollProxy)
+                    } label: {
+                        TripListActiveRecordingNavIcon(
+                            isPaused: recordingService.state == .paused,
+                            reduceMotion: reduceMotion
+                        )
+                        .glassCircleChrome()
+                    }
+                    .buttonStyle(.glassPlainHit)
+                    .accessibilityLabel(L10n.string("trips.active_recording.show"))
+                    .accessibilityIdentifier("trips.active_recording.nav")
+                }
+                .hideSharedToolbarBackgroundIfAvailable()
+            }
+            if showsLibrarySplit, !splitCapsuleOwnsTrailing {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassToolbarCluster(clustered: true) {
+                        TrailhoundNotificationBell()
+                        Button {
+                            journalEditor = .create()
+                        } label: {
+                            GlassToolbarSymbol(systemName: "plus")
+                        }
+                        .accessibilityLabel(L10n.journalNew)
+                        .accessibilityIdentifier(SideColumnChromeID.newJournal)
+                        Button {
+                            isMergeMode = true
+                        } label: {
+                            GlassToolbarSymbol(systemName: "arrow.triangle.merge")
+                        }
+                        .accessibilityLabel(L10n.actionMerge)
+                        .accessibilityIdentifier(SideColumnChromeID.merge)
+                    }
+                }
+            }
+        }
+    }
+
+    private func tripListChrome<Content: View>(
+        scrollProxy: ScrollViewProxy,
+        content: Content
+    ) -> some View {
+        content
             .onChange(of: tabSelection.pendingTripID) { _, _ in
                 consumeTripDeepLink()
             }
             .onChange(of: tabSelection.tripsPath.count) { _, count in
                 DevLog.shared.log(.tripDetail, "tripsPath count=\(count)")
             }
-            .toolbar {
-                if !showsStandaloneTripDetail, isMergeMode {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            presentMergeConfirm()
-                        } label: {
-                            GlassToolbarTitle(title: L10n.actionMerge)
-                        }
-                        .disabled(completedMergeSelectionCount < 2)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        GlassToolbarCluster(clustered: true) {
-                            if !duoCapsuleOwnsBell {
-                                TrailhoundNotificationBell()
-                            }
-                            Button {
-                                isMergeMode = false
-                                mergeSelection.removeAll()
-                            } label: {
-                                GlassToolbarTitle(title: L10n.cancel)
-                            }
-                        }
-                    }
-                } else if !showsStandaloneTripDetail {
-                    if recordingService.state.isActiveSession, showsActiveRecordingNavAffordance {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button {
-                                TrailhoundHaptics.selection()
-                                scrollToActiveTrip(scrollProxy: scrollProxy)
-                            } label: {
-                                TripListActiveRecordingNavIcon(
-                                    isPaused: recordingService.state == .paused,
-                                    reduceMotion: reduceMotion
-                                )
-                                .glassCircleChrome()
-                            }
-                            .buttonStyle(.glassPlainHit)
-                            .accessibilityLabel(L10n.string("trips.active_recording.show"))
-                            .accessibilityIdentifier("trips.active_recording.nav")
-                        }
-                        .hideSharedToolbarBackgroundIfAvailable()
-                    }
-                    if showsLibrarySplit, !splitCapsuleOwnsTrailing {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            GlassToolbarCluster(clustered: true) {
-                                TrailhoundNotificationBell()
-                                Button {
-                                    journalEditor = .create()
-                                } label: {
-                                    GlassToolbarSymbol(systemName: "plus")
-                                }
-                                .accessibilityLabel(L10n.journalNew)
-                                .accessibilityIdentifier(SideColumnChromeID.newJournal)
-                                Button {
-                                    isMergeMode = true
-                                } label: {
-                                    GlassToolbarSymbol(systemName: "arrow.triangle.merge")
-                                }
-                                .accessibilityLabel(L10n.actionMerge)
-                                .accessibilityIdentifier(SideColumnChromeID.merge)
-                            }
-                        }
-                    }
-                }
-            }
+            .toolbar { tripListBar(scrollProxy: scrollProxy) }
             .sheet(item: $journalEditor) { draft in
                 TravelJournalEditorSheet(draft: draft)
             }
@@ -787,6 +807,10 @@ struct TripListView: View {
                 recordingBookFolds = layout.pinsRecordingCardToFold
                 recordingBookLiveLeads = layout.recordingCardLeads
             }
+    }
+
+    private func tripListFoldHooks<Content: View>(content: Content) -> some View {
+        content
             .onChange(of: layout.pinsRecordingCardToFold) { _, folds in
                 guard !TrailhoundInterfaceRotation.shared.isRotating else { return }
                 recordingBookFolds = folds
@@ -806,6 +830,10 @@ struct TripListView: View {
             }
             .onChange(of: isMergeMode) { _, _ in syncWideBookStatusActions() }
             .onChange(of: listMode) { _, _ in syncWideBookStatusActions() }
+    }
+
+    private func tripListSceneHooks<Content: View>(content: Content) -> some View {
+        content
             .onChange(of: showsLibrarySplit) { _, isSplit in
                 syncWideBookStatusActions()
                 if isSplit {
@@ -830,17 +858,27 @@ struct TripListView: View {
             .onChange(of: tabSelection.wideBookMergeToken) { _, _ in
                 isMergeMode = true
             }
-            .onChange(of: layout.isLandscape) { _, _ in
-                beginRecordingViewportSettle()
-                syncWideBookStatusActions()
-            }
-            .onChange(of: layout.layoutClass) { _, _ in
-                beginRecordingViewportSettle()
-                syncWideBookStatusActions()
-            }
-            .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func tripListRotationHooks(scrollProxy: ScrollViewProxy) -> some View {
+        tripListSceneHooks(
+            content: tripListFoldHooks(
+                content: tripListChrome(
+                    scrollProxy: scrollProxy,
+                    content: tripListRoot(scrollProxy: scrollProxy)
+                )
+            )
+        )
+        .onChange(of: layout.isLandscape) { _, _ in
+            beginRecordingViewportSettle()
+            syncWideBookStatusActions()
         }
+        .onChange(of: layout.layoutClass) { _, _ in
+            beginRecordingViewportSettle()
+            syncWideBookStatusActions()
+        }
+        .toolbar(hidesWideBookNavigationBar ? .hidden : .automatic, for: .navigationBar)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var recordingBookGutter: CGFloat {
@@ -1158,7 +1196,41 @@ struct TripListView: View {
         let hasAnyTrips = self.hasAnyTrips
         let weekSummary = hasAnyTrips ? weekSummaryText : ""
 
-        return List {
+        return tripListCover(
+            content: tripListCredits(
+                content: tripListRecordingHooks(
+                    scrollProxy: scrollProxy,
+                    content: tripListReloadHooks(
+                        library: library,
+                        content: tripListScrollChrome(
+                            mode: mode,
+                            paintsAtmosphere: paintsAtmosphere,
+                            content: tripListRows(
+                                library: library,
+                                mode: mode,
+                                visibleTrips: visibleTrips,
+                                groups: groups,
+                                firstTripID: firstTripID,
+                                hasAnyTrips: hasAnyTrips,
+                                weekSummary: weekSummary
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    private func tripListRows(
+        library: TripsTabListMode?,
+        mode: TripsTabListMode,
+        visibleTrips: [Trip],
+        groups: [(section: TripDateSection, trips: [Trip])],
+        firstTripID: UUID?,
+        hasAnyTrips: Bool,
+        weekSummary: String
+    ) -> some View {
+        List {
             Section {
                 LocationPermissionBanner()
                     .id(TripListScrollTarget.top)
@@ -1377,200 +1449,231 @@ struct TripListView: View {
                 .listRowSeparator(.hidden)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
-        .dismissKeyboardOnTap(focus: $isSearchFocused)
-        .fieldKeyboardAccessory(
-            title: mode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips,
-            focusID: isSearchFocused ? AnyHashable(true) : nil,
-            onDone: {
-                isSearchFocused = false
-                KeyboardDismiss.dismiss()
+    }
+
+    private func tripListScrollChrome<Content: View>(
+        mode: TripsTabListMode,
+        paintsAtmosphere: Bool,
+        content: Content
+    ) -> some View {
+        content
+            .scrollDismissesKeyboard(.interactively)
+            .dismissKeyboardOnTap(focus: $isSearchFocused)
+            .fieldKeyboardAccessory(
+                title: mode == .travels ? L10n.journalSearchPlaceholder : L10n.searchTrips,
+                focusID: isSearchFocused ? AnyHashable(true) : nil,
+                onDone: {
+                    isSearchFocused = false
+                    KeyboardDismiss.dismiss()
+                }
+            )
+            .glassListChrome(showsAtmosphere: paintsAtmosphere)
+            // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
+            .listSectionSpacing(6)
+            .portraitPaneListWidth(layout.splitsTrips || layout.isWideBook)
+            .refreshable {
+                await refreshFromPull()
             }
-        )
-        .glassListChrome(showsAtmosphere: paintsAtmosphere)
-        // Tighter than the global glass default so banner/search cards sit like date→trip gaps.
-        .listSectionSpacing(6)
-        .portraitPaneListWidth(layout.splitsTrips || layout.isWideBook)
-        .refreshable {
-            await refreshFromPull()
-        }
-        .tint(shellPalette.tintColor(for: colorScheme).opacity(0.42))
-        .onChange(of: searchText) { _, newValue in
-            scheduleSearchApply(newValue)
-        }
-        .onPreferenceChange(CreditsListLandingYKey.self) { newY in
-            guard endCredits != nil else { return }
-            listLandingMinY = newY
-        }
-        .navigationTitle(phoneBookRecordingHidesTitle ? "" : "Trailhound")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            PerformanceSignposts.measure("TripsTabAppear") {
-                handleTripListAppear()
+            .tint(shellPalette.tintColor(for: colorScheme).opacity(0.42))
+            .onChange(of: searchText) { _, newValue in
+                scheduleSearchApply(newValue)
             }
-        }
-        .onStoreSave {
-            // Merge saves from a background actor; rebuilding the list under that lock
-            // is the hitch. Progress overlay lives on the root host — do not read it
-            // into this view's body.
-            if DeleteConfirmPresenter.shared.isProgressVisible {
+            .onPreferenceChange(CreditsListLandingYKey.self) { newY in
+                guard endCredits != nil else { return }
+                listLandingMinY = newY
+            }
+            .navigationTitle(phoneBookRecordingHidesTitle ? "" : "Trailhound")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                PerformanceSignposts.measure("TripsTabAppear") {
+                    handleTripListAppear()
+                }
+            }
+    }
+
+    private func tripListReloadHooks<Content: View>(
+        library: TripsTabListMode?,
+        content: Content
+    ) -> some View {
+        content
+            .onStoreSave {
+                // Merge saves from a background actor; rebuilding the list under that lock
+                // is the hitch. Progress overlay lives on the root host — do not read it
+                // into this view's body.
+                if DeleteConfirmPresenter.shared.isProgressVisible {
+                    aggregatesRefreshTask?.cancel()
+                    aggregatesRefreshTask = Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(150))
+                        guard !Task.isCancelled else { return }
+                        refreshListAggregates()
+                    }
+                    return
+                }
+                // Row identity must refresh before the next body pass or a deleted model crashes.
+                reloadTrips()
+                reloadJournals()
+                careSummary.refresh(in: modelContext)
+                // Week summary is display-only — coalesce rapid saves (merge + post-process).
                 aggregatesRefreshTask?.cancel()
                 aggregatesRefreshTask = Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(150))
                     guard !Task.isCancelled else { return }
                     refreshListAggregates()
                 }
-                return
             }
-            // Row identity must refresh before the next body pass or a deleted model crashes.
-            reloadTrips()
-            reloadJournals()
-            careSummary.refresh(in: modelContext)
-            // Week summary is display-only — coalesce rapid saves (merge + post-process).
-            aggregatesRefreshTask?.cancel()
-            aggregatesRefreshTask = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(150))
-                guard !Task.isCancelled else { return }
-                refreshListAggregates()
+            .onChange(of: pageFilters) { _, _ in
+                resetPagingAndReload()
             }
-        }
-        .onChange(of: pageFilters) { _, _ in
-            resetPagingAndReload()
-        }
-        .onChange(of: listMode) { _, _ in
-            searchDebounceTask?.cancel()
-            isSearchApplying = false
-            searchText = ""
-            debouncedSearchText = ""
-            reloadJournals()
-        }
-        .onChange(of: debouncedSearchText) { _, _ in
-            if library == nil, listMode == .travels {
-                journalPageLimit = TravelJournalPage.pageSize
+            .onChange(of: listMode) { _, _ in
+                searchDebounceTask?.cancel()
+                isSearchApplying = false
+                searchText = ""
+                debouncedSearchText = ""
                 reloadJournals()
             }
-        }
-        .onChange(of: recordingService.state) { _, newState in
-            if !newState.isActiveSession {
-                refreshOrphans()
-                coldOpenArmed = false
-                coldOpenTripID = nil
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    showLiveFollowMap = false
+            .onChange(of: debouncedSearchText) { _, _ in
+                if library == nil, listMode == .travels {
+                    journalPageLimit = TravelJournalPage.pageSize
+                    reloadJournals()
                 }
             }
-        }
-        .onChange(of: recordingService.state.isActiveSession) { wasActive, isActive in
-            if isActive {
-                // New recording must never be blocked by a stuck credits card.
-                if endCredits != nil {
-                    endCredits = nil
+    }
+
+    private func tripListRecordingHooks<Content: View>(
+        scrollProxy: ScrollViewProxy,
+        content: Content
+    ) -> some View {
+        content
+            .onChange(of: recordingService.state) { _, newState in
+                if !newState.isActiveSession {
+                    refreshOrphans()
+                    coldOpenArmed = false
+                    coldOpenTripID = nil
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showLiveFollowMap = false
+                    }
+                }
+            }
+            .onChange(of: recordingService.state.isActiveSession) { wasActive, isActive in
+                if isActive {
+                    // New recording must never be blocked by a stuck credits card.
+                    if endCredits != nil {
+                        endCredits = nil
+                        ToastPresenter.shared.flushRecordingCreditsQueue()
+                    }
+                } else {
+                    resetRecordingCardViewport()
+                }
+                if !wasActive, isActive, endCredits == nil {
+                    resetRecordingCardViewport()
+                    beginColdOpenIfNeeded()
+                    requestScrollToTop()
+                }
+                // Vehicle auto-stop (and other external stops) still get a light morph —
+                // full credits play only for manual Stop.
+                if wasActive, !isActive, endCredits == nil {
                     ToastPresenter.shared.flushRecordingCreditsQueue()
                 }
-            } else {
-                resetRecordingCardViewport()
+                if wasActive, !isActive, endCredits == nil, morphingTripID == nil,
+                   let newest = newestCompletedTrip(),
+                   let endedAt = newest.endedAt,
+                   Date().timeIntervalSince(endedAt) < 2.5 {
+                    morphingTripID = newest.id
+                    clearMorphingTripSoon(delayMilliseconds: reduceMotion ? 50 : 280)
+                }
             }
-            if !wasActive, isActive, endCredits == nil {
-                resetRecordingCardViewport()
-                beginColdOpenIfNeeded()
-                requestScrollToTop()
-            }
-            // Vehicle auto-stop (and other external stops) still get a light morph —
-            // full credits play only for manual Stop.
-            if wasActive, !isActive, endCredits == nil {
-                ToastPresenter.shared.flushRecordingCreditsQueue()
-            }
-            if wasActive, !isActive, endCredits == nil, morphingTripID == nil,
-               let newest = newestCompletedTrip(),
-               let endedAt = newest.endedAt,
-               Date().timeIntervalSince(endedAt) < 2.5 {
-                morphingTripID = newest.id
-                clearMorphingTripSoon(delayMilliseconds: reduceMotion ? 50 : 280)
-            }
-        }
-        .onChange(of: scrollToTopToken) { _, _ in
-            performScrollToTop(scrollProxy: scrollProxy)
-        }
-        .onChange(of: tabSelection.scrollToRecordingToken) { _, _ in
-            if recordingService.state.isActiveSession {
-                scrollToActiveTrip(scrollProxy: scrollProxy)
-            } else {
+            .onChange(of: scrollToTopToken) { _, _ in
                 performScrollToTop(scrollProxy: scrollProxy)
             }
-        }
-        .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)
-        .overlay {
-            if let endCredits {
-                GeometryReader { geo in
-                    let containerFrame = geo.frame(in: .global)
-                    let anchor = pinnedCreditsCardAnchor
-                    let startY = anchor.minY > 0
-                        ? anchor.minY - containerFrame.minY
-                        : 12
-                    let xOffset = anchor.minX > 0
-                        ? anchor.minX - containerFrame.minX
-                        : 0
+            .onChange(of: tabSelection.scrollToRecordingToken) { _, _ in
+                if recordingService.state.isActiveSession {
+                    scrollToActiveTrip(scrollProxy: scrollProxy)
+                } else {
+                    performScrollToTop(scrollProxy: scrollProxy)
+                }
+            }
+            .animation(reduceMotion ? nil : TrailhoundMotion.recordingMorph, value: morphingTripID)
+    }
 
-                    Group {
-                        if anchor.width > 0 {
-                            RecordingEndCreditsView(
-                                snapshot: endCredits,
-                                reduceMotion: reduceMotion,
-                                onFinished: startCreditsSlideIntoList
-                            )
-                            .frame(width: anchor.width)
-                        } else {
-                            RecordingEndCreditsView(
-                                snapshot: endCredits,
-                                reduceMotion: reduceMotion,
-                                onFinished: startCreditsSlideIntoList
-                            )
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal)
+    private func tripListCredits<Content: View>(content: Content) -> some View {
+        content
+            .overlay {
+                if let endCredits {
+                    GeometryReader { geo in
+                        let containerFrame = geo.frame(in: .global)
+                        let anchor = pinnedCreditsCardAnchor
+                        let startY = anchor.minY > 0
+                            ? anchor.minY - containerFrame.minY
+                            : 12
+                        let xOffset = anchor.minX > 0
+                            ? anchor.minX - containerFrame.minX
+                            : 0
+
+                        Group {
+                            if anchor.width > 0 {
+                                RecordingEndCreditsView(
+                                    snapshot: endCredits,
+                                    reduceMotion: reduceMotion,
+                                    onFinished: startCreditsSlideIntoList
+                                )
+                                .frame(width: anchor.width)
+                            } else {
+                                RecordingEndCreditsView(
+                                    snapshot: endCredits,
+                                    reduceMotion: reduceMotion,
+                                    onFinished: startCreditsSlideIntoList
+                                )
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal)
+                            }
+                        }
+                        .id(endCredits.sessionID)
+                        .offset(x: xOffset, y: startY + creditsSlideY)
+                    }
+                    .allowsHitTesting(false)
+                    .zIndex(50)
+                }
+            }
+    }
+
+    private func tripListCover<Content: View>(content: Content) -> some View {
+        content
+            .fullScreenCover(isPresented: liveMapCoverPresented) {
+                LiveFollowMapView(
+                    vehiclePhoto: liveFollowVehiclePhoto,
+                    vehicleSystemImage: "car.fill",
+                    cardAnchor: liveFollowCardAnchor,
+                    onClose: {
+                        // Cover presentation itself stays silent; reverse morph already finished.
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            showLiveFollowMap = false
+                        }
+                    },
+                    onStop: { anchor in
+                        // Instant dismiss — no reverse morph; end credits play on the list.
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            showLiveFollowMap = false
+                        }
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(280))
+                            beginEndCredits(cardAnchor: anchor)
                         }
                     }
-                    .id(endCredits.sessionID)
-                    .offset(x: xOffset, y: startY + creditsSlideY)
-                }
-                .allowsHitTesting(false)
-                .zIndex(50)
+                )
+                .presentationBackground(.clear)
+                .transaction { $0.disablesAnimations = true }
+                .environment(recordingService)
+                .environment(AppServices.runtime.locationService)
+                .environment(NetworkMonitor.shared)
             }
-        }
-        .fullScreenCover(isPresented: liveMapCoverPresented) {
-            LiveFollowMapView(
-                vehiclePhoto: liveFollowVehiclePhoto,
-                vehicleSystemImage: "car.fill",
-                cardAnchor: liveFollowCardAnchor,
-                onClose: {
-                    // Cover presentation itself stays silent; reverse morph already finished.
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        showLiveFollowMap = false
-                    }
-                },
-                onStop: { anchor in
-                    // Instant dismiss — no reverse morph; end credits play on the list.
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        showLiveFollowMap = false
-                    }
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(280))
-                        beginEndCredits(cardAnchor: anchor)
-                    }
-                }
-            )
-            .presentationBackground(.clear)
-            .transaction { $0.disablesAnimations = true }
-            .environment(recordingService)
-            .environment(AppServices.runtime.locationService)
-            .environment(NetworkMonitor.shared)
-        }
     }
+
 
     @MainActor
     private func prepareLiveFollowVehiclePhoto() async {
