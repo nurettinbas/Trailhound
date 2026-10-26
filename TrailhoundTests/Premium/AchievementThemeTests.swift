@@ -354,4 +354,12 @@ final class AchievementThemeTests: XCTestCase {
             AchievementGalleryExpandLayout.isOnScreenCard(tallCard, windowBounds: window, topInset: 59)
         )
     }
+
+    func testExpandBackSwipeDismissesALeadingFlick() {
+        XCTAssertTrue(CardExpandBackSwipe.shouldDismiss(travel: 80, predicted: 80, vertical: 10))
+        XCTAssertTrue(CardExpandBackSwipe.shouldDismiss(travel: 30, predicted: 140, vertical: 8))
+        XCTAssertFalse(CardExpandBackSwipe.shouldDismiss(travel: 20, predicted: 40, vertical: 4))
+        XCTAssertFalse(CardExpandBackSwipe.shouldDismiss(travel: 90, predicted: 120, vertical: 90))
+        XCTAssertFalse(CardExpandBackSwipe.shouldDismiss(travel: -40, predicted: -80, vertical: 0))
+    }
 }

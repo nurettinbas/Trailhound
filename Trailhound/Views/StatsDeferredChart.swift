@@ -13,26 +13,8 @@ struct StatsDeferredChart<Content: View, TitleAccessory: View>: View {
     @State private var isLoaded = false
     @State private var hasAppeared = false
 
-    private var titleFrameAlignment: Alignment {
-        titleAlignment == .center ? .center : .leading
-    }
-
-    private var titleTextAlignment: TextAlignment {
-        titleAlignment == .center ? .center : .leading
-    }
-
     var body: some View {
         VStack(alignment: titleAlignment, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .multilineTextAlignment(titleTextAlignment)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
-                    .frame(maxWidth: .infinity, alignment: titleFrameAlignment)
-                titleAccessory()
-            }
-
             if isLoaded {
                 content()
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -43,6 +25,9 @@ struct StatsDeferredChart<Content: View, TitleAccessory: View>: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .top)
+        .overlay(alignment: .topTrailing) {
+            titleAccessory()
+        }
         .onAppear {
             hasAppeared = true
             scheduleLoadIfNeeded()

@@ -22,6 +22,7 @@ struct StatsChartPager<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var environmentReduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
+    @State private var localSelection = 0
 
     private var motionReduced: Bool {
         reduceMotion || environmentReduceMotion
@@ -36,14 +37,19 @@ struct StatsChartPager<Content: View>: View {
         return min(max(0, selection), pageCount - 1)
     }
 
+    private var clampedLocalSelection: Int {
+        guard pageCount > 0 else { return 0 }
+        return min(max(0, localSelection), pageCount - 1)
+    }
+
     private var scrollPosition: Binding<Int?> {
         Binding(
-            get: { pageCount > 0 ? clampedSelection : nil },
+            get: { pageCount > 0 ? clampedLocalSelection : nil },
             set: { newValue in
                 guard pageCount > 0, let newValue else { return }
                 let next = min(max(0, newValue), pageCount - 1)
-                guard next != selection else { return }
-                selection = next
+                guard next != localSelection else { return }
+                localSelection = next
             }
         )
     }
@@ -64,6 +70,7 @@ struct StatsChartPager<Content: View>: View {
                         content(index)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                             .containerRelativeFrame(.horizontal)
+                            .glassCarouselPage()
                             .id(index)
                     }
                 }
@@ -74,6 +81,13 @@ struct StatsChartPager<Content: View>: View {
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: contentHeight)
             .clipped()
+            .onAppear { localSelection = clampedSelection }
+            .onChange(of: selection) { _, newValue in
+                if localSelection != newValue {
+                    localSelection = newValue
+                }
+            }
+            .modifier(StatsChartPagerSettleSync(localSelection: localSelection, selection: $selection))
 
             if showsPageIndicator {
                 pageIndicator
@@ -109,15 +123,36 @@ struct StatsChartPager<Content: View>: View {
             ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
                     .fill(
-                        index == clampedSelection
+                        index == clampedLocalSelection
                             ? shellPalette.tintColor(for: colorScheme)
                             : Color.white.opacity(0.28)
                     )
-                    .frame(width: index == clampedSelection ? 18 : 8, height: 8)
-                    .animation(motionReduced ? nil : TrailhoundMotion.snappy, value: clampedSelection)
+                    .frame(width: index == clampedLocalSelection ? 18 : 8, height: 8)
+                    .animation(motionReduced ? nil : TrailhoundMotion.snappy, value: clampedLocalSelection)
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Syncs the pager's local page to the parent only after the swipe settles (iOS 18+).
+private struct StatsChartPagerSettleSync: ViewModifier {
+    let localSelection: Int
+    @Binding var selection: Int
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollPhaseChange { _, newPhase in
+                if newPhase == .idle, selection != localSelection {
+                    selection = localSelection
+                }
+            }
+        } else {
+            content.onChange(of: localSelection) { _, newValue in
+                guard selection != newValue else { return }
+                selection = newValue
+            }
+        }
     }
 }
 

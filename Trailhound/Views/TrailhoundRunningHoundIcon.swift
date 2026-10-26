@@ -1,7 +1,9 @@
 import SwiftUI
+import UIKit
 
 /// Compact running-hound mark for the trip-list Start control.
-/// Display-link gallop + speed streaks so List / theme transactions
+/// Legs use the same `LaunchIntroHoundRig` Core Animation stride as the cold-launch
+/// intro. Speed streaks stay on a display-link clock so List / theme transactions
 /// cannot hijack mid-flight offsets (the classic “streak jump” on appearance change).
 struct TrailhoundRunningHoundIcon: View {
     var size: CGFloat = 30
@@ -15,19 +17,19 @@ struct TrailhoundRunningHoundIcon: View {
     }
 
     private var accent: Color { shellPalette.tintColor(for: colorScheme) }
+    private var accentUIColor: UIColor {
+        let rgb = shellPalette.atmosphere(for: colorScheme).tint
+        return UIColor(red: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
+    }
     /// Hound + speed streaks sit at 80% so the gallop lift clears the glass capsule edge.
     private let markScale: CGFloat = 0.968
-
-    /// Full gallop up/down cycle — matches original easeInOut(0.36) × 2.
-    private let gallopPeriod: TimeInterval = 0.72
     /// One seamless lane-width scroll — original default speed.
     private let streakPeriod: TimeInterval = 0.48
 
     @State private var clockDate = Date()
 
     var body: some View {
-        let phases = motionPhases(at: clockDate)
-        mark(gallopPhase: phases.gallop, streakPhase: phases.streak)
+        mark(streakPhase: streakPhase(at: clockDate))
         .overlay(alignment: .topLeading) {
             TrailhoundDisplayLinkTicker(
                 isRunning: shouldAnimate,
@@ -42,29 +44,20 @@ struct TrailhoundRunningHoundIcon: View {
         .accessibilityHidden(true)
     }
 
-    private func mark(gallopPhase: CGFloat, streakPhase: CGFloat) -> some View {
+    private func mark(streakPhase: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .bottom) {
                 // Room above for gallop lift so the layout box doesn't grow/shrink.
                 Color.clear.frame(height: size * 0.62)
 
                 VStack(spacing: 1) {
-                    Image("TrailhoundHound")
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .frame(width: size * 0.92, height: size * 0.48)
-                        .scaleEffect(
-                            x: 1.02 + gallopPhase * 0.06,
-                            y: 0.97 - gallopPhase * 0.07,
-                            anchor: .bottom
-                        )
-                        .rotationEffect(.degrees(Double(gallopPhase) * -4.5), anchor: .bottom)
-                        .offset(
-                            x: gallopPhase * 0.5,
-                            y: gallopPhase * -1.4
-                        )
-                        .foregroundStyle(accent)
+                    TrailhoundRunningHoundMark(
+                        width: size * 0.92,
+                        height: size * 0.48,
+                        tint: accentUIColor,
+                        animate: shouldAnimate
+                    )
+                    .frame(width: size * 0.92, height: size * 0.48)
 
                     speedStreaks(phase: streakPhase)
                 }
@@ -109,14 +102,136 @@ struct TrailhoundRunningHoundIcon: View {
             .frame(width: size * 0.78, alignment: .leading)
     }
 
-    private func motionPhases(at date: Date) -> (gallop: CGFloat, streak: CGFloat) {
-        guard shouldAnimate else { return (0, 0) }
+    private func streakPhase(at date: Date) -> CGFloat {
+        guard shouldAnimate else { return 0 }
         let t = date.timeIntervalSinceReferenceDate
-        // Ease in/out gallop via a raised cosine (0→1→0).
-        let gallopUnit = t.truncatingRemainder(dividingBy: gallopPeriod) / gallopPeriod
-        let gallop = CGFloat(0.5 - 0.5 * cos(gallopUnit * 2 * .pi))
-        let streak = CGFloat(t.truncatingRemainder(dividingBy: streakPeriod) / streakPeriod)
-        return (gallop, streak)
+        return CGFloat(t.truncatingRemainder(dividingBy: streakPeriod) / streakPeriod)
+    }
+}
+
+/// In-place gallop for the Start glyph. Core Animation owns the bones so a 20 fps
+/// streak tick cannot restart the stride.
+struct TrailhoundRunningHoundMark: UIViewRepresentable {
+    var width: CGFloat
+    var height: CGFloat
+    var tint: UIColor
+    var animate: Bool
+
+    func makeUIView(context: Context) -> TrailhoundRunningHoundMarkView {
+        let view = TrailhoundRunningHoundMarkView()
+        view.isOpaque = false
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.setContentHuggingPriority(.required, for: .horizontal)
+        view.setContentHuggingPriority(.required, for: .vertical)
+        view.setContentCompressionResistancePriority(.required, for: .horizontal)
+        view.setContentCompressionResistancePriority(.required, for: .vertical)
+        return view
+    }
+
+    func updateUIView(_ uiView: TrailhoundRunningHoundMarkView, context: Context) {
+        uiView.apply(
+            size: CGSize(width: width, height: height),
+            tint: tint,
+            animate: animate,
+            contentsScale: context.environment.displayScale
+        )
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: TrailhoundRunningHoundMarkView, context: Context) -> CGSize {
+        CGSize(width: width, height: height)
+    }
+}
+
+final class TrailhoundRunningHoundMarkView: UIView {
+    /// Leaves room for a stride’s swing inside the same Start box.
+    private let fit: CGFloat = 0.88
+
+    private var parts = LaunchIntroHoundParts.load()
+    private var mounted: LaunchIntroHoundLayerTree.Mounted?
+    private var flatLayer: CALayer?
+    private var lastSize: CGSize = .zero
+    private var lastTint: UIColor?
+    private var lastScale: CGFloat = 0
+    private var looping = false
+
+    override var intrinsicContentSize: CGSize { lastSize == .zero ? CGSize(width: 28, height: 14) : lastSize }
+
+    func apply(size: CGSize, tint: UIColor, animate: Bool, contentsScale: CGFloat) {
+        let sizeChanged = lastSize != size || lastScale != contentsScale
+        lastSize = size
+        lastScale = contentsScale
+        invalidateIntrinsicContentSize()
+        if sizeChanged {
+            rebuild(tint: tint, contentsScale: contentsScale)
+        } else if !sameColor(tint, lastTint) {
+            lastTint = tint
+            if let mounted, let parts {
+                LaunchIntroHoundLayerTree.applyTint(tint, to: mounted, parts: parts)
+            } else {
+                flatLayer?.contents = tintedFlat(tint)?.cgImage
+            }
+        }
+        syncMotion(animate)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if mounted == nil, flatLayer == nil, lastSize.width > 1 {
+            rebuild(tint: lastTint ?? tintColor ?? .white, contentsScale: max(lastScale, window?.screen.scale ?? contentScaleFactor))
+        }
+    }
+
+    private func rebuild(tint: UIColor, contentsScale: CGFloat) {
+        layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        mounted = nil
+        flatLayer = nil
+        looping = false
+        lastTint = tint
+        let box = CGRect(origin: .zero, size: lastSize)
+        if let parts {
+            mounted = LaunchIntroHoundLayerTree.add(
+                parts: parts,
+                in: box,
+                on: layer,
+                contentsScale: contentsScale,
+                tint: tint,
+                fit: fit
+            )
+        } else if let image = tintedFlat(tint) {
+            let mark = CALayer()
+            mark.frame = box
+            mark.contents = image.cgImage
+            mark.contentsGravity = .resizeAspect
+            mark.contentsScale = contentsScale
+            layer.addSublayer(mark)
+            flatLayer = mark
+        }
+    }
+
+    private func syncMotion(_ animate: Bool) {
+        guard let mounted else { return }
+        if animate {
+            guard !looping else { return }
+            LaunchIntroHoundLayerTree.attachStrideLoop(to: mounted)
+            looping = true
+        } else if looping {
+            LaunchIntroHoundLayerTree.removeStrideLoop(from: mounted)
+            looping = false
+        }
+    }
+
+    private func tintedFlat(_ tint: UIColor) -> UIImage? {
+        UIImage(named: "TrailhoundHound")?.withTintColor(tint, renderingMode: .alwaysOriginal)
+    }
+
+    private func sameColor(_ a: UIColor, _ b: UIColor?) -> Bool {
+        guard let b else { return false }
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        a.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        b.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        return abs(ar - br) < 0.002 && abs(ag - bg) < 0.002 && abs(ab - bb) < 0.002 && abs(aa - ba) < 0.002
     }
 }
 

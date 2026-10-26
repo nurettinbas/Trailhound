@@ -108,6 +108,70 @@ final class LaunchIntroHoundRigTests: XCTestCase {
         XCTAssertEqual(rig.stride, TrailhoundMotion.launchIntroGallopStride)
     }
 
+    func testStrideSamplesLoopOnceAndMatchTheCurve() {
+        for curve in curves {
+            let samples = LaunchIntroHoundLayerTree.strideSamples(curve: curve, unit: 2)
+            XCTAssertEqual(samples.times.count, 17)
+            XCTAssertEqual(samples.values.count, 17)
+            XCTAssertEqual(samples.values.first ?? 0, samples.values.last ?? 1, accuracy: 1e-9)
+            for (index, value) in samples.values.enumerated() {
+                let phase = CGFloat(index) / 16
+                XCTAssertEqual(value, curve.value(at: phase) * 2, accuracy: 1e-9)
+            }
+        }
+    }
+
+    func testStrideLoopDurationIsTheGallopStride() {
+        let animation = LaunchIntroHoundLayerTree.strideLoop(
+            "transform.rotation.z",
+            rig: rig,
+            curve: rig.torso.swing
+        )
+        XCTAssertEqual(animation.duration, TrailhoundMotion.launchIntroGallopStride, accuracy: 1e-9)
+        XCTAssertEqual(animation.calculationMode, .cubic)
+        XCTAssertEqual(animation.repeatCount, .greatestFiniteMagnitude)
+    }
+
+    func testEnvelopedGaitStartsAndEndsOnTheLogoPose() throws {
+        let timeline = LaunchIntroTimeline.standard
+        let animation = LaunchIntroHoundLayerTree.envelopedGait(
+            "transform.rotation.z",
+            rig: rig,
+            curve: rig.torso.swing,
+            timeline: timeline
+        )
+        let values = try XCTUnwrap(animation.values as? [NSNumber]).map(\.doubleValue)
+        XCTAssertEqual(values.first ?? 1, 0, accuracy: 1e-6)
+        XCTAssertEqual(values.last ?? 1, 0, accuracy: 1e-6)
+        XCTAssertEqual(animation.duration, timeline.closeEnd, accuracy: 1e-9)
+    }
+
+    func testTintedPartUsesTheFillColor() throws {
+        let parts = try XCTUnwrap(LaunchIntroHoundParts.load())
+        let source = try XCTUnwrap(parts.cgImage(named: "TrailhoundHoundFront", tint: nil))
+        let tinted = try XCTUnwrap(parts.cgImage(named: "TrailhoundHoundFront", tint: .systemBlue))
+        XCTAssertEqual(tinted.width, source.width)
+        XCTAssertEqual(tinted.height, source.height)
+        let sourceData = try XCTUnwrap(source.dataProvider?.data) as Data
+        let tintedData = try XCTUnwrap(tinted.dataProvider?.data) as Data
+        XCTAssertNotEqual(sourceData, tintedData)
+    }
+
+    func testLayerTreeMountsEveryBone() throws {
+        let parts = try XCTUnwrap(LaunchIntroHoundParts.load())
+        let host = CALayer()
+        let mounted = LaunchIntroHoundLayerTree.add(
+            parts: parts,
+            in: CGRect(x: 0, y: 0, width: 100, height: 56),
+            on: host,
+            contentsScale: 2
+        )
+        XCTAssertEqual(mounted.joints.count, rig.bones.count)
+        XCTAssertEqual(mounted.imageLayers.count, rig.bones.count)
+        XCTAssertEqual(host.sublayers?.count, 1)
+        XCTAssertEqual(mounted.root.superlayer, host)
+    }
+
     private var curves: [LaunchIntroHoundRig.Curve] {
         rig.bones.map(\.swing) + [rig.bob]
     }

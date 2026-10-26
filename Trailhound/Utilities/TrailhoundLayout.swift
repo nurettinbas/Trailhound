@@ -258,6 +258,8 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
     /// Open Duo landscape, or a wide iPhone landscape that uses the same panes.
     var usesBookPanes: Bool { isOpenBookLandscape || isPhoneBook }
 
+    /// 9:16 column on Duo, a wide phone, and iPad. Nil on a phone so the story is full bleed.
+    /// The story view centers this column on the window. The side-tab inset must not leave it leading.
     var storyStageMaxWidth: CGFloat? {
         switch layoutClass {
         case .phone:

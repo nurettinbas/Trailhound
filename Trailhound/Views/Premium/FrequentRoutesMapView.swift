@@ -147,6 +147,11 @@ struct FrequentRoutesExpandOverlay: View {
                 .opacity(isExpanded ? 1 : 0)
                 .allowsHitTesting(isExpanded)
                 .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
+                CardExpandBackSwipeStrip(
+                    enabled: isExpanded,
+                    topClearance: topInset + CardExpandBackSwipe.headerClearance,
+                    onClose: onClose
+                )
                 GlassToolbarCollapseButton(
                     accessibilityIdentifier: "stats.premium.routes.expanded.close",
                     action: onClose
@@ -167,6 +172,7 @@ struct FrequentRoutesExpandOverlay: View {
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.premium.routes.expanded")
+        .accessibilityAction(.escape) { onClose() }
     }
 
     private var windowSafeInsets: UIEdgeInsets {
@@ -182,6 +188,8 @@ struct FrequentRoutesExpandOverlay: View {
 struct FrequentRoutesPreviewCard: View {
     let aggregates: [FrequentRouteAggregate]
     var isExpanded: Bool
+    var showsTitle: Bool = true
+    var showsExpandControl: Bool = true
     var onOpen: () -> Void
     @State private var preview: UIImage?
     @Environment(\.colorScheme) private var colorScheme
@@ -189,10 +197,12 @@ struct FrequentRoutesPreviewCard: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.string("premium.routes.title"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                    .padding(.trailing, 44)
+                if showsTitle {
+                    Text(L10n.string("premium.routes.title"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                        .padding(.trailing, 44)
+                }
                 if let preview {
                     Image(uiImage: preview)
                         .resizable()
@@ -216,20 +226,26 @@ struct FrequentRoutesPreviewCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: onOpen) {
-                GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
-                    .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
-                    .contentShape(Rectangle())
+            if showsExpandControl {
+                expandControl
             }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityLabel(L10n.mapFullscreen)
-            .accessibilityIdentifier("stats.premium.routes")
-            .allowsHitTesting(!isExpanded)
-            .offset(x: StatsCardTokens.expandGlyphOffset.width, y: StatsCardTokens.expandGlyphOffset.height)
         }
         .padding(.vertical, 4)
         .task(id: aggregates.map(\.pairKey).joined()) {
             preview = await FrequentRoutesSnapshotCache.shared.snapshot(for: aggregates)
         }
+    }
+
+    private var expandControl: some View {
+        Button(action: onOpen) {
+            GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
+                .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.glassPlainHit)
+        .accessibilityLabel(L10n.mapFullscreen)
+        .accessibilityIdentifier("stats.premium.routes")
+        .allowsHitTesting(!isExpanded)
+        .offset(x: StatsCardTokens.expandGlyphOffset.width, y: StatsCardTokens.expandGlyphOffset.height)
     }
 }

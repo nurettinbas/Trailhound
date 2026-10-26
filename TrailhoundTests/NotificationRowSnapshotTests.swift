@@ -20,7 +20,7 @@ final class NotificationRowSnapshotTests: XCTestCase {
                 let size = CGSize(width: Self.rowWidth, height: 76)
                 assertSnapshot(
                     of: host(rowCard(row), scheme: scheme, size: size),
-                    as: .image(drawHierarchyInKeyWindow: true, precision: 0.98, perceptualPrecision: 0.98, size: size),
+                    as: .image(precision: 0.98, perceptualPrecision: 0.98, size: size),
                     named: "\(fixtureName)-\(schemeName)"
                 )
             }
@@ -51,7 +51,7 @@ final class NotificationRowSnapshotTests: XCTestCase {
                     .frame(width: size.width, height: size.height, alignment: .top)
                 assertSnapshot(
                     of: host(card, scheme: scheme, size: size),
-                    as: .image(drawHierarchyInKeyWindow: true, precision: 0.98, perceptualPrecision: 0.98, size: size),
+                    as: .image(precision: 0.98, perceptualPrecision: 0.98, size: size),
                     named: "preview-\(paneName)-\(schemeName)"
                 )
             }
@@ -73,12 +73,15 @@ final class NotificationRowSnapshotTests: XCTestCase {
     }
 
     private func host(_ view: some View, scheme: ColorScheme, size: CGSize) -> UIViewController {
+        // Solid plate, not native Liquid Glass or Material. Those shaders recorded on a
+        // newer simulator do not match the iOS 26.2 runtime CI uses.
         let root = ZStack {
             AtmosphericBackground(style: .full)
             view
         }
         .environment(\.colorScheme, scheme)
         .environment(\.shellPalette, .sky)
+        .environment(\.glassForcesSolidPlate, true)
         .frame(width: size.width, height: size.height)
         let controller = UIHostingController(rootView: root)
         controller.overrideUserInterfaceStyle = scheme == .dark ? .dark : .light

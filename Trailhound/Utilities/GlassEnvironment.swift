@@ -4,10 +4,21 @@ private struct ShellPaletteKey: EnvironmentKey {
     static let defaultValue: ShellPalette = .sky
 }
 
+private struct GlassForcesSolidPlateKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
     var shellPalette: ShellPalette {
         get { self[ShellPaletteKey.self] }
         set { self[ShellPaletteKey.self] = newValue }
+    }
+
+    /// Snapshot and raster hosts set this so cards use the solid plate instead of
+    /// native Liquid Glass or Material. Those shaders do not match across simulator runtimes.
+    var glassForcesSolidPlate: Bool {
+        get { self[GlassForcesSolidPlateKey.self] }
+        set { self[GlassForcesSolidPlateKey.self] = newValue }
     }
 }
 

@@ -53,6 +53,9 @@ enum GlassTokens {
     static let morphPanelBlur: CGFloat = 14
     /// Drag past this (or flick past twice this) to close.
     static let morphPanelDismissDistance: CGFloat = 90
+    /// Inactive horizontal page scale while a carousel is mid-swipe.
+    static let carouselPageRestScale: CGFloat = 0.96
+    static let carouselPageRestOpacity: CGFloat = 0.62
 
     /// Compact frozen circle on a live map (Stats overlay collapse).
     static let toolbarFrozenCircleSide: CGFloat = 36
@@ -614,12 +617,14 @@ struct GlassCardModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.shellPalette) private var shellPalette
+    @Environment(\.glassForcesSolidPlate) private var glassForcesSolidPlate
 
     func body(content: Content) -> some View {
+        let plateFrozen = frozen || glassForcesSolidPlate
         let engine = GlassEngineResolver.resolve(
             scheme: colorScheme,
             reduceTransparency: reduceTransparency,
-            frozen: frozen,
+            frozen: plateFrozen,
             allowsNative: allowsNative
         )
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -641,7 +646,7 @@ struct GlassCardModifier: ViewModifier {
                     GlassSurface(
                         cornerRadius: cornerRadius,
                         density: density,
-                        frozen: frozen,
+                        frozen: plateFrozen,
                         allowsNative: allowsNative
                     )
                 }
@@ -1551,6 +1556,11 @@ extension View {
             .mask(Rectangle())
     }
 
+    /// Light opacity/scale while a horizontal page is leaving the viewport.
+    func glassCarouselPage() -> some View {
+        modifier(GlassCarouselPageModifier())
+    }
+
     func glassListChrome(showsAtmosphere: Bool = true) -> some View {
         scrollContentBackground(.hidden)
             .background {
@@ -2178,6 +2188,342 @@ struct ReceiptThumbnailTile: View {
         .clipShape(shape)
         .overlay {
             shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.28 : 0.56), lineWidth: 1)
+        }
+    }
+}
+
+/// Pinned section title. Docks at the top of the scroll — words only, no chip
+/// slider and no frost plate. The next section title pushes this one off.
+struct GlassStickySectionHeader<Trailing: View>: View {
+    let title: String
+    var accessibilityIdentifier: String
+    var trailing: Trailing
+
+    /// Caption is 12 pt. The section title is 20% smaller and still follows Dynamic Type.
+    @ScaledMetric(relativeTo: .caption) private var titlePointSize = 9.6
+
+    init(
+        title: String,
+        accessibilityIdentifier: String = "",
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.title = title
+        self.accessibilityIdentifier = accessibilityIdentifier
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title.localizedCapitalized)
+                .font(.system(size: titlePointSize, weight: .semibold))
+                .glassSecondaryInk()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            trailing
+        }
+        .padding(.top, 6)
+        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+}
+
+extension GlassStickySectionHeader where Trailing == EmptyView {
+    init(title: String, accessibilityIdentifier: String = "") {
+        self.init(title: title, accessibilityIdentifier: accessibilityIdentifier) { EmptyView() }
+    }
+}
+
+/// Scroll-linked collapse. The title stays at the top of the card; the body
+/// scrolls up under that title and the glass bottom edge rises with it.
+enum GlassCollapsingLayout {
+    static let scrollSpace = "glass.collapsing.scroll"
+
+    static func stuckOffset(minY: CGFloat, pinY: CGFloat = 0) -> CGFloat {
+        max(0, pinY - minY)
+    }
+
+    static func visibleHeight(fullHeight: CGFloat, stuckOffset: CGFloat) -> CGFloat {
+        max(0, fullHeight - stuckOffset)
+    }
+
+    /// Collapse until `minHeight`. Further scrolling fades that strip out where
+    /// it sits; scrolling back fades it in. It does not travel off the pin.
+    static func placement(
+        natural: CGFloat,
+        stuck: CGFloat,
+        minHeight: CGFloat,
+        titleBand: CGFloat
+    ) -> GlassCollapsePlacement {
+        let floor = min(max(minHeight, 0), max(natural, 0))
+        let raw = visibleHeight(fullHeight: natural, stuckOffset: stuck)
+        let exiting = stuck > 0 && natural > floor && raw < floor
+        let plate = exiting ? floor : raw
+        let exit = exiting ? max(0, stuck - (natural - floor)) : 0
+        let opacity = exiting && floor > 0 ? max(0, 1 - exit / floor) : 1
+        return GlassCollapsePlacement(
+            plateHeight: plate,
+            titleOffset: stuck,
+            contentShown: exiting ? 0 : max(0, plate - titleBand),
+            pinCompensation: exit,
+            opacity: opacity,
+            isExiting: exiting
+        )
+    }
+}
+
+struct GlassCollapsePlacement: Equatable {
+    var plateHeight: CGFloat
+    var titleOffset: CGFloat
+    var contentShown: CGFloat
+    /// How far the strip would have slid past the pin. The view holds it with
+    /// layout padding (`titleOffset`) instead of a render offset, so the fade
+    /// is not clipped away.
+    var pinCompensation: CGFloat
+    var opacity: CGFloat
+    var isExiting: Bool
+}
+
+/// Title + body in one glass card. Scrolling lifts the body under the title.
+/// The plate is only as tall as the part still on screen — bottom edge rises.
+struct GlassCollapsingCard<Content: View, Trailing: View>: View {
+    let title: String
+    var accessibilityIdentifier: String
+    var contentInset: CGFloat
+    var applyCard: Bool
+    var pinsCornerGlyph: Bool
+    var trailing: Trailing
+    var content: Content
+
+    @State private var stuck: CGFloat = 0
+    @State private var natural: CGFloat = 0
+    @State private var titleHeight: CGFloat = 0
+
+    init(
+        title: String,
+        accessibilityIdentifier: String = "",
+        contentInset: CGFloat = StatsCardTokens.contentInset,
+        applyCard: Bool = true,
+        pinsCornerGlyph: Bool = true,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.accessibilityIdentifier = accessibilityIdentifier
+        self.contentInset = contentInset
+        self.applyCard = applyCard
+        self.pinsCornerGlyph = pinsCornerGlyph
+        self.trailing = trailing()
+        self.content = content()
+    }
+
+    private var titleBand: CGFloat {
+        titleHeight + (applyCard ? contentInset : 0)
+    }
+
+    /// Title row plus the card’s bottom inset. Further scrolling fades this strip out.
+    private var minHeight: CGFloat {
+        titleBand + (applyCard ? contentInset : 0)
+    }
+
+    private var placement: GlassCollapsePlacement {
+        GlassCollapsingLayout.placement(
+            natural: natural,
+            stuck: stuck,
+            minHeight: minHeight,
+            titleBand: titleBand
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            GlassStickySectionHeader(title: title)
+            .opacity(0)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+                .background {
+                    GeometryReader { geo in
+                        Color.clear
+                            .onAppear { titleHeight = geo.size.height }
+                            .onChange(of: geo.size.height) { _, height in
+                                titleHeight = height
+                            }
+                    }
+                }
+            content
+        }
+        .padding(applyCard ? contentInset : 0)
+        .glassCollapsingPlate(
+            stuck: $stuck,
+            natural: $natural,
+            titleBand: titleBand,
+            minHeight: minHeight,
+            showsGlass: applyCard
+        )
+        .overlay(alignment: .top) {
+            sectionHeader
+                .padding(.horizontal, applyCard ? contentInset : 0)
+                .padding(.top, (applyCard ? contentInset : 0) + placement.titleOffset)
+                .padding(.trailing, cornerClearance)
+                .opacity(Double(placement.opacity))
+                .allowsHitTesting(placement.opacity > 0.05)
+        }
+        .overlay(alignment: .topTrailing) {
+            trailing
+                .padding(.top, StatsCardTokens.expandGlyphPosterInsets.top + placement.titleOffset)
+                .padding(.trailing, StatsCardTokens.expandGlyphPosterInsets.trailing)
+                .opacity(Double(placement.opacity))
+                .allowsHitTesting(placement.opacity > 0.05)
+        }
+    }
+
+    /// Keeps a corner glyph from covering the last words of the section title.
+    private var cornerClearance: CGFloat {
+        pinsCornerGlyph ? 28 : 0
+    }
+
+    private var sectionHeader: some View {
+        GlassStickySectionHeader(
+            title: title,
+            accessibilityIdentifier: accessibilityIdentifier
+        )
+    }
+}
+
+extension GlassCollapsingCard where Trailing == EmptyView {
+    init(
+        title: String,
+        accessibilityIdentifier: String = "",
+        contentInset: CGFloat = StatsCardTokens.contentInset,
+        applyCard: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(
+            title: title,
+            accessibilityIdentifier: accessibilityIdentifier,
+            contentInset: contentInset,
+            applyCard: applyCard,
+            pinsCornerGlyph: false,
+            trailing: { EmptyView() },
+            content: content
+        )
+    }
+}
+
+extension View {
+    /// Named space for `GlassCollapsingCard`. Put this on the `ScrollView`.
+    func glassCollapsingScroll() -> some View {
+        coordinateSpace(name: GlassCollapsingLayout.scrollSpace)
+    }
+
+    /// Bottom-aligned short glass. Body scrolls up under `titleBand`; the plate
+    /// bottom stays on the content bottom, so the card shrinks upward.
+    func glassCollapsingPlate(
+        stuck: Binding<CGFloat>,
+        natural: Binding<CGFloat>,
+        titleBand: CGFloat = 0,
+        minHeight: CGFloat = 0,
+        showsGlass: Bool = true
+    ) -> some View {
+        modifier(
+            GlassCollapsingPlateModifier(
+                stuck: stuck,
+                natural: natural,
+                titleBand: titleBand,
+                minHeight: minHeight,
+                showsGlass: showsGlass
+            )
+        )
+    }
+}
+
+private struct GlassCollapseFrameKey: PreferenceKey {
+    static var defaultValue: CGRect { .zero }
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next.height > 1 {
+            value = next
+        }
+    }
+}
+
+private struct GlassCollapsingPlateModifier: ViewModifier {
+    @Binding var stuck: CGFloat
+    @Binding var natural: CGFloat
+    var titleBand: CGFloat
+    var minHeight: CGFloat
+    var showsGlass: Bool
+
+    func body(content: Content) -> some View {
+        let placement = natural > 1
+            ? GlassCollapsingLayout.placement(
+                natural: natural,
+                stuck: stuck,
+                minHeight: minHeight,
+                titleBand: titleBand
+            )
+            : nil
+        let fade = placement?.opacity ?? 1
+        let heldTop = placement?.titleOffset ?? 0
+        content
+            .background {
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: GlassCollapseFrameKey.self,
+                        value: geo.frame(in: .named(GlassCollapsingLayout.scrollSpace))
+                    )
+                }
+            }
+            .onPreferenceChange(GlassCollapseFrameKey.self) { frame in
+                apply(minY: frame.minY, height: frame.height)
+            }
+            .mask(alignment: .bottom) {
+                Rectangle().frame(height: placement?.contentShown ?? 8_000)
+            }
+            .background(alignment: .top) {
+                if showsGlass, let placement, placement.plateHeight > 1 {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .frame(height: placement.plateHeight)
+                        .statsFullCard(contentInset: 0)
+                        .padding(.top, heldTop)
+                }
+            }
+            .opacity(Double(fade))
+            .allowsHitTesting(fade > 0.05)
+    }
+
+    private func apply(minY: CGFloat, height: CGFloat) {
+        guard height > 1 else { return }
+        let nextStuck = GlassCollapsingLayout.stuckOffset(minY: minY)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if stuck != nextStuck {
+                stuck = nextStuck
+            }
+            if natural != height {
+                natural = height
+            }
+        }
+    }
+}
+
+private struct GlassCarouselPageModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content
+        } else {
+            content.scrollTransition { view, phase in
+                view
+                    .opacity(phase.isIdentity ? 1 : GlassTokens.carouselPageRestOpacity)
+                    .scaleEffect(phase.isIdentity ? 1 : GlassTokens.carouselPageRestScale)
+            }
         }
     }
 }

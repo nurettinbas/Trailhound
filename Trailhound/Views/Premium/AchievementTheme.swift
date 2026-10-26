@@ -65,6 +65,70 @@ enum AchievementGalleryExpandLayout {
     }
 }
 
+/// Leading-edge swipe that runs the same shrink as the expand close button.
+enum CardExpandBackSwipe {
+    static let edge: CGFloat = 28
+    /// Space under the status inset so the swipe strip does not cover the close circle.
+    static let headerClearance: CGFloat = 56
+    static let distance: CGFloat = 64
+
+    static func shouldDismiss(travel: CGFloat, predicted: CGFloat, vertical: CGFloat) -> Bool {
+        guard travel > abs(vertical) else { return false }
+        return travel > distance || predicted > distance * 2
+    }
+}
+
+/// Clear leading strip. Horizontal drags here close the expanded Recap card.
+struct CardExpandBackSwipeStrip: View {
+    var enabled: Bool
+    var topClearance: CGFloat
+    var onClose: () -> Void
+
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if layoutDirection == .rightToLeft {
+                Spacer(minLength: 0).allowsHitTesting(false)
+            }
+            VStack(spacing: 0) {
+                Color.clear
+                    .frame(height: topClearance)
+                    .allowsHitTesting(false)
+                Color.clear
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(swipe)
+            }
+            .frame(width: CardExpandBackSwipe.edge)
+            if layoutDirection != .rightToLeft {
+                Spacer(minLength: 0).allowsHitTesting(false)
+            }
+        }
+        .allowsHitTesting(enabled)
+        .accessibilityHidden(true)
+    }
+
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 18, coordinateSpace: .local)
+            .onEnded { value in
+                guard enabled else { return }
+                let travel = layoutDirection == .rightToLeft
+                    ? -value.translation.width
+                    : value.translation.width
+                let predicted = layoutDirection == .rightToLeft
+                    ? -value.predictedEndTranslation.width
+                    : value.predictedEndTranslation.width
+                guard CardExpandBackSwipe.shouldDismiss(
+                    travel: travel,
+                    predicted: predicted,
+                    vertical: value.translation.height
+                ) else { return }
+                onClose()
+            }
+    }
+}
+
 /// Shell-independent family colors for round medals only — cards stay glass.
 /// Km medals use metal materials; other families use enamel (family hue) in the same 3D chrome.
 enum AchievementTheme {

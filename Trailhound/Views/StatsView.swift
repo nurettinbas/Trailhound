@@ -44,6 +44,12 @@ struct StatsView: View {
     @State private var mixChartPage = 0
     @State private var vehicleChartPage = 0
     @State private var categoryChartPage = 0
+    @State private var filterCardStuck: CGFloat = 0
+    @State private var filterCardNatural: CGFloat = 0
+    @State private var statsSectionTracker = StickySectionTracker<StatsSection>(
+        order: StatsSection.allCases,
+        initial: .summary
+    )
     @Namespace private var periodChipNamespace
 
     private var snap: StatsDisplaySnapshot {
@@ -313,11 +319,13 @@ struct StatsView: View {
                     wideStatsPrimary(currencyCode: currencyCode)
                         .padding(16)
                 }
+                .glassCollapsingScroll()
             } focus: {
                 ScrollView {
                     wideStatsDistributions(currencyCode: currencyCode)
                         .padding(16)
                 }
+                .glassCollapsingScroll()
             }
         } else if layout.showsHeroRail {
             HStack(alignment: .top, spacing: GlassTokens.hingeGutter) {
@@ -329,10 +337,10 @@ struct StatsView: View {
                 }
                 .frame(maxWidth: layout.size.width * GlassTokens.railWidthFraction)
                 .padding(.leading, 16)
-                phoneStatsList(currencyCode: currencyCode)
+                phoneStatsList(currencyCode: currencyCode, showsFilterCard: false)
             }
         } else {
-            phoneStatsList(currencyCode: currencyCode)
+            phoneStatsList(currencyCode: currencyCode, showsFilterCard: true)
         }
     }
 
@@ -341,13 +349,8 @@ struct StatsView: View {
         VStack(spacing: 12) {
             statsFilterCard
                 .statsFullCard()
-            StatsCardPair {
-                statsGoalCard
-            } right: {
-                statsHeroCard(currencyCode: currencyCode)
-            }
-            summaryMetricsGrid(currencyCode: currencyCode)
-                .statsFullCard(contentInset: StatsCardTokens.summaryGridInset)
+            summaryHeroPair(currencyCode: currencyCode)
+            summaryMetricsCard(currencyCode: currencyCode)
             if !placesDailyChartOnRight {
                 wideDailyChartCard
             }
@@ -361,7 +364,7 @@ struct StatsView: View {
     }
 
     @ViewBuilder
-    private var wideDailyChartCard: some View {
+    private var wideDailyChartBody: some View {
         if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
             StatsChartPager(
                 pageCount: dailyChartKinds.count,
@@ -373,112 +376,26 @@ struct StatsView: View {
             ) { index in
                 dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
             }
-            .statsFullCard()
             .moduleSpan(.feature)
         }
     }
 
     @ViewBuilder
-    private func wideStatsDistributions(currencyCode: String) -> some View {
-        VStack(spacing: 12) {
-            if placesDailyChartOnRight {
-                wideDailyChartCard
-            }
-            if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
-                StatsChartPager(
-                    pageCount: weekdayChartKinds.count,
-                    contentHeight: StatsChartPagerMetrics.dailyContentHeight,
-                    selection: $weekdayChartPage,
-                    reduceMotion: reduceMotion
-                ) { index in
-                    weekdayChartPageContent(kind: weekdayChartKinds[index], pageIndex: index)
-                }
-                .statsFullCard()
-            }
-            if snap.hasMixCharts, !mixChartKinds.isEmpty {
-                StatsChartPager(
-                    pageCount: mixChartKinds.count,
-                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
-                    selection: $mixChartPage,
-                    reduceMotion: reduceMotion
-                ) { index in
-                    mixChartPageContent(kind: mixChartKinds[index], pageIndex: index)
-                }
-                .statsFullCard()
-            }
-            if showsVehicleCompareList {
-                StatsVehicleCompareList(rows: vehicleCompareRows, currencyCode: currencyCode)
-                    .statsFullCard()
-            }
-            if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
-                StatsChartPager(
-                    pageCount: vehicleChartKinds.count,
-                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
-                    selection: $vehicleChartPage,
-                    reduceMotion: reduceMotion
-                ) { index in
-                    vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
-                }
-                .statsFullCard()
-            }
-            if snap.hasCategoryCharts || costSnapshot.hasCategoryBreakdown {
-                StatsChartPager(
-                    pageCount: categoryChartKinds.count,
-                    contentHeight: StatsChartPagerMetrics.donutContentHeight,
-                    selection: $categoryChartPage,
-                    reduceMotion: reduceMotion
-                ) { index in
-                    categoryChartPageContent(kind: categoryChartKinds[index], pageIndex: index)
-                }
-                .statsFullCard()
-            }
-        }
+    private var wideDailyChartCard: some View {
+        wideDailyChartBody
+            .statsFullCard()
     }
 
     @ViewBuilder
-    private func phoneStatsList(currencyCode: String) -> some View {
-        List {
-            Section(L10n.string("filter.title")) {
-                statsFilterCard
-                    .statsFullCard()
-            }
-
-            Section {
-                StatsCardPair {
-                    statsGoalCard
-                } right: {
-                    statsHeroCard(currencyCode: currencyCode)
+    private func wideStatsDistributions(currencyCode: String) -> some View {
+        LazyVStack(spacing: 12) {
+            if placesDailyChartOnRight {
+                statsPinnedSection(.daily, title: titledWithScope("stats.chart.daily_section", scope: statsTripChartScopeLabel)) {
+                    wideDailyChartBody
                 }
             }
-
-            Section(titledWithScope("stats.summary.section", scope: statsSummaryScopeLabel)) {
-                summaryMetricsGrid(currencyCode: currencyCode)
-                    .statsFullCard(contentInset: StatsCardTokens.summaryGridInset)
-            }
-            .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
-            .id(currencyCode)
-
-            if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
-                Section(titledWithScope("stats.chart.daily_section", scope: statsTripChartScopeLabel)) {
-                    StatsChartPager(
-                        pageCount: dailyChartKinds.count,
-                        contentHeight: dailyChartKinds.contains(.expenses)
-                            ? StatsChartPagerMetrics.costContentHeight
-                            : StatsChartPagerMetrics.dailyContentHeight,
-                        selection: $dailyChartPage,
-                        reduceMotion: reduceMotion
-                    ) { index in
-                        dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .statsFullCard()
-                }
-                .id("daily-\(statsFilterFingerprint)")
-                .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
-            }
-
             if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
-                Section(titledWithScope("stats.chart.weekday_section", scope: statsTripChartScopeLabel)) {
+                statsPinnedSection(.weekday, title: titledWithScope("stats.chart.weekday_section", scope: statsTripChartScopeLabel)) {
                     StatsChartPager(
                         pageCount: weekdayChartKinds.count,
                         contentHeight: StatsChartPagerMetrics.dailyContentHeight,
@@ -487,14 +404,10 @@ struct StatsView: View {
                     ) { index in
                         weekdayChartPageContent(kind: weekdayChartKinds[index], pageIndex: index)
                     }
-                    .frame(maxWidth: .infinity)
-                    .statsFullCard()
                 }
-                .id("weekday-\(statsFilterFingerprint)")
             }
-
             if snap.hasMixCharts, !mixChartKinds.isEmpty {
-                Section(titledWithScope("stats.chart.mix_section", scope: statsTripChartScopeLabel)) {
+                statsPinnedSection(.mix, title: titledWithScope("stats.chart.mix_section", scope: statsTripChartScopeLabel)) {
                     StatsChartPager(
                         pageCount: mixChartKinds.count,
                         contentHeight: StatsChartPagerMetrics.donutContentHeight,
@@ -503,40 +416,27 @@ struct StatsView: View {
                     ) { index in
                         mixChartPageContent(kind: mixChartKinds[index], pageIndex: index)
                     }
-                    .frame(maxWidth: .infinity)
-                    .statsFullCard()
-                }
-                .id("mix-\(statsFilterFingerprint)")
-            }
-
-            if showsVehicleCompareList {
-                Section {
-                    StatsVehicleCompareList(
-                        rows: vehicleCompareRows,
-                        currencyCode: currencyCode
-                    )
-                    .statsFullCard()
                 }
             }
-
-            if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
-                Section(titledWithScope("stats.chart.vehicles_section", scope: statsTripChartScopeLabel)) {
-                    StatsChartPager(
-                        pageCount: vehicleChartKinds.count,
-                        contentHeight: StatsChartPagerMetrics.donutContentHeight,
-                        selection: $vehicleChartPage,
-                        reduceMotion: reduceMotion
-                    ) { index in
-                        vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
+            if showsVehicleCompareList || snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+                statsPinnedSection(.vehicles, title: titledWithScope("stats.chart.vehicles_section", scope: statsTripChartScopeLabel)) {
+                    if showsVehicleCompareList {
+                        StatsVehicleCompareList(rows: vehicleCompareRows, currencyCode: currencyCode)
                     }
-                    .frame(maxWidth: .infinity)
-                    .statsFullCard()
+                    if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+                        StatsChartPager(
+                            pageCount: vehicleChartKinds.count,
+                            contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                            selection: $vehicleChartPage,
+                            reduceMotion: reduceMotion
+                        ) { index in
+                            vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
+                        }
+                    }
                 }
-                .id("vehicles-\(statsFilterFingerprint)")
             }
-
             if snap.hasCategoryCharts || costSnapshot.hasCategoryBreakdown {
-                Section(titledWithScope("stats.chart.categories_section", scope: statsTripChartScopeLabel)) {
+                statsPinnedSection(.categories, title: titledWithScope("stats.chart.categories_section", scope: statsTripChartScopeLabel)) {
                     StatsChartPager(
                         pageCount: categoryChartKinds.count,
                         contentHeight: StatsChartPagerMetrics.donutContentHeight,
@@ -545,13 +445,207 @@ struct StatsView: View {
                     ) { index in
                         categoryChartPageContent(kind: categoryChartKinds[index], pageIndex: index)
                     }
-                    .frame(maxWidth: .infinity)
-                    .statsFullCard()
                 }
-                .id("categories-\(statsFilterFingerprint)")
-                .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
             }
         }
+        .scrollTargetLayout()
+    }
+
+    @ViewBuilder
+    private func phoneStatsList(currencyCode: String, showsFilterCard: Bool) -> some View {
+        let list = ScrollView {
+            LazyVStack(spacing: 12) {
+                if showsFilterCard {
+                    statsFilterCard
+                        .padding(StatsCardTokens.contentInset)
+                        .glassCollapsingPlate(
+                            stuck: $filterCardStuck,
+                            natural: $filterCardNatural
+                        )
+                }
+
+                VStack(spacing: 12) {
+                    summaryHeroPair(currencyCode: currencyCode)
+                    summaryMetricsCard(currencyCode: currencyCode)
+                }
+                .transition(TrailhoundMotion.fadeScaleTransition(reduceMotion: reduceMotion))
+
+                if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
+                    statsPinnedSection(.daily, title: titledWithScope("stats.chart.daily_section", scope: statsTripChartScopeLabel)) {
+                        StatsChartPager(
+                            pageCount: dailyChartKinds.count,
+                            contentHeight: dailyChartKinds.contains(.expenses)
+                                ? StatsChartPagerMetrics.costContentHeight
+                                : StatsChartPagerMetrics.dailyContentHeight,
+                            selection: $dailyChartPage,
+                            reduceMotion: reduceMotion
+                        ) { index in
+                            dailyChartPageContent(kind: dailyChartKinds[index], pageIndex: index)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedPeriod)
+                }
+
+                if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
+                    statsPinnedSection(.weekday, title: titledWithScope("stats.chart.weekday_section", scope: statsTripChartScopeLabel)) {
+                        StatsChartPager(
+                            pageCount: weekdayChartKinds.count,
+                            contentHeight: StatsChartPagerMetrics.dailyContentHeight,
+                            selection: $weekdayChartPage,
+                            reduceMotion: reduceMotion
+                        ) { index in
+                            weekdayChartPageContent(kind: weekdayChartKinds[index], pageIndex: index)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+
+                if snap.hasMixCharts, !mixChartKinds.isEmpty {
+                    statsPinnedSection(.mix, title: titledWithScope("stats.chart.mix_section", scope: statsTripChartScopeLabel)) {
+                        StatsChartPager(
+                            pageCount: mixChartKinds.count,
+                            contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                            selection: $mixChartPage,
+                            reduceMotion: reduceMotion
+                        ) { index in
+                            mixChartPageContent(kind: mixChartKinds[index], pageIndex: index)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+
+                if showsVehicleCompareList || snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+                    statsPinnedSection(.vehicles, title: titledWithScope("stats.chart.vehicles_section", scope: statsTripChartScopeLabel)) {
+                        if showsVehicleCompareList {
+                            StatsVehicleCompareList(
+                                rows: vehicleCompareRows,
+                                currencyCode: currencyCode
+                            )
+                        }
+                        if snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+                            StatsChartPager(
+                                pageCount: vehicleChartKinds.count,
+                                contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                                selection: $vehicleChartPage,
+                                reduceMotion: reduceMotion
+                            ) { index in
+                                vehicleChartPageContent(kind: vehicleChartKinds[index], pageIndex: index)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+
+                if snap.hasCategoryCharts || costSnapshot.hasCategoryBreakdown {
+                    statsPinnedSection(.categories, title: titledWithScope("stats.chart.categories_section", scope: statsTripChartScopeLabel)) {
+                        StatsChartPager(
+                            pageCount: categoryChartKinds.count,
+                            contentHeight: StatsChartPagerMetrics.donutContentHeight,
+                            selection: $categoryChartPage,
+                            reduceMotion: reduceMotion
+                        ) { index in
+                            categoryChartPageContent(kind: categoryChartKinds[index], pageIndex: index)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: selectedCategoryID)
+                }
+            }
+            .scrollTargetLayout()
+            .padding(.horizontal, GlassTokens.panelHorizontalInset)
+            .padding(.bottom, 8)
+        }
+        .glassCollapsingScroll()
+        .scrollPosition(id: statsScrollPosition, anchor: .top)
+        .onChange(of: visibleStatsSections) { _, sections in
+            statsSectionTracker.updateOrder(sections)
+        }
+
+        list
+    }
+
+    private var statsScrollPosition: Binding<StatsSection?> {
+        Binding(
+            get: { statsSectionTracker.visibleSection },
+            set: { statsSectionTracker.applyScrollPosition($0) }
+        )
+    }
+
+    private var visibleStatsSections: [StatsSection] {
+        var sections: [StatsSection] = [.summary]
+        if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
+            sections.append(.daily)
+        }
+        if snap.hasWeekdayCharts, !weekdayChartKinds.isEmpty {
+            sections.append(.weekday)
+        }
+        if snap.hasMixCharts, !mixChartKinds.isEmpty {
+            sections.append(.mix)
+        }
+        if showsVehicleCompareList || snap.showsVehicleBreakdownCharts || costSnapshot.hasVehicleBreakdown {
+            sections.append(.vehicles)
+        }
+        if snap.hasCategoryCharts || costSnapshot.hasCategoryBreakdown {
+            sections.append(.categories)
+        }
+        return sections
+    }
+
+    @ViewBuilder
+    private func summaryHeroPair(currencyCode: String) -> some View {
+        HStack(alignment: .top, spacing: StatsCardTokens.pairSpacing) {
+            GlassCollapsingCard(
+                title: L10n.string("stats.summary.section"),
+                accessibilityIdentifier: "stats.section.summary"
+            ) {
+                statsGoalCard
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: StatsCardTokens.halfMinHeight,
+                alignment: .top
+            )
+
+            GlassCollapsingCard(
+                title: statsSummaryScopeLabel,
+                accessibilityIdentifier: "stats.section.summary.period"
+            ) {
+                statsHeroCard(currencyCode: currencyCode)
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: StatsCardTokens.halfMinHeight,
+                alignment: .top
+            )
+        }
+        .id(StatsSection.summary)
+    }
+
+    private func summaryMetricsCard(currencyCode: String) -> some View {
+        GlassCollapsingCard(
+            title: statsSummaryScopeLabel,
+            accessibilityIdentifier: "stats.section.summary.metrics",
+            contentInset: StatsCardTokens.summaryGridInset
+        ) {
+            summaryMetricsGrid(currencyCode: currencyCode)
+        }
+    }
+
+    private func statsPinnedSection<Content: View>(
+        _ section: StatsSection,
+        title: String,
+        applyCard: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        GlassCollapsingCard(
+            title: title,
+            accessibilityIdentifier: "stats.section.\(section.rawValue)",
+            applyCard: applyCard
+        ) {
+            content()
+        }
+        .id(section)
     }
 
     private func scheduleCostSnapshotRefresh() {
@@ -685,13 +779,19 @@ struct StatsView: View {
     }
 
     private var statsFilterCard: some View {
+        statsFilterFields(includePeriodChips: true)
+    }
+
+    private func statsFilterFields(includePeriodChips: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if hasResettableStatsFilters {
                 statsFilterHeader
                     .transition(reduceMotion ? .identity : .opacity)
             }
 
-            statsPeriodChipRow
+            if includePeriodChips {
+                statsPeriodChipRow
+            }
 
             if selectedPeriod == .month {
                 statsMonthPicker
@@ -2396,14 +2496,9 @@ struct StatsView: View {
         @ViewBuilder chart: () -> ChartContent
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(titledWithScope(titleKey, scope: statsTripChartScopeLabel))
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let helpTitle, let helpBody {
+            if let helpTitle, let helpBody {
+                HStack {
+                    Spacer(minLength: 0)
                     HelpPopoverButton(
                         accessibilityLabel: helpTitle,
                         message: helpBody
@@ -2439,6 +2534,7 @@ struct StatsView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .accessibilityLabel(titledWithScope(titleKey, scope: statsTripChartScopeLabel))
         // Keep content above the pager clip / page dots.
         .padding(.bottom, 2)
     }
@@ -2873,6 +2969,17 @@ private struct StatsSummaryGridAccessibility: ViewModifier {
             content
         }
     }
+}
+
+private enum StatsSection: String, CaseIterable, Hashable, Identifiable {
+    case summary
+    case daily
+    case weekday
+    case mix
+    case vehicles
+    case categories
+
+    var id: String { rawValue }
 }
 
 private enum StatsFilterDefaults {

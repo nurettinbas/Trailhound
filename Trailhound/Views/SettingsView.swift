@@ -5,8 +5,13 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-private enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
+enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
     case recording
+    case places
+    case categories
+    case smartCategory
+    case appearance
+    case language
     case fuel
     case privacy
     case permissions
@@ -18,6 +23,11 @@ private enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
     var title: String {
         switch self {
         case .recording: L10n.settingsRecordingSection
+        case .places: L10n.settingsFavoritePlaces
+        case .categories: L10n.categorySection
+        case .smartCategory: L10n.settingsSmartCategorySection
+        case .appearance: L10n.settingsAppearanceSection
+        case .language: L10n.settingsLanguageSection
         case .fuel: L10n.settingsFuelSection
         case .privacy: L10n.settingsPrivacySection
         case .permissions: L10n.settingsPermissionsSection
@@ -58,6 +68,11 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.trailhoundLayout) private var layout
     @State private var settingsPane: SettingsPane = .recording
+    @State private var settingsSectionTracker = StickySectionTracker<SettingsPane>(
+        order: SettingsPane.allCases,
+        initial: .recording
+    )
+    @State private var settingsScrollRequest = 0
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -98,7 +113,7 @@ struct SettingsView: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(SettingsPane.allCases) { pane in
                         Button {
-                            settingsPane = pane
+                            selectSettingsPane(pane)
                         } label: {
                             Text(pane.title)
                                 .font(.headline)
@@ -120,7 +135,7 @@ struct SettingsView: View {
         return List {
             ForEach(Array(panes.enumerated()), id: \.element.id) { index, pane in
                 Button {
-                    settingsPane = pane
+                    selectSettingsPane(pane)
                 } label: {
                     HStack {
                         Text(pane.title)
@@ -144,6 +159,27 @@ struct SettingsView: View {
         .glassCompactIndexList()
     }
 
+    private func settingsSectionAnchor(_ pane: SettingsPane) -> some View {
+        EmptyView()
+            .id(pane)
+            .stickySectionMarker(pane, tracker: $settingsSectionTracker)
+            .accessibilityHidden(true)
+    }
+
+    private func selectSettingsPane(_ pane: SettingsPane) {
+        settingsSectionTracker.beginTapScroll(to: pane)
+        settingsPane = pane
+        settingsScrollRequest += 1
+        if reduceMotion {
+            settingsSectionTracker.endTapScroll()
+            return
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            settingsSectionTracker.endTapScroll()
+        }
+    }
+
     private var settingsForm: some View {
         ScrollViewReader { proxy in
         Form {
@@ -154,7 +190,7 @@ struct SettingsView: View {
             .listRowSeparator(.hidden)
 
             Section(L10n.settingsRecordingSection) {
-                EmptyView().id(SettingsPane.recording)
+                settingsSectionAnchor(.recording)
                 Toggle(L10n.settingsRecordingSounds, isOn: $settings.recordingSoundsEnabled)
                     .glassToggleStyle()
                     .accessibilityIdentifier("settings.recordingSounds")
@@ -176,6 +212,7 @@ struct SettingsView: View {
             }
 
             Section {
+                settingsSectionAnchor(.places)
                 Button {
                     showAddPlacePicker = true
                 } label: {
@@ -233,9 +270,13 @@ struct SettingsView: View {
                 Text(L10n.settingsFavoritePlacesHint)
             }
 
-            CategoryManagementView(focusedField: $focusedField)
+            CategoryManagementView(
+                focusedField: $focusedField,
+                settingsSectionTracker: $settingsSectionTracker
+            )
 
             Section {
+                settingsSectionAnchor(.smartCategory)
                 Toggle(L10n.settingsSmartCategoryToggle, isOn: $settings.smartCategorySuggestionsEnabled)
                     .glassToggleStyle()
                     .accessibilityIdentifier("settings.smartCategory")
@@ -269,6 +310,7 @@ struct SettingsView: View {
             }
 
             Section {
+                settingsSectionAnchor(.appearance)
                 Picker(L10n.settingsAppearancePicker, selection: $settings.appearanceMode) {
                     Text(L10n.settingsAppearanceSystem).tag(AppearanceMode.system)
                     Text(L10n.settingsAppearanceLight).tag(AppearanceMode.light)
@@ -290,6 +332,7 @@ struct SettingsView: View {
             }
 
             Section {
+                settingsSectionAnchor(.language)
                 Button(L10n.settingsOpenSystemSettings) {
                     SystemSettingsLink.openAppPage()
                 }
@@ -301,7 +344,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsFuelSection) {
-                EmptyView().id(SettingsPane.fuel)
+                settingsSectionAnchor(.fuel)
                 let fuelTypes = pricedFuelTypes
                 ForEach(Array(fuelTypes.enumerated()), id: \.element) { index, type in
                     LabeledContent(type.displayName) {
@@ -339,7 +382,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPrivacySection) {
-                EmptyView().id(SettingsPane.privacy)
+                settingsSectionAnchor(.privacy)
                 Toggle(L10n.settingsAppLock, isOn: appLockEnabledBinding)
                     .glassToggleStyle()
                     .glassRow(position: .first)
@@ -376,7 +419,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsPermissionsSection) {
-                EmptyView().id(SettingsPane.permissions)
+                settingsSectionAnchor(.permissions)
                 LabeledContent(L10n.settingsLocationPermission) {
                     LocationPermissionBadge(state: locationService.authorizationState)
                 }
@@ -412,9 +455,10 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsBackupSection) {
-                EmptyView().id(SettingsPane.backup)
+                settingsSectionAnchor(.backup)
                 Button(L10n.settingsExportJSON) { export(format: .json) }
                     .disabled(isExporting)
+                    .accessibilityIdentifier("settings.export.json")
                     .glassRow(position: .first)
                 Button(L10n.settingsExportCSV) { export(format: .csv) }
                     .disabled(isExporting)
@@ -428,7 +472,7 @@ struct SettingsView: View {
             }
 
             Section(L10n.settingsAboutSection) {
-                EmptyView().id(SettingsPane.about)
+                settingsSectionAnchor(.about)
                 LabeledContent(L10n.settingsVersion, value: appVersion)
                     .glassRow(position: .first)
                 Button(L10n.settingsPlayLaunchIntro) {
@@ -472,7 +516,17 @@ struct SettingsView: View {
         }
         .navigationTitle(L10n.settingsTitle)
         .onChange(of: settingsPane) { _, pane in
-            proxy.scrollTo(pane, anchor: .top)
+            if settingsSectionTracker.isTapScrolling {
+                proxy.scrollTo(pane, anchor: .top)
+            }
+        }
+        .onChange(of: settingsScrollRequest) { _, _ in
+            proxy.scrollTo(settingsPane, anchor: .top)
+        }
+        .onChange(of: settingsSectionTracker.visibleSection) { _, pane in
+            if let pane, !settingsSectionTracker.isTapScrolling {
+                settingsPane = pane
+            }
         }
         }
         .navigationBarTitleDisplayMode(.inline)

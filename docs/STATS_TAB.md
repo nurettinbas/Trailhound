@@ -23,16 +23,22 @@ Deep link `trailhound://stats/goal` opens this tab. Recap / forecast / routes / 
 
 See [PERFORMANCE.md](PERFORMANCE.md) Stats tab section.
 
+## Sticky navigation
+
+Phone Stats puts **Summary** on the goal card and the period (Last 7 days, month, or custom range) on the hero card and on the metrics grid. Chart sections use the same in-card title. As you scroll, the title stays on the card and the body slides up under it. Once only the title strip is left, that strip fades out where it sits and fades back in when you scroll down. Horizontal chart pagers use `.glassCarouselPage()` and do not rebuild `StatsView` mid-swipe.
+
+The filter card stays at the top of the phone list (period chips, month picker, custom dates, menus, Clear All). Wide/Duo layouts keep that card open in the leading rail.
+
 ## Filter card
 
-The filter row is still one full-width `glassCard` — no extra fetch, no `GeometryReader`. Layout:
+On phone and wide layouts the filter row is one full-width `glassCard` — no extra fetch, no `GeometryReader`. Layout:
 
 - **Period chips** keep the same compact expanding capsules (Last 7 days / Month / Custom). Light selected chips are a mid-family wash with white type; unselected chips are frost plus white. Dark uses the selected palette tint. Month stepper and custom start/end dates stay on the same card.
 - **Category, vehicle, place, travel** are equal selection fields: title, one-line truncated value, chevron. Long names do not wrap onto neighbouring fields. Vehicle keeps its avatar. Active fields use a brand stroke in dark and a white stroke in light.
 - **Two columns** at standard Dynamic Type; **one column** at accessibility sizes. Each field’s tap target is at least 44 pt.
 - **Clear All** appears only when something is not the default. It clears category / vehicle / place / travel, sets the period back to Last 7 days, and restores the default month and custom dates. Reduce Motion skips the reveal animation.
 
-VoiceOver reads each field’s title and current value. Identifiers: `stats.filters.card`, `stats.filters.clear`, `stats.filters.period.{week|month|custom}`, `stats.filters.{category|vehicle|place|journal}`.
+VoiceOver reads each field’s title and current value. Identifiers: `stats.filters.card`, `stats.filters.clear`, `stats.filters.period.{week|month|custom}`, `stats.filters.{category|vehicle|place|journal}`, `stats.section.{summary|daily|weekday|mix|vehicles|categories}`.
 
 ## Summary skeleton
 

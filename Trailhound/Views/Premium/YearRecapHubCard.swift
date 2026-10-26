@@ -207,11 +207,12 @@ private struct RecapChapterRail: View {
                         page: page,
                         onPlay: { onPlayPage(page) }
                     )
+                    .glassCarouselPage()
                 }
             }
-            .padding(.trailing, RecapChapterRailTokens.peek)
             .scrollTargetLayout()
         }
+        .contentMargins(.trailing, RecapChapterRailTokens.peek, for: .scrollContent)
         .scrollTargetBehavior(.viewAligned)
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("stats.premium.recap.chapters")

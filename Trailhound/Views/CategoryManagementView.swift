@@ -35,6 +35,7 @@ struct CategoryManagementView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \UserCategory.sortOrder) private var categories: [UserCategory]
     @FocusState.Binding var focusedField: SettingsFocusedField?
+    var settingsSectionTracker: Binding<StickySectionTracker<SettingsPane>>?
     @State private var newCategoryName = ""
 
     private var rowCount: Int {
@@ -52,6 +53,11 @@ struct CategoryManagementView: View {
 
     var body: some View {
         Section(L10n.categorySection) {
+            if let settingsSectionTracker {
+                EmptyView()
+                    .id(SettingsPane.categories)
+                    .stickySectionMarker(SettingsPane.categories, tracker: settingsSectionTracker)
+            }
             ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
                 HStack(spacing: 10) {
                     Image(systemName: category.systemImage)

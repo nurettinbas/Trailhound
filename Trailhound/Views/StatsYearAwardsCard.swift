@@ -6,6 +6,8 @@ struct StatsYearAwardsCard: View {
     let years: [Int]
     @Binding var selectedYear: Int
     var reduceMotion: Bool
+    var showsYearPicker: Bool = true
+    var showsSectionTitle: Bool = true
     var onAppear: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme
@@ -14,8 +16,10 @@ struct StatsYearAwardsCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.string("stats.awards.section"))
-                        .font(.subheadline.weight(.semibold))
+                    if showsSectionTitle {
+                        Text(L10n.string("stats.awards.section"))
+                            .font(.subheadline.weight(.semibold))
+                    }
                     Text(L10n.string("stats.awards.unfiltered_hint"))
                         .font(.caption2)
                         .foregroundStyle(StatsTextColor.tertiary(for: colorScheme))
@@ -26,19 +30,25 @@ struct StatsYearAwardsCard: View {
                     }
                 }
                 Spacer()
-                if years.count > 1 {
-                    Picker(L10n.string("stats.awards.year"), selection: $selectedYear) {
-                        ForEach(years, id: \.self) { year in
-                            Text(String(year)).tag(year)
+                if showsYearPicker {
+                    if years.count > 1 {
+                        Picker(L10n.string("stats.awards.year"), selection: $selectedYear) {
+                            ForEach(years, id: \.self) { year in
+                                Text(String(year)).tag(year)
+                            }
                         }
+                        .glassMenuPicker()
+                        .accessibilityIdentifier("recap.year.toggle")
+                        .accessibilityLabel(L10n.string("stats.awards.year"))
+                        .accessibilityValue(String(selectedYear))
+                    } else {
+                        Text(String(selectedYear))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                            .accessibilityIdentifier("recap.year.toggle")
+                            .accessibilityLabel(L10n.string("stats.awards.year"))
+                            .accessibilityValue(String(selectedYear))
                     }
-                    .glassMenuPicker()
-                    .accessibilityLabel(L10n.string("stats.awards.year"))
-                    .accessibilityValue(String(selectedYear))
-                } else {
-                    Text(String(selectedYear))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
                 }
             }
 

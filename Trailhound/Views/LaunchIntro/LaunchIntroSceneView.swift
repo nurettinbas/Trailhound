@@ -349,46 +349,22 @@ final class LaunchIntroSceneUIView: UIView {
             addFlatHound(image, in: dog, on: picture)
             return
         }
-        let rig = parts.rig
-        let scale = min(dog.width / rig.canvas.width, dog.height / rig.canvas.height)
-        let art = CGSize(width: rig.canvas.width * scale, height: rig.canvas.height * scale)
-
-        let root = CALayer()
-        root.bounds = CGRect(origin: .zero, size: art)
-        root.position = CGPoint(x: dog.midX, y: dog.midY)
-        root.allowsGroupOpacity = true
-        picture.addSublayer(root)
-
-        addBone(rig.torso, parts: parts, scale: scale, to: root)
-        root.add(gait("transform.translation.y", rig: rig, curve: rig.bob, unit: art.height), forKey: "bob")
-    }
-
-    /// The bone turns around its joint and carries its children; its own image sits between `behind` and `front`.
-    private func addBone(_ bone: LaunchIntroHoundRig.Bone, parts: LaunchIntroHoundParts, scale: CGFloat, to parent: CALayer) {
-        let rig = parts.rig
-        let layer = houndPart(nil, pivot: bone.joint, canvas: rig.canvas, scale: scale)
-        parent.addSublayer(layer)
-        for child in bone.behind {
-            addBone(child, parts: parts, scale: scale, to: layer)
+        let mounted = LaunchIntroHoundLayerTree.add(
+            parts: parts,
+            in: dog,
+            on: picture,
+            contentsScale: traitCollection.displayScale
+        )
+        mounted.root.add(
+            gait("transform.translation.y", rig: mounted.rig, curve: mounted.rig.bob, unit: mounted.art.height),
+            forKey: "bob"
+        )
+        for joint in mounted.joints {
+            joint.layer.add(
+                gait("transform.rotation.z", rig: mounted.rig, curve: joint.swing),
+                forKey: "swing"
+            )
         }
-        let image = houndPart(parts.images[bone.asset], pivot: bone.joint, canvas: rig.canvas, scale: scale)
-        layer.addSublayer(image)
-        for child in bone.front {
-            addBone(child, parts: parts, scale: scale, to: layer)
-        }
-        layer.add(gait("transform.rotation.z", rig: rig, curve: bone.swing), forKey: "swing")
-    }
-
-    /// A full-canvas layer that turns around `pivot` (canvas pixels).
-    private func houndPart(_ image: CGImage?, pivot: CGPoint, canvas: CGSize, scale: CGFloat) -> CALayer {
-        let layer = CALayer()
-        layer.bounds = CGRect(x: 0, y: 0, width: canvas.width * scale, height: canvas.height * scale)
-        layer.anchorPoint = CGPoint(x: pivot.x / canvas.width, y: pivot.y / canvas.height)
-        layer.position = CGPoint(x: pivot.x * scale, y: pivot.y * scale)
-        layer.contents = image
-        layer.contentsGravity = .resize
-        layer.contentsScale = traitCollection.displayScale
-        return layer
     }
 
     /// Single-image hound for when the rig parts are missing: squash and bob in place.
@@ -526,23 +502,15 @@ final class LaunchIntroSceneUIView: UIView {
         unit: CGFloat = 1,
         samplesPerStride: Int = 16
     ) -> CAKeyframeAnimation {
-        let length = max(timeline.closeEnd, 0.01)
-        let step = max(rig.stride / Double(samplesPerStride), 0.005)
-        var times: [NSNumber] = []
-        var values: [CGFloat] = []
-        var time: TimeInterval = 0
-        while length - time > step * 0.25 {
-            times.append(ns(time / length))
-            values.append(rig.offset(curve, at: time, timeline: timeline) * unit)
-            time += step
-        }
-        times.append(1)
-        values.append(rig.offset(curve, at: length, timeline: timeline) * unit)
-        let animation = CAKeyframeAnimation(keyPath: keyPath)
-        animation.values = values
-        animation.keyTimes = times
-        animation.calculationMode = .cubic
-        stamp(animation, begin: 0, duration: length)
+        let animation = LaunchIntroHoundLayerTree.envelopedGait(
+            keyPath,
+            rig: rig,
+            curve: curve,
+            timeline: timeline,
+            unit: unit,
+            samplesPerStride: samplesPerStride
+        )
+        stamp(animation, begin: 0, duration: max(timeline.closeEnd, 0.01))
         return animation
     }
 
@@ -732,21 +700,6 @@ final class LaunchIntroSceneUIView: UIView {
 
     private func ns(_ value: Double) -> NSNumber {
         NSNumber(value: min(1, max(0, value)))
-    }
-}
-
-/// Images for `LaunchIntroHoundRig`. Nil when any part is missing, so the flat hound plays instead.
-struct LaunchIntroHoundParts {
-    var rig: LaunchIntroHoundRig
-    var images: [String: CGImage]
-
-    static func load(rig: LaunchIntroHoundRig = .standard) -> LaunchIntroHoundParts? {
-        var images: [String: CGImage] = [:]
-        for bone in rig.bones {
-            guard let image = UIImage(named: bone.asset)?.cgImage else { return nil }
-            images[bone.asset] = image
-        }
-        return LaunchIntroHoundParts(rig: rig, images: images)
     }
 }
 

@@ -718,9 +718,6 @@ private struct RecapCostAmountCards: View {
     var elapsed: TimeInterval
     var reduceMotion: Bool
 
-    @Environment(\.shellPalette) private var shellPalette
-    @Environment(\.colorScheme) private var colorScheme
-
     private var showsFuel: Bool { estimatedFuelCost > 0 }
     private var showsExpenses: Bool { paidExpenses > 0 }
     private var showsBoth: Bool { showsFuel && showsExpenses }
@@ -740,7 +737,6 @@ private struct RecapCostAmountCards: View {
                         amount: estimatedFuelCost,
                         labelKey: "premium.recap.fuel_estimate",
                         stop: RecapSpendInk.fuelStop,
-                        ink: RecapSpendInk.fuel(scheme: colorScheme, palette: shellPalette),
                         compact: showsBoth
                     )
                 }
@@ -749,7 +745,6 @@ private struct RecapCostAmountCards: View {
                         amount: paidExpenses,
                         labelKey: "premium.recap.logged_expenses",
                         stop: RecapSpendInk.expensesStop,
-                        ink: RecapSpendInk.expenses(scheme: colorScheme, palette: shellPalette),
                         compact: showsBoth
                     )
                 }
@@ -771,7 +766,6 @@ private struct RecapCostAmountCard: View {
     let amount: Double
     let labelKey: String
     let stop: Int
-    let ink: Color
     var compact: Bool
 
     var body: some View {
@@ -784,12 +778,12 @@ private struct RecapCostAmountCard: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
             }
+            // Fuel tint is the same family as the frozen plate, so a tinted figure vanishes.
             Text(verbatim: FuelCostCalculator.formatCost(amount))
                 .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(ink)
+                .glassPrimaryInk()
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
-                .shadow(color: ink.opacity(0.4), radius: 10)
         }
         .frame(minWidth: compact ? 118 : 160, maxWidth: compact ? 128 : 200, alignment: .leading)
         .glassCard(

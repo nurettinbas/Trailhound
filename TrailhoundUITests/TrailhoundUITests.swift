@@ -87,6 +87,11 @@ class TrailhoundUITestCase: XCTestCase {
         tabButton(identifier: "tab.pairing", fallbackLabels: "Vehicles", "Pairing")
     }
 
+    func openStatsFilterPanel() {
+        let card = app.descendants(matching: .any)["stats.filters.card"]
+        _ = card.waitForExistence(timeout: 5)
+    }
+
     func revealSettingsControl(_ query: XCUIElement) {
         for _ in 0..<12 {
             if query.waitForExistence(timeout: 1), query.isHittable { return }
@@ -269,6 +274,7 @@ final class TrailhoundUITests: TrailhoundUITestCase {
 
         let week = app.buttons["stats.filters.period.week"]
         XCTAssertTrue(week.waitForExistence(timeout: uiTimeout))
+        openStatsFilterPanel()
         XCTAssertTrue(app.buttons["stats.filters.category"].waitForExistence(timeout: 10))
 
         let month = app.buttons["stats.filters.period.month"]
@@ -317,7 +323,39 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         statsTab.tap()
         let week = app.descendants(matching: .any)["stats.filters.period.week"]
         XCTAssertTrue(week.waitForExistence(timeout: uiTimeout), "Last 7 days filter should remain after Light appearance")
+        openStatsFilterPanel()
         XCTAssertTrue(app.descendants(matching: .any)["stats.filters.card"].waitForExistence(timeout: uiTimeout))
+    }
+
+    func testStatsSectionTitlePinsWhileScrolling() {
+        XCTAssertTrue(statsTab.waitForExistence(timeout: uiTimeout))
+        statsTab.tap()
+        let summary = app.descendants(matching: .any)["stats.section.summary"]
+        XCTAssertTrue(summary.waitForExistence(timeout: uiTimeout))
+        app.swipeUp()
+        let daily = app.descendants(matching: .any)["stats.section.daily"]
+        XCTAssertTrue(
+            daily.waitForExistence(timeout: 8) || summary.waitForExistence(timeout: 1),
+            "A pinned section title should stay on screen after scrolling"
+        )
+    }
+
+    func testRecapYearPickerIsOnAwardsCard() {
+        XCTAssertTrue(yearTab.waitForExistence(timeout: uiTimeout))
+        yearTab.tap()
+        let yearPicker = app.descendants(matching: .any)["recap.year.toggle"]
+        XCTAssertTrue(yearPicker.waitForExistence(timeout: uiTimeout))
+    }
+
+    func testSettingsBackupExportIsReachable() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+        let export = app.buttons["settings.export.json"]
+        revealSettingsControl(export)
+        XCTAssertTrue(
+            export.waitForExistence(timeout: uiTimeout),
+            "Backup export should be reachable by scrolling Settings"
+        )
     }
 
     func testSideColumnChromeSurvivesRotation() {

@@ -5,6 +5,8 @@ struct StatsForecastCard: View {
     let forecast: MonthCostForecast
     let currencyCode: String
     var isExpanded: Bool = false
+    var showsTitle: Bool = true
+    var showsExpandControl: Bool = true
     var onOpen: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -31,16 +33,18 @@ struct StatsForecastCard: View {
             }
             .buttonStyle(.trailhoundCardPress)
             .allowsHitTesting(!isExpanded)
-            Button(action: onOpen) {
-                GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
-                    .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
-                    .contentShape(Rectangle())
+            if showsExpandControl {
+                Button(action: onOpen) {
+                    GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
+                        .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.glassPlainHit)
+                .accessibilityHidden(true)
+                .allowsHitTesting(!isExpanded)
+                .padding(.top, StatsCardTokens.expandGlyphPosterInsets.top)
+                .padding(.trailing, StatsCardTokens.expandGlyphPosterInsets.trailing)
             }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityHidden(true)
-            .allowsHitTesting(!isExpanded)
-            .padding(.top, StatsCardTokens.expandGlyphPosterInsets.top)
-            .padding(.trailing, StatsCardTokens.expandGlyphPosterInsets.trailing)
         }
         .glassEntranceGlint(
             cornerRadius: StatsCardTokens.radius,
@@ -63,7 +67,8 @@ struct StatsForecastCard: View {
             forecast: forecast,
             currencyCode: currencyCode,
             height: StatsCardTokens.posterHeight,
-            reservesExpandSlot: true,
+            reservesExpandSlot: showsExpandControl,
+            showsTitle: showsTitle,
             showsTrend: showsTrend
         )
     }
@@ -78,7 +83,9 @@ struct StatsForecastCard: View {
                     cornerRadius: StatsCardTokens.nestedRadius
                 )
             }
-            StatsForecastTitleChip()
+            if showsTitle {
+                StatsForecastTitleChip()
+            }
             StatsForecastHeroCopy(
                 forecast: forecast,
                 currencyCode: currencyCode,
@@ -379,6 +386,7 @@ struct StatsForecastHeroPoster: View {
     let currencyCode: String
     var height: CGFloat
     var reservesExpandSlot: Bool
+    var showsTitle: Bool = true
     var showsTrend: Bool
     var cornerRadius: CGFloat = StatsCardTokens.radius
 
@@ -404,11 +412,13 @@ struct StatsForecastHeroPoster: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 0) {
-                    StatsForecastTitleChip()
-                    Spacer(minLength: 0)
+                if showsTitle {
+                    HStack(spacing: 0) {
+                        StatsForecastTitleChip()
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.trailing, reservesExpandSlot ? 44 : 0)
                 }
-                .padding(.trailing, reservesExpandSlot ? 44 : 0)
                 Spacer(minLength: 0)
                 StatsForecastHeroCopy(
                     forecast: forecast,
@@ -464,9 +474,17 @@ struct StatsForecastExpandOverlay: View {
                     .position(x: frame.midX, y: frame.midY)
             }
             .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)
+            .overlay {
+                CardExpandBackSwipeStrip(
+                    enabled: isExpanded,
+                    topClearance: topInset + CardExpandBackSwipe.headerClearance,
+                    onClose: onClose
+                )
+            }
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.premium.forecast.expanded")
+        .accessibilityAction(.escape) { onClose() }
     }
 
     private var windowSafeInsets: UIEdgeInsets {

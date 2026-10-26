@@ -771,9 +771,10 @@ final class StatsViewModelTests: XCTestCase {
 
     func testDailyTripCountsAndNightDistanceBucketByDay() {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let now = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: Date()) ?? Date()
+        let today = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-        let interval = DateInterval(start: yesterday, end: Date())
+        let interval = DateInterval(start: yesterday, end: now)
 
         let todayTrip = Trip(
             startedAt: today.addingTimeInterval(3600),

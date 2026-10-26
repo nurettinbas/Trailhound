@@ -6,6 +6,26 @@ private enum YearListAnchor {
     static let badges = "year.badges.card"
 }
 
+private enum RecapSection: String, CaseIterable, Hashable, Identifiable {
+    case awards
+    case badges
+    case routes
+    case forecast
+    case recap
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .awards: L10n.string("stats.awards.section")
+        case .badges: L10n.string("premium.achievements.title")
+        case .routes: L10n.string("premium.routes.title")
+        case .forecast: L10n.string("premium.forecast.title")
+        case .recap: L10n.tabYear
+        }
+    }
+}
+
 struct YearView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable private var settings = AppSettings.shared
@@ -21,6 +41,7 @@ struct YearView: View {
     @State private var recapSnapshot: YearRecapSnapshot?
     @State private var achievements: [AchievementDisplay] = []
     @State private var routeAggregates: [FrequentRouteAggregate] = []
+    @State private var expandCloseInFlight = false
     @State private var showForecastDetail = false
     @State private var forecastExpanded = false
     @State private var forecastCardFrame: CGRect = .zero
@@ -43,6 +64,10 @@ struct YearView: View {
     @State private var selectedAwardsYear = Calendar.current.component(.year, from: Date())
     @State private var yearAwardsRefreshTask: Task<Void, Never>?
     @State private var badgeScrollRequest = 0
+    @State private var recapSectionTracker = StickySectionTracker<RecapSection>(
+        order: RecapSection.allCases,
+        initial: .awards
+    )
 
     var body: some View {
         yearList
@@ -139,52 +164,114 @@ struct YearView: View {
 
     @ViewBuilder
     private var yearList: some View {
-        ScrollViewReader { proxy in
-            List {
-            Section {
-                if pairsWideCards {
-                    TrailhoundHingeCardStack {
+        if pairsWideCards {
+            ScrollView {
+                TrailhoundHingeCardStack {
+                    yearAwardsCard
+                        .glassCard(
+                            cornerRadius: StatsCardTokens.radius,
+                            contentInset: StatsCardTokens.contentInset
+                        )
+                    badgesCard
+                        .glassCard(
+                            cornerRadius: StatsCardTokens.radius,
+                            contentInset: StatsCardTokens.contentInset
+                        )
+                    routesCard
+                        .glassCard(
+                            cornerRadius: StatsCardTokens.radius,
+                            contentInset: StatsCardTokens.contentInset
+                        )
+                    forecastCard
+                        .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
+                    recapCard
+                }
+                .padding(16)
+            }
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    recapPinnedSection(.awards, title: RecapSection.awards.title) {
                         yearAwardsCard
-                            .glassCard(
-                                cornerRadius: StatsCardTokens.radius,
-                                contentInset: StatsCardTokens.contentInset
-                            )
+                    }
+                    recapPinnedSection(.badges, title: RecapSection.badges.title, trailing: { badgesExpandButton }) {
                         badgesCard
-                            .glassCard(
-                                cornerRadius: StatsCardTokens.radius,
-                                contentInset: StatsCardTokens.contentInset
-                            )
+                    }
+                    recapPinnedSection(.routes, title: RecapSection.routes.title, trailing: { routesExpandButton }) {
                         routesCard
-                            .glassCard(
-                                cornerRadius: StatsCardTokens.radius,
-                                contentInset: StatsCardTokens.contentInset
-                            )
+                    }
+                    recapPinnedSection(
+                        .forecast,
+                        title: RecapSection.forecast.title,
+                        contentInset: 0,
+                        trailing: { forecastExpandButton }
+                    ) {
                         forecastCard
-                            .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
+                    }
+                    recapPinnedSection(.recap, title: RecapSection.recap.title, applyCard: false) {
                         recapCard
                     }
-                } else {
-                    yearAwardsCard
-                        .statsFullCard()
-                    badgesCard
-                        .statsFullCard()
-                    routesCard
-                        .statsFullCard()
-                    forecastCard
-                        .statsFullCard(contentInset: 0)
-                    recapCard
-                        .statsCardListRow()
                 }
+                .scrollTargetLayout()
+                .padding(.horizontal, GlassTokens.panelHorizontalInset)
+                .padding(.bottom, 8)
             }
-            }
+            .glassCollapsingScroll()
+            .scrollPosition(id: recapScrollPosition, anchor: .top)
             .onChange(of: badgeScrollRequest) { _, _ in
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
-                    proxy.scrollTo(YearListAnchor.badges, anchor: .center)
+                    recapSectionTracker.beginTapScroll(to: .badges)
+                    recapSectionTracker.endTapScroll()
                 }
             }
         }
+    }
+
+    private var recapScrollPosition: Binding<RecapSection?> {
+        Binding(
+            get: { recapSectionTracker.visibleSection },
+            set: { recapSectionTracker.applyScrollPosition($0) }
+        )
+    }
+
+    @ViewBuilder
+    private func recapPinnedSection<Content: View>(
+        _ section: RecapSection,
+        title: String,
+        contentInset: CGFloat = StatsCardTokens.contentInset,
+        applyCard: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        recapPinnedSection(
+            section,
+            title: title,
+            contentInset: contentInset,
+            applyCard: applyCard,
+            trailing: { EmptyView() },
+            content: content
+        )
+    }
+
+    @ViewBuilder
+    private func recapPinnedSection<Content: View, Trailing: View>(
+        _ section: RecapSection,
+        title: String,
+        contentInset: CGFloat = StatsCardTokens.contentInset,
+        applyCard: Bool = true,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        GlassCollapsingCard(
+            title: title,
+            accessibilityIdentifier: "recap.section.\(section.rawValue)",
+            contentInset: contentInset,
+            applyCard: applyCard,
+            trailing: trailing,
+            content: content
+        )
+        .id(section)
     }
 
     /// Open book and a wide landscape phone. Cards pack down whichever side is shorter.
@@ -199,6 +286,8 @@ struct YearView: View {
             years: awardsYears,
             selectedYear: $selectedAwardsYear,
             reduceMotion: reduceMotion,
+            showsYearPicker: true,
+            showsSectionTitle: pairsWideCards,
             onAppear: {
                 scheduleYearAwardsRefresh(delayMilliseconds: 0)
             }
@@ -209,6 +298,8 @@ struct YearView: View {
         StatsAchievementsStrip(
             achievements: achievements,
             isExpanded: showAchievements,
+            showsTitle: pairsWideCards,
+            showsExpandControl: pairsWideCards,
             onOpen: openAchievements
         )
         .id(YearListAnchor.badges)
@@ -227,6 +318,8 @@ struct YearView: View {
         FrequentRoutesPreviewCard(
             aggregates: routeAggregates,
             isExpanded: showRoutesMap,
+            showsTitle: pairsWideCards,
+            showsExpandControl: pairsWideCards,
             onOpen: openRoutesMap
         )
         .opacity(showRoutesMap ? 0 : 1)
@@ -240,11 +333,55 @@ struct YearView: View {
         }
     }
 
+    private var badgesExpandButton: some View {
+        recapCornerExpandButton(
+            identifier: "stats.premium.achievements",
+            hidden: showAchievements,
+            action: openAchievements
+        )
+    }
+
+    private var routesExpandButton: some View {
+        recapCornerExpandButton(
+            identifier: "stats.premium.routes",
+            hidden: showRoutesMap,
+            action: openRoutesMap
+        )
+    }
+
+    private var forecastExpandButton: some View {
+        recapCornerExpandButton(
+            identifier: "stats.premium.forecast.expand",
+            hidden: showForecastDetail,
+            action: openForecastDetail
+        )
+        .accessibilityHidden(true)
+    }
+
+    private func recapCornerExpandButton(
+        identifier: String,
+        hidden: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
+                .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.glassPlainHit)
+        .accessibilityLabel(L10n.mapFullscreen)
+        .accessibilityIdentifier(identifier)
+        .opacity(hidden ? 0 : 1)
+        .allowsHitTesting(!hidden)
+    }
+
     private var forecastCard: some View {
         StatsForecastCard(
             forecast: forecast,
             currencyCode: settings.fuelCurrency.rawValue,
             isExpanded: showForecastDetail,
+            showsTitle: pairsWideCards,
+            showsExpandControl: pairsWideCards,
             onOpen: openForecastDetail
         )
         .opacity(showForecastDetail ? 0 : 1)
@@ -439,6 +576,7 @@ struct YearView: View {
     }
 
     private func closeAchievements() {
+        guard beginExpandClose() else { return }
         TrailhoundHaptics.selection()
         if reduceMotion {
             var transaction = Transaction()
@@ -446,6 +584,7 @@ struct YearView: View {
             withTransaction(transaction) {
                 achievementsExpanded = false
                 showAchievements = false
+                expandCloseInFlight = false
             }
             return
         }
@@ -468,6 +607,7 @@ struct YearView: View {
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
                     showAchievements = false
+                    expandCloseInFlight = false
                 }
             }
         }
@@ -509,6 +649,7 @@ struct YearView: View {
     }
 
     private func closeRoutesMap() {
+        guard beginExpandClose() else { return }
         TrailhoundHaptics.selection()
         if reduceMotion {
             var transaction = Transaction()
@@ -516,6 +657,7 @@ struct YearView: View {
             withTransaction(transaction) {
                 routesExpanded = false
                 showRoutesMap = false
+                expandCloseInFlight = false
             }
             return
         }
@@ -526,6 +668,7 @@ struct YearView: View {
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 showRoutesMap = false
+                expandCloseInFlight = false
             }
         }
     }
@@ -551,6 +694,7 @@ struct YearView: View {
     }
 
     private func closeForecastDetail() {
+        guard beginExpandClose() else { return }
         TrailhoundHaptics.selection()
         if reduceMotion {
             var transaction = Transaction()
@@ -558,6 +702,7 @@ struct YearView: View {
             withTransaction(transaction) {
                 forecastExpanded = false
                 showForecastDetail = false
+                expandCloseInFlight = false
             }
             return
         }
@@ -568,8 +713,15 @@ struct YearView: View {
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 showForecastDetail = false
+                expandCloseInFlight = false
             }
         }
+    }
+
+    private func beginExpandClose() -> Bool {
+        guard !expandCloseInFlight else { return false }
+        expandCloseInFlight = true
+        return true
     }
 
     private func consumeYearDeepLink() {

@@ -529,6 +529,46 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(copyTop, left.maxY)
     }
 
+    func testDuoStoryStageCentersOnTheWindowNotTheSideTab() {
+        let phone = RecapStoryStageMetrics.placement(
+            containerWidth: 390,
+            leadingInset: 0,
+            trailingInset: 0,
+            layoutDirection: .leftToRight,
+            maxWidth: nil
+        )
+        XCTAssertEqual(phone.width, 390, accuracy: 0.1)
+        XCTAssertEqual(phone.midX, 195, accuracy: 0.1)
+
+        let duo = RecapStoryStageMetrics.placement(
+            containerWidth: 1000,
+            leadingInset: 0,
+            trailingInset: 80,
+            layoutDirection: .leftToRight,
+            maxWidth: 400
+        )
+        XCTAssertEqual(duo.width, 400, accuracy: 0.1)
+        XCTAssertEqual(duo.midX, 540, accuracy: 0.1)
+
+        let mirrored = RecapStoryStageMetrics.placement(
+            containerWidth: 1000,
+            leadingInset: 0,
+            trailingInset: 80,
+            layoutDirection: .rightToLeft,
+            maxWidth: 400
+        )
+        XCTAssertEqual(mirrored.midX, 460, accuracy: 0.1)
+
+        let fullBleed = RecapStoryStageMetrics.placement(
+            containerWidth: 1000,
+            leadingInset: 0,
+            trailingInset: 80,
+            layoutDirection: .leftToRight,
+            maxWidth: nil
+        )
+        XCTAssertEqual(fullBleed.midX, 500, accuracy: 0.1)
+    }
+
     func testPurposeLoaderResolvesCustomCategoryWinner() async throws {
         let container = try ModelContainerFactory.makeInMemory()
         let context = container.mainContext

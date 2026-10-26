@@ -108,6 +108,19 @@ final class ShellPaletteTests: XCTestCase {
         }
     }
 
+    /// The cost-card figure must stay primary glass ink. Fuel stop 0 is the shell tint, and the frozen Light plate is that same family.
+    func testRecapFuelInkDisappearsOnLightCostPlate() {
+        for palette in ShellPalette.allCases {
+            let ink = RecapSpendInk.fuelRGB(scheme: .light, palette: palette)
+            let plate = palette.opaquePanelFillRGB(for: .light)
+            XCTAssertLessThan(
+                GlassContrast.contrastRatio(ink, plate),
+                GlassContrast.supportingContrast,
+                palette.rawValue
+            )
+        }
+    }
+
     func testOrangeLightIsNotNavy() {
         let orange = ShellPalette.orange.atmosphere(for: .light)
         XCTAssertNotEqual(orange.mid.color, TrailhoundBrandColors.atmosphereMid)

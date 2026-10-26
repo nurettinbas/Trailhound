@@ -12,7 +12,7 @@ Trailhound optimizes frame time in a few hot paths. Use this when profiling regr
 
 ## Cold-launch intro
 
-- The cold-launch intro (`LaunchIntroSceneView`) is the real app icon on a `CALayer`: road, hound, and corner stopwatch. Scale, the stopwatch rock and hands, the hound's joint swings (`LaunchIntroHoundRig`: 11 nested part layers, each sampled 16 times per stride), and the corner close are `CAKeyframeAnimation`s. Nothing writes SwiftUI state per frame, so the first SwiftData fetch and tab build cannot hitch it.
+- The cold-launch intro (`LaunchIntroSceneView`) is the real app icon on a `CALayer`: road, hound, and corner stopwatch. Scale, the stopwatch rock and hands, the hound's joint swings (`LaunchIntroHoundLayerTree` + `LaunchIntroHoundRig`: 11 nested part layers, each sampled 16 times per stride), and the corner close are `CAKeyframeAnimation`s. Nothing writes SwiftUI state per frame, so the first SwiftData fetch and tab build cannot hitch it. The Start control mounts that same tree and loops one stride (`launchIntroGallopStride`); tint changes recolor the parts and do not restart the loop. The display-link ticker only drives the speed streaks under the hound.
 - The app hierarchy (onboarding, lock, tabs) is built only after the intro’s first frame is committed (`onStarted`), so the system launch screen waits for one CALayer tree, not every tab. Time before `didFinishLaunching` is the system loading the process; app code before the first intro frame is about 150 ms.
 - The system launch screen is `LaunchBackground` (white / black). It cannot follow the theme because it is drawn before app code runs; the intro eases from it into the theme plate.
 - No offscreen passes: the close animates the plate’s `bounds` and `cornerRadius` (no full-screen shape mask), and the picture and content fade with `allowsGroupOpacity = false`. The stopwatch body (ring, ticks, button) is one filled shape; only the two hands and the dash phase change per frame, and those stop when the icon lands.
@@ -224,7 +224,9 @@ UTC offset is resolved once per trip instead of calling `Calendar.component(.hou
 
 ## Stats tab
 
-- **One chrome, still a `List`.** Filter, 2-up goal/hero, summary, each chart pager, and logged vehicle expenses are separate `List` rows. Do not collapse Stats into a `ScrollView` + `VStack` of cards (loses below-fold deferral). Year recap / badges / routes / forecast / year awards live on the Recap tab.
+- **One chrome, collapsing cards.** Phone Stats is a `ScrollView` + `LazyVStack` of `GlassCollapsingCard` so below-fold cards stay deferred. Do not collapse it into a `VStack` of cards. Each title sits on its glass plate. The body scrolls up under the title; the title strip then fades out in place and fades back in on the way down (GeometryReader + disabled-animation state, no extra Material). The filter card stays in the list. Wide/Duo layouts keep the filter card open in the leading rail and collapse headers on the trailing column. Year recap / badges / routes / forecast / year awards live on the Recap tab.
+- **Section identity stays stable.** Chart sections must not use `.id(statsFilterFingerprint)` — that rebuilds pagers on every filter change. `Chart` animates the new series.
+- **Pager page is local.** `StatsChartPager` keeps the swipe in a local `@State` and writes the parent binding only when the scroll settles (`onScrollPhaseChange` on iOS 18+). `.glassCarouselPage()` is GPU-only.
 - **One `Material` per card.** `statsFullCard` / `statsHalfCard` use `glassCard` on a **clear** list-row background. Nested tiles are frost *fills*, not extra `ultraThinMaterial`. Never stack `glassListRow` behind an inner `glassCard`.
 - **No `GeometryReader` in the 2-up row.** Half cards use a fixed `StatsCardTokens.halfMinHeight`.
 - Chart aggregations build into a `StatsDisplaySnapshot` on filter/store changes, not on every scroll frame.
@@ -341,8 +343,9 @@ write path as daily rollups. They are **derived**, not a second source of truth:
   (`CADisplayLink` at 12 fps, same host as the recording road) because iOS pauses `TimelineView` and `.task` sleep inside a `List`, which froze medals on a stale tick.
   Gallery overlay uses the same `achievementIdleClock` after the morph (not `withAnimation` 0→1, which parks the 100 km car at opacity 0). Tab switches use `TrailhoundMotion.tabSwitch`.
   Do not put `animation = nil` on `TabView` — that pauses `TimelineView.animation` (recap / onboarding)
-  and used to freeze the recording road. List-hosted clocks (recording road, Start hound, steering-wheel
-  badge, stop-credits road) use `TrailhoundDisplayLinkTicker`, not `TimelineView`. Recap / onboarding
+  and used to freeze the recording road.   List-hosted clocks (recording road, Start speed streaks, steering-wheel
+  badge, stop-credits road) use `TrailhoundDisplayLinkTicker`, not `TimelineView`. The Start hound
+  bones are Core Animation on `LaunchIntroHoundLayerTree` and do not write SwiftUI state per frame. Recap / onboarding
   (not inside a List) still use `TrailhoundIndependentClock.periodic`.
   Reduce Motion and UI tests skip idle. Hold / background / Reduce Motion / UI tests freeze `t`. The Recap hub
   teaser may idle-loop at 8 fps while the row is on-screen (frozen for Reduce Motion, Low Power,

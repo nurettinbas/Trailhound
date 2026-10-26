@@ -4,6 +4,8 @@ import UIKit
 struct StatsAchievementsStrip: View {
     let achievements: [AchievementDisplay]
     var isExpanded: Bool
+    var showsTitle: Bool = true
+    var showsExpandControl: Bool = true
     var onOpen: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -11,10 +13,12 @@ struct StatsAchievementsStrip: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(L10n.string("premium.achievements.title"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
-                    .padding(.trailing, 44)
+                if showsTitle {
+                    Text(L10n.string("premium.achievements.title"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StatsTextColor.secondary(for: colorScheme))
+                        .padding(.trailing, 44)
+                }
                 if visible.isEmpty {
                     Text(L10n.string("premium.achievements.empty"))
                         .font(.caption)
@@ -24,18 +28,24 @@ struct StatsAchievementsStrip: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: onOpen) {
-                GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
-                    .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
-                    .contentShape(Rectangle())
+            if showsExpandControl {
+                expandControl
             }
-            .buttonStyle(.glassPlainHit)
-            .accessibilityLabel(L10n.mapFullscreen)
-            .accessibilityIdentifier("stats.premium.achievements")
-            .allowsHitTesting(!isExpanded)
-            .offset(x: StatsCardTokens.expandGlyphOffset.width, y: StatsCardTokens.expandGlyphOffset.height)
         }
         .padding(.vertical, 4)
+    }
+
+    private var expandControl: some View {
+        Button(action: onOpen) {
+            GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
+                .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.glassPlainHit)
+        .accessibilityLabel(L10n.mapFullscreen)
+        .accessibilityIdentifier("stats.premium.achievements")
+        .allowsHitTesting(!isExpanded)
+        .offset(x: StatsCardTokens.expandGlyphOffset.width, y: StatsCardTokens.expandGlyphOffset.height)
     }
 
     @ViewBuilder
@@ -383,9 +393,17 @@ struct AchievementGalleryExpandOverlay: View {
                     .position(x: frame.midX, y: frame.midY)
             }
             .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)
+            .overlay {
+                CardExpandBackSwipeStrip(
+                    enabled: isExpanded,
+                    topClearance: topInset + CardExpandBackSwipe.headerClearance,
+                    onClose: onClose
+                )
+            }
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.achievements.expanded")
+        .accessibilityAction(.escape) { onClose() }
         .onAppear(perform: syncIdleClock)
         .onChange(of: isExpanded) { _, _ in
             syncIdleClock()

@@ -2,6 +2,32 @@ import CoreLocation
 import SwiftUI
 import UIKit
 
+/// Where the 9:16 recap column sits. A side tab insets only the trailing edge, so
+/// centering in that safe area leaves every story page on the leading side of a Duo.
+enum RecapStoryStageMetrics {
+    struct Placement: Equatable {
+        var width: CGFloat
+        var midX: CGFloat
+    }
+
+    static func placement(
+        containerWidth: CGFloat,
+        leadingInset: CGFloat,
+        trailingInset: CGFloat,
+        layoutDirection: LayoutDirection,
+        maxWidth: CGFloat?
+    ) -> Placement {
+        let container = max(containerWidth, 1)
+        let cap = maxWidth.map { max($0, 1) } ?? container
+        let width = min(cap, container)
+        let slack = (container - width) / 2
+        let towardTrailing = (trailingInset - leadingInset) / 2
+        let physical = layoutDirection == .rightToLeft ? -towardTrailing : towardTrailing
+        let shift = min(max(physical, -slack), slack)
+        return Placement(width: width, midX: container / 2 + shift)
+    }
+}
+
 struct YearRecapStoryView: View {
     var onClose: () -> Void
 
@@ -10,6 +36,7 @@ struct YearRecapStoryView: View {
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.layoutDirection) private var layoutDirection
 
     @State private var frozen: YearRecapSnapshot
     @State private var pages: [RecapStoryPage]
@@ -82,14 +109,25 @@ struct YearRecapStoryView: View {
     }
 
     var body: some View {
-        ZStack {
-            if layout.layoutClass != .phone {
-                AtmosphericBackground()
+        GeometryReader { geo in
+            let place = RecapStoryStageMetrics.placement(
+                containerWidth: geo.size.width,
+                leadingInset: geo.safeAreaInsets.leading,
+                trailingInset: geo.safeAreaInsets.trailing,
+                layoutDirection: layoutDirection,
+                maxWidth: layout.storyStageMaxWidth
+            )
+            ZStack {
+                if layout.layoutClass != .phone {
+                    AtmosphericBackground()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
+                storyStage
+                    .padding(.horizontal, layout.layoutClass == .duoOpen ? GlassTokens.hingeGutter : 0)
+                    .frame(width: place.width, height: geo.size.height)
+                    .position(x: place.midX, y: geo.size.height / 2)
             }
-            storyStage
-                .frame(maxWidth: layout.storyStageMaxWidth ?? .infinity)
-                .padding(.horizontal, layout.layoutClass == .duoOpen ? GlassTokens.hingeGutter : 0)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
@@ -208,6 +246,9 @@ struct YearRecapStoryView: View {
                     : TrailhoundMotion.recapCopyTransition(reduceMotion: freezeStoryMotion)
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Duo portrait insets only the trailing edge. The road ignores that inset;
+            // the copy must too, or every page’s text sits left of the canvas.
+            .ignoresSafeArea(edges: .horizontal)
             .padding(.bottom, currentPage == .cost ? 0 : 12)
             .onGlassShell()
         }
