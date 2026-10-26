@@ -902,7 +902,9 @@ struct TripListView: View {
         ) {
             recordingOrientationLivePane(folds: folds)
         } list: {
-            tripList(scrollProxy: scrollProxy, paintsAtmosphere: !folds)
+            // The stage paints one atmosphere for the window. A second one clipped to the
+            // list pane reads as a lighter box beside the card in phone landscape.
+            tripList(scrollProxy: scrollProxy, paintsAtmosphere: false)
         }
     }
 
