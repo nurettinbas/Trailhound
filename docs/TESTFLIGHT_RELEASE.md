@@ -11,6 +11,7 @@
 
 - [ ] `./scripts/run_tests.sh` green (unit + UI smoke)
 - [ ] GitHub Actions `iOS Tests` workflow green
+- [ ] Every feature merged since the last release passed the main feature gate (unit, snapshot, and UI tests; security review; App Review check) — see `.cursor/skills/main-feature-gate/SKILL.md`
 
 ## Xcode setup
 

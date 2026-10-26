@@ -174,6 +174,7 @@
 		A1GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift */; };
 		A1RECCARDANCHOR00000001 /* RecordingCardAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */; };
 		A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */; };
+		A1VEHICLEINSPECT00000001 /* VehicleInspectLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEINSPECT00000001 /* VehicleInspectLoader.swift */; };
 		A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */; };
 		D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */; };
 		1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */; };
@@ -631,6 +632,7 @@
 		A2GLASSBUTTONSTYLES0001 /* GlassButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButtonStyles.swift; sourceTree = "<group>"; };
 		A2RECCARDANCHOR00000001 /* RecordingCardAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCardAnchor.swift; sourceTree = "<group>"; };
 		A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleEditorDraft.swift; sourceTree = "<group>"; };
+		A2VEHICLEINSPECT00000001 /* VehicleInspectLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleInspectLoader.swift; sourceTree = "<group>"; };
 		A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoStore.swift; sourceTree = "<group>"; };
 		894787C463374A1D9639AD1C /* ReceiptAmountParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptAmountParser.swift; sourceTree = "<group>"; };
 		349B60A75B4442C9A9C3049A /* ExpenseReceiptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReceiptStore.swift; sourceTree = "<group>"; };
@@ -1280,6 +1282,7 @@
 				A2SCREENIDLELOCK000001 /* ScreenIdleLock.swift */,
 				A2DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift */,
 				A2VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift */,
+				A2VEHICLEINSPECT00000001 /* VehicleInspectLoader.swift */,
 				A2VSCHEDDRAFT00000001 /* VehicleScheduleEditorDraft.swift */,
 				A2VEXPINSTPLAN000001 /* VehicleExpenseInstallmentPlan.swift */,
 				A2VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift */,
@@ -1834,6 +1837,7 @@
 				A1SCREENIDLELOCK000001 /* ScreenIdleLock.swift in Sources */,
 				A1DISPLAYLINKCLOCK00001 /* DisplayLinkClock.swift in Sources */,
 				A1VEHICLEEDITOR00000001 /* VehicleEditorDraft.swift in Sources */,
+				A1VEHICLEINSPECT00000001 /* VehicleInspectLoader.swift in Sources */,
 				A1VEHICLEPHOTOSTORE0001 /* VehiclePhotoStore.swift in Sources */,
 				D9B914282A434DFD8A3A74B1 /* ReceiptAmountParser.swift in Sources */,
 				1502746131754AB6B6DC403A /* ExpenseReceiptStore.swift in Sources */,

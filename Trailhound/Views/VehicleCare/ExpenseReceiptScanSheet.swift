@@ -104,7 +104,7 @@ struct ExpenseReceiptScanSheet: View {
                 shape
                     .fill(Color.white.opacity(0.12))
                     .frame(height: Self.imageMaxHeight * 0.6)
-                    .overlay { ProgressView() }
+                    .overlay { VehicleInspectLoader(size: .hero) }
             }
         }
         .clipShape(shape)
@@ -156,7 +156,7 @@ struct ExpenseReceiptScanSheet: View {
         switch phase {
         case .scanning:
             HStack(spacing: 10) {
-                ProgressView()
+                VehicleInspectLoader(size: .inline)
                 Text(L10n.string("vehicles.care.expense.receipt.scan.reading"))
                     .font(.subheadline.weight(.semibold))
                     .glassPrimaryInk()

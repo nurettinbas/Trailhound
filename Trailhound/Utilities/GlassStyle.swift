@@ -38,6 +38,21 @@ enum GlassTokens {
     static let nestedChoiceRadius: CGFloat = 12
     /// Tinted glyph disc on a featured list row (Settings → Support the developer).
     static let featuredRowDiscSide: CGFloat = 32
+    /// Camera-style option circle. The circle is the glass; the caption sits under it.
+    static let optionCircleSide: CGFloat = 64
+    /// Space between an option circle and the caption under it.
+    static let optionCaptionSpacing: CGFloat = 8
+    /// Camera-style bottom glass panel (`GlassMorphPanel`): gap to the screen edges.
+    static let morphPanelEdgeInset: CGFloat = 8
+    /// Concentric with the display corner once inset by `morphPanelEdgeInset`.
+    static let morphPanelCornerRadius: CGFloat = 44
+    /// Panel scale when it starts to grow, and when it finishes shrinking.
+    static let morphPanelOpenScale: CGFloat = 0.4
+    static let morphPanelCloseScale: CGFloat = 0.55
+    /// Content blur at the start of the grow and the end of the shrink.
+    static let morphPanelBlur: CGFloat = 14
+    /// Drag past this (or flick past twice this) to close.
+    static let morphPanelDismissDistance: CGFloat = 90
 
     /// Compact frozen circle on a live map (Stats overlay collapse).
     static let toolbarFrozenCircleSide: CGFloat = 36
@@ -1671,6 +1686,28 @@ struct GlassNoticeCallout: View {
     }
 }
 
+/// Palette-tinted glyph disc (featured rows, glass zoom panels). White glyph, 0.72 white rim.
+struct GlassPaletteDisc: View {
+    let systemImage: String
+    var side: CGFloat = GlassTokens.featuredRowDiscSide
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.white)
+            .frame(width: side, height: side)
+            .background {
+                Circle()
+                    .fill(shellPalette.tintColor(for: colorScheme))
+                    .overlay { Circle().strokeBorder(Color.white.opacity(0.72), lineWidth: 1) }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
 /// One standout row in a plain glass list: palette disc + white glyph, semibold title,
 /// optional footnote, trailing chevron. Use as a `Button` label; the row stays `glassRow`.
 struct GlassFeaturedRowLabel: View {
@@ -1678,21 +1715,9 @@ struct GlassFeaturedRowLabel: View {
     let title: String
     var subtitle: String? = nil
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.shellPalette) private var shellPalette
-
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.white)
-                .frame(width: GlassTokens.featuredRowDiscSide, height: GlassTokens.featuredRowDiscSide)
-                .background {
-                    Circle()
-                        .fill(shellPalette.tintColor(for: colorScheme))
-                        .overlay { Circle().strokeBorder(Color.white.opacity(0.72), lineWidth: 1) }
-                }
-                .accessibilityHidden(true)
+            GlassPaletteDisc(systemImage: systemImage)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.semibold))
@@ -1734,6 +1759,393 @@ private struct GlassElevatedTileModifier: ViewModifier {
 extension View {
     func glassElevatedTile() -> some View {
         modifier(GlassElevatedTileModifier())
+    }
+}
+
+/// 64 pt Liquid Glass circle with a caption and an optional detail line under it.
+/// The circle reuses `.glassCircleChrome` (Reduce Transparency and iOS 17–18 fall back there).
+struct GlassOptionCircle: View {
+    let systemImage: String
+    var caption: String
+    var detail: String? = nil
+    var isLoading: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        VStack(spacing: GlassTokens.optionCaptionSpacing) {
+            circle
+            VStack(spacing: 2) {
+                Text(caption)
+                    .font(.caption2.weight(.semibold))
+                    .textCase(.uppercase)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .glassSecondaryInk()
+                if let detail, !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var circle: some View {
+        Group {
+            if isLoading {
+                ProgressView()
+                    .controlSize(.regular)
+                    .tint(shellPalette.tintColor(for: colorScheme))
+            } else {
+                Image(systemName: systemImage)
+                    .font(.title.weight(.semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(shellPalette.tintColor(for: colorScheme))
+                    .contentTransition(.identity)
+            }
+        }
+        .glassCircleChrome(side: GlassTokens.optionCircleSide)
+    }
+}
+
+/// Centered option circles, including a short last row. On iOS 26 the circles share one glass pass.
+struct GlassOptionGrid<Content: View>: View {
+    var columns: Int
+    var spacing: CGFloat
+    private let content: Content
+
+    init(
+        columns: Int = 3,
+        spacing: CGFloat = GlassTokens.sectionSpacing,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.columns = max(1, columns)
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        GlassCenteredGridLayout(columns: columns, spacing: spacing) {
+            content
+        }
+        .glassEffectGrouping(spacing: spacing)
+    }
+}
+
+/// Root presenter for `GlassMorphPanel`. The host sits on the app root (above the tab bar), in the
+/// same hierarchy as the screen that opened it, so that screen keeps rendering while the panel moves.
+@MainActor
+@Observable
+final class GlassMorphPanelPresenter {
+    static let shared = GlassMorphPanelPresenter()
+
+    struct Presentation: Identifiable {
+        let id = UUID()
+        let accessibilityID: String
+        let content: AnyView
+        let onWillDismiss: () -> Void
+        let onDismissed: () -> Void
+    }
+
+    private(set) var presentation: Presentation?
+
+    func present<Content: View>(
+        accessibilityID: String,
+        onWillDismiss: @escaping () -> Void = {},
+        onDismissed: @escaping () -> Void = {},
+        @ViewBuilder content: () -> Content
+    ) {
+        guard presentation == nil else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            presentation = Presentation(
+                accessibilityID: accessibilityID,
+                content: AnyView(content()),
+                onWillDismiss: onWillDismiss,
+                onDismissed: onDismissed
+            )
+        }
+    }
+
+    fileprivate func finish(_ id: UUID) {
+        guard presentation?.id == id else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            presentation = nil
+        }
+    }
+}
+
+private struct GlassMorphPanelHostModifier: ViewModifier {
+    @Bindable private var presenter = GlassMorphPanelPresenter.shared
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if let presentation = presenter.presentation {
+                GlassMorphPanel(
+                    accessibilityID: presentation.accessibilityID,
+                    onWillDismiss: presentation.onWillDismiss,
+                    onDismissed: {
+                        presenter.finish(presentation.id)
+                        presentation.onDismissed()
+                    }
+                ) {
+                    presentation.content
+                }
+                .id(presentation.id)
+                .transition(.identity)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Root host for `GlassMorphPanelPresenter`. Apply once on the app root, under `toastHost`.
+    func glassMorphPanelHost() -> some View {
+        modifier(GlassMorphPanelHostModifier())
+    }
+}
+
+/// Camera-style bottom Liquid Glass panel, normally shown through `GlassMorphPanelPresenter`.
+/// The panel runs its own grow and shrink. Tap outside, drag down, or the VoiceOver escape
+/// gesture closes it. `onWillDismiss` fires when the source should sharpen back (0.12 s into a
+/// tap-close, at once after a drag); `onDismissed` fires at the end.
+/// Idle cost is one glass shape: motion runs only while opening, dragging, or closing.
+struct GlassMorphPanel<Content: View>: View {
+    var accessibilityID: String
+    var onWillDismiss: () -> Void
+    var onDismissed: () -> Void
+    private let content: Content
+
+    @State private var isShown = false
+    @State private var isClosing = false
+    @State private var dragY: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        accessibilityID: String,
+        onWillDismiss: @escaping () -> Void = {},
+        onDismissed: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.accessibilityID = accessibilityID
+        self.onWillDismiss = onWillDismiss
+        self.onDismissed = onDismissed
+        self.content = content()
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let inset = GlassTokens.morphPanelEdgeInset
+            let bottomClearance = max(proxy.safeAreaInsets.bottom - inset, 12)
+            ZStack(alignment: .bottom) {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { close() }
+                    .accessibilityHidden(true)
+                panel(bottomClearance: bottomClearance)
+                    .frame(maxWidth: GlassTokens.paneCardMaxWidth)
+                    .frame(maxHeight: (proxy.size.height + proxy.safeAreaInsets.top) * 0.82, alignment: .bottom)
+                    .padding(.horizontal, inset)
+                    .padding(.bottom, inset)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea()
+        }
+        .task {
+            try? await Task.sleep(for: TrailhoundMotion.glassPanelOpenDelay)
+            withAnimation(TrailhoundMotion.glassPanelOpen(reduceMotion: reduceMotion)) {
+                isShown = true
+            }
+        }
+    }
+
+    private func panel(bottomClearance: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: GlassTokens.morphPanelCornerRadius, style: .continuous)
+        return VStack(spacing: 0) {
+            Capsule()
+                .frame(width: 36, height: 5)
+                .glassSecondaryInk()
+                .opacity(0.55)
+                .padding(.top, 8)
+                .accessibilityHidden(true)
+            ViewThatFits(in: .vertical) {
+                content
+                ScrollView { content }
+                    .scrollBounceBehavior(.basedOnSize)
+            }
+            .padding(.bottom, bottomClearance)
+            .blur(radius: isShown ? 0 : (reduceMotion ? 0 : GlassTokens.morphPanelBlur))
+        }
+        .frame(maxWidth: .infinity)
+        .background { GlassMorphPanelBackground(shape: shape) }
+        .contentShape(shape)
+        .scaleEffect(scale, anchor: .bottom)
+        .offset(y: dragOffset)
+        .opacity(isShown ? 1 : 0)
+        .gesture(dragToClose)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityIdentifier(accessibilityID)
+        .accessibilityAction(.escape) { close() }
+    }
+
+    private var scale: CGFloat {
+        let resting: CGFloat
+        if isShown || reduceMotion {
+            resting = 1
+        } else {
+            resting = isClosing ? GlassTokens.morphPanelCloseScale : GlassTokens.morphPanelOpenScale
+        }
+        let pull = dragY > 0 ? min(dragY / 2000, 0.05) : 0
+        return resting * (1 - pull)
+    }
+
+    /// Down follows the finger; up rubber-bands.
+    private var dragOffset: CGFloat {
+        dragY >= 0 ? dragY : -sqrt(-dragY) * 2
+    }
+
+    private var dragToClose: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard !isClosing else { return }
+                dragY = value.translation.height
+            }
+            .onEnded { value in
+                guard !isClosing else { return }
+                let distance = GlassTokens.morphPanelDismissDistance
+                if value.translation.height > distance || value.predictedEndTranslation.height > distance * 2 {
+                    close(fromDrag: true)
+                } else {
+                    withAnimation(TrailhoundMotion.glassPanelOpen(reduceMotion: reduceMotion)) {
+                        dragY = 0
+                    }
+                }
+            }
+    }
+
+    private func close(fromDrag: Bool = false) {
+        guard !isClosing else { return }
+        isClosing = true
+        if fromDrag || reduceMotion {
+            onWillDismiss()
+        } else {
+            Task { @MainActor in
+                try? await Task.sleep(for: TrailhoundMotion.glassPanelSourceReturnDelay)
+                onWillDismiss()
+            }
+        }
+        withAnimation(TrailhoundMotion.glassPanelClose(reduceMotion: reduceMotion)) {
+            isShown = false
+        } completion: {
+            onDismissed()
+        }
+    }
+}
+
+/// Native Liquid Glass panel in Light and Dark (Light carries the palette tint so white type reads).
+/// Reduce Transparency and iOS 17–18 use `GlassToolbarControlBackground`.
+private struct GlassMorphPanelBackground<PanelShape: InsettableShape>: View {
+    let shape: PanelShape
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.shellPalette) private var shellPalette
+
+    var body: some View {
+        if reduceTransparency {
+            GlassToolbarControlBackground(shape: shape, frozen: true)
+        } else if #available(iOS 26.0, *) {
+            shape
+                .fill(Color.clear)
+                .glassEffect(glass, in: shape)
+        } else {
+            GlassToolbarControlBackground(shape: shape, frozen: false)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var glass: Glass {
+        guard colorScheme == .light else { return .regular }
+        return .regular.tint(
+            LightGlassPalette.nativeTint(for: shellPalette, increasedContrast: contrast == .increased)
+        )
+    }
+}
+
+/// Equal cells. A row with fewer items than `columns` is centered in the full row.
+private struct GlassCenteredGridLayout: Layout {
+    var columns: Int
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        metrics(proposal: proposal, subviews: subviews).total
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let metrics = metrics(proposal: proposal, subviews: subviews)
+        let cols = metrics.columns
+        guard cols > 0, !subviews.isEmpty else { return }
+        let cell = ProposedViewSize(width: metrics.cell.width, height: metrics.cell.height)
+        var index = 0
+        let rows = Int(ceil(Double(subviews.count) / Double(cols)))
+        for row in 0..<rows {
+            let count = min(cols, subviews.count - index)
+            let rowWidth = metrics.cell.width * CGFloat(count) + spacing * CGFloat(max(0, count - 1))
+            var x = bounds.minX + (metrics.total.width - rowWidth) / 2
+            let y = bounds.minY + CGFloat(row) * (metrics.cell.height + spacing)
+            for _ in 0..<count {
+                subviews[index].place(
+                    at: CGPoint(x: x + metrics.cell.width / 2, y: y + metrics.cell.height / 2),
+                    anchor: .center,
+                    proposal: cell
+                )
+                x += metrics.cell.width + spacing
+                index += 1
+            }
+        }
+    }
+
+    private struct Metrics {
+        var columns: Int
+        var cell: CGSize
+        var total: CGSize
+    }
+
+    private func metrics(proposal: ProposedViewSize, subviews: Subviews) -> Metrics {
+        let count = subviews.count
+        guard count > 0 else {
+            return Metrics(columns: 0, cell: .zero, total: .zero)
+        }
+        let cols = min(max(1, columns), count)
+        let rows = Int(ceil(Double(count) / Double(cols)))
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealW = ideals.map(\.width).max() ?? 0
+        let idealH = ideals.map(\.height).max() ?? 0
+        let cellW: CGFloat
+        if let proposed = proposal.width, proposed.isFinite, proposed > 0 {
+            let slots = (proposed - spacing * CGFloat(max(0, cols - 1))) / CGFloat(cols)
+            cellW = min(idealW, max(0, slots))
+        } else {
+            cellW = idealW
+        }
+        let cell = CGSize(width: cellW, height: idealH)
+        let total = CGSize(
+            width: cell.width * CGFloat(cols) + spacing * CGFloat(max(0, cols - 1)),
+            height: cell.height * CGFloat(rows) + spacing * CGFloat(max(0, rows - 1))
+        )
+        return Metrics(columns: cols, cell: cell, total: total)
     }
 }
 

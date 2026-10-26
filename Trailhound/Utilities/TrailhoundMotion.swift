@@ -37,6 +37,11 @@ enum TrailhoundMotion {
     static let toastSpring = Animation.spring(response: 0.44, dampingFraction: 0.76)
     /// Toast card exit — quick ease down and fade.
     static let toastDismiss = Animation.easeIn(duration: 0.22)
+    /// `VehicleInspectLoader` magnifier pass over the car (one way; the loop autoreverses).
+    static let inspectSweepDuration: TimeInterval = 1.6
+    static let inspectSweep = Animation.easeInOut(duration: inspectSweepDuration)
+    /// `VehicleInspectLoader` road dash drift — linear so the loop has no seam.
+    static let inspectRoadDrift = Animation.linear(duration: 0.9)
     /// Recording card live-map CTA popout (label expands from the map chip).
     static let liveMapHintPop = Animation.spring(response: 0.48, dampingFraction: 0.72)
     /// Live-map CTA collapse back to the icon chip.
@@ -60,6 +65,29 @@ enum TrailhoundMotion {
     static var photoSheetRevealTransition: AnyTransition { .opacity }
     /// Avatar remove → empty add control (soft shrink out / rise in).
     static let photoRemove = Animation.spring(response: 0.4, dampingFraction: 0.84)
+    /// Camera-style glass panel grows from 40 % with a blur dissolve (~0.2 s), overshoots slightly, settles (~0.45 s).
+    static let glassPanelOpen = Animation.spring(response: 0.72, dampingFraction: 0.8)
+    /// Panel shrinks to 55 % and blurs away on an accelerating curve (~0.2 s).
+    static let glassPanelClose = Animation.timingCurve(0.32, 0, 0.67, 0, duration: 0.22)
+    /// The source control dissolves before the panel grows and sharpens back as it closes.
+    static let glassPanelSourceDissolve = Animation.easeOut(duration: 0.12)
+    /// Source dissolve leads the panel by this much on open.
+    static let glassPanelOpenDelay: Duration = .milliseconds(90)
+    /// After a tap-to-close the source starts to sharpen this far into the shrink, so no gap shows.
+    /// A drag-to-close has already carried the panel off the source, so it returns at once.
+    static let glassPanelSourceReturnDelay: Duration = .milliseconds(120)
+
+    static func glassPanelOpen(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeOut(duration: 0.18) : glassPanelOpen
+    }
+
+    static func glassPanelClose(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeIn(duration: 0.16) : glassPanelClose
+    }
+
+    static func glassPanelSourceDissolve(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeOut(duration: 0.1) : glassPanelSourceDissolve
+    }
 
     /// Soft rise (fade + slight upward settle).
     static var softRiseTransition: AnyTransition {
@@ -689,6 +717,13 @@ extension View {
         } else {
             self
         }
+    }
+
+    /// The control that opens a `GlassMorphPanel` blurs away while the panel is up.
+    func glassMorphPanelSource(isHidden: Bool) -> some View {
+        blur(radius: isHidden ? 8 : 0)
+            .opacity(isHidden ? 0 : 1)
+            .scaleEffect(isHidden ? 0.96 : 1)
     }
 }
 

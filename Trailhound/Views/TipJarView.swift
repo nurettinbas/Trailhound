@@ -1,92 +1,88 @@
 import StoreKit
 import SwiftUI
 
+/// Support the developer panel content. Shown in `GlassMorphPanel` from Settings.
 struct TipJarView: View {
-    @Environment(\.dismiss) private var dismiss
+    static let panelAccessibilityID = "tipJar.panel"
+
     @ObservedObject private var store = TipJarStore.shared
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AtmosphericBackground().ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(L10n.settingsTipJarMessage)
-                            .font(.footnote)
-                            .glassSecondaryInk()
-                        content
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassCard()
-                    .padding(16)
-                }
-            }
-            .navigationTitle(L10n.settingsTipJar)
-            .navigationBarTitleDisplayMode(.inline)
-            .glassNavigationChrome()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        GlassToolbarTitle(title: L10n.actionClose)
-                    }
-                    .accessibilityIdentifier("tipJar.close")
-                }
-            }
+        VStack(spacing: 22) {
+            header
+            options
         }
-        .toastHost(extraBottomPadding: 24)
+        .padding(.horizontal, GlassTokens.panelHorizontalInset)
+        .padding(.top, 12)
         .task { await store.load() }
     }
 
+    private var header: some View {
+        VStack(spacing: 8) {
+            GlassPaletteDisc(systemImage: "heart.fill")
+            Text(L10n.settingsTipJar)
+                .font(.body.weight(.semibold))
+                .glassPrimaryInk()
+                .multilineTextAlignment(.center)
+            Text(L10n.settingsTipJarMessage)
+                .font(.footnote)
+                .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     @ViewBuilder
-    private var content: some View {
+    private var options: some View {
         switch store.loadState {
         case .idle, .loading:
             ProgressView()
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .frame(minHeight: GlassTokens.optionCircleSide)
         case .unavailable:
             Text(L10n.settingsTipJarUnavailable)
                 .font(.footnote)
                 .glassSecondaryInk()
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("tipJar.unavailable")
         case .loaded:
-            VStack(spacing: 12) {
+            GlassOptionGrid {
                 ForEach(store.products, id: \.id) { product in
-                    tipRow(product)
+                    tipButton(product)
                 }
             }
         }
     }
 
-    private func tipRow(_ product: Product) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(product.displayName)
-                    .font(.body.weight(.semibold))
-                    .glassPrimaryInk()
-                if !product.description.isEmpty {
-                    Text(product.description)
-                        .font(.footnote)
-                        .glassSecondaryInk()
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                Task { await store.tip(product) }
-            } label: {
-                if store.purchasingID == product.id {
-                    ProgressView()
-                } else {
-                    Text(product.displayPrice)
-                }
-            }
-            .trailhoundProminentButton()
-            .disabled(store.purchasingID != nil)
-            .accessibilityIdentifier("tipJar.product.\(product.id)")
-            .accessibilityLabel("\(product.displayName), \(product.displayPrice)")
+    private func tipButton(_ product: Product) -> some View {
+        Button {
+            Task { await store.tip(product) }
+        } label: {
+            GlassOptionCircle(
+                systemImage: symbolName(for: product.id),
+                caption: product.displayName,
+                detail: product.displayPrice,
+                isLoading: store.purchasingID == product.id
+            )
         }
-        .glassElevatedTile()
+        .buttonStyle(.glassPlainHit)
+        .disabled(store.purchasingID != nil)
+        .accessibilityIdentifier("tipJar.product.\(product.id)")
+        .accessibilityLabel("\(product.displayName), \(product.displayPrice)")
+    }
+
+    private func symbolName(for productID: String) -> String {
+        switch productID {
+        case TipJarStore.productIDs[0]:
+            return "cup.and.saucer.fill"
+        case TipJarStore.productIDs[1]:
+            return "fork.knife"
+        case TipJarStore.productIDs[2]:
+            return "gift.fill"
+        default:
+            return "heart.fill"
+        }
     }
 }

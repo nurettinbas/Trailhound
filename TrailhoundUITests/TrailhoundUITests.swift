@@ -176,10 +176,15 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         revealSettingsControl(row)
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         row.tap()
-        let close = app.buttons["tipJar.close"]
-        XCTAssertTrue(close.waitForExistence(timeout: 10))
-        close.tap()
+        let panel = app.descendants(matching: .any).matching(identifier: "tipJar.panel").firstMatch
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
+        panel.swipeDown(velocity: .fast)
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
         XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
     }
 
     func testTravelsSegmentOpensJournalEmptyState() throws {

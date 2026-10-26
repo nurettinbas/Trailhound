@@ -50,6 +50,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .onGlassShell()
+        .glassMorphPanelHost()
         .toastHost(clearsTabBar: true)
         .deleteConfirmHost()
         .environment(\.shellPalette, settings.shellPalette)

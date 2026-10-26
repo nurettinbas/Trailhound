@@ -27,6 +27,7 @@ final class TipJarStore: ObservableObject {
 
     func load() async {
         guard loadState != .loading else { return }
+        if loadState == .loaded, !products.isEmpty { return }
         loadState = .loading
         do {
             let fetched = try await Product.products(for: Self.productIDs)

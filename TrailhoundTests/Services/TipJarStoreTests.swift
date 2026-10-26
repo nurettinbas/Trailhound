@@ -38,6 +38,24 @@ final class TipJarStoreTests: XCTestCase {
         XCTAssertTrue(products.allSatisfy { $0.type == .consumable })
     }
 
+    func testLoadReusesCachedProducts() async throws {
+        let session = try SKTestSession(contentsOf: Self.configurationURL)
+        session.disableDialogs = true
+        session.clearTransactions()
+        self.session = session
+
+        let store = TipJarStore()
+        await store.load()
+        if store.loadState != .loaded {
+            throw XCTSkip("StoreKit test session unavailable on this runner; run from Xcode.")
+        }
+        let ids = store.products.map(\.id)
+        await store.load()
+        XCTAssertEqual(store.loadState, .loaded)
+        XCTAssertEqual(store.products.map(\.id), ids)
+        XCTAssertFalse(ids.isEmpty)
+    }
+
     func testTipFinishesTheTransaction() async throws {
         let fetched = try await loadProducts(["com.trailhound.app.tip.small"])
         let product = try XCTUnwrap(fetched.first)

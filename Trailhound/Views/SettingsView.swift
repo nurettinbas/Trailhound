@@ -46,7 +46,8 @@ struct SettingsView: View {
     @State private var showAppLockUnavailableAlert = false
     @State private var showAddPlacePicker = false
     @State private var showReportProblem = false
-    @State private var showTipJar = false
+    @State private var tipJarSourceHidden = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showMailComposer = false
     @State private var showReportShareSheet = false
     @State private var showReportShareFailed = false
@@ -441,13 +442,14 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.reportProblem")
                 .glassRow(position: .middle)
                 Button {
-                    showTipJar = true
+                    openTipJar()
                 } label: {
                     GlassFeaturedRowLabel(
                         systemImage: "heart.fill",
                         title: L10n.settingsTipJar,
                         subtitle: L10n.settingsTipJarSubtitle
                     )
+                    .glassMorphPanelSource(isHidden: tipJarSourceHidden)
                 }
                 .buttonStyle(.glassPlainHit)
                 .accessibilityIdentifier("settings.tipJar")
@@ -494,9 +496,6 @@ struct SettingsView: View {
             runCleanupIfNeeded()
             refreshNotificationAuthorization()
             Task { await geocodingRetryService.retryPendingTrips(in: modelContext) }
-        }
-        .sheet(isPresented: $showTipJar) {
-            TipJarView()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -704,6 +703,28 @@ struct SettingsView: View {
         modelContext.delete(place)
         try? modelContext.save()
         ToastPresenter.shared.show(.deleted)
+    }
+
+    /// The row dissolves, then the root panel grows; the row sharpens back while the panel shrinks.
+    private func openTipJar() {
+        guard !tipJarSourceHidden else { return }
+        let motion = reduceMotion
+        withAnimation(TrailhoundMotion.glassPanelSourceDissolve(reduceMotion: motion)) {
+            tipJarSourceHidden = true
+        }
+        GlassMorphPanelPresenter.shared.present(
+            accessibilityID: TipJarView.panelAccessibilityID,
+            onWillDismiss: {
+                withAnimation(TrailhoundMotion.glassPanelSourceDissolve(reduceMotion: motion)) {
+                    tipJarSourceHidden = false
+                }
+            },
+            onDismissed: {
+                tipJarSourceHidden = false
+            }
+        ) {
+            TipJarView()
+        }
     }
 
     private func runCleanupIfNeeded() {
