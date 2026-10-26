@@ -411,6 +411,7 @@
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABSELECTION000001 /* TabSelection.swift */; };
 		A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */; };
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */; };
+				A1SDKSHIMSM0000000001 /* TrailhoundSDKShims.m in Sources */ = {isa = PBXBuildFile; fileRef = A2SDKSHIMSM0000000001 /* TrailhoundSDKShims.m */; };
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */; };
 				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLCHROME000001 /* SideColumnChrome.swift */; };
 				A1SIDECOLTEST000000001 /* SideColumnChromeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */; };
@@ -862,6 +863,8 @@
 		A2TABSELECTION000001 /* TabSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSelection.swift; sourceTree = "<group>"; };
 		A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDeepLinkResolver.swift; sourceTree = "<group>"; };
 		A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundLayout.swift; sourceTree = "<group>"; };
+		A2SDKSHIMSH0000000001 /* TrailhoundSDKShims.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrailhoundSDKShims.h; sourceTree = "<group>"; };
+		A2SDKSHIMSM0000000001 /* TrailhoundSDKShims.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TrailhoundSDKShims.m; sourceTree = "<group>"; };
 		A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundShellToolbar.swift; sourceTree = "<group>"; };
 		A2SIDECOLCHROME000001 /* SideColumnChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideColumnChrome.swift; sourceTree = "<group>"; };
 		A2SIDECOLTEST000000001 /* SideColumnChromeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/SideColumnChromeTests.swift; sourceTree = SOURCE_ROOT; };
@@ -1292,6 +1295,8 @@
 				A2TABSELECTION000001 /* TabSelection.swift */,
 				A2TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift */,
 				A2TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift */,
+				A2SDKSHIMSH0000000001 /* TrailhoundSDKShims.h */,
+				A2SDKSHIMSM0000000001 /* TrailhoundSDKShims.m */,
 				A2TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift */,
 				A2SIDECOLCHROME000001 /* SideColumnChrome.swift */,
 				A2TRIPSTORE000000000001 /* TripStore.swift */,
@@ -2019,6 +2024,7 @@
 				A1TABSELECTION000001 /* TabSelection.swift in Sources */,
 				A1TRIPDEEPLINK0000001 /* TripDeepLinkResolver.swift in Sources */,
 				A1TRAILHOUNDLAYOUT0001 /* TrailhoundLayout.swift in Sources */,
+				A1SDKSHIMSM0000000001 /* TrailhoundSDKShims.m in Sources */,
 				A1TRAILHOUNDSHELL00001 /* TrailhoundShellToolbar.swift in Sources */,
 				A1SIDECOLCHROME000001 /* SideColumnChrome.swift in Sources */,
 				A1RECCARDSTYLE00000001 /* RecordingCardStyle.swift in Sources */,
@@ -2233,6 +2239,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = Trailhound/Utilities/TrailhoundSDKShims.h;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;
@@ -2278,6 +2285,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = Trailhound/Utilities/TrailhoundSDKShims.h;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
 				SWIFT_VERSION = 5.0;

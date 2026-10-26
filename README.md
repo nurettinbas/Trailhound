@@ -236,6 +236,8 @@ docs/                 # Battery, design system, Stats, TestFlight, privacy, supp
 - [Stats (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Stats) — glass cards, filters, comparison
 - [Recap (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Recap) — Recap tab, year awards, story, badges, routes, forecast
 - [Architecture (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Architecture) — schema **V23**, models, premium derived caches
+- [Device support (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Device-Support) — iPhone, wide landscape book, Duo, iPad pane shares
+- [Notifications (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Notifications) — inbox, book preview, trip deep links
 - [Live follow map](https://github.com/nurettinbas/Trailhound/wiki/Live-Follow) — product flow and MapKit drawing (wiki)
 - [Shortcuts auto-record](docs/SHORTCUTS_AUTORECORD.md) — Personal Automation wizard, honest test, checklist
 - [Shortcuts (wiki)](https://github.com/nurettinbas/Trailhound/wiki/Shortcuts) — Pairing wizard, named Shortcut + Run Shortcut

@@ -70,20 +70,21 @@ private final class SoundEngine: @unchecked Sendable {
             return
         }
 
-        if #available(iOS 27.0, *) {
-            session.activate(options: []) { [self] activated, _ in
-                self.enqueueFinish(activated)
-            }
-        } else {
-            let activated: Bool
-            do {
-                try session.setActive(true)
-                activated = true
-            } catch {
-                activated = false
-            }
-            finish(activated)
+        // `AVAudioSession.activate` is an iOS 27 SDK symbol. Xcode 26.5 cannot see it,
+        // so the shim calls it only when that SDK is present.
+        if TrailhoundActivateAudioSessionIfAvailable({ [self] activated in
+            self.enqueueFinish(activated)
+        }) {
+            return
         }
+        let activated: Bool
+        do {
+            try session.setActive(true)
+            activated = true
+        } catch {
+            activated = false
+        }
+        finish(activated)
     }
 
     private func enqueueFinish(_ activated: Bool) {

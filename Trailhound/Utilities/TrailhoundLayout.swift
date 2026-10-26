@@ -1729,27 +1729,24 @@ final class TrailhoundHingeMonitor {
 
     private(set) var isFullyOpen = false
 
-    @available(iOS 27.1, *)
-    func apply(status: UIHinge.Status?) {
-        let open = status == .fullyOpen
+    func setFullyOpen(_ open: Bool) {
         guard open != isFullyOpen else { return }
         isFullyOpen = open
     }
 }
 
 /// Sits in the window so UIKit can deliver hinge updates.
+/// `UIHinge` exists only in the iOS 27.1 SDK. CI builds with Xcode 26.5, so the
+/// interaction is installed from `TrailhoundSDKShims.m`, which compiles it out there.
 struct TrailhoundHingeProbe: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
-        if #available(iOS 27.1, *) {
-            view.addInteraction(UIHingeInteraction { _, update in
-                let status = update.hinge?.status
-                Task { @MainActor in
-                    TrailhoundHingeMonitor.shared.apply(status: status)
-                }
-            })
+        TrailhoundInstallHingeInteraction(view) { open in
+            Task { @MainActor in
+                TrailhoundHingeMonitor.shared.setFullyOpen(open)
+            }
         }
         return view
     }
