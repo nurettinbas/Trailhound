@@ -183,7 +183,14 @@ Override the simulator destination if needed:
 DESTINATION='platform=iOS Simulator,name=iPhone 17,OS=26.5' ./scripts/run_tests.sh
 ```
 
-CI runs the same script on every push and pull request to `main` via GitHub Actions (`.github/workflows/ios-tests.yml`).
+Build once, then run tests without rebuilding (what CI does):
+
+```bash
+XCODEBUILD_ACTION=build-for-testing ./scripts/run_tests.sh
+XCODEBUILD_ACTION=test-without-building INCLUDE_UI_TESTS=0 ./scripts/run_tests.sh
+```
+
+CI runs the same script via GitHub Actions (`.github/workflows/ios-tests.yml`): unit tests on every pull request to `main`, unit + UI tests on every push to `main`.
 
 ### Siri Shortcuts & auto-recording
 

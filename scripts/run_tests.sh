@@ -8,12 +8,25 @@ DESTINATION="${DESTINATION:-platform=iOS Simulator,name=iPhone 17,OS=26.5}"
 RESULT_BUNDLE="${RESULT_BUNDLE:-build/TestResults.xcresult}"
 INCLUDE_UI_TESTS="${INCLUDE_UI_TESTS:-1}"
 ONLY_UI_TESTS="${ONLY_UI_TESTS:-0}"
+# test | build-for-testing | test-without-building
+XCODEBUILD_ACTION="${XCODEBUILD_ACTION:-test}"
+SOURCE_PACKAGES_DIR="${SOURCE_PACKAGES_DIR:-}"
+
+case "$XCODEBUILD_ACTION" in
+  test|build-for-testing|test-without-building) ;;
+  *)
+    echo "Unknown XCODEBUILD_ACTION: $XCODEBUILD_ACTION" >&2
+    exit 64
+    ;;
+esac
 
 mkdir -p build
 rm -rf "$RESULT_BUNDLE"
 
 TEST_ARGS=()
-if [[ "$ONLY_UI_TESTS" == "1" ]]; then
+if [[ "$XCODEBUILD_ACTION" == "build-for-testing" ]]; then
+  :
+elif [[ "$ONLY_UI_TESTS" == "1" ]]; then
   TEST_ARGS+=(-only-testing:TrailhoundUITests)
 elif [[ "$INCLUDE_UI_TESTS" == "0" ]]; then
   TEST_ARGS+=(-only-testing:TrailhoundTests)
@@ -28,7 +41,7 @@ if [[ "${CI:-}" == "true" ]]; then
 fi
 
 RETRY_ARGS=()
-if [[ "${CI:-}" == "true" ]]; then
+if [[ "${CI:-}" == "true" && "$XCODEBUILD_ACTION" != "build-for-testing" ]]; then
   RETRY_ARGS+=(-retry-tests-on-failure)
 fi
 
@@ -82,17 +95,24 @@ walk(data)
 PY
 }
 
-boot_simulator_if_needed
+if [[ "$XCODEBUILD_ACTION" != "build-for-testing" ]]; then
+  boot_simulator_if_needed
+fi
 
 # Bash 3.2 + `set -u` treats empty "${arr[@]}" as unbound; build one argv list instead.
 XCODEBUILD_ARGV=(
-  test
+  "$XCODEBUILD_ACTION"
   -project Trailhound.xcodeproj
   -scheme Trailhound
   -destination "$DESTINATION"
   -resultBundlePath "$RESULT_BUNDLE"
-  -parallel-testing-enabled NO
 )
+if [[ "$XCODEBUILD_ACTION" != "build-for-testing" ]]; then
+  XCODEBUILD_ARGV+=(-parallel-testing-enabled NO)
+fi
+if [[ -n "$SOURCE_PACKAGES_DIR" ]]; then
+  XCODEBUILD_ARGV+=(-clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR")
+fi
 if ((${#RETRY_ARGS[@]})); then
   XCODEBUILD_ARGV+=("${RETRY_ARGS[@]}")
 fi
@@ -109,10 +129,14 @@ STATUS=$?
 set -e
 
 if [[ "$STATUS" -ne 0 ]]; then
-  echo "xcodebuild test failed with status $STATUS"
+  echo "xcodebuild $XCODEBUILD_ACTION failed with status $STATUS"
   echo "Result bundle: $RESULT_BUNDLE"
   print_failure_summary
   exit "$STATUS"
 fi
 
-echo "All tests passed."
+if [[ "$XCODEBUILD_ACTION" == "build-for-testing" ]]; then
+  echo "Build for testing succeeded."
+else
+  echo "All tests passed."
+fi

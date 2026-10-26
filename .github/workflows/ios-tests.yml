@@ -6,12 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: macos-26
     timeout-minutes: 45
     env:
       CI: true
+      SOURCE_PACKAGES_DIR: build/SourcePackages
 
     steps:
       - name: Checkout
@@ -25,25 +30,30 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Show destinations
-        run: xcodebuild -showdestinations -project Trailhound.xcodeproj -scheme Trailhound | grep -i "iphone" | head -20 || true
+      - name: Cache Swift packages
+        uses: actions/cache@v6
+        with:
+          path: build/SourcePackages
+          key: spm-${{ runner.os }}-xcode26.5-${{ hashFiles('Trailhound.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode26.5-
 
       - name: Pick simulator
         run: |
-          chmod +x scripts/ci_pick_simulator.sh
+          chmod +x scripts/ci_pick_simulator.sh scripts/run_tests.sh
           DESTINATION="$(./scripts/ci_pick_simulator.sh)"
           echo "Using destination: ${DESTINATION}"
           echo "DESTINATION=${DESTINATION}" >> "$GITHUB_ENV"
 
+      - name: Build for testing
+        run: XCODEBUILD_ACTION=build-for-testing ./scripts/run_tests.sh
+
       - name: Run unit tests
-        run: |
-          chmod +x scripts/run_tests.sh
-          INCLUDE_UI_TESTS=0 ./scripts/run_tests.sh
+        run: XCODEBUILD_ACTION=test-without-building INCLUDE_UI_TESTS=0 ./scripts/run_tests.sh
 
       - name: Run UI tests
-        run: |
-          chmod +x scripts/run_tests.sh
-          ONLY_UI_TESTS=1 ./scripts/run_tests.sh
+        if: github.event_name == 'push'
+        run: XCODEBUILD_ACTION=test-without-building ONLY_UI_TESTS=1 ./scripts/run_tests.sh
 
       - name: Upload test results on failure
         if: failure()
