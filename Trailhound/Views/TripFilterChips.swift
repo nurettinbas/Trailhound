@@ -15,7 +15,7 @@ struct TripListFiltersBar: View {
     var isSearchBusy: Bool = false
     var vehicles: [VehicleProfile] = []
     var places: [SavedPlace] = []
-    /// Compact “This week” strip shown above search when non-empty.
+    /// Compact “Last 7 days” strip shown above search when non-empty.
     var weekSummaryText: String = ""
     var weekSummaryRefreshToken: Int = 0
     var isWeekSummaryRefreshing: Bool = false
@@ -123,7 +123,7 @@ struct TripListFiltersBar: View {
                 .symbolEffect(.bounce, value: weekSummaryRefreshToken)
                 .frame(width: 16)
 
-            Text(L10n.sectionThisWeek)
+            Text(L10n.lastSevenDays)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
 
@@ -143,7 +143,7 @@ struct TripListFiltersBar: View {
             isEnabled: weekSummaryRefreshToken > 0 && !reduceMotion && !UITestSupport.isEnabled
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(L10n.sectionThisWeek). \(weekSummaryText)")
+        .accessibilityLabel("\(L10n.lastSevenDays). \(weekSummaryText)")
     }
 
     private var weekSummaryAnimationID: String {

@@ -708,6 +708,9 @@ enum L10n {
         return String(format: format, count)
     }
 
+    /// Trip-list strip. The numbers are a rolling 7×24 hours, not the calendar week.
+    static var lastSevenDays: String { string("trips.last_seven_days") }
+
     static func weekSummary(distance: String, duration: String) -> String {
         let format = string("week.summary")
         return String(format: format, distance, duration)

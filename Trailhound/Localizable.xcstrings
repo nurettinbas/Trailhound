@@ -21513,6 +21513,23 @@
         }
       }
     },
+    "trips.last_seven_days" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 7 days"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son 7 gün"
+          }
+        }
+      }
+    },
     "trips.loading_more" : {
       "extractionState" : "manual",
       "localizations" : {
