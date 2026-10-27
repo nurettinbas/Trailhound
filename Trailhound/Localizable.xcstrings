@@ -22604,13 +22604,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HGS"
+            "value" : "Road toll"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HGS"
+            "value" : "Yol ücreti"
           }
         }
       }

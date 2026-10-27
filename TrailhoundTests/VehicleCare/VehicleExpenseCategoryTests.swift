@@ -28,6 +28,8 @@ final class VehicleExpenseCategoryTests: XCTestCase {
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "tax"), .mtv)
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "parking"), .parking)
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "hgs"), .hgs)
+        XCTAssertEqual(VehicleExpenseCategory.hgs.displayName, L10n.string("vehicles.care.expense.hgs"))
+        XCTAssertNotEqual(VehicleExpenseCategory.hgs.displayName, "HGS")
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "mtv"), .mtv)
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "fuel"), .fuel)
         XCTAssertEqual(VehicleExpenseCategory.resolved(fromRaw: "repair"), .repair)

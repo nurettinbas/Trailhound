@@ -69,7 +69,7 @@ Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs)
 
 ## Expense categories (picker)
 
-Fuel · Traffic insurance · Casco · Service · Inspection · Repair · Accessory · HGS · Parking · Vehicle tax (MTV) · Other
+Fuel · Traffic insurance · Casco · Service · Inspection · Repair · Accessory · Road toll · Parking · Vehicle tax (MTV) · Other
 
 Legacy raw values (`insurance` → traffic insurance, `tax` → MTV, `parts` → accessory) map on read. Stored `parking` is the parking case. Schema stays **23**; category is a string (`categoryRaw`), so new cases do not bump the store.
 

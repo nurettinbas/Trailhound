@@ -578,7 +578,7 @@ final class VehicleExpenseCategoryUITests: TrailhoundUITestCase {
         XCTAssertTrue(category.waitForExistence(timeout: uiTimeout))
         category.tap()
         let hgs = app.descendants(matching: .any)["expense.category.hgs"].firstMatch
-        XCTAssertTrue(hgs.waitForExistence(timeout: uiTimeout), "HGS must be a picker option")
+        XCTAssertTrue(hgs.waitForExistence(timeout: uiTimeout), "Road toll must be a picker option")
         hgs.tap()
 
         let amount = app.descendants(matching: .any)["expense.amount"].firstMatch
@@ -592,7 +592,7 @@ final class VehicleExpenseCategoryUITests: TrailhoundUITestCase {
 
         let row = app.descendants(matching: .any)["expense.row.hgs"].firstMatch
         revealControl(row)
-        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Saved HGS expense should appear in the list")
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Saved road-toll expense should appear in the list")
     }
 
     private func revealControl(_ query: XCUIElement) {
