@@ -27,7 +27,7 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
                         },
                         scheme: scheme
                     ),
-                    as: .image(drawHierarchyInKeyWindow: true, precision: 0.98, perceptualPrecision: 0.98, size: Self.canvas),
+                    as: .image(precision: 0.98, perceptualPrecision: 0.98, size: Self.canvas),
                     named: name
                 )
             }
@@ -54,7 +54,7 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
                         scheme: scheme,
                         canvas: canvas
                     ),
-                    as: .image(drawHierarchyInKeyWindow: true, precision: 0.98, perceptualPrecision: 0.98, size: canvas),
+                    as: .image(precision: 0.98, perceptualPrecision: 0.98, size: canvas),
                     named: name
                 )
             }
@@ -66,6 +66,8 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
         scheme: ColorScheme,
         canvas: CGSize = StickyNavChromeSnapshotTests.canvas
     ) -> UIViewController {
+        // Solid plate, not native Liquid Glass or Material. Those shaders recorded on a
+        // newer simulator do not match the iOS 26.5 runtime CI uses.
         let root = ZStack {
             AtmosphericBackground(style: .full)
             ShellPalette.sky.tintColor(for: scheme).opacity(scheme == .light ? 0.55 : 0)
@@ -75,6 +77,7 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
         }
         .environment(\.colorScheme, scheme)
         .environment(\.shellPalette, .sky)
+        .environment(\.glassForcesSolidPlate, true)
         .frame(width: canvas.width, height: canvas.height)
         let controller = UIHostingController(rootView: root)
         controller.overrideUserInterfaceStyle = scheme == .dark ? .dark : .light
