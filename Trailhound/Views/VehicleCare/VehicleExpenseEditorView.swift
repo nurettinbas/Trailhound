@@ -174,6 +174,7 @@ struct VehicleExpenseEditorView: View {
                             GlassToolbarSaveButton(title: L10n.pairingTabSave)
                         }
                         .disabled(saveDisabled)
+                        .accessibilityIdentifier("expense.save")
                     }
                 }
         }
@@ -194,9 +195,11 @@ struct VehicleExpenseEditorView: View {
                             ForEach(VehicleExpenseCategory.allCases, id: \.self) { category in
                                 Label(category.displayName, systemImage: category.systemImage)
                                     .tag(category)
+                                    .accessibilityIdentifier("expense.category.\(category.rawValue)")
                             }
                         }
                         .glassMenuPicker()
+                        .accessibilityIdentifier("expense.category")
                     }
                     .glassRow(position: .first)
                 }
@@ -206,6 +209,7 @@ struct VehicleExpenseEditorView: View {
                         TextField("", text: draftBinding(\.amountText))
                             .keyboardType(.numberPad)
                             .focused($focusedField, equals: .amount)
+                            .accessibilityIdentifier("expense.amount")
                         Text(settings.fuelCurrency.symbol)
                             .glassSecondaryInk()
                     }

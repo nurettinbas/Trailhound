@@ -339,7 +339,8 @@ struct VehicleDetailView: View {
         Section {
                 addCareRowButton(
                     title: L10n.string("vehicles.care.expense.add"),
-                    rowPosition: .first
+                    rowPosition: .first,
+                    identifier: "expense.add"
                 ) {
                     openAddExpense()
                 }
@@ -393,6 +394,7 @@ struct VehicleDetailView: View {
     private func addCareRowButton(
         title: String,
         rowPosition: GlassRowPosition,
+        identifier: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -403,6 +405,7 @@ struct VehicleDetailView: View {
         }
         .buttonStyle(.glassPlainHit)
         .glassRow(position: rowPosition)
+        .accessibilityIdentifier(identifier ?? "")
     }
 
     /// Matches Vehicles tab vehicle card: grouped plate, leading icon tile, title, due date trailing.
@@ -493,6 +496,7 @@ struct VehicleDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.glassPlainHit)
+            .accessibilityIdentifier("expense.row.\(expense.category.rawValue)")
     }
 
     private func installmentBadge(for expense: VehicleExpense) -> String? {
@@ -636,6 +640,7 @@ struct VehicleCarePaneEditorBar: View {
             .trailhoundCompactProminentButton()
             .disabled(saveDisabled)
             .opacity(saveDisabled ? 0.45 : 1)
+            .accessibilityIdentifier("expense.save")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)

@@ -1,5 +1,26 @@
 import Foundation
 
+enum VehicleExpenseLegendCap {
+    static let maxVisible = 8
+
+    /// Keep `allCases` order at the limit or below; above that, the largest amounts first.
+    static func categories(
+        _ present: [VehicleExpenseCategory],
+        amount: (VehicleExpenseCategory) -> Double
+    ) -> [VehicleExpenseCategory] {
+        guard present.count > maxVisible else { return present }
+        return Array(
+            present.sorted { lhs, rhs in
+                let left = amount(lhs)
+                let right = amount(rhs)
+                if left != right { return left > right }
+                return lhs.rawValue.localizedStandardCompare(rhs.rawValue) == .orderedAscending
+            }
+            .prefix(maxVisible)
+        )
+    }
+}
+
 /// Per–expense-category totals for a day or month (keeps Accessory distinct from Other).
 struct VehicleExpenseCategoryAmounts: Sendable, Equatable {
     private(set) var amounts: [VehicleExpenseCategory: Double] = [:]

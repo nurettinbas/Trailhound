@@ -22598,6 +22598,23 @@
         }
       }
     },
+    "vehicles.care.expense.hgs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HGS"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HGS"
+          }
+        }
+      }
+    },
     "vehicles.care.expense.inspection" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -23308,6 +23325,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kapat"
+          }
+        }
+      }
+    },
+    "vehicles.care.expense.mtv" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vehicle tax"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MTV"
           }
         }
       }

@@ -42,6 +42,7 @@ struct VehicleCareMiniChart: View {
     private var dailyChart: some View {
         let entries = dailyEntries
         let categories = presentCategories(in: entries)
+        let legendCategories = legendCategories(from: categories, in: entries.map(\.amounts))
         if entries.isEmpty {
             emptyState
         } else {
@@ -78,8 +79,8 @@ struct VehicleCareMiniChart: View {
                 xValues: dailyXAxisValues(entries),
                 xLabel: { DateFormatters.chartDay.string(from: $0) },
                 currencyCode: currencyCode,
-                legendDomain: categories.map(\.displayName),
-                legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
+                legendDomain: legendCategories.map(\.displayName),
+                legendRange: legendCategories.map(StatsChartTheme.categoryColor(for:)),
                 accessibilityKey: "stats.chart.daily_expenses",
                 maxValue: entries.map(\.total).max() ?? 0
             ))
@@ -90,6 +91,7 @@ struct VehicleCareMiniChart: View {
     private var monthlyChart: some View {
         let entries = monthlyEntries
         let categories = presentMonthlyCategories(in: entries)
+        let legendCategories = legendCategories(from: categories, in: entries.map(\.amounts))
         if entries.isEmpty {
             emptyState
         } else {
@@ -126,8 +128,8 @@ struct VehicleCareMiniChart: View {
                 xValues: entries.map(\.monthStart),
                 xLabel: { DateFormatters.monthYear.string(from: $0) },
                 currencyCode: currencyCode,
-                legendDomain: categories.map(\.displayName),
-                legendRange: categories.map(StatsChartTheme.categoryColor(for:)),
+                legendDomain: legendCategories.map(\.displayName),
+                legendRange: legendCategories.map(StatsChartTheme.categoryColor(for:)),
                 accessibilityKey: "stats.cost.chart.monthly",
                 maxValue: entries.map(\.total).max() ?? 0
             ))
@@ -151,6 +153,15 @@ struct VehicleCareMiniChart: View {
     private func presentMonthlyCategories(in entries: [VehicleMonthlyCost]) -> [VehicleExpenseCategory] {
         VehicleExpenseCategory.allCases.filter { category in
             entries.contains { $0.amount(for: category) > 0 }
+        }
+    }
+
+    private func legendCategories(
+        from present: [VehicleExpenseCategory],
+        in amounts: [VehicleExpenseCategoryAmounts]
+    ) -> [VehicleExpenseCategory] {
+        VehicleExpenseLegendCap.categories(present) { category in
+            amounts.reduce(0) { $0 + $1.amount(for: category) }
         }
     }
 

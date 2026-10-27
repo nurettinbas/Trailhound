@@ -215,6 +215,9 @@ enum StatsChartTheme {
         case .casco: bucketColor(for: .casco)
         case .inspection: Color(red: 0.45, green: 0.72, blue: 0.98)
         case .accessory: Color(red: 0.88, green: 0.52, blue: 0.92)
+        case .hgs: Color(red: 0.18, green: 0.58, blue: 0.72)
+        case .parking: Color(red: 0.72, green: 0.42, blue: 0.22)
+        case .mtv: Color(red: 0.38, green: 0.42, blue: 0.70)
         case .other: bucketColor(for: .other)
         }
     }

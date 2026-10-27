@@ -122,6 +122,26 @@ final class StatsYearAwardsLoaderTests: XCTestCase {
         XCTAssertTrue(medals.first { $0.kind == .expensiveVehicle }?.isUnlocked ?? false)
         XCTAssertTrue(medals.first { $0.kind == .expensiveMonth }?.isUnlocked ?? false)
     }
+
+    func testAwardsTotalsStayTheSameWhenCategoryIsHgsParkingOrMtv() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let day = calendar.date(from: DateComponents(year: 2026, month: 4, day: 8, hour: 12))!
+        let vehicle = VehicleProfile(name: "Toll Awards")
+        context.insert(vehicle)
+        context.insert(VehicleExpense(category: .fuel, amount: 100, occurredAt: day, vehicle: vehicle))
+        context.insert(VehicleExpense(category: .hgs, amount: 20, occurredAt: day.addingTimeInterval(60), vehicle: vehicle))
+        context.insert(VehicleExpense(category: .parking, amount: 30, occurredAt: day.addingTimeInterval(120), vehicle: vehicle))
+        context.insert(VehicleExpense(category: .mtv, amount: 50, occurredAt: day.addingTimeInterval(180), vehicle: vehicle))
+        try context.save()
+
+        let loader = StatsYearAwardsLoader(modelContainer: container)
+        let snap = await loader.snapshot(for: StatsYearAwardsRequest(storeVersion: 1, year: 2026))
+        XCTAssertEqual(snap.mostExpensiveVehicleAmount, 200, accuracy: 0.01)
+        XCTAssertEqual(snap.mostExpensiveMonthAmount, 200, accuracy: 0.01)
+        XCTAssertEqual(snap.mostExpensiveVehicleName, "Toll Awards")
+    }
 }
 
 @MainActor

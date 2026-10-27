@@ -233,4 +233,39 @@ final class VehicleCareMigrationTests: XCTestCase {
         XCTAssertFalse(expense.isInstallment)
         XCTAssertEqual(expense.amount, 90)
     }
+
+    func testDiskStoreKeepsLegacyTaxParkingAndNewHgsRawAcrossV23Reopen() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ExpenseCategoryDisk-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Trailhound.store")
+        let schema = Schema(versionedSchema: TrailhoundSchemaV23.self)
+
+        do {
+            let container = try ModelContainer(for: schema, configurations: ModelConfiguration(url: storeURL))
+            let context = container.mainContext
+            let vehicle = VehicleProfile(name: "Category Disk")
+            context.insert(vehicle)
+            let tax = VehicleExpense(category: .other, amount: 70, vehicle: vehicle)
+            tax.categoryRaw = "tax"
+            context.insert(tax)
+            let parking = VehicleExpense(category: .other, amount: 30, vehicle: vehicle)
+            parking.categoryRaw = "parking"
+            context.insert(parking)
+            context.insert(VehicleExpense(category: .hgs, amount: 15, vehicle: vehicle))
+            context.insert(VehicleExpense(category: .other, amount: 5, vehicle: vehicle))
+            context.insert(VehicleExpense(category: .fuel, amount: 90, vehicle: vehicle))
+            try context.save()
+        }
+
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
+        let reopened = try ModelContainer(for: schema, configurations: ModelConfiguration(url: storeURL))
+        let rows = try reopened.mainContext.fetch(
+            FetchDescriptor<VehicleExpense>(sortBy: [SortDescriptor(\.amount)])
+        )
+        XCTAssertEqual(rows.map(\.amount), [5, 15, 30, 70, 90])
+        XCTAssertEqual(rows.map(\.categoryRaw), ["other", "hgs", "parking", "tax", "fuel"])
+        XCTAssertEqual(rows.map(\.category), [.other, .hgs, .parking, .mtv, .fuel])
+    }
 }

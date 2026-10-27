@@ -203,3 +203,40 @@ final class MonthCostForecastStoreTests: XCTestCase {
         XCTAssertNotEqual(forecast.projectedTotal, forecast.mtdFuel + forecast.loggedFuel, accuracy: 0.1)
     }
 }
+
+final class MonthCostForecastHgsParkingMtvTests: XCTestCase {
+    func testHgsParkingMtvCountAsOtherExpensesNotLoggedFuel() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let monthStart = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 6, day: 16, hour: 12))!
+        var mtd: [Date: Double] = [:]
+        for day in 1...15 {
+            let date = calendar.date(from: DateComponents(year: 2026, month: 6, day: day))!
+            mtd[date] = 100
+        }
+        let expenses = [
+            ForecastExpense(amount: 200, category: .casco, isInstallment: true, occurredAt: monthStart),
+            ForecastExpense(amount: 50, category: .fuel, isInstallment: false, occurredAt: monthStart),
+            ForecastExpense(amount: 15, category: .hgs, isInstallment: false, occurredAt: monthStart),
+            ForecastExpense(amount: 25, category: .parking, isInstallment: false, occurredAt: monthStart),
+            ForecastExpense(amount: 80, category: .mtv, isInstallment: false, occurredAt: monthStart)
+        ]
+        let forecast = MonthCostForecastMath.forecast(
+            now: now,
+            calendar: calendar,
+            mtdTripFuelByDay: mtd,
+            previousMonthTripFuelByDay: [:],
+            thisMonthExpenses: expenses,
+            previousMonthExpenses: []
+        )
+        XCTAssertEqual(forecast.loggedFuel, 50, accuracy: 0.1)
+        XCTAssertEqual(forecast.otherExpenses, 120, accuracy: 0.1)
+        XCTAssertEqual(forecast.installmentsDue, 200, accuracy: 0.1)
+        XCTAssertEqual(
+            forecast.projectedTotal,
+            forecast.projectedFuel + 200 + 120,
+            accuracy: 0.1
+        )
+    }
+}

@@ -79,6 +79,7 @@ struct PairingVehicleRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.glassPlainHit)
+        .accessibilityIdentifier("vehicles.row")
         .onAppear(perform: consumeEntranceIfNeeded)
     }
 

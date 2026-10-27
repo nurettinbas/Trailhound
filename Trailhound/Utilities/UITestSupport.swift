@@ -33,6 +33,16 @@ enum UITestSupport {
     static let tripSwitchNewestID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000a1")!
     static let tripSwitchOlderID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000b2")!
 
+    static var seedsExpenseCategory: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-UITesting.expenseCategorySeed")
+        #else
+        false
+        #endif
+    }
+
+    static let expenseCategorySeedVehicleID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000e1")!
+
     /// `TrailhoundTests` runs inside the app process (`TEST_HOST`); side effects must not touch host UI.
     static var isUnitTesting: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -89,7 +99,20 @@ enum UITestSupport {
             }
             seedSmartCategoryFixtures(in: context)
         }
+        if seedsExpenseCategory {
+            seedExpenseCategoryFixtures(in: context)
+        }
         try? context.save()
+    }
+
+    @MainActor
+    static func seedExpenseCategoryFixtures(in context: ModelContext) {
+        let seedID = expenseCategorySeedVehicleID
+        var existing = FetchDescriptor<VehicleProfile>(predicate: #Predicate { $0.id == seedID })
+        existing.fetchLimit = 1
+        if (try? context.fetch(existing).first) != nil { return }
+        let vehicle = VehicleProfile(id: seedID, name: "Expense Seed")
+        context.insert(vehicle)
     }
 
     @MainActor

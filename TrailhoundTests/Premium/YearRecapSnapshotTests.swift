@@ -350,6 +350,9 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertEqual(first.estimatedFuelCost, 40, accuracy: 0.1)
 
         context.insert(VehicleExpense(category: .service, amount: 250, occurredAt: inYear))
+        context.insert(VehicleExpense(category: .hgs, amount: 30, occurredAt: inYear))
+        context.insert(VehicleExpense(category: .parking, amount: 20, occurredAt: inYear))
+        context.insert(VehicleExpense(category: .mtv, amount: 100, occurredAt: inYear))
         context.insert(VehicleExpense(category: .fuel, amount: 80, occurredAt: inYear))
         try context.save()
         YearRecapCache.invalidate(yearContaining: inYear)

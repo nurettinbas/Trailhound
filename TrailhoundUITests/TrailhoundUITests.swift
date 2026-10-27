@@ -557,3 +557,52 @@ final class TripDetailTripSwitchUITests: TrailhoundUITestCase {
         waitForRoute(of: newestID)
     }
 }
+
+final class VehicleExpenseCategoryUITests: TrailhoundUITestCase {
+    override var extraLaunchArguments: [String] { ["-UITesting.expenseCategorySeed"] }
+
+    func testAddHgsExpenseShowsHgsRow() {
+        XCTAssertTrue(pairingTab.waitForExistence(timeout: uiTimeout))
+        pairingTab.tap()
+
+        let vehicleRow = app.descendants(matching: .any)["vehicles.row"].firstMatch
+        XCTAssertTrue(vehicleRow.waitForExistence(timeout: uiTimeout), "Seeded vehicle row should be on Vehicles")
+        vehicleRow.tap()
+
+        let addExpense = app.descendants(matching: .any)["expense.add"].firstMatch
+        revealControl(addExpense)
+        XCTAssertTrue(addExpense.waitForExistence(timeout: uiTimeout), "Add expense should be on the vehicle screen")
+        addExpense.tap()
+
+        let category = app.descendants(matching: .any)["expense.category"].firstMatch
+        XCTAssertTrue(category.waitForExistence(timeout: uiTimeout))
+        category.tap()
+        let hgs = app.descendants(matching: .any)["expense.category.hgs"].firstMatch
+        XCTAssertTrue(hgs.waitForExistence(timeout: uiTimeout), "HGS must be a picker option")
+        hgs.tap()
+
+        let amount = app.descendants(matching: .any)["expense.amount"].firstMatch
+        XCTAssertTrue(amount.waitForExistence(timeout: uiTimeout))
+        amount.tap()
+        amount.typeText("25")
+
+        let save = app.descendants(matching: .any)["expense.save"].firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: uiTimeout))
+        save.tap()
+
+        let row = app.descendants(matching: .any)["expense.row.hgs"].firstMatch
+        revealControl(row)
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Saved HGS expense should appear in the list")
+    }
+
+    private func revealControl(_ query: XCUIElement) {
+        for _ in 0..<12 {
+            if query.waitForExistence(timeout: 1), query.isHittable { return }
+            if query.exists, !query.isHittable {
+                app.swipeDown()
+                if query.isHittable { return }
+            }
+            app.swipeUp()
+        }
+    }
+}

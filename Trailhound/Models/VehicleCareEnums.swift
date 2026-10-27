@@ -69,7 +69,7 @@ enum VehicleScheduleIntervalKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Picker / new entries use these eight cases. Legacy raw values still decode via `resolved`.
+/// Picker / new entries use these eleven cases. Legacy raw values still decode via `resolved`.
 enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
     case fuel
     case trafficInsurance
@@ -78,12 +78,14 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
     case inspection
     case repair
     case accessory
+    case hgs
+    case parking
+    case mtv
     case other
 
     /// Legacy stored strings (not in CaseIterable picker).
     private static let legacyInsurance = "insurance"
     private static let legacyTax = "tax"
-    private static let legacyParking = "parking"
     private static let legacyParts = "parts"
 
     var displayName: String {
@@ -95,6 +97,9 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         case .inspection: L10n.string("vehicles.care.expense.inspection")
         case .repair: L10n.string("vehicles.care.expense.repair")
         case .accessory: L10n.string("vehicles.care.expense.accessory")
+        case .hgs: L10n.string("vehicles.care.expense.hgs")
+        case .parking: L10n.string("vehicles.care.expense.parking")
+        case .mtv: L10n.string("vehicles.care.expense.mtv")
         case .other: L10n.string("vehicles.care.expense.other")
         }
     }
@@ -108,6 +113,9 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         case .inspection: "seal.fill"
         case .repair: "hammer.fill"
         case .accessory: "bag.fill"
+        case .hgs: "road.lanes"
+        case .parking: "parkingsign"
+        case .mtv: "building.columns.fill"
         case .other: "ellipsis.circle.fill"
         }
     }
@@ -119,7 +127,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         case .service, .repair: .service
         case .trafficInsurance: .insurance
         case .casco: .casco
-        case .inspection, .accessory, .other: .other
+        case .inspection, .accessory, .hgs, .parking, .mtv, .other: .other
         }
     }
 
@@ -128,7 +136,7 @@ enum VehicleExpenseCategory: String, Codable, CaseIterable, Sendable {
         switch raw {
         case legacyParts: return .accessory
         case legacyInsurance: return .trafficInsurance
-        case legacyTax, legacyParking: return .other
+        case legacyTax: return .mtv
         default: return .other
         }
     }
