@@ -34,7 +34,38 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
         }
     }
 
-    private func host(_ view: some View, scheme: ColorScheme) -> UIViewController {
+    /// Forecast hub is a full-bleed poster. The title must sit inside the plate.
+    func testFullBleedCollapsingTitleClearsTheCorner() {
+        let canvas = CGSize(width: 320, height: 160)
+        withSnapshotTesting(record: .missing) {
+            for (name, scheme) in Self.schemes {
+                assertSnapshot(
+                    of: host(
+                        GlassCollapsingCard(
+                            title: "This month’s forecast",
+                            contentInset: 0,
+                            trailing: {
+                                GlassToolbarSymbol(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                            }
+                        ) {
+                            Color.clear.frame(height: 72)
+                        },
+                        scheme: scheme,
+                        canvas: canvas
+                    ),
+                    as: .image(drawHierarchyInKeyWindow: true, precision: 0.98, perceptualPrecision: 0.98, size: canvas),
+                    named: name
+                )
+            }
+        }
+    }
+
+    private func host(
+        _ view: some View,
+        scheme: ColorScheme,
+        canvas: CGSize = StickyNavChromeSnapshotTests.canvas
+    ) -> UIViewController {
         let root = ZStack {
             AtmosphericBackground(style: .full)
             ShellPalette.sky.tintColor(for: scheme).opacity(scheme == .light ? 0.55 : 0)
@@ -44,10 +75,10 @@ final class StickyNavChromeSnapshotTests: XCTestCase {
         }
         .environment(\.colorScheme, scheme)
         .environment(\.shellPalette, .sky)
-        .frame(width: Self.canvas.width, height: Self.canvas.height)
+        .frame(width: canvas.width, height: canvas.height)
         let controller = UIHostingController(rootView: root)
         controller.overrideUserInterfaceStyle = scheme == .dark ? .dark : .light
-        controller.view.bounds = CGRect(origin: .zero, size: Self.canvas)
+        controller.view.bounds = CGRect(origin: .zero, size: canvas)
         controller.view.backgroundColor = .clear
         return controller
     }

@@ -271,6 +271,27 @@ final class TrailhoundLayoutTests: XCTestCase {
         XCTAssertEqual(upright.layoutClass, .duoOpen)
         XCTAssertFalse(upright.isLandscape)
         XCTAssertEqual(upright.settingsChrome, .form)
+        XCTAssertTrue(upright.packsPortraitRecapHalves)
+    }
+
+    func testPortraitPadPacksRecapHubsInHalvesFromMiniThroughPro() {
+        let mini = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 744, height: 1133),
+            idiom: .pad
+        )
+        let pro = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1024, height: 1366),
+            idiom: .pad
+        )
+        XCTAssertEqual(mini.layoutClass, .pad)
+        XCTAssertEqual(pro.layoutClass, .pad)
+        XCTAssertTrue(mini.packsPortraitRecapHalves)
+        XCTAssertTrue(pro.packsPortraitRecapHalves)
+        XCTAssertFalse(TrailhoundLayoutSnapshot.phone.packsPortraitRecapHalves)
     }
 
     func testSlightlyOpenFoldKeepsTheVehicleSeamOnTheHinge() {

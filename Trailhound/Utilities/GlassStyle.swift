@@ -2249,6 +2249,14 @@ enum GlassCollapsingLayout {
         max(0, fullHeight - stuckOffset)
     }
 
+    /// A poster can pass a body inset of 0 so the artwork fills the plate.
+    /// The section title still uses the standard card inset: a continuous
+    /// corner clips the first letters when the title sits on the rim.
+    static func titleChromeInset(contentInset: CGFloat, applyCard: Bool) -> CGFloat {
+        guard applyCard else { return 0 }
+        return max(contentInset, StatsCardTokens.contentInset)
+    }
+
     /// Collapse until `minHeight`. Further scrolling fades that strip out where
     /// it sits; scrolling back fades it in. It does not travel off the pin.
     static func placement(
@@ -2319,8 +2327,12 @@ struct GlassCollapsingCard<Content: View, Trailing: View>: View {
         self.content = content()
     }
 
+    private var titleChromeInset: CGFloat {
+        GlassCollapsingLayout.titleChromeInset(contentInset: contentInset, applyCard: applyCard)
+    }
+
     private var titleBand: CGFloat {
-        titleHeight + (applyCard ? contentInset : 0)
+        titleHeight + titleChromeInset
     }
 
     /// Title row plus the card’s bottom inset. Further scrolling fades this strip out.
@@ -2355,6 +2367,9 @@ struct GlassCollapsingCard<Content: View, Trailing: View>: View {
             content
         }
         .padding(applyCard ? contentInset : 0)
+        // Full-bleed posters keep side artwork at the rim. The title still needs
+        // the standard inset, so the extra top padding is only the difference.
+        .padding(.top, max(0, titleChromeInset - (applyCard ? contentInset : 0)))
         .glassCollapsingPlate(
             stuck: $stuck,
             natural: $natural,
@@ -2364,8 +2379,8 @@ struct GlassCollapsingCard<Content: View, Trailing: View>: View {
         )
         .overlay(alignment: .top) {
             sectionHeader
-                .padding(.horizontal, applyCard ? contentInset : 0)
-                .padding(.top, (applyCard ? contentInset : 0) + placement.titleOffset)
+                .padding(.horizontal, titleChromeInset)
+                .padding(.top, titleChromeInset + placement.titleOffset)
                 .padding(.trailing, cornerClearance)
                 .opacity(Double(placement.opacity))
                 .allowsHitTesting(placement.opacity > 0.05)

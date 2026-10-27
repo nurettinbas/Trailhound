@@ -258,6 +258,18 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
     /// Open Duo landscape, or a wide iPhone landscape that uses the same panes.
     var usesBookPanes: Bool { isOpenBookLandscape || isPhoneBook }
 
+    /// Upright Duo and iPad portrait, including iPad mini. Recap hubs share the row.
+    /// The year-recap story stays full width under them. Landscape books keep the hinge stack.
+    var packsPortraitRecapHalves: Bool {
+        guard !isLandscape else { return false }
+        switch layoutClass {
+        case .duoOpen, .pad:
+            return true
+        case .phone, .phoneLandscape:
+            return false
+        }
+    }
+
     /// 9:16 column on Duo, a wide phone, and iPad. Nil on a phone so the story is full bleed.
     /// The story view centers this column on the window. The side-tab inset must not leave it leading.
     var storyStageMaxWidth: CGFloat? {

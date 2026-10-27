@@ -12,6 +12,25 @@ final class GlassCollapsingLayoutTests: XCTestCase {
         XCTAssertEqual(GlassCollapsingLayout.stuckOffset(minY: -12, pinY: 8), 20)
     }
 
+    func testFullBleedPosterStillInsetsTheSectionTitle() {
+        XCTAssertEqual(
+            GlassCollapsingLayout.titleChromeInset(contentInset: 0, applyCard: true),
+            StatsCardTokens.contentInset
+        )
+        XCTAssertEqual(
+            GlassCollapsingLayout.titleChromeInset(contentInset: StatsCardTokens.contentInset, applyCard: true),
+            StatsCardTokens.contentInset
+        )
+        XCTAssertEqual(
+            GlassCollapsingLayout.titleChromeInset(contentInset: 20, applyCard: true),
+            20
+        )
+        XCTAssertEqual(
+            GlassCollapsingLayout.titleChromeInset(contentInset: 0, applyCard: false),
+            0
+        )
+    }
+
     func testVisibleHeightShrinksFromTheTop() {
         XCTAssertEqual(GlassCollapsingLayout.visibleHeight(fullHeight: 200, stuckOffset: 0), 200)
         XCTAssertEqual(GlassCollapsingLayout.visibleHeight(fullHeight: 200, stuckOffset: 60), 140)

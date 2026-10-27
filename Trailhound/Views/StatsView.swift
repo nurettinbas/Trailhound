@@ -351,16 +351,7 @@ struct StatsView: View {
                 .statsFullCard()
             summaryHeroPair(currencyCode: currencyCode)
             summaryMetricsCard(currencyCode: currencyCode)
-            if !placesDailyChartOnRight {
-                wideDailyChartCard
-            }
         }
-    }
-
-    /// Landscape book keeps Daily distance with the right-hand charts.
-    /// The upright fold still stacks it under the summary on the top pane.
-    private var placesDailyChartOnRight: Bool {
-        layout.isLandscape
     }
 
     @ViewBuilder
@@ -381,15 +372,9 @@ struct StatsView: View {
     }
 
     @ViewBuilder
-    private var wideDailyChartCard: some View {
-        wideDailyChartBody
-            .statsFullCard()
-    }
-
-    @ViewBuilder
     private func wideStatsDistributions(currencyCode: String) -> some View {
         LazyVStack(spacing: 12) {
-            if placesDailyChartOnRight {
+            if snap.hasAnyDailyChart || costSnapshot.hasTimelineChart {
                 statsPinnedSection(.daily, title: titledWithScope("stats.chart.daily_section", scope: statsTripChartScopeLabel)) {
                     wideDailyChartBody
                 }

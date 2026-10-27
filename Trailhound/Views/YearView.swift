@@ -191,22 +191,26 @@ struct YearView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    recapPinnedSection(.awards, title: RecapSection.awards.title) {
-                        yearAwardsCard
-                    }
-                    recapPinnedSection(.badges, title: RecapSection.badges.title, trailing: { badgesExpandButton }) {
-                        badgesCard
-                    }
-                    recapPinnedSection(.routes, title: RecapSection.routes.title, trailing: { routesExpandButton }) {
-                        routesCard
-                    }
-                    recapPinnedSection(
-                        .forecast,
-                        title: RecapSection.forecast.title,
-                        contentInset: 0,
-                        trailing: { forecastExpandButton }
-                    ) {
-                        forecastCard
+                    if layout.packsPortraitRecapHalves {
+                        portraitRecapHubGrid
+                    } else {
+                        recapPinnedSection(.awards, title: RecapSection.awards.title) {
+                            yearAwardsCard
+                        }
+                        recapPinnedSection(.badges, title: RecapSection.badges.title, trailing: { badgesExpandButton }) {
+                            badgesCard
+                        }
+                        recapPinnedSection(.routes, title: RecapSection.routes.title, trailing: { routesExpandButton }) {
+                            routesCard
+                        }
+                        recapPinnedSection(
+                            .forecast,
+                            title: RecapSection.forecast.title,
+                            contentInset: 0,
+                            trailing: { forecastExpandButton }
+                        ) {
+                            forecastCard
+                        }
                     }
                     recapPinnedSection(.recap, title: RecapSection.recap.title, applyCard: false) {
                         recapCard
@@ -277,6 +281,36 @@ struct YearView: View {
     /// Open book and a wide landscape phone. Cards pack down whichever side is shorter.
     private var pairsWideCards: Bool {
         layout.usesBookPanes
+    }
+
+    /// Equal columns that pack from the top. A short Badges card must not leave
+    /// a hole above This month’s forecast.
+    private var portraitRecapHubGrid: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 12) {
+                recapPinnedSection(.awards, title: RecapSection.awards.title) {
+                    yearAwardsCard
+                }
+                recapPinnedSection(.routes, title: RecapSection.routes.title, trailing: { routesExpandButton }) {
+                    routesCard
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .top)
+            VStack(spacing: 12) {
+                recapPinnedSection(.badges, title: RecapSection.badges.title, trailing: { badgesExpandButton }) {
+                    badgesCard
+                }
+                recapPinnedSection(
+                    .forecast,
+                    title: RecapSection.forecast.title,
+                    contentInset: 0,
+                    trailing: { forecastExpandButton }
+                ) {
+                    forecastCard
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
     }
 
     private var yearAwardsCard: some View {
