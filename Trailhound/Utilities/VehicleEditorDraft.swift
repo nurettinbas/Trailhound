@@ -16,6 +16,8 @@ struct VehicleEditorDraft: Equatable {
     var chargePricePerKWh: Double?
     var iconName: String
     var wantsDefault: Bool
+    /// Digits only. Empty clears the reading.
+    var odometerKmText: String
     var photoEdit: VehiclePhotoEdit
     /// Existing on-disk photo when the editor opened (for preview / replace / remove).
     var existingPhotoFileName: String?
@@ -27,12 +29,18 @@ struct VehicleEditorDraft: Equatable {
         chargePricePerKWh = vehicle.chargePricePerKWh
         iconName = vehicle.iconName
         wantsDefault = vehicle.isDefault
+        odometerKmText = vehicle.currentOdometerKm.map(String.init) ?? ""
         photoEdit = .unchanged
         existingPhotoFileName = vehicle.photoFileName
     }
 
     var consumptionLabel: String {
         fuelType == .electric ? L10n.fuelUnitKWhPer100km : L10n.fuelUnitLPer100km
+    }
+
+    var odometerInputIsValid: Bool {
+        let trimmed = odometerKmText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || VehicleOdometerService.parseReading(trimmed) != nil
     }
 
     var hasDisplayPhoto: Bool {
@@ -56,6 +64,7 @@ struct VehicleEditorDraft: Equatable {
         vehicle.consumption = consumption
         vehicle.chargePricePerKWh = chargePricePerKWh
         vehicle.iconName = VehicleIconOption.default.rawValue
+        try applyOdometer(to: vehicle, in: context)
 
         switch photoEdit {
         case .unchanged:
@@ -82,8 +91,24 @@ struct VehicleEditorDraft: Equatable {
         }
 
         try context.save()
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: vehicle.id, in: context)
         if !UITestSupport.shouldSkipExternalEffects {
             TrailhoundShortcuts.updateAppShortcutParameters()
         }
+    }
+
+    private func applyOdometer(to vehicle: VehicleProfile, in context: ModelContext) throws {
+        let trimmed = odometerKmText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            if vehicle.odometerAnchorKm != nil || vehicle.currentOdometerKm != nil {
+                VehicleOdometerService.clearReading(vehicle)
+            }
+            return
+        }
+        guard let km = VehicleOdometerService.parseReading(trimmed) else {
+            throw VehicleCareError.invalidOdometer
+        }
+        guard km != vehicle.currentOdometerKm else { return }
+        VehicleOdometerService.setReading(km: km, at: Date(), vehicle: vehicle, in: context)
     }
 }

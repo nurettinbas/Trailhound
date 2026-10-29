@@ -8,7 +8,7 @@ This page is the public privacy policy for the App Store listing and the in-app 
 
 ## What stays on the device
 
-- GPS points, trip metadata, vehicle profiles, photos you attach to a vehicle, saved places, journals, and expenses
+- GPS points, trip metadata, vehicle profiles, the odometer reading you type and the kilometres trips add to it, photos you attach to a vehicle, saved places, journals, and expenses
 - Receipt photos you attach to an expense, and any amount read from them
 - A rolling diagnostic log used only if you later choose **Report a problem**
 

@@ -124,6 +124,36 @@ final class VehicleEditorDraftTests: XCTestCase {
         XCTAssertNil(vehicle.photoFileName)
     }
 
+    func testOdometerTextRejectsBadInputAndApplySetsTheAnchor() async throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let context = container.mainContext
+        let vehicle = VehicleProfile(name: "Vespa")
+        context.insert(vehicle)
+        var draft = VehicleEditorDraft(from: vehicle)
+        XCTAssertTrue(draft.odometerInputIsValid)
+        draft.odometerKmText = "-4"
+        XCTAssertFalse(draft.odometerInputIsValid)
+        draft.odometerKmText = "4000"
+        XCTAssertTrue(draft.odometerInputIsValid)
+
+        let defaults = UserDefaults(suiteName: "test.trailhound.draft.odo.\(UUID().uuidString)")!
+        let settings = AppSettings(userDefaults: defaults)
+        try await draft.apply(to: vehicle, allVehicles: [vehicle], in: context, settings: settings)
+        XCTAssertEqual(vehicle.odometerAnchorKm, 4_000)
+        XCTAssertEqual(vehicle.currentOdometerKm, 4_000)
+
+        let unchanged = VehicleEditorDraft(from: vehicle)
+        let anchorAt = vehicle.odometerAnchorAt
+        try await unchanged.apply(to: vehicle, allVehicles: [vehicle], in: context, settings: settings)
+        XCTAssertEqual(vehicle.odometerAnchorAt, anchorAt)
+
+        var cleared = VehicleEditorDraft(from: vehicle)
+        cleared.odometerKmText = ""
+        try await cleared.apply(to: vehicle, allVehicles: [vehicle], in: context, settings: settings)
+        XCTAssertNil(vehicle.currentOdometerKm)
+        XCTAssertNil(vehicle.odometerAnchorKm)
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: Schema(versionedSchema: TrailhoundSchemaV12.self),

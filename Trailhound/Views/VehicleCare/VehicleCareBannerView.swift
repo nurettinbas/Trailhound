@@ -33,7 +33,8 @@ struct VehicleCareBannerView: View {
             )
             .font(.caption)
             .glassSecondaryInk()
-            .lineLimit(1)
+            .lineLimit(2)
+            .minimumScaleFactor(0.8)
             .multilineTextAlignment(.trailing)
 
             Button(action: onDismiss) {

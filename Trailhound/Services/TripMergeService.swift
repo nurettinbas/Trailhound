@@ -27,6 +27,7 @@ enum TripMergeService {
     ) async throws -> UUID {
         let mergedID = try await TripMergeWorker(modelContainer: container)
             .mergeAsync(tripIDs: tripIDs, privacyRadius: privacyRadius)
+        VehicleCareNotificationScheduler.evaluateKmReminders(in: container.mainContext)
         for id in tripIDs {
             TripMapSnapshotCache.shared.remove(for: id)
             TripRoutePathCache.shared.remove(for: id)
@@ -48,6 +49,7 @@ enum TripMergeService {
             into: context,
             privacyRadius: privacyRadius
         )
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: merged.vehicleID, in: context)
         let deletedIDs = trips.map(\.id)
         try context.save()
         TripMergeCore.refreshJournals(ids: sourceJournalIDs, extra: merged.journalID, in: context)
@@ -69,6 +71,7 @@ enum TripMergeCore {
         privacyRadius: Double
     ) throws -> Trip {
         let completed = trips.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
+        let odometerVehicleIDs = Set(completed.compactMap(\.vehicleID))
         let sourceJournalIDs = completed.map(\.journalID)
         let merged = try beginMergedTrip(from: completed, into: context)
         let fuelInputs = mergedFuelInputs(from: completed)
@@ -99,6 +102,15 @@ enum TripMergeCore {
             fuelUnitPrice: fuelInputs.unitPrice,
             context: context
         )
+        var affected = odometerVehicleIDs
+        if let mergedVehicleID = merged.vehicleID {
+            affected.insert(mergedVehicleID)
+        }
+        for id in affected {
+            if let vehicle = VehicleResolver.vehicle(withID: id, in: context) {
+                VehicleOdometerService.recompute(vehicle, in: context)
+            }
+        }
         applyCapturedMergeMembership(
             surviving: merged,
             journalIDs: sourceJournalIDs,
@@ -342,6 +354,7 @@ actor TripMergeWorker {
         )) ?? []
 
         let completed = fetched.filter { $0.endedAt != nil }.sorted { $0.startedAt < $1.startedAt }
+        let odometerVehicleIDs = Set(completed.compactMap(\.vehicleID))
         let sourceJournalIDs = completed.map(\.journalID)
         let merged = try TripMergeCore.beginMergedTrip(from: completed, into: modelContext)
 
@@ -382,6 +395,15 @@ actor TripMergeWorker {
             privacyRadius: privacyRadius,
             context: modelContext
         )
+        var affected = odometerVehicleIDs
+        if let mergedVehicleID = merged.vehicleID {
+            affected.insert(mergedVehicleID)
+        }
+        for id in affected {
+            if let vehicle = VehicleResolver.vehicle(withID: id, in: modelContext) {
+                VehicleOdometerService.recompute(vehicle, in: modelContext)
+            }
+        }
         TripMergeCore.applyCapturedMergeMembership(
             surviving: merged,
             journalIDs: sourceJournalIDs,

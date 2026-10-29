@@ -1226,6 +1226,11 @@ struct TripDetailEditPanel: View {
 
     private func saveEdits() {
         let previousRollup = TripRollupService.snapshot(of: trip)
+        let previousOdometer = TripOdometerSnapshot(
+            meters: trip.distanceMeters,
+            startedAt: trip.startedAt,
+            vehicleID: trip.vehicleID
+        )
 
         trip.note = noteText.isEmpty ? nil : noteText
         if selectedCategoryID != trip.categoryID {
@@ -1271,6 +1276,7 @@ struct TripDetailEditPanel: View {
             fuelType: vehicle?.fuelType ?? .petrol,
             vehicle: vehicle
         )
+        VehicleOdometerService.tripUpdated(trip, previous: previousOdometer, in: modelContext)
         TripRollupService.update(trip, from: previousRollup, in: modelContext)
         TripFuelDependencyService.invalidateSuccessor(of: trip, in: modelContext)
         if consumptionChanged, let vehicleID = trip.vehicleID {
@@ -1284,6 +1290,7 @@ struct TripDetailEditPanel: View {
         }
         originalNoteText = noteText
         try? modelContext.save()
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: trip.vehicleID, in: modelContext)
         ToastPresenter.shared.show(.tripSaved)
         onDisplayRefresh()
         if didTrim {

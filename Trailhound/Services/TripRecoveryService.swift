@@ -80,12 +80,14 @@ enum TripRecoveryService {
                 vehicle: vehicle
             )
             TripRollupService.add(trip, in: context)
+            VehicleOdometerService.tripAdded(trip, in: context)
         } else {
             context.delete(trip)
         }
         do {
             try context.save()
             if saveTrip {
+                VehicleCareNotificationScheduler.evaluateKmReminders(for: trip.vehicleID, in: context)
                 PersonalRecordToast.presentIfNeeded(
                     for: trip,
                     in: context,

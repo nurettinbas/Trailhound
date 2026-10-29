@@ -31,6 +31,8 @@ struct VehicleCareStatusCard: View {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(detailColor)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 0)
             }

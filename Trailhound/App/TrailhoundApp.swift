@@ -118,6 +118,7 @@ final class AppRuntime {
         guard !didFullBootstrap else { return }
         didFullBootstrap = true
 
+        VehicleOdometerService.backfillAnchorsIfNeeded(in: container.mainContext)
         VehiclePairingService.migrateLegacyBluetoothAutoStart(in: container.mainContext)
 
         networkMonitor.startIfNeeded()
@@ -315,6 +316,9 @@ struct TrailhoundApp: App {
             runtime.processPendingRecordingRequests()
             AppNotificationStore.shared.reload()
             runtime.resumeMonitoringIfNeeded()
+            if !UITestSupport.isEnabled, !TripRecordingService.sessionIsActive {
+                VehicleCareNotificationScheduler.evaluateKmReminders(in: modelContainer.mainContext)
+            }
             refreshLockScreenWidgetStats()
             if !UITestSupport.isEnabled {
                 Task { @MainActor in

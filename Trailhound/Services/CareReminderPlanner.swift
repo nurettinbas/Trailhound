@@ -67,3 +67,46 @@ enum CareReminderPlanner {
         return String(format: "%04d%02d%02d", year, month, day)
     }
 }
+
+enum KmCareStage: String, Sendable {
+    case kmEarly
+    case kmDue
+    case kmOverdue
+}
+
+struct KmCareDecision: Equatable, Sendable {
+    let stage: KmCareStage
+    let kmLeft: Int
+    /// Changes when the target kilometre changes, so the next service can notify again.
+    let dedupeKey: String
+}
+
+enum KmReminderPlanner {
+    /// One stage for the reading right now. A long trip that jumps past the window sends only the latest stage.
+    static func decision(
+        scheduleID: UUID,
+        dueKm: Int,
+        odometerKm: Int,
+        intervalKm: Int?
+    ) -> KmCareDecision? {
+        let left = dueKm - odometerKm
+        let threshold = VehicleCareDueCalculator.kmSoonThreshold(intervalKm: intervalKm)
+        let stage: KmCareStage
+        if left > threshold {
+            return nil
+        } else if left > 0 {
+            stage = .kmEarly
+        } else if left > -threshold {
+            stage = .kmDue
+        } else {
+            stage = .kmOverdue
+        }
+        let key = "\(scheduleID.uuidString).\(dueKm).\(stage.rawValue)"
+        return KmCareDecision(stage: stage, kmLeft: left, dedupeKey: key)
+    }
+
+    static func shouldSend(recordingActive: Bool, alreadySent: Bool, decision: KmCareDecision?) -> Bool {
+        guard !recordingActive, decision != nil, !alreadySent else { return false }
+        return true
+    }
+}

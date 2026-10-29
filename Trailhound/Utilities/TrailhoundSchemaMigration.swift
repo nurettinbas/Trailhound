@@ -351,21 +351,49 @@ enum TrailhoundSchemaV23: VersionedSchema {
     }
 }
 
+/// Adds optional odometer anchor fields on `VehicleProfile` (`odometerAnchorKm`, `odometerAnchorAt`,
+/// `odometerTripMetersSinceAnchor`). Additive only: existing vehicles open with `nil` and keep
+/// `currentOdometerKm`. `VehicleOdometerService.backfillAnchorsIfNeeded` copies that reading once
+/// so older trips are not added again.
+enum TrailhoundSchemaV24: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(24, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Trip.self,
+            TripPoint.self,
+            SavedPlace.self,
+            TripStop.self,
+            UserCategory.self,
+            MatchedRoutePoint.self,
+            VehicleProfile.self,
+            TripDailyRollup.self,
+            VehicleSchedule.self,
+            VehicleExpense.self,
+            TravelJournal.self,
+            FrequentRouteAggregate.self,
+            AchievementProgress.self,
+            VisitedLocality.self,
+            VehicleFuelCalibration.self,
+        ]
+    }
+}
+
 /// Schema history used by in-memory migration tests.
 /// Do not pass `TrailhoundMigrationPlan` to a runtime disk `ModelContainer` — SwiftData aborts with
 /// "Duplicate version checksums detected" when multiple enums reference the same live `@Model` types.
-/// Tip schema must be a single live-model enum (V23); V11–V22 stay for older in-memory test containers.
+/// Tip schema must be a single live-model enum (V24); V11–V23 stay for older in-memory test containers.
 enum TrailhoundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [TrailhoundSchemaV5.self, TrailhoundSchemaV23.self]
+        [TrailhoundSchemaV5.self, TrailhoundSchemaV24.self]
     }
 
     static var stages: [MigrationStage] {
-        [migrateV5toV23]
+        [migrateV5toV24]
     }
 
-    static let migrateV5toV23 = MigrationStage.lightweight(
+    static let migrateV5toV24 = MigrationStage.lightweight(
         fromVersion: TrailhoundSchemaV5.self,
-        toVersion: TrailhoundSchemaV23.self
+        toVersion: TrailhoundSchemaV24.self
     )
 }

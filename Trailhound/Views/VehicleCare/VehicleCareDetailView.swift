@@ -49,9 +49,18 @@ struct VehicleDetailView: View {
         allSchedules
             .filter { $0.vehicle?.id == vehicleID }
             .sorted { lhs, rhs in
-                let l = lhs.nextDueDate ?? .distantFuture
-                let r = rhs.nextDueDate ?? .distantFuture
-                return l < r
+                let left = VehicleCareDueCalculator.dueState(
+                    schedule: lhs,
+                    odometerKm: lhs.vehicle?.currentOdometerKm
+                )
+                let right = VehicleCareDueCalculator.dueState(
+                    schedule: rhs,
+                    odometerKm: rhs.vehicle?.currentOdometerKm
+                )
+                if left.sortPriority != right.sortPriority {
+                    return left.sortPriority < right.sortPriority
+                }
+                return left.urgencySortKey < right.urgencySortKey
             }
     }
 
@@ -533,7 +542,10 @@ private struct CareTrackingCardRow: View {
     @State private var playChipEntrance = false
 
     private var state: VehicleCareDueState {
-        VehicleCareDueCalculator.dueState(nextDueDate: schedule.nextDueDate)
+        VehicleCareDueCalculator.dueState(
+            schedule: schedule,
+            odometerKm: schedule.vehicle?.currentOdometerKm
+        )
     }
 
     private var band: VehicleCareUrgencyBand? {
@@ -573,6 +585,7 @@ private struct CareTrackingCardRow: View {
                                 .font(.caption)
                                 .glassSecondaryInk()
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                                 .multilineTextAlignment(.trailing)
                         }
                     }

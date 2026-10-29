@@ -19,8 +19,14 @@ final class VehicleProfile {
     var pairedRouteUID: String?
     var pairedRouteName: String?
 
-    /// Optional odometer reading for km-based care schedules (v1.1).
+    /// Cached odometer: anchor plus whole kilometres driven since `odometerAnchorAt`.
     var currentOdometerKm: Int?
+    /// Last reading the user typed. Trip kilometres add on top of this, not instead of it.
+    var odometerAnchorKm: Int?
+    /// When `odometerAnchorKm` was entered. Earlier trips are not added again.
+    var odometerAnchorAt: Date?
+    /// Metres driven on trips that started on or after `odometerAnchorAt`.
+    var odometerTripMetersSinceAnchor: Double?
 
     @Relationship(deleteRule: .nullify, inverse: \Trip.vehicle)
     var trips: [Trip]
@@ -44,6 +50,9 @@ final class VehicleProfile {
         pairedRouteUID: String? = nil,
         pairedRouteName: String? = nil,
         currentOdometerKm: Int? = nil,
+        odometerAnchorKm: Int? = nil,
+        odometerAnchorAt: Date? = nil,
+        odometerTripMetersSinceAnchor: Double? = nil,
         trips: [Trip] = [],
         schedules: [VehicleSchedule] = [],
         expenses: [VehicleExpense] = []
@@ -60,6 +69,9 @@ final class VehicleProfile {
         self.pairedRouteUID = pairedRouteUID
         self.pairedRouteName = pairedRouteName
         self.currentOdometerKm = currentOdometerKm
+        self.odometerAnchorKm = odometerAnchorKm
+        self.odometerAnchorAt = odometerAnchorAt
+        self.odometerTripMetersSinceAnchor = odometerTripMetersSinceAnchor
         self.trips = trips
         self.schedules = schedules
         self.expenses = expenses

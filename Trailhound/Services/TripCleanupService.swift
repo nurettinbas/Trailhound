@@ -11,12 +11,16 @@ enum TripCleanupService {
             TravelJournalTotals.handleTripDeletion(trip, in: context)
             let successor = TripFuelDependencyService.successor(of: trip, in: context)
             TripRollupService.remove(trip, in: context)
+            VehicleOdometerService.tripRemoved(trip, in: context)
             context.delete(trip)
             if let successor {
                 TripFuelDependencyService.recompute(successor, in: context)
             }
         }
         try context.save()
+        if !trips.isEmpty {
+            VehicleCareNotificationScheduler.evaluateKmReminders(in: context)
+        }
         return trips.count
     }
 }

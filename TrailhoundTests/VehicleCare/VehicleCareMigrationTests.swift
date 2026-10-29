@@ -52,7 +52,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleSchedule>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 24)
     }
 
     func testTripDataSurvivesAlongsideCareModels() throws {
@@ -86,7 +86,7 @@ final class VehicleCareMigrationTests: XCTestCase {
         context.insert(VehicleFuelCalibration(vehicleID: vehicleID))
         try context.save()
         XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleFuelCalibration>()).count, 1)
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 24)
     }
 
     func testSuccessorRecomputeUsesPreviousTripSoak() throws {
@@ -259,7 +259,7 @@ final class VehicleCareMigrationTests: XCTestCase {
             try context.save()
         }
 
-        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 23)
+        XCTAssertEqual(ModelContainerFactory.currentSchemaVersion, 24)
         let reopened = try ModelContainer(for: schema, configurations: ModelConfiguration(url: storeURL))
         let rows = try reopened.mainContext.fetch(
             FetchDescriptor<VehicleExpense>(sortBy: [SortDescriptor(\.amount)])
@@ -267,5 +267,60 @@ final class VehicleCareMigrationTests: XCTestCase {
         XCTAssertEqual(rows.map(\.amount), [5, 15, 30, 70, 90])
         XCTAssertEqual(rows.map(\.categoryRaw), ["other", "hgs", "parking", "tax", "fuel"])
         XCTAssertEqual(rows.map(\.category), [.other, .hgs, .parking, .mtv, .fuel])
+    }
+
+    func testV23DiskStoreOpensUnderV24AndBackfillsOdometerAnchor() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OdometerV24-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Trailhound.store")
+        let anchorMoment = Date(timeIntervalSince1970: 1_700_000_000)
+
+        do {
+            let container = try ModelContainer(
+                for: Schema(versionedSchema: TrailhoundSchemaV23.self),
+                configurations: ModelConfiguration(url: storeURL)
+            )
+            let context = container.mainContext
+            let vehicle = VehicleProfile(name: "Kept Car", currentOdometerKm: 42_000)
+            context.insert(vehicle)
+            context.insert(VehicleSchedule(
+                kind: .service,
+                nextDueDate: anchorMoment,
+                intervalKind: .everyMonths,
+                intervalMonths: 12,
+                vehicle: vehicle
+            ))
+            context.insert(VehicleExpense(category: .service, amount: 1_800, vehicle: vehicle))
+            context.insert(Trip(
+                startedAt: anchorMoment,
+                endedAt: anchorMoment.addingTimeInterval(600),
+                distanceMeters: 12_500,
+                vehicleID: vehicle.id,
+                vehicle: vehicle
+            ))
+            try context.save()
+        }
+
+        let reopened = try ModelContainer(
+            for: Schema(versionedSchema: TrailhoundSchemaV24.self),
+            configurations: ModelConfiguration(url: storeURL)
+        )
+        let context = reopened.mainContext
+        let vehicle = try XCTUnwrap(context.fetch(FetchDescriptor<VehicleProfile>()).first)
+        XCTAssertEqual(vehicle.name, "Kept Car")
+        XCTAssertEqual(vehicle.currentOdometerKm, 42_000)
+        XCTAssertNil(vehicle.odometerAnchorKm)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleSchedule>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<VehicleExpense>()).first?.amount, 1_800)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Trip>()).first?.distanceMeters, 12_500)
+
+        VehicleOdometerService.backfillAnchorsIfNeeded(in: context, now: anchorMoment.addingTimeInterval(86_400))
+        XCTAssertEqual(vehicle.odometerAnchorKm, 42_000)
+        XCTAssertEqual(vehicle.odometerTripMetersSinceAnchor, 0)
+        XCTAssertEqual(vehicle.currentOdometerKm, 42_000)
+        VehicleOdometerService.backfillAnchorsIfNeeded(in: context, now: Date())
+        XCTAssertEqual(vehicle.odometerAnchorAt, anchorMoment.addingTimeInterval(86_400))
     }
 }

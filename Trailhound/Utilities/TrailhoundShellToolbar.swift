@@ -140,10 +140,15 @@ struct DuoSideStatusCapsule: View {
         tabSelection.selectedTab == .trips && tabSelection.wideBookTrailingVisible
     }
 
+    /// Trips sets the split flag and leaves it set when another tab is picked.
+    private var showsSplitPair: Bool {
+        tabSelection.selectedTab == .trips && tabSelection.wideBookShowsPlusAndMerge
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             TrailhoundNotificationBell()
-            if tabSelection.wideBookShowsPlusAndMerge {
+            if showsSplitPair {
                 splitAction(systemName: "plus", label: L10n.journalNew, identifier: SideColumnChromeID.newJournal) {
                     tabSelection.triggerNewJournal()
                 }

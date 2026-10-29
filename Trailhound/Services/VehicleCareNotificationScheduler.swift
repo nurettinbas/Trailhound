@@ -55,6 +55,44 @@ enum VehicleCareNotificationScheduler {
         markOverdueDelivered(scheduleID: scheduleID, dueDayKey: dueDayKey)
     }
 
+    /// Immediate km stages for one vehicle, or every vehicle when `vehicleID` is nil.
+    /// No-op while a trip is recording or paused, and in unit tests.
+    @MainActor
+    static func evaluateKmReminders(for vehicleID: UUID? = nil, in context: ModelContext) {
+        guard !TripRecordingService.sessionIsActive else { return }
+        guard !UITestSupport.isUnitTesting, !UITestSupport.isEnabled else { return }
+
+        let schedules = (try? context.fetch(FetchDescriptor<VehicleSchedule>())) ?? []
+        for schedule in schedules {
+            guard schedule.isEnabled,
+                  schedule.intervalKind == .everyKm || schedule.intervalKind == .whicheverFirst,
+                  let vehicle = schedule.vehicle,
+                  vehicleID == nil || vehicle.id == vehicleID,
+                  let dueKm = schedule.nextDueOdometerKm,
+                  let odometerKm = vehicle.currentOdometerKm,
+                  let decision = KmReminderPlanner.decision(
+                    scheduleID: schedule.id,
+                    dueKm: dueKm,
+                    odometerKm: odometerKm,
+                    intervalKm: schedule.intervalKm
+                  )
+            else { continue }
+            let key = kmDeliveredKey(decision.dedupeKey)
+            guard !UserDefaults.standard.bool(forKey: key) else { continue }
+            UserDefaults.standard.set(true, forKey: key)
+            let identifier = "\(idPrefix)km.\(decision.dedupeKey)"
+            let content = makeKmContent(
+                vehicleID: vehicle.id,
+                vehicleName: vehicle.name,
+                scheduleID: schedule.id,
+                title: schedule.title,
+                dueKm: dueKm,
+                decision: decision
+            )
+            deliverCatchUp(identifier: identifier, content: content)
+        }
+    }
+
     @MainActor
     static func rescheduleAll(in context: ModelContext) {
         let schedules = (try? context.fetch(FetchDescriptor<VehicleSchedule>())) ?? []
@@ -142,6 +180,44 @@ enum VehicleCareNotificationScheduler {
                 }
             }
         }
+    }
+
+    private static func makeKmContent(
+        vehicleID: UUID,
+        vehicleName: String,
+        scheduleID: UUID,
+        title: String,
+        dueKm: Int,
+        decision: KmCareDecision
+    ) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = L10n.string("vehicles.care.notification.title")
+        content.body = kmBody(vehicleName: vehicleName, title: title, decision: decision)
+        content.sound = .default
+        content.userInfo = [
+            actionUserInfoKey: openVehicleCareAction,
+            vehicleIDUserInfoKey: vehicleID.uuidString,
+            scheduleIDUserInfoKey: scheduleID.uuidString,
+            dueDayUserInfoKey: String(dueKm),
+            stageUserInfoKey: decision.stage.rawValue,
+        ]
+        return content
+    }
+
+    private static func kmBody(vehicleName: String, title: String, decision: KmCareDecision) -> String {
+        let distance = VehicleCareDueCalculator.formatKilometers(abs(decision.kmLeft))
+        switch decision.stage {
+        case .kmEarly:
+            return String(format: L10n.string("vehicles.care.notification.body.km_early"), vehicleName, title, distance)
+        case .kmDue:
+            return String(format: L10n.string("vehicles.care.notification.body.km_due"), vehicleName, title)
+        case .kmOverdue:
+            return String(format: L10n.string("vehicles.care.notification.body.km_overdue"), vehicleName, title, distance)
+        }
+    }
+
+    private static func kmDeliveredKey(_ dedupeKey: String) -> String {
+        "trailhound.care.kmDelivered.\(dedupeKey)"
     }
 
     private static func makeContent(

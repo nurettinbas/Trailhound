@@ -84,7 +84,12 @@ enum TripRecordingState: Equatable {
 @MainActor
 @Observable
 final class TripRecordingService {
-    private(set) var state: TripRecordingState = .idle
+    private(set) var state: TripRecordingState = .idle {
+        didSet { Self.sessionIsActive = state.isActiveSession }
+    }
+
+    /// Read by care reminders so a kilometre push never fires while a trip is recording or paused.
+    static var sessionIsActive = false
     private(set) var currentDistanceMeters: Double = 0
     private(set) var currentSpeedMps: Double = 0
     private(set) var recordingStartedAt: Date?
@@ -1151,6 +1156,7 @@ final class TripRecordingService {
                 privacyRadius: privacyRadius
             )
             TripRollupService.add(trip, in: modelContext)
+            VehicleOdometerService.tripAdded(trip, in: modelContext)
 
             do {
                 try modelContext.save()
@@ -1208,7 +1214,11 @@ final class TripRecordingService {
             reconciledDistanceMeters: reconciled
         )
 
+        let savedVehicleID = shouldSave ? trip.vehicleID : nil
         resetActiveSession()
+        if let savedVehicleID {
+            VehicleCareNotificationScheduler.evaluateKmReminders(for: savedVehicleID, in: modelContext)
+        }
         TripStore.syncWidgetWeekDistance(in: modelContext)
         syncExternalState(force: true)
         if !UITestSupport.shouldSkipExternalEffects {

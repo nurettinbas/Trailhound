@@ -30,6 +30,9 @@ struct VehicleScheduleEditorView: View {
     @State private var draft: VehicleScheduleEditorDraft?
     @State private var isSaving = false
     @FocusState private var focusedField: VehicleScheduleFocusedField?
+    @Namespace private var kmPresetNamespace
+
+    private static let kmPresets = [1_000, 4_000, 6_000, 10_000, 15_000]
 
     private var vehicle: VehicleProfile? {
         vehicles.first { $0.id == vehicleID }
@@ -72,8 +75,12 @@ struct VehicleScheduleEditorView: View {
             )
             .onAppear {
                 if draft == nil {
-                    draft = schedule.map(VehicleScheduleEditorDraft.init(from:))
+                    var initial = schedule.map(VehicleScheduleEditorDraft.init(from:))
                         ?? VehicleScheduleEditorDraft()
+                    if schedule == nil, let current = vehicle?.currentOdometerKm {
+                        initial.nextDueOdometerKm = current + initial.intervalKm
+                    }
+                    draft = initial
                 }
             }
             .deleteConfirmHost()
@@ -140,8 +147,11 @@ struct VehicleScheduleEditorView: View {
                             || draft?.title.isEmpty == true {
                             draft?.title = newKind.defaultTitle
                         }
-                        draft?.intervalMonths = newKind == .inspection ? 24 : 12
-                        draft?.intervalKind = newKind == .service ? .everyMonths : .everyYears
+                        let keepsKilometres = draft?.intervalKind == .everyKm || draft?.intervalKind == .whicheverFirst
+                        if !keepsKilometres {
+                            draft?.intervalMonths = newKind == .inspection ? 24 : 12
+                            draft?.intervalKind = newKind == .service ? .everyMonths : .everyYears
+                        }
                     }
                     .glassMenuPicker()
                 }
@@ -159,15 +169,17 @@ struct VehicleScheduleEditorView: View {
             }
 
             Section(L10n.string("vehicles.care.schedule.due")) {
-                LabeledContent(L10n.string("vehicles.care.schedule.next_due")) {
-                    DatePicker(
-                        L10n.string("vehicles.care.schedule.next_due"),
-                        selection: draftBinding(\.nextDueDate),
-                        displayedComponents: .date
-                    )
-                    .glassDatePicker()
+                if activeDraft.intervalKind != .everyKm {
+                    LabeledContent(L10n.string("vehicles.care.schedule.next_due")) {
+                        DatePicker(
+                            L10n.string("vehicles.care.schedule.next_due"),
+                            selection: draftBinding(\.nextDueDate),
+                            displayedComponents: .date
+                        )
+                        .glassDatePicker()
+                    }
+                    .glassRow(position: .first)
                 }
-                .glassRow(position: .first)
 
                 LabeledContent(L10n.string("vehicles.care.schedule.interval")) {
                     Picker(L10n.string("vehicles.care.schedule.interval"), selection: draftBinding(\.intervalKind)) {
@@ -177,7 +189,7 @@ struct VehicleScheduleEditorView: View {
                     }
                     .glassMenuPicker()
                 }
-                .glassRow(position: .middle)
+                .glassRow(position: activeDraft.intervalKind == .everyKm ? .first : .middle)
 
                 if activeDraft.intervalKind == .everyMonths
                     || activeDraft.intervalKind == .everyYears
@@ -194,14 +206,75 @@ struct VehicleScheduleEditorView: View {
 
                 if activeDraft.intervalKind == .everyKm
                     || activeDraft.intervalKind == .whicheverFirst {
+                    if vehicle?.currentOdometerKm == nil {
+                        Button {
+                            close()
+                        } label: {
+                            Text(L10n.string("vehicles.odometer.missing"))
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .buttonStyle(.glassPlainHit)
+                        .accessibilityIdentifier("vehicle.care.odometer.prompt")
+                        .glassRow(position: .middle)
+                    } else if let current = vehicle?.currentOdometerKm {
+                        Text(String(
+                            format: L10n.string("vehicles.detail.odometer"),
+                            VehicleCareDueCalculator.formatKilometers(current)
+                        ))
+                        .font(.caption)
+                        .glassSecondaryInk()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .glassRow(position: .middle)
+                    }
+
+                    LabeledContent(L10n.string("vehicles.care.schedule.next_due_km")) {
+                        TextField(
+                            "",
+                            value: draftBinding(\.nextDueOdometerKm),
+                            format: .number
+                        )
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .glassInputField()
+                        .frame(maxWidth: 140)
+                        .accessibilityIdentifier("vehicle.care.nextDueKm")
+                    }
+                    .glassRow(position: .middle)
+
                     Stepper(
                         value: draftBinding(\.intervalKm),
-                        in: 1_000...50_000,
+                        in: 500...50_000,
                         step: 500
                     ) {
-                        Text("\(activeDraft.intervalKm) km")
+                        Text("\(VehicleCareDueCalculator.formatKilometers(activeDraft.intervalKm))")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .glassStepper()
+                    .glassRow(position: .middle)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        GlassChipGroup(spacing: 8) {
+                            HStack(spacing: 8) {
+                                ForEach(Self.kmPresets, id: \.self) { preset in
+                                    GlassFilterChip(
+                                        title: VehicleCareDueCalculator.formatKilometers(preset),
+                                        isSelected: activeDraft.intervalKm == preset,
+                                        namespace: kmPresetNamespace,
+                                        highlightID: "kmPreset-\(preset)",
+                                        size: .compact
+                                    ) {
+                                        draftBinding(\.intervalKm).wrappedValue = preset
+                                    }
+                                    .accessibilityIdentifier("vehicle.care.km.preset.\(preset)")
+                                }
+                            }
+                        }
+                    }
+                    .glassChipScroller()
                     .glassRow(position: .middle)
                 }
 

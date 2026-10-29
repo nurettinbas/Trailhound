@@ -98,6 +98,7 @@ struct VehicleCareDueChip: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
@@ -105,6 +106,7 @@ struct VehicleCareDueChip: View {
         .scaleEffect(scale)
         .opacity(opacity)
         .offset(x: shakeX)
+        .accessibilityIdentifier("vehicle.care.due.chip")
         .accessibilityLabel(accessibilityText)
         .onChange(of: playEntrance) { _, shouldPlay in
             guard shouldPlay else { return }

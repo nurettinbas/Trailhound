@@ -10,7 +10,7 @@ Nurettin Baş — [nurettin.bas@icloud.com](mailto:nurettin.bas@icloud.com)
 
 ## 2. Cihazında kalan veriler (geliştiriciye ulaşmaz)
 
-- GPS noktaları, yolculuk bilgileri, araç profilleri, araca eklediğin fotoğraflar, kayıtlı yerler, seyahat notları ve harcamalar
+- GPS noktaları, yolculuk bilgileri, araç profilleri, yazdığın kilometre sayacı ve yolculukların buna eklediği kilometre, araca eklediğin fotoğraflar, kayıtlı yerler, seyahat notları ve harcamalar
 - Harcamaya eklediğin fiş fotoğrafları ve bunlardan okunan tutar
 - Yalnızca **Sorun bildir** ile göndermeyi seçersen kullanılan tanı günlüğü
 

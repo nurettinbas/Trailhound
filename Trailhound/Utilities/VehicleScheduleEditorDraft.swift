@@ -8,6 +8,7 @@ struct VehicleScheduleEditorDraft: Equatable {
     var intervalKind: VehicleScheduleIntervalKind
     var intervalMonths: Int
     var intervalKm: Int
+    var nextDueOdometerKm: Int
     var notes: String
     var isEnabled: Bool
 
@@ -18,6 +19,7 @@ struct VehicleScheduleEditorDraft: Equatable {
         self.intervalKind = kind == .service ? .everyMonths : .everyYears
         self.intervalMonths = kind == .service ? 12 : (kind == .inspection ? 24 : 12)
         self.intervalKm = 15_000
+        self.nextDueOdometerKm = 15_000
         self.notes = ""
         self.isEnabled = true
     }
@@ -29,6 +31,7 @@ struct VehicleScheduleEditorDraft: Equatable {
         intervalKind = schedule.intervalKind
         intervalMonths = schedule.intervalMonths ?? 12
         intervalKm = schedule.intervalKm ?? 15_000
+        nextDueOdometerKm = schedule.nextDueOdometerKm ?? 15_000
         notes = schedule.notes ?? ""
         isEnabled = schedule.isEnabled
     }
@@ -39,15 +42,18 @@ struct VehicleScheduleEditorDraft: Equatable {
         schedule.title = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? kind.defaultTitle
             : title.trimmingCharacters(in: .whitespacesAndNewlines)
-        schedule.nextDueDate = nextDueDate
         schedule.intervalKind = intervalKind
         schedule.intervalMonths = intervalMonths
-        schedule.intervalKm = intervalKm
+        let usesKm = intervalKind == .everyKm || intervalKind == .whicheverFirst
+        schedule.nextDueDate = intervalKind == .everyKm ? nil : nextDueDate
+        schedule.intervalKm = min(50_000, max(500, intervalKm))
+        schedule.nextDueOdometerKm = usesKm ? min(VehicleOdometerService.readingRange.upperBound, max(0, nextDueOdometerKm)) : nil
         schedule.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         schedule.isEnabled = isEnabled
         schedule.reminderOffsetsDays = kind.defaultReminderOffsets
         try context.save()
         VehicleCareNotificationScheduler.rescheduleAll(in: context)
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: schedule.vehicle?.id, in: context)
     }
 
     @MainActor
@@ -56,19 +62,20 @@ struct VehicleScheduleEditorDraft: Equatable {
             kind: kind,
             title: title.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             isEnabled: isEnabled,
-            nextDueDate: nextDueDate,
+            nextDueDate: intervalKind == .everyKm ? nil : nextDueDate,
             nextDueOdometerKm: intervalKind == .everyKm || intervalKind == .whicheverFirst
-                ? (vehicle.currentOdometerKm ?? 0) + intervalKm
+                ? min(VehicleOdometerService.readingRange.upperBound, max(0, nextDueOdometerKm))
                 : nil,
             intervalKind: intervalKind,
             intervalMonths: intervalMonths,
-            intervalKm: intervalKm,
+            intervalKm: min(50_000, max(500, intervalKm)),
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             vehicle: vehicle
         )
         context.insert(schedule)
         try context.save()
         VehicleCareNotificationScheduler.rescheduleAll(in: context)
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: vehicle.id, in: context)
         return schedule
     }
 }

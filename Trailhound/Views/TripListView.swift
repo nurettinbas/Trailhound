@@ -2054,12 +2054,14 @@ struct TripListView: View {
         TravelJournalTotals.handleTripDeletion(trip, in: modelContext)
         let successor = TripFuelDependencyService.successor(of: trip, in: modelContext)
         TripRollupService.remove(trip, in: modelContext)
+        VehicleOdometerService.tripRemoved(trip, in: modelContext)
         modelContext.delete(trip)
         if let successor {
             TripFuelDependencyService.recompute(successor, in: modelContext)
         }
         mergeSelection.remove(trip.id)
         try? modelContext.save()
+        VehicleCareNotificationScheduler.evaluateKmReminders(for: trip.vehicleID, in: modelContext)
         ToastPresenter.shared.show(.deleted)
     }
 

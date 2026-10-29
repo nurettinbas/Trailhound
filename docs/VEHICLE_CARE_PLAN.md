@@ -1,6 +1,6 @@
 # Vehicle care & expenses
 
-> **Status:** Shipped (schema V14) — installments + UI layering; receipt photos + on-device amount reading (schema V23)  
+> **Status:** Shipped (schema V14) — installments + UI layering; receipt photos + on-device amount reading (schema V23); odometer anchor (schema V24)  
 > **Placement:** Vehicles tab → single detail screen
 
 ---
@@ -71,9 +71,25 @@ Cost charts live only on **Stats** (`VehicleCostSnapshotLoader` / Vehicle costs)
 
 Fuel · Traffic insurance · Casco · Service · Inspection · Repair · Accessory · Road toll · Parking · Vehicle tax (MTV) · Other
 
-Legacy raw values (`insurance` → traffic insurance, `tax` → MTV, `parts` → accessory) map on read. Stored `parking` is the parking case. Schema stays **23**; category is a string (`categoryRaw`), so new cases do not bump the store.
+Legacy raw values (`insurance` → traffic insurance, `tax` → MTV, `parts` → accessory) map on read. Stored `parking` is the parking case. Category is a string (`categoryRaw`), so new cases do not bump the store. The live store is **V24** for the odometer anchor fields.
 
 ---
+
+## Odometer (V24)
+
+The vehicle profile has an optional **Odometer** field (0...2,000,000, digits only). Saving a new number sets the anchor. Trips that start at or after that moment add their distance. Trips before it do not. Clearing the field turns kilometre reminders off; date reminders stay.
+
+`currentOdometerKm` is the cached total (anchor + whole kilometres since the anchor). Deleting or editing a trip adjusts that cache. Merging trips recomputes it from the trips that remain. A typed reading, including one entered when a service is marked done, replaces the anchor.
+
+V24 only adds `odometerAnchorKm`, `odometerAnchorAt`, and `odometerTripMetersSinceAnchor`. Existing rows open with `nil`. The first launch copies a stored `currentOdometerKm` into the anchor and does not add old trips.
+
+## Kilometre reminders
+
+A service or inspection interval can be months, years, kilometres, or whichever comes first. The first target (`nextDueOdometerKm`) can differ from the repeating interval (a scooter’s first service at 1 000 km, then every 4 000). Quick picks are 1 000, 4 000, 6 000, 10 000, and 15 000; the stepper runs from 500 to 50 000.
+
+The “soon” window is 15% of the interval, clamped to 300...1 500 km. Whichever-first uses the more urgent of the date and the kilometres. With no odometer, only the date is used.
+
+Pushes: one early, one at the target, one overdue, per target kilometre. They fire after a trip is saved or when the app becomes active. They do not fire while a trip is recording or paused. Marking the service done moves the target, so the next cycle can notify again.
 
 ## Notifications
 

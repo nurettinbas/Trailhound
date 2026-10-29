@@ -638,6 +638,36 @@ final class TripDetailTripSwitchUITests: TrailhoundUITestCase {
     }
 }
 
+final class OdometerCareUITests: TrailhoundUITestCase {
+    override var extraLaunchArguments: [String] { ["-UITesting.odometerCareSeed"] }
+
+    func testSeededTripShowsKilometresLeftOnTheServiceChip() {
+        XCTAssertTrue(pairingTab.waitForExistence(timeout: uiTimeout))
+        pairingTab.tap()
+
+        let vehicle = app.staticTexts["Vespa"].firstMatch
+        XCTAssertTrue(vehicle.waitForExistence(timeout: uiTimeout), "Seeded Vespa should be listed")
+        vehicle.tap()
+
+        let chip = app.descendants(matching: .any)["vehicle.care.due.chip"].firstMatch
+        revealControl(chip)
+        XCTAssertTrue(chip.waitForExistence(timeout: uiTimeout), "Service chip should show kilometres left")
+        XCTAssertTrue(chip.label.localizedCaseInsensitiveContains("500"))
+        XCTAssertTrue(chip.label.localizedCaseInsensitiveContains("km"))
+    }
+
+    private func revealControl(_ query: XCUIElement) {
+        for _ in 0..<12 {
+            if query.waitForExistence(timeout: 1), query.isHittable { return }
+            if query.exists, !query.isHittable {
+                app.swipeDown()
+                if query.isHittable { return }
+            }
+            app.swipeUp()
+        }
+    }
+}
+
 final class VehicleExpenseCategoryUITests: TrailhoundUITestCase {
     override var extraLaunchArguments: [String] { ["-UITesting.expenseCategorySeed"] }
 

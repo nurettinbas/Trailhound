@@ -15,6 +15,60 @@ enum VehicleCareDueCalculator {
         return .overdue(days: abs(days))
     }
 
+    /// 15% of the service interval, clamped to 300...1500 km.
+    static func kmSoonThreshold(intervalKm: Int?) -> Int {
+        let interval = max(intervalKm ?? 1_000, 1)
+        let raw = Int((Double(interval) * 0.15).rounded())
+        return min(1_500, max(300, raw))
+    }
+
+    static func formatKilometers(_ km: Int, locale: Locale = .current) -> String {
+        let number = abs(km).formatted(.number.locale(locale))
+        return "\(number) km"
+    }
+
+    static func dueState(
+        schedule: VehicleSchedule,
+        odometerKm: Int?,
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> VehicleCareDueState {
+        let dateState = dueState(nextDueDate: schedule.nextDueDate, today: today, calendar: calendar)
+        let kmState = kmDueState(
+            dueKm: schedule.nextDueOdometerKm,
+            odometerKm: odometerKm,
+            intervalKm: schedule.intervalKm
+        )
+        switch schedule.intervalKind {
+        case .everyKm:
+            return kmState
+        case .everyMonths, .everyYears, .none:
+            return dateState
+        case .whicheverFirst:
+            if case .noDate = kmState { return dateState }
+            if case .noDate = dateState { return kmState }
+            return moreUrgent(dateState, kmState)
+        }
+    }
+
+    static func kmDueState(dueKm: Int?, odometerKm: Int?, intervalKm: Int?) -> VehicleCareDueState {
+        guard let dueKm, let odometerKm else { return .noDate }
+        let left = dueKm - odometerKm
+        if left > 0 {
+            let approaching = left <= kmSoonThreshold(intervalKm: intervalKm)
+            return .upcomingKm(kmLeft: left, approaching: approaching)
+        }
+        if left == 0 { return .dueToday }
+        return .overdueKm(kmOver: abs(left))
+    }
+
+    static func moreUrgent(_ lhs: VehicleCareDueState, _ rhs: VehicleCareDueState) -> VehicleCareDueState {
+        if lhs.sortPriority != rhs.sortPriority {
+            return lhs.sortPriority < rhs.sortPriority ? lhs : rhs
+        }
+        return lhs.urgencySortKey <= rhs.urgencySortKey ? lhs : rhs
+    }
+
     static func dueItems(
         from schedules: [VehicleSchedule],
         today: Date = Date(),
@@ -24,7 +78,16 @@ enum VehicleCareDueCalculator {
         var items: [VehicleDueItem] = []
         for schedule in schedules where schedule.isEnabled {
             guard let vehicle = schedule.vehicle else { continue }
-            let state = dueState(nextDueDate: schedule.nextDueDate, today: today, calendar: calendar)
+            let state = dueState(
+                schedule: schedule,
+                odometerKm: vehicle.currentOdometerKm,
+                today: today,
+                calendar: calendar
+            )
+            let kmLeft: Int? = {
+                guard let due = schedule.nextDueOdometerKm, let current = vehicle.currentOdometerKm else { return nil }
+                return due - current
+            }()
             let item = VehicleDueItem(
                 id: schedule.id,
                 scheduleID: schedule.id,
@@ -33,6 +96,8 @@ enum VehicleCareDueCalculator {
                 kind: schedule.kind,
                 title: schedule.title,
                 dueDate: schedule.nextDueDate,
+                dueOdometerKm: schedule.nextDueOdometerKm,
+                kmLeft: kmLeft,
                 state: state
             )
             if urgentOnly && !state.isUrgent { continue }
@@ -92,6 +157,10 @@ enum VehicleCareDueCalculator {
             return String(format: L10n.string("vehicles.care.due.today"), title)
         case .overdue(let days):
             return String(format: L10n.string("vehicles.care.due.overdue"), title, days)
+        case .upcomingKm(let km, _):
+            return String(format: L10n.string("vehicles.care.due.km_left"), title, formatKilometers(km))
+        case .overdueKm(let km):
+            return String(format: L10n.string("vehicles.care.due.km_overdue"), title, formatKilometers(km))
         case .noDate:
             return title
         }
@@ -105,6 +174,10 @@ enum VehicleCareDueCalculator {
             return L10n.string("vehicles.care.due.short_today")
         case .overdue(let days):
             return String(format: L10n.string("vehicles.care.due.short_overdue"), days)
+        case .upcomingKm(let km, _):
+            return String(format: L10n.string("vehicles.care.due.short_km_left"), formatKilometers(km))
+        case .overdueKm(let km):
+            return String(format: L10n.string("vehicles.care.due.short_km_overdue"), formatKilometers(km))
         case .noDate:
             return nil
         }

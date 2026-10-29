@@ -35,9 +35,15 @@ enum VehicleScheduleCompletionService {
         )
 
         schedule.lastCompletedAt = occurredAt
-        if let odometerKm {
-            schedule.lastCompletedOdometerKm = odometerKm
-            vehicle.currentOdometerKm = odometerKm
+        let typedReading = odometerKm.flatMap { VehicleOdometerService.readingRange.contains($0) ? $0 : nil }
+        if let typedReading {
+            schedule.lastCompletedOdometerKm = typedReading
+            VehicleOdometerService.setReading(
+                km: typedReading,
+                at: occurredAt,
+                vehicle: vehicle,
+                in: context
+            )
         }
 
         let next = VehicleCareDueCalculator.nextDueDateAfterCompletion(
@@ -49,14 +55,20 @@ enum VehicleScheduleCompletionService {
 
         if schedule.intervalKind == .everyKm || schedule.intervalKind == .whicheverFirst,
            let intervalKm = schedule.intervalKm {
-            let base = odometerKm ?? vehicle.currentOdometerKm ?? 0
-            schedule.nextDueOdometerKm = base + intervalKm
+            let base = typedReading ?? vehicle.currentOdometerKm
+            if let base {
+                schedule.nextDueOdometerKm = base + intervalKm
+            }
         }
 
         try context.save()
 
         if rescheduleNotifications {
             VehicleCareNotificationScheduler.rescheduleAll(in: context)
+            VehicleCareNotificationScheduler.evaluateKmReminders(
+                for: vehicle.id,
+                in: context
+            )
         }
         return expense
     }
@@ -65,4 +77,5 @@ enum VehicleScheduleCompletionService {
 enum VehicleCareError: Error, Equatable {
     case missingVehicle
     case invalidAmount
+    case invalidOdometer
 }

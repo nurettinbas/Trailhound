@@ -180,28 +180,47 @@ enum VehicleCareDueState: Equatable, Sendable {
     case upcoming(daysLeft: Int)
     case dueToday
     case overdue(days: Int)
+    /// `approaching` is true inside the interval-scaled window (chip and push).
+    case upcomingKm(kmLeft: Int, approaching: Bool)
+    case overdueKm(kmOver: Int)
     case noDate
 
     var sortPriority: Int {
         switch self {
-        case .overdue: 0
+        case .overdue, .overdueKm: 0
         case .dueToday: 1
-        case .upcoming: 2
-        case .noDate: 3
+        case .upcoming(let days): days <= 30 ? 2 : 3
+        case .upcomingKm(_, let approaching): approaching ? 2 : 3
+        case .noDate: 4
         }
     }
 
     var isUrgent: Bool {
         switch self {
-        case .overdue, .dueToday: true
+        case .overdue, .overdueKm, .dueToday: true
         case .upcoming(let days): days <= 30
+        case .upcomingKm(_, let approaching): approaching
         case .noDate: false
         }
     }
 
     var isOverdue: Bool {
-        if case .overdue = self { return true }
-        return false
+        switch self {
+        case .overdue, .overdueKm: true
+        case .upcoming, .dueToday, .upcomingKm, .noDate: false
+        }
+    }
+
+    /// Lower comes first when two states share `sortPriority`.
+    var urgencySortKey: Int {
+        switch self {
+        case .overdue(let days): -days
+        case .overdueKm(let km): -km
+        case .dueToday: 0
+        case .upcoming(let days): days
+        case .upcomingKm(let km, _): km
+        case .noDate: Int.max
+        }
     }
 }
 
@@ -213,14 +232,9 @@ struct VehicleDueItem: Identifiable, Equatable, Sendable {
     let kind: VehicleScheduleKind
     let title: String
     let dueDate: Date?
+    var dueOdometerKm: Int? = nil
+    var kmLeft: Int? = nil
     let state: VehicleCareDueState
 
-    var daysSortKey: Int {
-        switch state {
-        case .overdue(let days): -days
-        case .dueToday: 0
-        case .upcoming(let days): days
-        case .noDate: Int.max
-        }
-    }
+    var daysSortKey: Int { state.urgencySortKey }
 }

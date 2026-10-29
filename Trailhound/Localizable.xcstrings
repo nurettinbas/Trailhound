@@ -138,9 +138,6 @@
         }
       }
     },
-    "%lld km" : {
-
-    },
     "%lld%%" : {
 
     },
@@ -22440,6 +22437,40 @@
         }
       }
     },
+    "vehicles.care.due.km_left" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — %@ left"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — %@ kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.due.km_overdue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — %@ past — get it done"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — %@ geçti — yaptırın"
+          }
+        }
+      }
+    },
     "vehicles.care.due.none" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -22487,6 +22518,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d gün kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.due.short_km_left" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ left"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.due.short_km_overdue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ past"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ geçti"
           }
         }
       }
@@ -23987,6 +24052,57 @@
         }
       }
     },
+    "vehicles.care.notification.body.km_due" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — service distance reached"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — bakım kilometresine ulaşıldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.notification.body.km_early" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — %@ left"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — %@ kaldı"
+          }
+        }
+      }
+    },
+    "vehicles.care.notification.body.km_overdue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — %@ past the service distance"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ — bakım kilometresini %@ geçti"
+          }
+        }
+      }
+    },
     "vehicles.care.notification.body.overdue" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -24174,6 +24290,23 @@
         }
       }
     },
+    "vehicles.care.schedule.next_due_km" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next service at"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonraki bakım"
+          }
+        }
+      }
+    },
     "vehicles.care.schedule.notes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -24323,6 +24456,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yaklaşanlar"
+          }
+        }
+      }
+    },
+    "vehicles.detail.odometer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odometer: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilometre: %@"
+          }
+        }
+      }
+    },
+    "vehicles.odometer.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trips add to this automatically."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yolculuklar bunu kendiliğinden artırır."
+          }
+        }
+      }
+    },
+    "vehicles.odometer.missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the current odometer first"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Önce güncel kilometreyi gir"
+          }
+        }
+      }
+    },
+    "vehicles.odometer.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odometer"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilometre"
           }
         }
       }

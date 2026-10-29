@@ -5,20 +5,23 @@ import UIKit
 enum PairingVehicleFocusedField: Hashable {
     case name
     case consumption
+    case odometer
     case chargePrice
 
     func previous(isElectric: Bool) -> PairingVehicleFocusedField? {
         switch self {
         case .name: nil
         case .consumption: .name
-        case .chargePrice: .consumption
+        case .odometer: .consumption
+        case .chargePrice: .odometer
         }
     }
 
     func next(isElectric: Bool) -> PairingVehicleFocusedField? {
         switch self {
         case .name: .consumption
-        case .consumption: isElectric ? .chargePrice : nil
+        case .consumption: .odometer
+        case .odometer: isElectric ? .chargePrice : nil
         case .chargePrice: nil
         }
     }
@@ -27,6 +30,7 @@ enum PairingVehicleFocusedField: Hashable {
         switch self {
         case .name: L10n.pairingTabVehicleName
         case .consumption: consumptionLabel
+        case .odometer: L10n.string("vehicles.odometer.title")
         case .chargePrice: L10n.pairingTabChargePrice
         }
     }
@@ -265,7 +269,29 @@ struct PairingVehicleEditorForm: View {
                 .glassInputField()
                 .frame(maxWidth: 120)
         }
+        .glassRow(position: .middle)
+
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(L10n.string("vehicles.odometer.title"))
+                    .glassPrimaryInk()
+                Spacer(minLength: 8)
+                TextField("", text: draftBinding(\.odometerKmText))
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .focused(focusedField, equals: .odometer)
+                    .glassInputField()
+                    .frame(maxWidth: 140)
+                    .accessibilityIdentifier("vehicle.odometer")
+            }
+            Text(L10n.string("vehicles.odometer.footer"))
+                .font(.caption)
+                .glassSecondaryInk()
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        }
         .glassRow(position: activeDraft.fuelType == .electric ? .middle : .last)
+
         if activeDraft.fuelType == .electric {
             LabeledContent(L10n.pairingTabChargePrice) {
                 TextField(
@@ -313,7 +339,7 @@ struct PairingVehicleEditorForm: View {
         }
         .buttonStyle(.glassPlainHit)
         .trailhoundCompactProminentButton()
-        .disabled(busy)
+        .disabled(busy || !activeDraft.odometerInputIsValid)
         .opacity(busy ? 0.45 : 1)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .listRowBackground(Color.clear)
@@ -745,7 +771,7 @@ struct PairingVehicleEditorForm: View {
     }
 
     private func syncSaveDisabled() {
-        saveDisabled.wrappedValue = isSaving || isProcessingPhoto || isFraming
+        saveDisabled.wrappedValue = isSaving || isProcessingPhoto || isFraming || !activeDraft.odometerInputIsValid
     }
 
     private func removePhoto() {

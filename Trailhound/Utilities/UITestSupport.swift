@@ -43,6 +43,16 @@ enum UITestSupport {
 
     static let expenseCategorySeedVehicleID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000e1")!
 
+    static var seedsOdometerCare: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-UITesting.odometerCareSeed")
+        #else
+        false
+        #endif
+    }
+
+    static let odometerCareSeedVehicleID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-000000000024")!
+
     /// Other UI tests tap Start and must not stop on the one-time driving notice.
     static var showsDrivingSafetyNotice: Bool {
         #if DEBUG
@@ -116,7 +126,45 @@ enum UITestSupport {
         if seedsExpenseCategory {
             seedExpenseCategoryFixtures(in: context)
         }
+        if seedsOdometerCare {
+            seedOdometerCareFixtures(in: context)
+        }
         try? context.save()
+    }
+
+    @MainActor
+    static func seedOdometerCareFixtures(in context: ModelContext) {
+        let seedID = odometerCareSeedVehicleID
+        var existing = FetchDescriptor<VehicleProfile>(predicate: #Predicate { $0.id == seedID })
+        existing.fetchLimit = 1
+        if (try? context.fetch(existing).first) != nil { return }
+        let anchor = Date(timeIntervalSince1970: 1_700_000_000)
+        let vehicle = VehicleProfile(
+            id: seedID,
+            name: "Vespa",
+            isDefault: true,
+            currentOdometerKm: 9_000,
+            odometerAnchorKm: 9_000,
+            odometerAnchorAt: anchor,
+            odometerTripMetersSinceAnchor: 0
+        )
+        context.insert(vehicle)
+        let trip = Trip(
+            startedAt: anchor.addingTimeInterval(3_600),
+            endedAt: anchor.addingTimeInterval(7_200),
+            distanceMeters: 500_000,
+            vehicleID: seedID
+        )
+        context.insert(trip)
+        VehicleOdometerService.tripAdded(trip, in: context)
+        context.insert(VehicleSchedule(
+            kind: .service,
+            title: "Service",
+            nextDueOdometerKm: 10_000,
+            intervalKind: .everyKm,
+            intervalKm: 4_000,
+            vehicle: vehicle
+        ))
     }
 
     @MainActor
