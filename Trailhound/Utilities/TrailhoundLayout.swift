@@ -270,7 +270,8 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         }
     }
 
-    /// 9:16 column on Duo, a wide phone, and iPad. Nil on a phone so the story is full bleed.
+    /// 9:16 column on an open Duo and iPad. Nil on a phone: the story cover locks
+    /// the phone to portrait, so a sideways phone does not lay the story out wide.
     /// The story view centers this column on the window. The side-tab inset must not leave it leading.
     var storyStageMaxWidth: CGFloat? {
         switch layoutClass {

@@ -11,6 +11,7 @@
 		0F5F4572CB5F4B3C87FF4204 /* CoreUtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281688F0AFAE4043BEC67D42 /* CoreUtilityTests.swift */; };
 		FCF79E9C92EC45B999990157 /* SchemaAndRoutesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27424CF75D11487F935A2F5B /* SchemaAndRoutesTests.swift */; };
 		B5687DE9A9184D309EDE232A /* TravelJournalMembershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74EBED0DC62A41F89138E341 /* TravelJournalMembershipTests.swift */; };
+		A7C3E1B24F6D4A8E9C0B1D22 /* TravelJournalMapFitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E8A91B2D7F4C6A8E1B0F33 /* TravelJournalMapFitTests.swift */; };
 		857DA81B664F48CEBCDDD4A5 /* TravelJournalSuggesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F4AB232C4C4B40B37C8C68 /* TravelJournalSuggesterTests.swift */; };
 		69ABDB5987BB412D9C08F6A9 /* TripDerivedMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCBAE534BA304B14A0F542A0 /* TripDerivedMetricsTests.swift */; };
 		D1E54789EF1F4A1DA0131493 /* TripRollupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31892835E26A4362923BB026 /* TripRollupServiceTests.swift */; };
@@ -73,7 +74,6 @@
 		2624D0F167664531B611DBDF /* LiveFollowMapPinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6572CCD028704339ACC95B23 /* LiveFollowMapPinTests.swift */; };
 		09F76A25399F4EE2BC9D37A1 /* LiveFollowMapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C5306C54FD477DBAA64E3F /* LiveFollowMapViewTests.swift */; };
 		ECEEA5B401D548B6BFB8517D /* LiveFollowPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CDC6EAEAA8040A1B01D36F6 /* LiveFollowPresentationTests.swift */; };
-		1E3B396A0E7248B199B1809A /* RotationCoverPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB59E7481EA4578B1FD6EDD /* RotationCoverPolicyTests.swift */; };
 		AEFE6AEBC36441A38BB24342 /* RouteDisplayPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2757A76F85439CB0C95BB0 /* RouteDisplayPathTests.swift */; };
 		11C10A97E3F748F8839D2DC0 /* ScreenIdleLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1711A1EFCA2E4FF585B3E668 /* ScreenIdleLockTests.swift */; };
 		BE40FF9A7E3D43D090C97CE1 /* ShellPaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971F993684542EAAEEA4707 /* ShellPaletteTests.swift */; };
@@ -195,7 +195,6 @@
 		A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSENGINE0000000001 /* GlassEngine.swift */; };
 		A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */; };
 		A1APPICONSYNC000000001 /* AppIconSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2APPICONSYNC000000001 /* AppIconSync.swift */; };
-		A1ROTATIONCOVER0000001 /* RotationCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ROTATIONCOVER0000001 /* RotationCover.swift */; };
 		A1GLASSPALETTE000000001 /* GlassPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSPALETTE000000001 /* GlassPalette.swift */; };
 		A1GLASSENVIRON000000001 /* GlassEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSENVIRON000000001 /* GlassEnvironment.swift */; };
 		A1GLASSCONTROLS00000001 /* GlassControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2GLASSCONTROLS00000001 /* GlassControls.swift */; };
@@ -484,6 +483,7 @@
 		281688F0AFAE4043BEC67D42 /* CoreUtilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Core/CoreUtilityTests.swift; sourceTree = SOURCE_ROOT; };
 		27424CF75D11487F935A2F5B /* SchemaAndRoutesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/SchemaAndRoutesTests.swift; sourceTree = SOURCE_ROOT; };
 		74EBED0DC62A41F89138E341 /* TravelJournalMembershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalMembershipTests.swift; sourceTree = SOURCE_ROOT; };
+		C4E8A91B2D7F4C6A8E1B0F33 /* TravelJournalMapFitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/ViewModels/TravelJournalMapFitTests.swift; sourceTree = SOURCE_ROOT; };
 		00F4AB232C4C4B40B37C8C68 /* TravelJournalSuggesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TravelJournalSuggesterTests.swift; sourceTree = SOURCE_ROOT; };
 		DCBAE534BA304B14A0F542A0 /* TripDerivedMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TripDerivedMetricsTests.swift; sourceTree = SOURCE_ROOT; };
 		31892835E26A4362923BB026 /* TripRollupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Data/TripRollupServiceTests.swift; sourceTree = SOURCE_ROOT; };
@@ -546,7 +546,6 @@
 		6572CCD028704339ACC95B23 /* LiveFollowMapPinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapPinTests.swift; sourceTree = SOURCE_ROOT; };
 		35C5306C54FD477DBAA64E3F /* LiveFollowMapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowMapViewTests.swift; sourceTree = SOURCE_ROOT; };
 		1CDC6EAEAA8040A1B01D36F6 /* LiveFollowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/LiveFollowPresentationTests.swift; sourceTree = SOURCE_ROOT; };
-		1DB59E7481EA4578B1FD6EDD /* RotationCoverPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/RotationCoverPolicyTests.swift; sourceTree = SOURCE_ROOT; };
 		AE2757A76F85439CB0C95BB0 /* RouteDisplayPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/RouteDisplayPathTests.swift; sourceTree = SOURCE_ROOT; };
 		1711A1EFCA2E4FF585B3E668 /* ScreenIdleLockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/ScreenIdleLockTests.swift; sourceTree = SOURCE_ROOT; };
 		0971F993684542EAAEEA4707 /* ShellPaletteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTests/Utilities/ShellPaletteTests.swift; sourceTree = SOURCE_ROOT; };
@@ -669,7 +668,6 @@
 		A2GLASSENGINE0000000001 /* GlassEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEngine.swift; sourceTree = "<group>"; };
 		A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailhoundTabBarCompact.swift; sourceTree = "<group>"; };
 		A2APPICONSYNC000000001 /* AppIconSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconSync.swift; sourceTree = "<group>"; };
-		A2ROTATIONCOVER0000001 /* RotationCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationCover.swift; sourceTree = "<group>"; };
 		A2GLASSPALETTE000000001 /* GlassPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassPalette.swift; sourceTree = "<group>"; };
 		A2GLASSENVIRON000000001 /* GlassEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEnvironment.swift; sourceTree = "<group>"; };
 		A2GLASSCONTROLS00000001 /* GlassControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassControls.swift; sourceTree = "<group>"; };
@@ -1300,7 +1298,6 @@
 				A2LAUNCHHOUNDLAYER0001 /* LaunchIntroHoundLayerTree.swift */,
 				A2TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift */,
 				A2APPICONSYNC000000001 /* AppIconSync.swift */,
-				A2ROTATIONCOVER0000001 /* RotationCover.swift */,
 				A2GLASSSTYLE000000000001 /* GlassStyle.swift */,
 				A2STICKYSECTIONTRACKER01 /* StickySectionTracker.swift */,
 				A2GLASSENGINE0000000001 /* GlassEngine.swift */,
@@ -1423,6 +1420,7 @@
 				281688F0AFAE4043BEC67D42 /* CoreUtilityTests.swift */,
 				27424CF75D11487F935A2F5B /* SchemaAndRoutesTests.swift */,
 				74EBED0DC62A41F89138E341 /* TravelJournalMembershipTests.swift */,
+				C4E8A91B2D7F4C6A8E1B0F33 /* TravelJournalMapFitTests.swift */,
 				00F4AB232C4C4B40B37C8C68 /* TravelJournalSuggesterTests.swift */,
 				DCBAE534BA304B14A0F542A0 /* TripDerivedMetricsTests.swift */,
 				31892835E26A4362923BB026 /* TripRollupServiceTests.swift */,
@@ -1485,7 +1483,6 @@
 				6572CCD028704339ACC95B23 /* LiveFollowMapPinTests.swift */,
 				35C5306C54FD477DBAA64E3F /* LiveFollowMapViewTests.swift */,
 				1CDC6EAEAA8040A1B01D36F6 /* LiveFollowPresentationTests.swift */,
-				1DB59E7481EA4578B1FD6EDD /* RotationCoverPolicyTests.swift */,
 				AE2757A76F85439CB0C95BB0 /* RouteDisplayPathTests.swift */,
 				1711A1EFCA2E4FF585B3E668 /* ScreenIdleLockTests.swift */,
 				0971F993684542EAAEEA4707 /* ShellPaletteTests.swift */,
@@ -1706,6 +1703,7 @@
 				0F5F4572CB5F4B3C87FF4204 /* CoreUtilityTests.swift in Sources */,
 				FCF79E9C92EC45B999990157 /* SchemaAndRoutesTests.swift in Sources */,
 				B5687DE9A9184D309EDE232A /* TravelJournalMembershipTests.swift in Sources */,
+				A7C3E1B24F6D4A8E9C0B1D22 /* TravelJournalMapFitTests.swift in Sources */,
 				857DA81B664F48CEBCDDD4A5 /* TravelJournalSuggesterTests.swift in Sources */,
 				69ABDB5987BB412D9C08F6A9 /* TripDerivedMetricsTests.swift in Sources */,
 				D1E54789EF1F4A1DA0131493 /* TripRollupServiceTests.swift in Sources */,
@@ -1768,7 +1766,6 @@
 				2624D0F167664531B611DBDF /* LiveFollowMapPinTests.swift in Sources */,
 				09F76A25399F4EE2BC9D37A1 /* LiveFollowMapViewTests.swift in Sources */,
 				ECEEA5B401D548B6BFB8517D /* LiveFollowPresentationTests.swift in Sources */,
-				1E3B396A0E7248B199B1809A /* RotationCoverPolicyTests.swift in Sources */,
 				AEFE6AEBC36441A38BB24342 /* RouteDisplayPathTests.swift in Sources */,
 				11C10A97E3F748F8839D2DC0 /* ScreenIdleLockTests.swift in Sources */,
 				BE40FF9A7E3D43D090C97CE1 /* ShellPaletteTests.swift in Sources */,
@@ -1885,7 +1882,6 @@
 				A1GLASSENGINE0000000001 /* GlassEngine.swift in Sources */,
 				A1TABBARCOMPACT00000001 /* TrailhoundTabBarCompact.swift in Sources */,
 				A1APPICONSYNC000000001 /* AppIconSync.swift in Sources */,
-				A1ROTATIONCOVER0000001 /* RotationCover.swift in Sources */,
 				A1GLASSPALETTE000000001 /* GlassPalette.swift in Sources */,
 				A1GLASSENVIRON000000001 /* GlassEnvironment.swift in Sources */,
 				A1GLASSCONTROLS00000001 /* GlassControls.swift in Sources */,

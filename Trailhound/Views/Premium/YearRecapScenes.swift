@@ -731,7 +731,7 @@ private struct RecapCostAmountCards: View {
                 .glassSecondaryInk()
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
-            HStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
                 if showsFuel {
                     RecapCostAmountCard(
                         amount: estimatedFuelCost,
@@ -770,13 +770,14 @@ private struct RecapCostAmountCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
                 StatsSegmentSwatch(index: stop)
                 Text(L10n.string(labelKey))
                     .font(.caption.weight(.semibold))
                     .glassSecondaryInk()
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: compact)
                     .minimumScaleFactor(0.75)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             // Fuel tint is the same family as the frozen plate, so a tinted figure vanishes.
             Text(verbatim: FuelCostCalculator.formatCost(amount))
@@ -784,8 +785,14 @@ private struct RecapCostAmountCard: View {
                 .glassPrimaryInk()
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(minWidth: compact ? 118 : 160, maxWidth: compact ? 128 : 200, alignment: .leading)
+        // Pair cards share one width. A longer label or amount must not grow only one plate.
+        .frame(
+            minWidth: compact ? 132 : 160,
+            maxWidth: compact ? 132 : 200,
+            alignment: .leading
+        )
         .glassCard(
             cornerRadius: GlassTokens.cardRadius,
             contentInset: 12,

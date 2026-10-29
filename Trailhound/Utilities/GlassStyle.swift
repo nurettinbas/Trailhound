@@ -1431,9 +1431,86 @@ private struct GlassNavigationBarEdgeHider: UIViewControllerRepresentable {
 private struct GlassMapTopEdgeHidden: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.scrollEdgeEffectHidden(true, for: .top)
+            content
+                .scrollEdgeEffectHidden(true, for: .top)
+                .background(GlassMapEdgeEffectProbe())
         } else {
             content
+        }
+    }
+}
+
+/// MapKit builds its scroll view after the nav-chrome passes run, and a split pane
+/// lays the map out later still. The bar then paints a hard band over the map top.
+/// This probe hides that edge in the navigation view whenever the map resizes.
+@available(iOS 26.0, *)
+private struct GlassMapEdgeEffectProbe: UIViewRepresentable {
+    func makeUIView(context: Context) -> Probe {
+        Probe()
+    }
+
+    func updateUIView(_ uiView: Probe, context: Context) {
+        uiView.setNeedsLayout()
+    }
+
+    final class Probe: UIView {
+        private var lastSize: CGSize = .zero
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            backgroundColor = .clear
+            isAccessibilityElement = false
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            scheduleHide()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            guard bounds.size != lastSize else { return }
+            lastSize = bounds.size
+            scheduleHide()
+        }
+
+        private func scheduleHide() {
+            guard window != nil else { return }
+            hideEdges()
+            DispatchQueue.main.async { [weak self] in self?.hideEdges() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.hideEdges() }
+        }
+
+        private func hideEdges() {
+            guard let root = navigationRoot else { return }
+            UIView.performWithoutAnimation {
+                Self.hideTopEdge(in: root)
+            }
+        }
+
+        private var navigationRoot: UIView? {
+            var responder: UIResponder? = self
+            while let next = responder?.next {
+                if let controller = next as? UIViewController {
+                    return controller.navigationController?.view ?? controller.view
+                }
+                responder = next
+            }
+            return nil
+        }
+
+        private static func hideTopEdge(in view: UIView) {
+            if let scrollView = view as? UIScrollView, !scrollView.topEdgeEffect.isHidden {
+                scrollView.topEdgeEffect.isHidden = true
+            }
+            for subview in view.subviews {
+                hideTopEdge(in: subview)
+            }
         }
     }
 }

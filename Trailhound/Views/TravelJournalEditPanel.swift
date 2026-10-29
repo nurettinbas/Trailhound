@@ -8,6 +8,10 @@ struct TravelJournalEditPanel: View {
     let places: [SavedPlace]
     let restHeight: CGFloat
     let isExpanded: Bool
+    /// Wide landscape and the open book. The trip list fills the pane. No sheet grabber.
+    var fillsColumn: Bool = false
+    var columnTopInset: CGFloat = 0
+    var columnBottomInset: CGFloat = 0
     let reduceMotion: Bool
     var onSelectTrip: (UUID) -> Void
     var onOpenTrip: (Trip) -> Void
@@ -20,9 +24,13 @@ struct TravelJournalEditPanel: View {
     @Bindable private var settings = AppSettings.shared
     @State private var grabberHint = false
 
+    private var showsTrips: Bool { fillsColumn || isExpanded }
+
     var body: some View {
         VStack(spacing: 0) {
-            panelGrabber
+            if !fillsColumn {
+                panelGrabber
+            }
 
             List {
                 Section {
@@ -39,7 +47,7 @@ struct TravelJournalEditPanel: View {
                         .listRowSeparator(.hidden)
                 }
 
-                if isExpanded {
+                if showsTrips {
                     ForEach(dayGroups, id: \.day) { group in
                         Section {
                             ForEach(group.trips, id: \.id) { trip in
@@ -58,12 +66,17 @@ struct TravelJournalEditPanel: View {
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
-            .scrollDisabled(!isExpanded)
-            .contentMargins(.bottom, TripDetailKeyboardLayout.restingScrollBottomInset, for: .scrollContent)
+            .scrollDisabled(!showsTrips)
+            .contentMargins(.top, fillsColumn ? columnTopInset : 0, for: .scrollContent)
+            .contentMargins(
+                .bottom,
+                fillsColumn ? columnBottomInset : TripDetailKeyboardLayout.restingScrollBottomInset,
+                for: .scrollContent
+            )
         }
-        .frame(height: restHeight)
-        .frame(maxWidth: .infinity)
-        .animation(reduceMotion ? nil : TrailhoundMotion.sheetRise, value: isExpanded)
+        .frame(maxWidth: .infinity, maxHeight: fillsColumn ? .infinity : nil)
+        .frame(height: fillsColumn ? nil : restHeight)
+        .animation(reduceMotion || fillsColumn ? nil : TrailhoundMotion.sheetRise, value: isExpanded)
     }
 
     private var panelGrabber: some View {
@@ -150,7 +163,7 @@ struct TravelJournalEditPanel: View {
                 Text(note)
                     .font(.subheadline)
                     .glassSecondaryInk()
-                    .lineLimit(isExpanded ? 4 : 2)
+                    .lineLimit(showsTrips ? 4 : 2)
             }
 
             metricRow
@@ -217,15 +230,39 @@ struct TravelJournalEditPanel: View {
         }
     }
 
-    private func metricLine(text: Font, icon: Font, spacing: CGFloat, horizontalPad: CGFloat, verticalPad: CGFloat) -> some View {
-        HStack(spacing: spacing) {
+    /// The sheet chip opens the trip list. The landscape column already shows that list.
+    @ViewBuilder
+    private func tripCountChip(text: Font, icon: Font, horizontalPad: CGFloat, verticalPad: CGFloat) -> some View {
+        if fillsColumn {
+            metric(
+                L10n.journalTripCount(journal.tripCount),
+                icon: "map",
+                textFont: text,
+                iconFont: icon,
+                horizontalPad: horizontalPad,
+                verticalPad: verticalPad
+            )
+        } else {
             Button(action: onToggleExpanded) {
-                metric(L10n.journalTripCount(journal.tripCount), icon: "map", textFont: text, iconFont: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
+                metric(
+                    L10n.journalTripCount(journal.tripCount),
+                    icon: "map",
+                    textFont: text,
+                    iconFont: icon,
+                    horizontalPad: horizontalPad,
+                    verticalPad: verticalPad
+                )
             }
             .buttonStyle(.glassPlainHit)
             .accessibilityHint(isExpanded
                 ? L10n.string("journal.map.collapse")
                 : L10n.string("journal.map.expand"))
+        }
+    }
+
+    private func metricLine(text: Font, icon: Font, spacing: CGFloat, horizontalPad: CGFloat, verticalPad: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            tripCountChip(text: text, icon: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
 
             metric(DateFormatters.formatDistance(journal.distanceMeters), icon: "road.lanes", textFont: text, iconFont: icon, horizontalPad: horizontalPad, verticalPad: verticalPad)
             if journal.fuelCost > 0 {

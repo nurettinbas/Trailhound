@@ -25,6 +25,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         return true
     }
 
+    /// The recap story is a portrait cover on iPhone. The rest of the app keeps every orientation in the plist.
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        RecapStoryOrientationLock.mask
+    }
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         Task { @MainActor in
             AppServices.bootstrapRecordingIfNeeded()

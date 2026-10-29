@@ -664,6 +664,29 @@ final class YearRecapSnapshotTests: XCTestCase {
         XCTAssertFalse(RecapStoryTapMetrics.isBack(x: 0, width: 0))
     }
 
+    func testStoryCoverLocksPhonePortraitOnly() {
+        XCTAssertTrue(RecapStoryOrientationPolicy.locksPhonePortrait(.phone))
+        XCTAssertTrue(RecapStoryOrientationPolicy.locksPhonePortrait(.phoneLandscape))
+        XCTAssertFalse(RecapStoryOrientationPolicy.locksPhonePortrait(.duoOpen))
+        XCTAssertFalse(RecapStoryOrientationPolicy.locksPhonePortrait(.pad))
+        XCTAssertEqual(
+            RecapStoryOrientationPolicy.restoredMask(device: .landscapeLeft, interface: .portrait),
+            .landscapeRight
+        )
+        XCTAssertEqual(
+            RecapStoryOrientationPolicy.restoredMask(device: .landscapeRight, interface: .portrait),
+            .landscapeLeft
+        )
+        XCTAssertEqual(
+            RecapStoryOrientationPolicy.restoredMask(device: .portrait, interface: .landscapeRight),
+            .portrait
+        )
+        XCTAssertEqual(
+            RecapStoryOrientationPolicy.restoredMask(device: .unknown, interface: .landscapeLeft),
+            .landscapeLeft
+        )
+    }
+
     func testStoryChromeSitsBelowDynamicIsland() {
         XCTAssertEqual(RecapStoryChromeMetrics.topPadding(windowTop: 0), 62, accuracy: 0.001)
         XCTAssertEqual(RecapStoryChromeMetrics.topPadding(windowTop: 59), 67, accuracy: 0.001)

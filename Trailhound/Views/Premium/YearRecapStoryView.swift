@@ -610,3 +610,151 @@ final class RecapStoryTapView: UIView, UIGestureRecognizerDelegate {
         }
     }
 }
+
+/// iPhone recap story and its January invitation stay portrait. An open book and iPad keep the vertical column.
+enum RecapStoryOrientationPolicy {
+    static let releaseDelay: Duration = .milliseconds(280)
+
+    static func locksPhonePortrait(_ layoutClass: TrailhoundLayoutClass) -> Bool {
+        switch layoutClass {
+        case .phone, .phoneLandscape:
+            return true
+        case .duoOpen, .pad:
+            return false
+        }
+    }
+
+    /// Device landscapeLeft is interface landscapeRight, and the reverse.
+    /// Face-up and unknown keep the orientation the window already has.
+    static func restoredMask(
+        device: UIDeviceOrientation,
+        interface: UIInterfaceOrientation
+    ) -> UIInterfaceOrientationMask {
+        switch device {
+        case .landscapeLeft:
+            return .landscapeRight
+        case .landscapeRight:
+            return .landscapeLeft
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .portrait:
+            return .portrait
+        default:
+            switch interface {
+            case .landscapeLeft:
+                return .landscapeLeft
+            case .landscapeRight:
+                return .landscapeRight
+            case .portraitUpsideDown:
+                return .portraitUpsideDown
+            default:
+                return .portrait
+            }
+        }
+    }
+}
+
+/// Read from `AppDelegate` on the main thread. `.all` matches the plist; `.portrait` is the story cover.
+enum RecapStoryOrientationLock {
+    nonisolated(unsafe) static var mask: UIInterfaceOrientationMask = .all
+}
+
+@MainActor
+enum RecapStoryOrientation {
+    private static var locked = false
+    private static var releaseTask: Task<Void, Never>?
+    private static var observingDevice = false
+
+    static func setCoverVisible(_ visible: Bool, layoutClass: TrailhoundLayoutClass) {
+        if visible {
+            releaseTask?.cancel()
+            releaseTask = nil
+            guard RecapStoryOrientationPolicy.locksPhonePortrait(layoutClass) else { return }
+            engage()
+        } else {
+            scheduleRelease()
+        }
+    }
+
+    /// The cover can appear a beat after the session is set. Ask again once it is in the window.
+    static func refreshIfLocked() {
+        guard locked else { return }
+        pushGeometry(target: .portrait)
+    }
+
+    private static func engage() {
+        if locked {
+            pushGeometry(target: .portrait)
+            return
+        }
+        locked = true
+        RecapStoryOrientationLock.mask = .portrait
+        if !observingDevice {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            observingDevice = true
+        }
+        pushGeometry(target: .portrait)
+    }
+
+    private static func scheduleRelease() {
+        guard locked else { return }
+        releaseTask?.cancel()
+        releaseTask = Task { @MainActor in
+            try? await Task.sleep(for: RecapStoryOrientationPolicy.releaseDelay)
+            guard !Task.isCancelled else { return }
+            disengage()
+        }
+    }
+
+    private static func disengage() {
+        guard locked else { return }
+        locked = false
+        RecapStoryOrientationLock.mask = .all
+        let scene = activeScene()
+        let target = RecapStoryOrientationPolicy.restoredMask(
+            device: UIDevice.current.orientation,
+            interface: scene?.interfaceOrientation ?? .portrait
+        )
+        if observingDevice {
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
+            observingDevice = false
+        }
+        pushGeometry(target: target, scene: scene)
+    }
+
+    private static func pushGeometry(target: UIInterfaceOrientationMask, scene explicit: UIWindowScene? = nil) {
+        guard let scene = explicit ?? activeScene() else { return }
+        let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first
+        let root = window?.rootViewController
+        var top = root
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        root?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        top?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        guard !interfaceMatches(target, scene: scene) else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: target)) { _ in }
+    }
+
+    private static func interfaceMatches(_ mask: UIInterfaceOrientationMask, scene: UIWindowScene) -> Bool {
+        let current: UIInterfaceOrientationMask
+        switch scene.interfaceOrientation {
+        case .portrait:
+            current = .portrait
+        case .portraitUpsideDown:
+            current = .portraitUpsideDown
+        case .landscapeLeft:
+            current = .landscapeLeft
+        case .landscapeRight:
+            current = .landscapeRight
+        default:
+            return false
+        }
+        return mask.contains(current)
+    }
+
+    private static func activeScene() -> UIWindowScene? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+    }
+}

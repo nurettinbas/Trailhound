@@ -112,6 +112,44 @@ enum TravelJournalPanelLayout {
     }
 }
 
+/// Split landscape frames the route in the trailing pane. A bottom sheet still
+/// shortens the phone and the narrow landscape card.
+enum TravelJournalMapFit {
+    static func padding(
+        style: TripDetailStyle,
+        mapExpanded: Bool,
+        mapSize: CGSize,
+        topChrome: CGFloat,
+        bottomChrome: CGFloat,
+        sheetHeight: CGFloat,
+        trailingCover: CGFloat,
+        homeIndicator: CGFloat
+    ) -> UIEdgeInsets {
+        if style == .split, !mapExpanded {
+            return TripDetailMapFraming.edgeInsets(
+                TripDetailMapFraming.Input(
+                    posture: .duoSplit,
+                    mapSize: mapSize,
+                    topChrome: topChrome,
+                    bottomCardHeight: 0,
+                    trailingCover: trailingCover,
+                    leadingInset: 0,
+                    homeIndicator: homeIndicator
+                )
+            )
+        }
+        let horizontal = max(mapSize.width * 0.06, 16)
+        if mapExpanded {
+            let top = max(topChrome, 96)
+            let bottom = max(bottomChrome, 83) + 16
+            return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+        }
+        let top = max(topChrome, 96)
+        let bottom = max(sheetHeight, 0) + 24
+        return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+    }
+}
+
 struct TravelJournalDetailView: View {
     @Bindable var journal: TravelJournal
     @Environment(\.modelContext) private var modelContext
@@ -135,6 +173,8 @@ struct TravelJournalDetailView: View {
     @State private var mapViewportSize: CGSize = CGSize(width: 390, height: 844)
     @State private var mapTopChromePoints: CGFloat = 96
     @State private var mapBottomChromePoints: CGFloat = 83
+    @State private var mapTrailingInset: CGFloat = 0
+    @State private var mapHomeIndicator: CGFloat = 0
     @State private var mapRefitTask: Task<Void, Never>?
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.layoutDirection) private var layoutDirection
@@ -150,17 +190,22 @@ struct TravelJournalDetailView: View {
 
     private var panelVisible: Bool { panelRisen && !isMapExpanded }
 
+    /// The split column already leads with the travel title.
+    private var showsNavTitle: Bool { layout.tripDetailStyle != .split }
+
     var body: some View {
         mapRoot
             .ignoresSafeArea(edges: .bottom)
             .glassNavigationChrome()
             .glassMapTopEdgeHidden()
-            .navigationTitle(journal.title)
+            .navigationTitle(showsNavTitle ? journal.title : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
             .glassDetailBackNavigation(action: dismiss.callAsFunction)
             .toolbar {
-                GlassToolbarNavTitleItem(title: journal.title)
+                if showsNavTitle {
+                    GlassToolbarNavTitleItem(title: journal.title)
+                }
                 mapExpandToolbar
             }
             .sheet(item: $editorDraft) { draft in
@@ -221,15 +266,22 @@ struct TravelJournalDetailView: View {
             mapPeek: mapPeek
         )
         if layout.tripDetailStyle == .split {
-            TrailhoundPaneSplit {
-                editPanel(height: geometry.size.height, mapPeek: mapPeek, containerHeight: geometry.size.height, embedded: true)
-            } focus: {
-                TravelJournalMapLayer(
-                    style: mapStyle,
-                    overlays: overlays,
-                    selectedSegments: selectedSegments,
-                    cameraBox: cameraBox
-                )
+            if isMapExpanded {
+                journalMap
+                    .ignoresSafeArea()
+                    .background { mapSizeReader }
+            } else {
+                TrailhoundPaneSplit(
+                    leadingFillsVertically: true,
+                    focusFillsVertically: true,
+                    focusBleedsTrailing: true
+                ) {
+                    journalColumn(in: geometry)
+                } focus: {
+                    journalMap
+                        .ignoresSafeArea()
+                        .background { mapSizeReader }
+                }
             }
         } else if layout.tripDetailStyle == .floatingPanel {
             TrailhoundMapCanvas(panelCollapsed: $journalPanelCollapsed) {
@@ -283,6 +335,55 @@ struct TravelJournalDetailView: View {
                 scheduleMapRefit(animated: false)
             }
         }
+    }
+
+    private var journalMap: some View {
+        TravelJournalMapLayer(
+            style: mapStyle,
+            overlays: overlays,
+            selectedSegments: selectedSegments,
+            cameraBox: cameraBox
+        )
+    }
+
+    /// Leading pane on the wide landscape book. One atmosphere, trips open, no sheet plate.
+    private func journalColumn(in geometry: GeometryProxy) -> some View {
+        let measuredTop = max(geometry.safeAreaInsets.top, windowSafeInsets.top)
+        // Landscape puts the island on the side, so the top inset can be 0 while the
+        // inline bar still covers the first row once the pane fills the screen.
+        let top = measuredTop + (measuredTop > 20 ? 8 : 44)
+        let bottom = max(geometry.safeAreaInsets.bottom, windowSafeInsets.bottom, 12) + 12
+        return TravelJournalEditPanel(
+            journal: journal,
+            trips: members,
+            selectedTripID: selectedTripID,
+            places: places,
+            restHeight: geometry.size.height,
+            isExpanded: true,
+            fillsColumn: true,
+            columnTopInset: top,
+            columnBottomInset: bottom,
+            reduceMotion: reduceMotion,
+            onSelectTrip: { selectedTripID = $0 },
+            onOpenTrip: { TabSelection.shared.appendTrip($0) },
+            onRemoveTrip: removeFromJournal,
+            onEdit: { editorDraft = .edit(journal) },
+            onToggleExpanded: {},
+            onGrabberDragChanged: { _ in },
+            onGrabberDragEnded: { _ in }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var mapSizeReader: some View {
+        GeometryReader { geo in
+            Color.clear
+                .onAppear { noteJournalMap(geo) }
+                .onChange(of: geo.size) { _, _ in
+                    noteJournalMap(geo)
+                }
+        }
+        .allowsHitTesting(false)
     }
 
     /// Side-tab column on this Duo sheet. The leading gap copies that trailing inset.
@@ -521,6 +622,22 @@ struct TravelJournalDetailView: View {
         applyFittedCamera(animated: false)
     }
 
+    private func noteJournalMap(_ geo: GeometryProxy) {
+        guard geo.size.width > 1, geo.size.height > 1 else { return }
+        let previous = mapViewportSize
+        mapViewportSize = geo.size
+        let window = windowSafeInsets
+        let topSafe = max(geo.safeAreaInsets.top, window.top)
+        mapTopChromePoints = topSafe + 44
+        mapBottomChromePoints = max(geo.safeAreaInsets.bottom, window.bottom, 12)
+        mapTrailingInset = TrailhoundSideTabGap.trailing(in: geo, layoutDirection: layoutDirection)
+        mapHomeIndicator = max(geo.safeAreaInsets.bottom, window.bottom, 12)
+        let changed = abs(previous.width - geo.size.width) > 1
+            || abs(previous.height - geo.size.height) > 1
+        guard changed else { return }
+        scheduleMapRefit(animated: false)
+    }
+
     private func refreshMapChromeInsets(from geometry: GeometryProxy) {
         mapViewportSize = geometry.size
         let window = windowSafeInsets
@@ -538,36 +655,28 @@ struct TravelJournalDetailView: View {
             ?? UIEdgeInsets(top: 59, left: 0, bottom: 34, right: 0)
     }
 
-    private func mapEdgePadding(panelHeight: CGFloat) -> UIEdgeInsets {
-        let size = mapViewportSize
-        let horizontal = max(size.width * 0.06, 16)
-        if isMapExpanded {
-            let top = max(mapTopChromePoints, 96)
-            let bottom = max(mapBottomChromePoints, 83) + 16
-            return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
-        }
-        let top = max(mapTopChromePoints, 96)
-        let bottom = max(panelHeight, 0) + 24
-        return UIEdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
-    }
-
     private func applyFittedCamera(animated: Bool) {
-        let height: CGFloat
-        if isMapExpanded {
-            height = 0
-        } else {
-            height = TravelJournalPanelLayout.height(
-                for: panelDetent,
-                containerHeight: mapViewportSize.height,
-                mapPeek: mapTopChromePoints + 24,
-                compactFraction: duoCompactFraction,
-                compactFloor: duoCompactFloor
-            )
-        }
+        let sheetHeight = TravelJournalPanelLayout.height(
+            for: panelDetent,
+            containerHeight: mapViewportSize.height,
+            mapPeek: mapTopChromePoints + 24,
+            compactFraction: duoCompactFraction,
+            compactFloor: duoCompactFloor
+        )
+        let padding = TravelJournalMapFit.padding(
+            style: layout.tripDetailStyle,
+            mapExpanded: isMapExpanded,
+            mapSize: mapViewportSize,
+            topChrome: mapTopChromePoints,
+            bottomChrome: mapBottomChromePoints,
+            sheetHeight: sheetHeight,
+            trailingCover: mapTrailingInset,
+            homeIndicator: mapHomeIndicator
+        )
         guard let region = TripDetailViewModel.regionFitting(
             coordinates: fitCoordinates,
             mapSize: mapViewportSize,
-            edgePadding: mapEdgePadding(panelHeight: height),
+            edgePadding: padding,
             margin: isMapExpanded ? 1.18 : 1.2
         ) else { return }
 

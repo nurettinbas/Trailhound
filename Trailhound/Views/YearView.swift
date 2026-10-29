@@ -106,6 +106,7 @@ struct YearView: View {
                     markRecapSeen()
                     recapStorySession = nil
                 }
+                .onAppear { RecapStoryOrientation.refreshIfLocked() }
                 .interactiveDismissDisabled()
             }
             .fullScreenCover(item: $recapPromoSession) { session in
@@ -114,8 +115,16 @@ struct YearView: View {
                     onPlay: { playRecapAfterPromo(session.snapshot) },
                     onClose: { dismissRecapPromo(year: session.snapshot.year) }
                 )
+                .onAppear { RecapStoryOrientation.refreshIfLocked() }
                 .presentationBackground(.clear)
                 .interactiveDismissDisabled()
+            }
+            .onAppear { syncRecapStoryOrientation() }
+            .onChange(of: recapStorySession?.id) { _, _ in
+                syncRecapStoryOrientation()
+            }
+            .onChange(of: recapPromoSession?.id) { _, _ in
+                syncRecapStoryOrientation()
             }
             .onChange(of: recapPromoSession?.id) { _, newID in
                 guard newID == nil, pendingRecapPlayAfterPromo else { return }
@@ -623,6 +632,11 @@ struct YearView: View {
         }
         pendingRecapPlay = true
         schedulePremiumRefresh()
+    }
+
+    private func syncRecapStoryOrientation() {
+        let visible = recapStorySession != nil || recapPromoSession != nil
+        RecapStoryOrientation.setCoverVisible(visible, layoutClass: layout.layoutClass)
     }
 
     private func openRecapStory(at page: RecapStoryPage? = nil) {
