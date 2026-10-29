@@ -477,6 +477,7 @@ struct StatsForecastExpandOverlay: View {
             }
         }
         .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("stats.premium.forecast.expanded")
         .accessibilityAction(.escape) { onClose() }
     }

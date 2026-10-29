@@ -134,6 +134,7 @@ struct FrequentRoutesExpandOverlay: View {
             .onGlassShell()
         }
         .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("stats.premium.routes.expanded")
         .accessibilityAction(.escape) { onClose() }
     }

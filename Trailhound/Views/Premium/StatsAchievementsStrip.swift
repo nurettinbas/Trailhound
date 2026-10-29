@@ -397,6 +397,7 @@ struct AchievementGalleryExpandOverlay: View {
             }
         }
         .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("stats.achievements.expanded")
         .accessibilityAction(.escape) { onClose() }
     }

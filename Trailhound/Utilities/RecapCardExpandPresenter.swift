@@ -305,6 +305,7 @@ private struct RecapCardExpandShell<Content: View>: View {
             .environment(\.recapExpandChromeBlur, kind == .routes ? blur : 0)
         }
         .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape) { presenter.requestClose(fromDrag: false) }
         .task { await runOpen() }
