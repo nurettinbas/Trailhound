@@ -4,7 +4,7 @@ Trailhound is a privacy-first trip recorder. Trip routes, vehicles, places, and 
 
 **Controller / contact:** Nurettin Baş — [nurettin.bas@icloud.com](mailto:nurettin.bas@icloud.com)
 
-This page is the public privacy policy for the App Store listing and the in-app **Privacy Policy** link (Settings → About).
+This page is the public privacy policy for the App Store listing and the in-app **Privacy Policy** link (Settings → About). Türkçe: [Gizlilik Politikası ve KVKK Aydınlatma Metni](PRIVACY_TR.md) — the app opens it when its language is Turkish.
 
 ## What stays on the device
 
@@ -44,7 +44,27 @@ Settings → About → Support the developer offers optional tips through Apple 
 
 ## Legal basis
 
-Sending a report is your informed, optional action for each submission. Recording trips uses location permission you grant in iOS Settings for the core recording feature.
+- **Trip recording on your iPhone:** Trailhound does not receive this data. Location is processed on your device only, under the iOS permission you grant and can withdraw in iOS Settings.
+- **Mailed diagnostic report:** your consent, given separately each time you choose to send it (GDPR Art. 6(1)(a); KVKK Art. 5(1) explicit consent). You can withdraw it by asking for deletion at any time; this does not affect earlier processing.
+- **Support email you write:** handling your request (GDPR Art. 6(1)(b); KVKK Art. 5(2)(c)).
+
+## International transfer
+
+Reports and support emails reach the developer’s Apple iCloud Mail mailbox. Apple may store them on servers outside Türkiye and the EU/EEA. The transfer happens only when you send the message yourself, for the single purpose of answering it (KVKK Art. 9; GDPR Art. 49(1)(a) and (b)). Apple processes the message under its own privacy policy.
+
+## Your rights
+
+Under the GDPR and Türkiye’s Personal Data Protection Law (KVKK, Law No. 6698, Art. 11) you can ask whether we hold data about you, get a copy, have it corrected or deleted, restrict or object to processing, and learn who received it. Email [nurettin.bas@icloud.com](mailto:nurettin.bas@icloud.com). We answer within 30 days, free of charge.
+
+For data that only lives on your iPhone, you control it directly: edit or delete trips in the app, export them from Settings, or delete the app.
+
+## Complaints
+
+If you are not satisfied with the answer, you can complain to the Personal Data Protection Authority in Türkiye ([KVKK](https://www.kvkk.gov.tr)) or to the data protection authority in your EU/EEA country.
+
+## Children
+
+Trailhound is a driving log and is not directed at children. It does not knowingly collect data from anyone, including children.
 
 ## Your choices
 
@@ -55,4 +75,10 @@ Sending a report is your informed, optional action for each submission. Recordin
 - Settings → recording retention can auto-delete trips after 30, 90, or 365 days, or keep them until you delete them (Never)
 - Delete the app to remove the local SwiftData store, receipt photos, and remaining logs
 
-See also [Support](SUPPORT.md).
+## Changes
+
+If this policy changes, the new version is published at this address with an updated date.
+
+_Last updated: 29 October 2026_
+
+See also [Support](SUPPORT.md) and [Acknowledgements](ACKNOWLEDGEMENTS.md).

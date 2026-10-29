@@ -26,10 +26,11 @@
 2. Include privacy manifest: `PrivacyInfo.xcprivacy`
 3. Location usage description: trip recording
 4. Screenshots: list, detail map, stats, recap, settings
-5. Privacy Policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md`
+5. Privacy Policy URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/PRIVACY.md` (the app opens `PRIVACY_TR.md`, the KVKK notice, when its language is Turkish)
 6. Support URL: `https://github.com/nurettinbas/Trailhound/blob/main/docs/SUPPORT.md`
 7. App Privacy (nutrition label), aligned with `PrivacyInfo.xcprivacy` and `docs/PRIVACY.md`: **Data Not Collected**. Location, photos, and receipts stay on the device. A diagnostic report leaves only when the user sends Mail or the share sheet themselves, which is not app collection. Do not also declare Precise Location as collected.
-8. App Review Notes: Report a problem opens system Mail or the share sheet only after the user confirms. There is no automatic upload, analytics, or tracking. The attachment has no coordinates, names, or photos. Reviewer devices without Apple Mail should use the share-sheet fallback. Settings → About → Support the developer opens three optional consumable tips (In-App Purchase). They unlock nothing. Say that in the notes so the row is documented, not hidden from review.
+8. App Review Notes: Report a problem opens system Mail or the share sheet only after the user confirms. There is no automatic upload, analytics, or tracking. The attachment has no coordinates, names, or photos. Reviewer devices without Apple Mail should use the share-sheet fallback. Settings → About → Support the developer opens three optional consumable tips (In-App Purchase). They unlock nothing. Say that in the notes so the row is documented, not hidden from review. The first manual Start shows a one-time “Eyes on the road” alert (don’t use the phone while driving; a passenger uses the map and controls); Shortcut and automation starts record on their own without UI. Settings → About → Acknowledgements credits the CC BY-SA trip sounds.
+9. Privacy manifest warning: if an upload returns **ITMS-91053** for `NSPrivacyAccessedAPICategoryFileTimestamp`, add that category with reason `C617.1` to both `PrivacyInfo.xcprivacy` files. Today `attributesOfItem` reads only file size (`DevLog`, `ModelContainerFactory`), so it is not declared.
 
 ## TestFlight
 
@@ -119,9 +120,10 @@ Optional smoke:
 - [ ] **Age rating** — answer the current App Store Connect questionnaire
 - [ ] **Screenshots** — iPhone set plus 13-inch iPad (the app supports iPad; widgets are iPhone and iPad)
 - [ ] **Privacy** — label is Data Not Collected, matching both `PrivacyInfo.xcprivacy` files (app and widget, UserDefaults reasons `CA92.1` and `1C8F.1`)
-- [ ] **Export compliance** — `ITSAppUsesNonExemptEncryption` is NO, so the upload question should not repeat
+- [ ] **Export compliance** — `ITSAppUsesNonExemptEncryption` is `false` in `Trailhound/Info.plist`, so the upload question should not repeat
 - [ ] **EU DSA** — selling In-App Purchases makes you a trader on EU storefronts; enter the trader contact details, or leave EU storefronts off
-- [ ] **Review notes** — Shortcuts automation, background location (attach a short video), Live Activity and CarPlay tile, and the Settings → About → Support the developer row (tips unlock nothing)
+- [ ] **Review notes** — Shortcuts automation, background location (attach a short video), Live Activity and CarPlay tile, the Settings → About → Support the developer row (tips unlock nothing), the one-time driving safety alert, and Acknowledgements
+- [ ] **KVKK / GDPR** — `docs/PRIVACY.md` and `docs/PRIVACY_TR.md` list rights, legal basis, transfer, and complaint routes; confirm VERBİS exemption (individual developer, under the employee and balance-sheet thresholds, no special-category data)
 - [ ] **Encryption / permissions** — purpose strings name the trip or photo use and say location stays on the iPhone
 
 ## Release order (summary)

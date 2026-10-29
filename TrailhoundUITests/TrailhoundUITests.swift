@@ -192,6 +192,21 @@ final class TrailhoundUITests: TrailhoundUITestCase {
         XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
     }
 
+    func testSettingsAcknowledgementsCreditsTripSounds() {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
+        settingsTab.tap()
+        let row = app.buttons["settings.acknowledgements"]
+        revealSettingsControl(row)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+
+        let startCredit = app.descendants(matching: .any)["acknowledgements.credit.trip_start"]
+        XCTAssertTrue(startCredit.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["acknowledgements.credit.trip_stop"].exists)
+        let author = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Edvvc")).firstMatch
+        XCTAssertTrue(author.exists)
+    }
+
     func testTravelsSegmentOpensJournalEmptyState() throws {
         XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
         let segment = app.segmentedControls["trips.segment"]
@@ -410,6 +425,35 @@ final class TrailhoundUITests: TrailhoundUITestCase {
     }
 }
 
+final class TrailhoundDrivingSafetyNoticeUITests: TrailhoundUITestCase {
+    override var extraLaunchArguments: [String] { ["-UITesting.drivingNoticeSeed"] }
+
+    func testFirstStartShowsDrivingNoticeOnlyOnce() {
+        XCTAssertTrue(tripsTab.waitForExistence(timeout: uiTimeout))
+        let start = visibleStart()
+        XCTAssertTrue(start.waitForExistence(timeout: uiTimeout))
+        start.tap()
+
+        let notice = app.alerts["Eyes on the road"]
+        XCTAssertTrue(notice.waitForExistence(timeout: uiTimeout))
+        XCTAssertEqual(app.alerts.count, 1)
+        notice.buttons["Got it"].firstMatch.tap()
+        XCTAssertTrue(notice.waitForNonExistence(timeout: 10))
+
+        // Start hides while recording. If the simulator had no location and stayed idle, a second tap must not ask again.
+        let again = visibleStart()
+        if again.waitForExistence(timeout: 3), again.isHittable {
+            again.tap()
+            XCTAssertFalse(app.alerts["Eyes on the road"].waitForExistence(timeout: 3))
+        }
+    }
+
+    private func visibleStart() -> XCUIElement {
+        let starts = app.buttons.matching(identifier: "shell.start")
+        return starts.allElementsBoundByIndex.first { $0.isHittable } ?? starts.firstMatch
+    }
+}
+
 final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {
     override var extraLaunchArguments: [String] { ["-UITesting.smartCategorySeed"] }
 
@@ -504,6 +548,42 @@ final class TrailhoundSmartCategoryUITests: TrailhoundUITestCase {
 
     private func waitForIdentifierGone(_ identifier: String) -> Bool {
         app.descendants(matching: .any)[identifier].waitForNonExistence(timeout: 5)
+    }
+
+    func testRecapCardsExpandAndCollapse() {
+        XCTAssertTrue(yearTab.waitForExistence(timeout: uiTimeout))
+        yearTab.tap()
+        expandAndCollapse(
+            openID: "stats.premium.achievements",
+            expandedID: "stats.achievements.expanded",
+            closeID: "stats.achievement.expanded.close"
+        )
+        expandAndCollapse(
+            openID: "stats.premium.routes",
+            expandedID: "stats.premium.routes.expanded",
+            closeID: "stats.premium.routes.expanded.close"
+        )
+        expandAndCollapse(
+            openID: "stats.premium.forecast",
+            expandedID: "stats.premium.forecast.expanded",
+            closeID: "stats.premium.forecast.expanded.close"
+        )
+    }
+
+    private func expandAndCollapse(openID: String, expandedID: String, closeID: String) {
+        let open = app.descendants(matching: .any)[openID].firstMatch
+        revealSettingsControl(open)
+        XCTAssertTrue(open.waitForExistence(timeout: uiTimeout), openID)
+        open.tap()
+
+        let expanded = app.descendants(matching: .any)[expandedID].firstMatch
+        XCTAssertTrue(expanded.waitForExistence(timeout: uiTimeout), expandedID)
+        let close = app.descendants(matching: .any)[closeID].firstMatch
+        let hittable = NSPredicate(format: "isHittable == true")
+        let appeared = XCTNSPredicateExpectation(predicate: hittable, object: close)
+        XCTAssertEqual(XCTWaiter().wait(for: [appeared], timeout: uiTimeout), .completed, closeID)
+        close.tap()
+        XCTAssertTrue(expanded.waitForNonExistence(timeout: uiTimeout), expandedID)
     }
 }
 

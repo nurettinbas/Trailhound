@@ -362,6 +362,13 @@ enum L10n {
     static var settingsReportProblemFailedTitle: String { string("settings.report_problem.failed.title") }
     static var settingsReportProblemFailedMessage: String { string("settings.report_problem.failed.message") }
     static var settingsPrivacyPolicy: String { string("settings.privacy_policy") }
+    static var settingsAcknowledgements: String { string("settings.acknowledgements") }
+    static var settingsAcknowledgementsSounds: String { string("settings.acknowledgements.sounds") }
+    static var settingsAcknowledgementsEdited: String { string("settings.acknowledgements.edited") }
+    static var settingsAcknowledgementsFooter: String { string("settings.acknowledgements.footer") }
+    static var drivingSafetyNoticeTitle: String { string("recording.safety_notice.title") }
+    static var drivingSafetyNoticeMessage: String { string("recording.safety_notice.message") }
+    static var drivingSafetyNoticeConfirm: String { string("recording.safety_notice.confirm") }
     static var settingsTipJar: String { string("settings.tip_jar") }
     static var settingsTipJarSubtitle: String { string("settings.tip_jar.subtitle") }
     static var settingsTipJarMessage: String { string("settings.tip_jar.message") }

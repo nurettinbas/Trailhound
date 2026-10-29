@@ -51,6 +51,7 @@ struct ContentView: View {
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme)
         .onGlassShell()
         .glassMorphPanelHost()
+        .recapCardExpandHost()
         .toastHost(clearsTabBar: true)
         .deleteConfirmHost()
         .environment(\.shellPalette, settings.shellPalette)
@@ -109,6 +110,11 @@ struct ContentView: View {
             launchIntroPlays = true
             if !reduceMotion {
                 contentSettleScale = TrailhoundMotion.launchIntroContentSettleScale
+            }
+        }
+        .onChange(of: appLockService.isUnlocked) { _, unlocked in
+            if !unlocked {
+                RecapCardExpandPresenter.shared.dismissImmediately()
             }
         }
         .onChange(of: settings.appearanceMode) { _, _ in syncWindowFill() }

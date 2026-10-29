@@ -363,64 +363,42 @@ struct AchievementCardGlobalFrameKey: PreferenceKey {
     }
 }
 
-/// Grows the Stats badges card in place. Not a sheet, not matchedGeometry.
+/// Full-screen badges gallery. The shell scales this surface; the gallery itself does not resize.
 struct AchievementGalleryExpandOverlay: View {
-    let achievements: [AchievementDisplay]
-    let sourceGlobal: CGRect
-    @Binding var isExpanded: Bool
+    @Bindable var model: RecapExpandModel
     var onClose: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var idleClockOn = false
+    var onSwipeClose: () -> Void
+    @Bindable private var presenter = RecapCardExpandPresenter.shared
 
     var body: some View {
         GeometryReader { proxy in
-            let overlayGlobal = proxy.frame(in: .global)
-            let frame = AchievementGalleryExpandLayout.localSurface(
-                sourceGlobal: sourceGlobal,
-                overlayGlobal: overlayGlobal,
-                expanded: isExpanded
-            )
-            let radius = AchievementGalleryExpandLayout.cornerRadius(expanded: isExpanded)
             let window = windowSafeInsets
             let topInset = max(proxy.safeAreaInsets.top, window.top, 54)
             let bottomInset = max(proxy.safeAreaInsets.bottom, window.bottom, 34)
-            ZStack {
-                Color.clear
+            AchievementGalleryView(
+                achievements: model.achievements,
+                topInset: topInset,
+                bottomInset: bottomInset,
+                onClose: onClose,
+                playsIdleClock: presenter.isOpenSettled
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                AtmosphericBackground()
                     .allowsHitTesting(false)
-                surface(radius: radius, topInset: topInset, bottomInset: bottomInset)
-                    .frame(width: frame.width, height: frame.height, alignment: .top)
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .position(x: frame.midX, y: frame.midY)
             }
-            .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)
+            .glassCard(cornerRadius: 0, contentInset: 0, frozen: true, allowsNative: false)
             .overlay {
                 CardExpandBackSwipeStrip(
-                    enabled: isExpanded,
+                    enabled: true,
                     topClearance: topInset + CardExpandBackSwipe.headerClearance,
-                    onClose: onClose
+                    onClose: onSwipeClose
                 )
             }
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.achievements.expanded")
         .accessibilityAction(.escape) { onClose() }
-        .onAppear(perform: syncIdleClock)
-        .onChange(of: isExpanded) { _, _ in
-            syncIdleClock()
-        }
-    }
-
-    private func syncIdleClock() {
-        if isExpanded {
-            Task { @MainActor in
-                try? await Task.sleep(
-                    for: .milliseconds(reduceMotion ? 0 : 780)
-                )
-                idleClockOn = isExpanded
-            }
-        } else {
-            idleClockOn = false
-        }
     }
 
     /// `GeometryReader` under `.ignoresSafeArea()` reports zero insets — same as trip-detail map.
@@ -431,37 +409,6 @@ struct AchievementGalleryExpandOverlay: View {
         }
         return scenes.flatMap(\.windows).first?.safeAreaInsets
             ?? UIEdgeInsets(top: 59, left: 0, bottom: 34, right: 0)
-    }
-
-    @ViewBuilder
-    private func surface(radius: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        ZStack(alignment: .top) {
-            StatsAchievementsStrip(
-                achievements: achievements,
-                isExpanded: true,
-                onOpen: {}
-            )
-            .padding(StatsCardTokens.contentInset)
-            .opacity(isExpanded ? 0 : 1)
-            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
-            .allowsHitTesting(false)
-            AchievementGalleryView(
-                achievements: achievements,
-                topInset: topInset,
-                bottomInset: bottomInset,
-                onClose: onClose,
-                playsIdleClock: idleClockOn
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .opacity(isExpanded ? 1 : 0)
-            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
-            .allowsHitTesting(isExpanded)
-        }
-        .background {
-            AtmosphericBackground()
-                .allowsHitTesting(false)
-        }
-        .glassCard(cornerRadius: radius, contentInset: 0, frozen: true, allowsNative: false)
     }
 }
 

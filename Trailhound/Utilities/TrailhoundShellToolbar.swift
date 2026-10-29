@@ -16,6 +16,7 @@ struct TrailhoundShellToolbar: ViewModifier {
     @Query(sort: \VehicleProfile.name) private var vehicles: [VehicleProfile]
     @Bindable private var tabSelection = TabSelection.shared
     @Bindable private var chrome = SideColumnChromeState.shared
+    @State private var showsDrivingSafetyNotice = false
 
     func body(content: Content) -> some View {
         content.toolbar {
@@ -29,6 +30,15 @@ struct TrailhoundShellToolbar: ViewModifier {
                     statusPair
                 }
             }
+        }
+        .alert(L10n.drivingSafetyNoticeTitle, isPresented: $showsDrivingSafetyNotice) {
+            Button(L10n.drivingSafetyNoticeConfirm) {
+                DrivingSafetyNoticePolicy().markShown()
+                startRecording()
+            }
+            .accessibilityIdentifier("drivingSafetyNotice.confirm")
+        } message: {
+            Text(L10n.drivingSafetyNoticeMessage)
         }
     }
 
@@ -101,6 +111,14 @@ struct TrailhoundShellToolbar: ViewModifier {
             tabSelection.focusRecordingCard()
             return
         }
+        if DrivingSafetyNoticePolicy().shouldShow {
+            showsDrivingSafetyNotice = true
+            return
+        }
+        startRecording()
+    }
+
+    private func startRecording() {
         tabSelection.openTrips()
         if recordingService.startManualRecording() {
             tabSelection.focusRecordingCard()

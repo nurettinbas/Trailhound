@@ -43,6 +43,15 @@ enum UITestSupport {
 
     static let expenseCategorySeedVehicleID = UUID(uuidString: "aaaaaaaa-0000-4000-8000-0000000000e1")!
 
+    /// Other UI tests tap Start and must not stop on the one-time driving notice.
+    static var showsDrivingSafetyNotice: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-UITesting.drivingNoticeSeed")
+        #else
+        false
+        #endif
+    }
+
     /// `TrailhoundTests` runs inside the app process (`TEST_HOST`); side effects must not touch host UI.
     static var isUnitTesting: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -64,6 +73,11 @@ enum UITestSupport {
         settings.smartCategorySuggestionsEnabled = true
         settings.appearanceMode = .system
         settings.shellPalette = .default
+        if showsDrivingSafetyNotice {
+            DrivingSafetyNoticePolicy().reset()
+        } else {
+            DrivingSafetyNoticePolicy().markShown()
+        }
         AppNotificationArchive.save([])
         AppNotificationStore.shared.reload()
         AppNotificationStore.shared.clearAll()

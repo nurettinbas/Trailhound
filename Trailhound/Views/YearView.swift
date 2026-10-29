@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import UIKit
 
 private enum YearListAnchor {
     static let badges = "year.badges.card"
@@ -41,19 +40,13 @@ struct YearView: View {
     @State private var recapSnapshot: YearRecapSnapshot?
     @State private var achievements: [AchievementDisplay] = []
     @State private var routeAggregates: [FrequentRouteAggregate] = []
-    @State private var expandCloseInFlight = false
+    @State private var expandModel = RecapExpandModel()
     @State private var showForecastDetail = false
-    @State private var forecastExpanded = false
     @State private var forecastCardFrame: CGRect = .zero
-    @State private var frozenForecastCardFrame: CGRect = .zero
     @State private var showAchievements = false
-    @State private var achievementsExpanded = false
     @State private var badgesCardFrame: CGRect = .zero
-    @State private var frozenBadgesCardFrame: CGRect = .zero
     @State private var showRoutesMap = false
-    @State private var routesExpanded = false
     @State private var routesCardFrame: CGRect = .zero
-    @State private var frozenRoutesCardFrame: CGRect = .zero
     @State private var pendingRecapPlay = false
     @State private var pendingRecapPlayAfterPromo = false
     @State private var recapStorySession: RecapStorySession?
@@ -78,6 +71,11 @@ struct YearView: View {
             .onStoreSave(perform: handleYearStoreSave)
             .onDisappear {
                 yearAwardsRefreshTask?.cancel()
+                RecapCardExpandPresenter.shared.dismissImmediately()
+            }
+            .onChange(of: tabSelection.selectedTab) { _, tab in
+                guard tab != .year else { return }
+                RecapCardExpandPresenter.shared.dismissImmediately()
             }
             .onChange(of: selectedAwardsYear) { _, _ in
                 scheduleYearAwardsRefresh(delayMilliseconds: 0)
@@ -88,50 +86,20 @@ struct YearView: View {
             .onChange(of: tabSelection.pendingStatsAnchor) { _, _ in
                 consumeYearDeepLink()
             }
-            .onPreferenceChange(AchievementCardGlobalFrameKey.self) { badgesCardFrame = $0 }
-            .onChange(of: badgesCardFrame) { _, frame in
-                guard showAchievements, achievementsExpanded, morphSourceIsOnScreen(frame) else { return }
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    frozenBadgesCardFrame = frame
-                }
+            .onPreferenceChange(AchievementCardGlobalFrameKey.self) { frame in
+                badgesCardFrame = frame
+                expandModel.badgesAnchor = frame
             }
-            .onPreferenceChange(FrequentRoutesCardGlobalFrameKey.self) { routesCardFrame = $0 }
-            .onPreferenceChange(StatsForecastCardGlobalFrameKey.self) { forecastCardFrame = $0 }
-            .fullScreenCover(isPresented: $showAchievements) {
-                AchievementGalleryExpandOverlay(
-                    achievements: achievements,
-                    sourceGlobal: frozenBadgesCardFrame,
-                    isExpanded: $achievementsExpanded,
-                    onClose: closeAchievements
-                )
-                .presentationBackground(.clear)
-                .interactiveDismissDisabled()
-                .ignoresSafeArea()
+            .onPreferenceChange(FrequentRoutesCardGlobalFrameKey.self) { frame in
+                routesCardFrame = frame
+                expandModel.routesAnchor = frame
             }
-            .fullScreenCover(isPresented: $showRoutesMap) {
-                FrequentRoutesExpandOverlay(
-                    aggregates: routeAggregates,
-                    sourceGlobal: frozenRoutesCardFrame,
-                    isExpanded: $routesExpanded,
-                    onClose: closeRoutesMap
-                )
-                .presentationBackground(.clear)
-                .interactiveDismissDisabled()
-                .ignoresSafeArea()
+            .onPreferenceChange(StatsForecastCardGlobalFrameKey.self) { frame in
+                forecastCardFrame = frame
+                expandModel.forecastAnchor = frame
             }
-            .fullScreenCover(isPresented: $showForecastDetail) {
-                StatsForecastExpandOverlay(
-                    forecast: forecast,
-                    currencyCode: settings.fuelCurrency.rawValue,
-                    sourceGlobal: frozenForecastCardFrame,
-                    isExpanded: $forecastExpanded,
-                    onClose: closeForecastDetail
-                )
-                .presentationBackground(.clear)
-                .interactiveDismissDisabled()
-                .ignoresSafeArea()
+            .onChange(of: settings.fuelCurrency) { _, currency in
+                expandModel.currencyCode = currency.rawValue
             }
             .fullScreenCover(item: $recapStorySession) { session in
                 YearRecapStoryView(snapshot: session.snapshot, startPage: session.startPage) {
@@ -337,7 +305,7 @@ struct YearView: View {
             onOpen: openAchievements
         )
         .id(YearListAnchor.badges)
-        .opacity(showAchievements ? 0 : 1)
+        .glassMorphPanelSource(isHidden: showAchievements)
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(
@@ -356,7 +324,7 @@ struct YearView: View {
             showsExpandControl: pairsWideCards,
             onOpen: openRoutesMap
         )
-        .opacity(showRoutesMap ? 0 : 1)
+        .glassMorphPanelSource(isHidden: showRoutesMap)
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(
@@ -405,7 +373,7 @@ struct YearView: View {
         .buttonStyle(.glassPlainHit)
         .accessibilityLabel(L10n.mapFullscreen)
         .accessibilityIdentifier(identifier)
-        .opacity(hidden ? 0 : 1)
+        .glassMorphPanelSource(isHidden: hidden)
         .allowsHitTesting(!hidden)
     }
 
@@ -418,7 +386,7 @@ struct YearView: View {
             showsExpandControl: pairsWideCards,
             onOpen: openForecastDetail
         )
-        .opacity(showForecastDetail ? 0 : 1)
+        .glassMorphPanelSource(isHidden: showForecastDetail)
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(
@@ -528,6 +496,7 @@ struct YearView: View {
                 }
                 achievements = AchievementEvaluator.displays(in: modelContext)
                 routeAggregates = FrequentRouteAggregateService.topAggregates(in: modelContext)
+                syncExpandModel()
                 let pending = achievements.filter(\.needsCelebration)
                 unlockQueue = AchievementUnlockQueue.merging(queued: unlockQueue, pending: pending)
                 PremiumWidgetBridge.sync(in: modelContext, forecast: builtForecast)
@@ -575,187 +544,53 @@ struct YearView: View {
     }
 
     private func openAchievements() {
-        guard !showAchievements else { return }
-        TrailhoundHaptics.selection()
-        frozenBadgesCardFrame = badgesCardFrame
-        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenBadgesCardFrame)
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            showAchievements = true
-            achievementsExpanded = !morph
-        }
-        guard morph else { return }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(60))
-            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-                achievementsExpanded = true
-            }
-        }
+        presentRecapCard(.achievements, sourceHidden: $showAchievements, anchor: badgesCardFrame, startsShown: false)
     }
 
-    /// Notification opens the badges page immediately. The Recap card is only
-    /// positioned underneath so close can still shrink onto it.
+    /// Notification opens the badges page already grown. Close still shrinks toward the card.
     private func openAchievementsFromNotification() {
-        guard !showAchievements else { return }
-        TrailhoundHaptics.selection()
-        frozenBadgesCardFrame = badgesCardFrame
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            showAchievements = true
-            achievementsExpanded = true
-        }
+        guard !showAchievements, RecapCardExpandPresenter.shared.presentation == nil else { return }
+        presentRecapCard(.achievements, sourceHidden: $showAchievements, anchor: badgesCardFrame, startsShown: true)
         badgeScrollRequest += 1
     }
 
-    private func closeAchievements() {
-        guard beginExpandClose() else { return }
-        TrailhoundHaptics.selection()
-        if reduceMotion {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                achievementsExpanded = false
-                showAchievements = false
-                expandCloseInFlight = false
-            }
-            return
-        }
-        // The frame captured at open can still be a one-row layout. Shrink to the
-        // card as it is now, or the closing panel clips short of the medals.
-        if morphSourceIsOnScreen(badgesCardFrame) {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                frozenBadgesCardFrame = badgesCardFrame
-            }
-        }
-        Task { @MainActor in
-            await Task.yield()
-            guard showAchievements else { return }
-            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-                achievementsExpanded = false
-            } completion: {
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    showAchievements = false
-                    expandCloseInFlight = false
-                }
-            }
-        }
-    }
-
-    private func morphSourceIsOnScreen(_ source: CGRect) -> Bool {
-        guard let window = Self.keyWindow else { return false }
-        return AchievementGalleryExpandLayout.isOnScreenCard(
-            source,
-            windowBounds: window.bounds,
-            topInset: window.safeAreaInsets.top
-        )
-    }
-
-    private static var keyWindow: UIWindow? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        return scenes.flatMap(\.windows).first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first
-    }
-
     private func openRoutesMap() {
-        guard !showRoutesMap else { return }
-        TrailhoundHaptics.selection()
-        frozenRoutesCardFrame = routesCardFrame
-        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenRoutesCardFrame)
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            showRoutesMap = true
-            routesExpanded = !morph
-        }
-        guard morph else { return }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(60))
-            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-                routesExpanded = true
-            }
-        }
-    }
-
-    private func closeRoutesMap() {
-        guard beginExpandClose() else { return }
-        TrailhoundHaptics.selection()
-        if reduceMotion {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                routesExpanded = false
-                showRoutesMap = false
-                expandCloseInFlight = false
-            }
-            return
-        }
-        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-            routesExpanded = false
-        } completion: {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                showRoutesMap = false
-                expandCloseInFlight = false
-            }
-        }
+        presentRecapCard(.routes, sourceHidden: $showRoutesMap, anchor: routesCardFrame, startsShown: false)
     }
 
     private func openForecastDetail() {
-        guard !showForecastDetail else { return }
-        TrailhoundHaptics.selection()
-        frozenForecastCardFrame = forecastCardFrame
-        let morph = !reduceMotion && AchievementGalleryExpandLayout.hasUsableSource(frozenForecastCardFrame)
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            showForecastDetail = true
-            forecastExpanded = !morph
-        }
-        guard morph else { return }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(60))
-            withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-                forecastExpanded = true
-            }
-        }
+        presentRecapCard(.forecast, sourceHidden: $showForecastDetail, anchor: forecastCardFrame, startsShown: false)
     }
 
-    private func closeForecastDetail() {
-        guard beginExpandClose() else { return }
+    /// The card dissolves, then the root shell grows with the glass-panel motion.
+    private func presentRecapCard(
+        _ kind: RecapCardExpandKind,
+        sourceHidden: Binding<Bool>,
+        anchor: CGRect,
+        startsShown: Bool
+    ) {
+        guard !sourceHidden.wrappedValue else { return }
+        guard RecapCardExpandPresenter.shared.presentation == nil else { return }
         TrailhoundHaptics.selection()
-        if reduceMotion {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                forecastExpanded = false
-                showForecastDetail = false
-                expandCloseInFlight = false
-            }
-            return
+        syncExpandModel()
+        let motion = reduceMotion
+        withAnimation(TrailhoundMotion.glassPanelSourceDissolve(reduceMotion: motion)) {
+            sourceHidden.wrappedValue = true
         }
-        withAnimation(TrailhoundMotion.badgeCardExpand(reduceMotion: false)) {
-            forecastExpanded = false
-        } completion: {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                showForecastDetail = false
-                expandCloseInFlight = false
+        RecapCardExpandPresenter.shared.present(
+            kind: kind,
+            anchor: anchor,
+            startsShown: startsShown,
+            model: expandModel,
+            onWillDismiss: {
+                withAnimation(TrailhoundMotion.glassPanelSourceDissolve(reduceMotion: motion)) {
+                    sourceHidden.wrappedValue = false
+                }
+            },
+            onDismissed: {
+                sourceHidden.wrappedValue = false
             }
-        }
-    }
-
-    private func beginExpandClose() -> Bool {
-        guard !expandCloseInFlight else { return false }
-        expandCloseInFlight = true
-        return true
+        )
     }
 
     private func consumeYearDeepLink() {
@@ -839,5 +674,16 @@ struct YearView: View {
         }
         try? modelContext.save()
         achievements = AchievementEvaluator.displays(in: modelContext)
+        syncExpandModel()
+    }
+
+    private func syncExpandModel() {
+        expandModel.achievements = achievements
+        expandModel.routeAggregates = routeAggregates
+        expandModel.forecast = forecast
+        expandModel.currencyCode = settings.fuelCurrency.rawValue
+        expandModel.badgesAnchor = badgesCardFrame
+        expandModel.routesAnchor = routesCardFrame
+        expandModel.forecastAnchor = forecastCardFrame
     }
 }

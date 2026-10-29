@@ -91,6 +91,16 @@ enum TrailhoundMotion {
         reduceMotion ? .easeOut(duration: 0.1) : glassPanelSourceDissolve
     }
 
+    /// Recap card expand uses the glass-panel open. No separate spring.
+    static func recapCardExpandOpen(reduceMotion: Bool) -> Animation {
+        glassPanelOpen(reduceMotion: reduceMotion)
+    }
+
+    /// Recap card collapse uses the glass-panel close.
+    static func recapCardExpandClose(reduceMotion: Bool) -> Animation {
+        glassPanelClose(reduceMotion: reduceMotion)
+    }
+
     /// Soft rise (fade + slight upward settle).
     static var softRiseTransition: AnyTransition {
         .asymmetric(

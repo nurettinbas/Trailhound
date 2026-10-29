@@ -501,6 +501,18 @@ struct SettingsView: View {
                 Link(L10n.settingsPrivacyPolicy, destination: SupportMail.privacyPolicyURL)
                     .accessibilityIdentifier("settings.privacyPolicy")
                     .glassRow(position: .middle)
+                NavigationLink {
+                    AcknowledgementsView()
+                } label: {
+                    HStack {
+                        Text(L10n.settingsAcknowledgements)
+                        Spacer(minLength: 8)
+                        GlassDisclosureChevron()
+                    }
+                }
+                .glassHidesNavigationLinkIndicator()
+                .accessibilityIdentifier("settings.acknowledgements")
+                .glassRow(position: .middle)
                 Text(L10n.settingsAboutPrivacy)
                     .font(.footnote)
                     .glassSecondaryInk()

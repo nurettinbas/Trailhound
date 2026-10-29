@@ -446,39 +446,33 @@ struct StatsForecastCardGlobalFrameKey: PreferenceKey {
 }
 
 struct StatsForecastExpandOverlay: View {
-    let forecast: MonthCostForecast
-    let currencyCode: String
-    let sourceGlobal: CGRect
-    @Binding var isExpanded: Bool
+    @Bindable var model: RecapExpandModel
     var onClose: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var onSwipeClose: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
-            let overlayGlobal = proxy.frame(in: .global)
-            let frame = AchievementGalleryExpandLayout.localSurface(
-                sourceGlobal: sourceGlobal,
-                overlayGlobal: overlayGlobal,
-                expanded: isExpanded
-            )
-            let radius = AchievementGalleryExpandLayout.cornerRadius(expanded: isExpanded)
             let window = windowSafeInsets
             let topInset = max(proxy.safeAreaInsets.top, window.top, 54)
             let bottomInset = max(proxy.safeAreaInsets.bottom, window.bottom, 34)
-            ZStack {
-                Color.clear
+            StatsForecastDetailSheet(
+                forecast: model.forecast,
+                currencyCode: model.currencyCode,
+                onClose: onClose,
+                topInset: topInset,
+                bottomInset: bottomInset
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                AtmosphericBackground()
                     .allowsHitTesting(false)
-                surface(radius: radius, topInset: topInset, bottomInset: bottomInset)
-                    .frame(width: frame.width, height: frame.height, alignment: .top)
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .position(x: frame.midX, y: frame.midY)
             }
-            .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)
+            .glassCard(cornerRadius: 0, contentInset: 0, frozen: true, allowsNative: false)
             .overlay {
                 CardExpandBackSwipeStrip(
-                    enabled: isExpanded,
+                    enabled: true,
                     topClearance: topInset + CardExpandBackSwipe.headerClearance,
-                    onClose: onClose
+                    onClose: onSwipeClose
                 )
             }
         }
@@ -494,37 +488,6 @@ struct StatsForecastExpandOverlay: View {
         }
         return scenes.flatMap(\.windows).first?.safeAreaInsets
             ?? UIEdgeInsets(top: 59, left: 0, bottom: 34, right: 0)
-    }
-
-    @ViewBuilder
-    private func surface(radius: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        ZStack(alignment: .top) {
-            StatsForecastCard(
-                forecast: forecast,
-                currencyCode: currencyCode,
-                isExpanded: true,
-                onOpen: {}
-            )
-            .opacity(isExpanded ? 0 : 1)
-            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
-            .allowsHitTesting(false)
-            StatsForecastDetailSheet(
-                forecast: forecast,
-                currencyCode: currencyCode,
-                onClose: onClose,
-                topInset: topInset,
-                bottomInset: bottomInset
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .opacity(isExpanded ? 1 : 0)
-            .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
-            .allowsHitTesting(isExpanded)
-        }
-        .background {
-            AtmosphericBackground()
-                .allowsHitTesting(false)
-        }
-        .glassCard(cornerRadius: radius, contentInset: 0, frozen: true, allowsNative: false)
     }
 }
 

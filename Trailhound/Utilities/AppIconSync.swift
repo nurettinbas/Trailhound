@@ -387,6 +387,7 @@ extension UIViewController {
         }
         if transition.turn {
             MainActor.assumeIsolated {
+                RotationCover.shared.arm(on: self.view.window)
                 TrailhoundInterfaceRotation.shared.begin()
             }
         }
@@ -406,6 +407,17 @@ extension UIViewController {
                 guard cancelled else { return }
                 self.restoreUprightInterface()
                 self.repairCancelledOrientation(target: size)
+            }
+        })
+        guard transition.turn else { return }
+        coordinator.animate(alongsideTransition: { context in
+            let duration = context.transitionDuration
+            MainActor.assumeIsolated {
+                RotationCover.shared.track(targetSize: size, duration: duration)
+            }
+        }, completion: { _ in
+            MainActor.assumeIsolated {
+                RotationCover.shared.finish()
             }
         })
     }

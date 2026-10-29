@@ -77,62 +77,30 @@ struct FrequentRoutesCardGlobalFrameKey: PreferenceKey {
 }
 
 struct FrequentRoutesExpandOverlay: View {
-    let aggregates: [FrequentRouteAggregate]
-    let sourceGlobal: CGRect
-    @Binding var isExpanded: Bool
+    @Bindable var model: RecapExpandModel
     var onClose: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var onSwipeClose: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.trailhoundLayout) private var layout
+    @Environment(\.recapExpandChromeBlur) private var chromeBlur
     @State private var selected: FrequentRouteAggregate?
     @State private var isDark = false
 
     var body: some View {
         GeometryReader { proxy in
-            let dest = proxy.size
-            let overlayGlobal = proxy.frame(in: .global)
-            let frame = AchievementGalleryExpandLayout.localSurface(
-                sourceGlobal: sourceGlobal,
-                overlayGlobal: overlayGlobal,
-                expanded: isExpanded
-            )
-            let radius = AchievementGalleryExpandLayout.cornerRadius(expanded: isExpanded)
-            let scaleX = frame.width / max(dest.width, 1)
-            let scaleY = frame.height / max(dest.height, 1)
             let window = windowSafeInsets
             let topInset = max(proxy.safeAreaInsets.top, window.top, 54)
             let bottomInset = max(proxy.safeAreaInsets.bottom, window.bottom, 34)
             ZStack {
-                Color.clear
-                    .allowsHitTesting(false)
-                Color.clear
-                    .frame(width: frame.width, height: frame.height)
-                    .overlay(alignment: .topLeading) {
-                        FrequentRoutesMapKitView(
-                            aggregates: aggregates,
-                            isDark: isDark || colorScheme == .dark,
-                            onSelect: { selected = $0 }
-                        )
-                        .transaction { $0.animation = nil }
-                        .frame(width: dest.width, height: dest.height)
-                        .scaleEffect(x: scaleX, y: scaleY, anchor: .topLeading)
-                        .allowsHitTesting(isExpanded)
-                        .accessibilityIdentifier("stats.premium.routes.map")
-                    }
-                    .overlay(alignment: .top) {
-                        FrequentRoutesPreviewCard(
-                            aggregates: aggregates,
-                            isExpanded: true,
-                            onOpen: {}
-                        )
-                        .padding(StatsCardTokens.contentInset)
-                        .opacity(isExpanded ? 0 : 1)
-                        .allowsHitTesting(false)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .position(x: frame.midX, y: frame.midY)
+                FrequentRoutesMapKitView(
+                    aggregates: model.routeAggregates,
+                    isDark: isDark || colorScheme == .dark,
+                    onSelect: { selected = $0 }
+                )
+                .transaction { $0.animation = nil }
+                .accessibilityIdentifier("stats.premium.routes.map")
                 FrequentRoutesMapLegend(
-                    aggregates: aggregates,
+                    aggregates: model.routeAggregates,
                     selected: selected,
                     bottomInset: bottomInset,
                     isDark: $isDark,
@@ -144,21 +112,17 @@ struct FrequentRoutesExpandOverlay: View {
                     alignment: layout.mapChrome == .bottomSheet ? .bottom : .leading
                 )
                 .padding(layout.layoutClass == .phone ? 0 : 16)
-                .opacity(isExpanded ? 1 : 0)
-                .allowsHitTesting(isExpanded)
-                .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
+                .blur(radius: chromeBlur)
                 CardExpandBackSwipeStrip(
-                    enabled: isExpanded,
+                    enabled: true,
                     topClearance: topInset + CardExpandBackSwipe.headerClearance,
-                    onClose: onClose
+                    onClose: onSwipeClose
                 )
                 GlassToolbarCollapseButton(
                     accessibilityIdentifier: "stats.premium.routes.expanded.close",
                     action: onClose
                 )
-                .opacity(isExpanded ? 1 : 0)
-                .animation(TrailhoundMotion.badgeGalleryAppear(reduceMotion: reduceMotion), value: isExpanded)
-                .allowsHitTesting(isExpanded)
+                .blur(radius: chromeBlur)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,
@@ -168,7 +132,6 @@ struct FrequentRoutesExpandOverlay: View {
                 .padding(.horizontal, 12)
             }
             .onGlassShell()
-            .animation(TrailhoundMotion.badgeCardExpand(reduceMotion: reduceMotion), value: isExpanded)
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("stats.premium.routes.expanded")
