@@ -156,6 +156,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     var puckPlateColor: UIColor
     var puckChevronColors: [UIColor]
     var themeSignature: String
+    /// Trips stays mounted under the other tabs. MapKit keeps compositing the puck
+    /// and the route over the next tab unless drawing stops while this is false.
+    var isSceneVisible: Bool = true
 
     func makeCoordinator() -> Coordinator {
         Coordinator(session: session, onUserBreakFollow: onUserBreakFollow)
@@ -179,6 +182,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         map.showsScale = false
         map.showsTraffic = false
         applyInteractionLock(on: map, paused: isPaused)
+        map.clipsToBounds = true
+        map.layer.masksToBounds = true
         map.pointOfInterestFilter = .excludingAll
         if #available(iOS 16.0, *) {
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat)
@@ -197,6 +202,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        context.coordinator.setSceneVisible(isSceneVisible, on: mapView)
+        guard isSceneVisible else { return }
         if let mapView = mapView as? RotationPassthroughMapView {
             mapView.pinAttributionToBottomCorner = pinsAttributionToBottomCorner
             mapView.centersOnScreenMidpoint = centersOnScreenMidpoint
@@ -314,6 +321,8 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         /// Last follow pose actually written to `map.camera`. Cleared whenever something
         /// else may have moved the camera, so the next follow tick is never skipped.
         private var lastFollowCameraPose: LiveFollowCamera.Pose?
+        /// Another tab is selected. Pose ticks must not put the puck or the route back.
+        private var drawingSuspended = false
 
         private var cameraWritesPaused: Bool {
             CACurrentMediaTime() < suppressCameraUntil
@@ -406,7 +415,7 @@ struct LiveFollowMapKitView: UIViewRepresentable {
 
         func bindSession() {
             session.onPoseWrite = { [weak self] pose, vehicle in
-                guard let self, let map = self.mapView else { return }
+                guard let self, !self.drawingSuspended, let map = self.mapView else { return }
                 let following = self.isFollowLocked
 
                 CATransaction.begin()
@@ -486,9 +495,44 @@ struct LiveFollowMapKitView: UIViewRepresentable {
             lastFollowCameraPose = nil
         }
 
-        /// Pulls the live route straight from the session (recording service) when its
-        /// version stamp moved. Cheap no-op on every other call.
+        /// Drop the puck and the route while another tab is selected. The trips
+        /// page stays in the tab controller, and MapKit otherwise keeps drawing both
+        /// on top of the tab that just appeared. Coming back rebuilds from the session.
+        func setSceneVisible(_ visible: Bool, on map: MKMapView) {
+            if !visible {
+                map.isHidden = true
+                guard !drawingSuspended else { return }
+                drawingSuspended = true
+                map.removeOverlays(map.overlays)
+                tipOverlay = nil
+                historyChunks.removeAll()
+                historyChunkCounts.removeAll()
+                tailPoints = []
+                lastCommittedPieces = []
+                lastRouteVersion = .min
+                lastTipVehicle = nil
+                lastTipWriteAt = 0
+                if let puckAnnotation {
+                    map.removeAnnotation(puckAnnotation)
+                    self.puckAnnotation = nil
+                }
+                for annotation in pinAnnotations.values {
+                    map.removeAnnotation(annotation)
+                }
+                pinAnnotations.removeAll()
+                return
+            }
+            let resume = drawingSuspended
+            drawingSuspended = false
+            map.isHidden = false
+            if resume {
+                syncRouteIfNeeded(on: map)
+            }
+        }
+
+        /// Pulls the live route straight from the session when its version stamp moved.
         func syncRouteIfNeeded(on map: MKMapView) {
+            guard !drawingSuspended else { return }
             let version = session.routeVersion
             guard version != lastRouteVersion else { return }
             lastRouteVersion = version
@@ -1014,6 +1058,9 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if drawingSuspended {
+                return MKOverlayRenderer(overlay: overlay)
+            }
             if let line = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: line)
                 LiveFollowRouteStrokeStyle.apply(to: renderer, color: routeStrokeColor)
@@ -1045,6 +1092,13 @@ struct LiveFollowMapKitView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+            if drawingSuspended {
+                for view in views {
+                    view.alpha = 0
+                    view.isHidden = true
+                }
+                return
+            }
             for view in views where view is LiveFollowPuckAnnotationView {
                 view.alpha = desiredPuckAlpha
                 view.isHidden = false

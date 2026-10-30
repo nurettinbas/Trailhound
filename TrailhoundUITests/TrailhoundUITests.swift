@@ -716,3 +716,47 @@ final class VehicleExpenseCategoryUITests: TrailhoundUITestCase {
         }
     }
 }
+
+final class PadLayoutUITests: TrailhoundUITestCase {
+    override var extraLaunchArguments: [String] { ["-UITesting.odometerCareSeed"] }
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        XCUIDevice.shared.orientation = .landscapeLeft
+    }
+
+    func testPadVehicleDetailSplitsInLandscape() throws {
+        try skipUnlessPad()
+        XCTAssertTrue(pairingTab.waitForExistence(timeout: uiTimeout))
+        pairingTab.tap()
+        let vehicle = app.staticTexts["Vespa"].firstMatch
+        XCTAssertTrue(vehicle.waitForExistence(timeout: uiTimeout))
+        vehicle.tap()
+
+        let profile = app.descendants(matching: .any)["vehicle.detail.profilePane"].firstMatch
+        let tracking = app.descendants(matching: .any)["vehicle.detail.trackingPane"].firstMatch
+        let addReminder = app.descendants(matching: .any)["vehicle.care.tracking.add"].firstMatch
+        XCTAssertTrue(profile.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(tracking.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(addReminder.waitForExistence(timeout: uiTimeout))
+        XCTAssertGreaterThan(addReminder.frame.minX, profile.frame.minX)
+        XCTAssertLessThan(addReminder.frame.minY, profile.frame.maxY)
+    }
+
+    func testPadRecapPairsCardsInLandscape() throws {
+        try skipUnlessPad()
+        XCTAssertTrue(yearTab.waitForExistence(timeout: uiTimeout))
+        yearTab.tap()
+        let awards = app.descendants(matching: .any)["recap.section.awards"].firstMatch
+        let badges = app.descendants(matching: .any)["recap.section.badges"].firstMatch
+        XCTAssertTrue(awards.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(badges.waitForExistence(timeout: uiTimeout))
+        XCTAssertEqual(awards.frame.minY, badges.frame.minY, accuracy: 24)
+        XCTAssertGreaterThan(abs(awards.frame.midX - badges.frame.midX), 40)
+    }
+
+    private func skipUnlessPad() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad layout")
+    }
+}

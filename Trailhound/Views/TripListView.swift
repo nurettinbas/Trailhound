@@ -1144,6 +1144,7 @@ struct TripListView: View {
             cardAnchor: liveFollowCardAnchor,
             fillsPane: true,
             pinsAttributionToBottomCorner: layout.pinsRecordingCardToFold,
+            isSceneVisible: tabSelection.selectedTab == .trips,
             onClose: {
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
@@ -1647,6 +1648,7 @@ struct TripListView: View {
                     vehiclePhoto: liveFollowVehiclePhoto,
                     vehicleSystemImage: "car.fill",
                     cardAnchor: liveFollowCardAnchor,
+                    isSceneVisible: tabSelection.selectedTab == .trips,
                     onClose: {
                         // Cover presentation itself stays silent; reverse morph already finished.
                         var transaction = Transaction()

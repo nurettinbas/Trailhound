@@ -32,25 +32,20 @@ struct PairingTabView: View {
             Group {
                 if layout.showsPairingVehicleFocus {
                     // The split already paints one atmosphere. A second glow on the list
-                    // shifts the color on the leading half. Portrait and closed landscape stay one list.
+                    // shifts the color on the leading half. Phone portrait and the closed cover stay one list.
                     TrailhoundPaneSplit(
                         leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
                             isPhoneBook: layout.isPhoneBook,
                             layoutClass: layout.layoutClass,
                             isLandscape: layout.isLandscape,
                             hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-                            fraction: TrailhoundLayoutResolver.flatVehicleListFraction
+                            fraction: TrailhoundLayoutResolver.flatVehicleListFraction,
+                            isPadBook: false
                         )
                     ) {
                         pairingList(paintsAtmosphere: false)
                     } focus: {
                         vehicleFocus
-                    }
-                } else if layout.layoutClass == .pad {
-                    VStack(spacing: 12) {
-                        vehicleFocus
-                            .frame(maxHeight: 220)
-                        pairingList()
                     }
                 } else {
                     pairingList()

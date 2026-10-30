@@ -518,13 +518,112 @@ final class TrailhoundLayoutTests: XCTestCase {
             idiom: .pad
         )
         XCTAssertTrue(padLand.showsPairingVehicleFocus)
+        XCTAssertTrue(padLand.usesSplitInbox)
+        XCTAssertEqual(padLand.settingsChrome, .split)
         let padPortrait = TrailhoundLayoutResolver.snapshot(
             horizontal: .regular,
             vertical: .regular,
             size: CGSize(width: 1024, height: 1366),
             idiom: .pad
         )
-        XCTAssertFalse(padPortrait.showsPairingVehicleFocus)
+        XCTAssertTrue(padPortrait.showsPairingVehicleFocus)
+        XCTAssertTrue(padPortrait.usesSplitInbox)
+        XCTAssertEqual(padPortrait.settingsChrome, .split)
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.settingsLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .pad,
+                isLandscape: false,
+                hingeFullyOpen: false
+            ),
+            0.3
+        )
+        XCTAssertNil(
+            TrailhoundLayoutResolver.settingsLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .pad,
+                isLandscape: true,
+                hingeFullyOpen: false
+            )
+        )
+    }
+
+    func testPadLandscapeUsesWidePanes() {
+        let air = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1180, height: 820),
+            idiom: .pad
+        )
+        let pro = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 1376, height: 1032),
+            idiom: .pad
+        )
+        XCTAssertTrue(air.isLandscape)
+        XCTAssertTrue(air.isPadBook)
+        XCTAssertTrue(air.usesWidePanes)
+        XCTAssertFalse(air.usesBookPanes)
+        XCTAssertFalse(air.packsPortraitRecapHalves)
+        XCTAssertTrue(pro.isPadBook)
+        XCTAssertTrue(pro.usesWidePanes)
+
+        let portrait = TrailhoundLayoutResolver.snapshot(
+            horizontal: .regular,
+            vertical: .regular,
+            size: CGSize(width: 820, height: 1180),
+            idiom: .pad
+        )
+        XCTAssertFalse(portrait.isPadBook)
+        XCTAssertFalse(portrait.usesWidePanes)
+        XCTAssertTrue(portrait.packsPortraitRecapHalves)
+        XCTAssertTrue(portrait.splitsIdleLibrary)
+        XCTAssertTrue(portrait.splitsRecording)
+        XCTAssertEqual(portrait.recordingCardArrangement, .pane)
+
+        let split = TrailhoundLayoutResolver.snapshot(
+            horizontal: .compact,
+            vertical: .regular,
+            size: CGSize(width: 320, height: 800),
+            idiom: .pad
+        )
+        XCTAssertEqual(split.layoutClass, .phone)
+        XCTAssertFalse(split.isPadBook)
+        XCTAssertFalse(split.usesWidePanes)
+
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .pad,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatVehicleProfileFraction,
+                isPadBook: true
+            ),
+            0.4
+        )
+        XCTAssertEqual(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .pad,
+                isLandscape: true,
+                hingeFullyOpen: false,
+                fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction,
+                isPadBook: true
+            ),
+            0.45
+        )
+        XCTAssertNil(
+            TrailhoundLayoutResolver.flatBookLeadingFraction(
+                isPhoneBook: false,
+                layoutClass: .pad,
+                isLandscape: true,
+                hingeFullyOpen: true,
+                fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction,
+                isPadBook: false
+            )
+        )
     }
 
     func testColumnCountDoesNotStretchHalfTiles() {

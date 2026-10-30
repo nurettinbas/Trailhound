@@ -65,14 +65,13 @@ struct NotificationsListView: View {
         switch layout.layoutClass {
         case .phone:
             inboxList()
-        case .duoOpen:
+        case .duoOpen, .pad:
             notificationSplit
         case .phoneLandscape where layout.isPhoneBook:
             notificationSplit
-        case .phoneLandscape, .pad:
+        case .phoneLandscape:
             HStack(spacing: GlassTokens.hingeGutter) {
                 notificationRail
-                    .frame(width: layout.layoutClass == .pad && !layout.isLandscape ? 280 : nil)
                     .frame(maxWidth: layout.showsHeroRail ? nil : 320)
                 inboxList()
             }
@@ -87,9 +86,9 @@ struct NotificationsListView: View {
         }
     }
 
-    /// Open book and a wide landscape phone. A row selects the notice; Open leaves the inbox.
+    /// Open book, a wide landscape phone, and iPad. A row selects the notice; Open leaves the inbox.
     private var usesSplitInbox: Bool {
-        layout.layoutClass == .duoOpen || layout.isPhoneBook
+        layout.usesSplitInbox
     }
 
     private var notificationRail: some View {

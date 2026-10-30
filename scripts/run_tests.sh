@@ -5,6 +5,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 DESTINATION="${DESTINATION:-platform=iOS Simulator,name=iPhone 17,OS=26.5}"
+# Optional second pass for the iPad tab rail and wide panes. iPhone runs skip those UI tests.
+# PAD_DESTINATION="platform=iOS Simulator,name=iPad Air 11-inch (M4),OS=26.5" ./scripts/run_tests.sh
+PAD_DESTINATION="${PAD_DESTINATION:-}"
 RESULT_BUNDLE="${RESULT_BUNDLE:-build/TestResults.xcresult}"
 INCLUDE_UI_TESTS="${INCLUDE_UI_TESTS:-1}"
 ONLY_UI_TESTS="${ONLY_UI_TESTS:-0}"
@@ -139,4 +142,31 @@ if [[ "$XCODEBUILD_ACTION" == "build-for-testing" ]]; then
   echo "Build for testing succeeded."
 else
   echo "All tests passed."
+fi
+
+if [[ -n "$PAD_DESTINATION" && "$XCODEBUILD_ACTION" != "build-for-testing" ]]; then
+  PAD_BUNDLE="${RESULT_BUNDLE%.xcresult}-ipad.xcresult"
+  rm -rf "$PAD_BUNDLE"
+  echo "Running iPad destination: $PAD_DESTINATION"
+  PAD_ARGV=("${XCODEBUILD_ARGV[@]}")
+  for i in "${!PAD_ARGV[@]}"; do
+    if [[ "${PAD_ARGV[$i]}" == "-destination" ]]; then
+      PAD_ARGV[$((i + 1))]="$PAD_DESTINATION"
+    fi
+    if [[ "${PAD_ARGV[$i]}" == "-resultBundlePath" ]]; then
+      PAD_ARGV[$((i + 1))]="$PAD_BUNDLE"
+    fi
+  done
+  set +e
+  xcodebuild "${PAD_ARGV[@]}"
+  PAD_STATUS=$?
+  set -e
+  if [[ "$PAD_STATUS" -ne 0 ]]; then
+    echo "iPad xcodebuild failed with status $PAD_STATUS"
+    echo "Result bundle: $PAD_BUNDLE"
+    RESULT_BUNDLE="$PAD_BUNDLE"
+    print_failure_summary
+    exit "$PAD_STATUS"
+  fi
+  echo "iPad tests passed."
 fi

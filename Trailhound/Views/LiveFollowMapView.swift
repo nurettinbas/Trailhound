@@ -16,6 +16,8 @@ struct LiveFollowMapView: View {
     var fillsPane: Bool = false
     /// Upright fold only. The Apple Maps mark sits in the pane's bottom corner, on the hinge.
     var pinsAttributionToBottomCorner: Bool = false
+    /// False while another tab is selected. The trips page stays mounted.
+    var isSceneVisible: Bool = true
     var onClose: () -> Void
     var onStop: (RecordingCardAnchor) -> Void
 
@@ -190,6 +192,9 @@ struct LiveFollowMapView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(isSceneVisible ? 1 : 0)
+        .animation(nil, value: isSceneVisible)
+        .allowsHitTesting(isSceneVisible)
         .ignoresSafeArea(edges: fillsPane ? .vertical : .all)
         .animation(reduceMotion ? nil : TrailhoundMotion.gentle, value: isPaused)
         .statusBarHidden(false)
@@ -339,7 +344,8 @@ struct LiveFollowMapView: View {
             ),
             puckPlateColor: UIColor(liveFollowPlateColor),
             puckChevronColors: liveFollowChevronColors.map { UIColor($0) },
-            themeSignature: "\(shellPalette.rawValue)-\(colorScheme == .dark ? "d" : "l")"
+            themeSignature: "\(shellPalette.rawValue)-\(colorScheme == .dark ? "d" : "l")",
+            isSceneVisible: isSceneVisible
         )
     }
 

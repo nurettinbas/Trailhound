@@ -144,24 +144,34 @@ struct YearView: View {
         if pairsWideCards {
             ScrollView {
                 TrailhoundHingeCardStack {
-                    yearAwardsCard
-                        .glassCard(
-                            cornerRadius: StatsCardTokens.radius,
-                            contentInset: StatsCardTokens.contentInset
-                        )
-                    badgesCard
-                        .glassCard(
-                            cornerRadius: StatsCardTokens.radius,
-                            contentInset: StatsCardTokens.contentInset
-                        )
-                    routesCard
-                        .glassCard(
-                            cornerRadius: StatsCardTokens.radius,
-                            contentInset: StatsCardTokens.contentInset
-                        )
-                    forecastCard
-                        .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
-                    recapCard
+                    wideRecapCard(.awards) {
+                        yearAwardsCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                    }
+                    wideRecapCard(.badges) {
+                        badgesCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                    }
+                    wideRecapCard(.routes) {
+                        routesCard
+                            .glassCard(
+                                cornerRadius: StatsCardTokens.radius,
+                                contentInset: StatsCardTokens.contentInset
+                            )
+                    }
+                    wideRecapCard(.forecast) {
+                        forecastCard
+                            .glassCard(cornerRadius: StatsCardTokens.radius, contentInset: 0)
+                    }
+                    wideRecapCard(.recap) {
+                        recapCard
+                    }
                 }
                 .padding(16)
             }
@@ -255,9 +265,18 @@ struct YearView: View {
         .id(section)
     }
 
-    /// Open book and a wide landscape phone. Cards pack down whichever side is shorter.
+    /// Open book, a wide landscape phone, and iPad landscape. Cards pack down whichever side is shorter.
     private var pairsWideCards: Bool {
-        layout.usesBookPanes
+        layout.usesWidePanes
+    }
+
+    private func wideRecapCard<Content: View>(
+        _ section: RecapSection,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("recap.section.\(section.rawValue)")
     }
 
     /// Equal columns that pack from the top. A short Badges card must not leave

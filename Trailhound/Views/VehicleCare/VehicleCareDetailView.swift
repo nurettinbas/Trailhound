@@ -31,13 +31,14 @@ struct VehicleDetailView: View {
     @Environment(\.trailhoundLayout) private var layout
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Open book and a wide landscape phone. The profile stays on the leading side.
+    /// Open book, a wide landscape phone, and iPad landscape. The profile stays on the leading side.
     /// Tracking and expenses scroll together on the trailing side.
-    /// A fully open hinge is 40/60. A partially open hinge stays on the fold.
-    /// A wide phone splits in half. The closed cover, a narrower phone, the upright fold, and iPad stay one list.
+    /// A fully open hinge is 40/60. iPad landscape uses that same share. There is no hinge.
+    /// A partially open hinge stays on the fold. A wide phone uses the same share.
+    /// The closed cover, a narrower phone, the upright fold, and iPad portrait stay one list.
     private var splitsAfterTracking: Bool {
-        guard layout.isLandscape, layout.layoutClass != .pad else { return false }
-        if layout.usesBookPanes { return true }
+        guard layout.isLandscape else { return false }
+        if layout.usesWidePanes { return true }
         return layout.size.width >= TrailhoundLayoutResolver.openFoldSpan
     }
 
@@ -166,12 +167,15 @@ struct VehicleDetailView: View {
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
                     hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-                    fraction: TrailhoundLayoutResolver.flatVehicleProfileFraction
+                    fraction: TrailhoundLayoutResolver.flatVehicleProfileFraction,
+                    isPadBook: layout.isPadBook
                 )
             ) {
                 careList(showsAtmosphere: false, widePane: true) {
                     profileBlock(vehicle: vehicle)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("vehicle.detail.profilePane")
                 .vehicleFieldKeyboard(
                     focusedField: $vehicleEditorFocus,
                     consumptionLabel: vehicleKeyboardNav.consumptionLabel
@@ -193,6 +197,8 @@ struct VehicleDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("vehicle.detail.trackingPane")
             }
         } else {
             careList(showsAtmosphere: true, widePane: false) {
@@ -309,7 +315,8 @@ struct VehicleDetailView: View {
         Section {
                 addCareRowButton(
                     title: L10n.string("vehicles.care.tracking.add"),
-                    rowPosition: .first
+                    rowPosition: .first,
+                    identifier: "vehicle.care.tracking.add"
                 ) {
                     openAddSchedule()
                 }

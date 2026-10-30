@@ -31,7 +31,6 @@ enum RecordingCardArrangement: Equatable, Sendable {
 enum SettingsChrome: Equatable, Sendable {
     case form
     case split
-    case grid
 }
 
 enum MapChrome: Equatable, Sendable {
@@ -118,8 +117,6 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         switch layoutClass {
         case .phone, .phoneLandscape:
             return .list
-        case .pad where !isLandscape:
-            return .banner
         case .duoOpen where !isLandscape:
             return .list
         default:
@@ -135,8 +132,10 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
     /// Recording uses a side-by-side pane. Closed landscape keeps the card in the scrolling list.
     var splitsRecording: Bool {
         switch layoutClass {
-        case .duoOpen, .pad:
+        case .duoOpen:
             return isLandscape
+        case .pad:
+            return true
         case .phoneLandscape:
             return isPhoneBook
         case .phone:
@@ -154,10 +153,23 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
     /// window phone landscape, so the fold span decides the closed cover. A phone wider
     /// than that cover uses the same two panes. A narrower phone landscape stays one list.
     var splitsIdleLibrary: Bool {
-        if layoutClass == .pad, isLandscape { return true }
+        if layoutClass == .pad { return true }
         guard isLandscape else { return false }
         if layoutClass == .duoOpen || isPhoneBook { return true }
         return size.width >= TrailhoundLayoutResolver.openFoldSpan
+    }
+
+    /// Inbox list beside the selected notice. The open book, a wide landscape phone,
+    /// and iPad in both orientations. A phone and the closed cover stay one list.
+    var usesSplitInbox: Bool {
+        switch layoutClass {
+        case .duoOpen, .pad:
+            return true
+        case .phoneLandscape:
+            return isPhoneBook
+        case .phone:
+            return false
+        }
     }
 
     /// Landscape phone and the open book share wide-book chrome.
@@ -220,7 +232,7 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         case .duoOpen:
             return isLandscape ? .split : .form
         case .pad:
-            return isLandscape ? .split : .grid
+            return .split
         }
     }
 
@@ -236,15 +248,16 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
         layoutClass == .phoneLandscape || (layoutClass == .pad && isLandscape)
     }
 
-    /// Open book, a wide landscape phone, and iPad landscape. Closed cover landscape,
+    /// Open book, a wide landscape phone, and iPad in both orientations. Closed cover landscape,
     /// including its widest span, stays the portrait list so shortcuts and saved vehicles use the width.
     var showsPairingVehicleFocus: Bool {
-        guard isLandscape else { return false }
         switch layoutClass {
-        case .duoOpen, .pad:
+        case .pad:
             return true
+        case .duoOpen:
+            return isLandscape
         case .phoneLandscape:
-            return isPhoneBook
+            return isLandscape && isPhoneBook
         case .phone:
             return false
         }
@@ -257,6 +270,12 @@ struct TrailhoundLayoutSnapshot: Equatable, Sendable {
 
     /// Open Duo landscape, or a wide iPhone landscape that uses the same panes.
     var usesBookPanes: Bool { isOpenBookLandscape || isPhoneBook }
+
+    /// iPad landscape. Same column shares as the fully flat book. There is no hinge.
+    var isPadBook: Bool { layoutClass == .pad && isLandscape }
+
+    /// Open Duo landscape, a wide iPhone landscape, or iPad landscape.
+    var usesWidePanes: Bool { usesBookPanes || isPadBook }
 
     /// Upright Duo and iPad portrait, including iPad mini. Recap hubs share the row.
     /// The year-recap story stays full width under them. Landscape books keep the hinge stack.
@@ -346,6 +365,9 @@ enum TrailhoundLayoutResolver {
     /// Settings section list on that same book. The form takes the rest.
     static let flatSettingsLeadingFraction: CGFloat = 0.4
 
+    /// iPad portrait Settings. The section list is 30% of the content; the form is the rest.
+    static let flatPadPortraitSettingsLeadingFraction: CGFloat = 0.3
+
     /// Vehicles panes leave the hinge only when the Duo is landscape and the hinge is fully open.
     /// A partially open hinge keeps the seam on the fold. iPad and phones have no such hinge.
     /// A wide landscape phone uses `flatBookLeadingFraction` instead: the same shares, with no hinge.
@@ -357,22 +379,43 @@ enum TrailhoundLayoutResolver {
         layoutClass == .duoOpen && isLandscape && hingeFullyOpen
     }
 
-    /// Fully flat column share. A wide landscape phone always uses it. A Duo uses it only
-    /// when the hinge is fully open; a partial fold stays on the hinge and returns nil.
+    /// Fully flat column share. A wide landscape phone and iPad landscape always use it.
+    /// A Duo uses it only when the hinge is fully open; a partial fold stays on the hinge and returns nil.
     static func flatBookLeadingFraction(
         isPhoneBook: Bool,
         layoutClass: TrailhoundLayoutClass,
         isLandscape: Bool,
         hingeFullyOpen: Bool,
-        fraction: CGFloat
+        fraction: CGFloat,
+        isPadBook: Bool = false
     ) -> CGFloat? {
-        if isPhoneBook { return fraction }
+        if isPhoneBook || isPadBook { return fraction }
         guard usesOffHingeVehicleSplit(
             layoutClass: layoutClass,
             isLandscape: isLandscape,
             hingeFullyOpen: hingeFullyOpen
         ) else { return nil }
         return fraction
+    }
+
+    /// Settings leading share. iPad portrait is 30/70. Landscape iPad stays on the window midpoint.
+    static func settingsLeadingFraction(
+        isPhoneBook: Bool,
+        layoutClass: TrailhoundLayoutClass,
+        isLandscape: Bool,
+        hingeFullyOpen: Bool
+    ) -> CGFloat? {
+        if layoutClass == .pad, !isLandscape {
+            return flatPadPortraitSettingsLeadingFraction
+        }
+        return flatBookLeadingFraction(
+            isPhoneBook: isPhoneBook,
+            layoutClass: layoutClass,
+            isLandscape: isLandscape,
+            hingeFullyOpen: hingeFullyOpen,
+            fraction: flatSettingsLeadingFraction,
+            isPadBook: false
+        )
     }
 
     /// A camera write while the window is turning cancels the orientation change.
@@ -925,7 +968,8 @@ struct TrailhoundHingeCardStack<Content: View>: View {
             layoutClass: layout.layoutClass,
             isLandscape: layout.isLandscape,
             hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction,
+            isPadBook: layout.isPadBook
         ) {
             return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
                 contentWidth: contentWidth,
@@ -1061,7 +1105,8 @@ enum RecordingAxisPlacement {
         listOnVisualLeft: Bool,
         contentInWindow: CGRect,
         windowSize: CGSize,
-        evenSplit: Bool = false
+        evenSplit: Bool = false,
+        forceSideBySide: Bool = false
     ) -> Frames {
         let width = bounds.width
         let height = bounds.height
@@ -1069,7 +1114,7 @@ enum RecordingAxisPlacement {
             return Frames(live: bounds, list: bounds)
         }
         let gap = max(0, gutter)
-        let travel = stackAmount(width: width, height: height)
+        let travel = forceSideBySide ? 0 : stackAmount(width: width, height: height)
         let landscape = landscapeFrames(
             in: bounds,
             gap: gap,
@@ -1187,6 +1232,8 @@ struct RecordingAxisLayout: Layout {
     var contentInWindow: CGRect
     var windowSize: CGSize
     var evenSplit: Bool
+    /// iPad portrait stays two columns. A tall window must not stack the card across the screen.
+    var forceSideBySide: Bool = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         proposal.replacingUnspecifiedDimensions()
@@ -1201,7 +1248,8 @@ struct RecordingAxisLayout: Layout {
             listOnVisualLeft: listOnVisualLeft,
             contentInWindow: contentInWindow,
             windowSize: windowSize,
-            evenSplit: evenSplit
+            evenSplit: evenSplit,
+            forceSideBySide: forceSideBySide
         )
         subviews[0].place(
             at: frames.live.origin,
@@ -1234,7 +1282,8 @@ struct RecordingOrientationStage<Live: View, List: View>: View {
             listOnVisualLeft: TrailhoundLayoutResolver.listIsOnVisualLeft(direction: layoutDirection),
             contentInWindow: contentInWindow,
             windowSize: measuredWindow,
-            evenSplit: layout.isPhoneBook
+            evenSplit: layout.isPhoneBook,
+            forceSideBySide: layout.layoutClass == .pad
         ) {
             live()
                 .clipped()
@@ -1484,6 +1533,7 @@ struct LibraryOrientationStage<Trips: View, Travels: View>: View {
     /// The stage is only mounted on the open book, a wide landscape phone, and iPad, so a side-tab inset must
     /// not fail the phone-width gate and collapse a landscape book.
     private func resolvedSplit(in size: CGSize) -> CGFloat {
+        if layout.layoutClass == .pad { return 1 }
         let live = LibraryAxisPlacement.splitAmount(
             width: size.width,
             height: size.height,

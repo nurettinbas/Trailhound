@@ -312,7 +312,8 @@ struct StatsView: View {
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
                     hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-                    fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+                    fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction,
+                    isPadBook: false
                 )
             ) {
                 ScrollView {

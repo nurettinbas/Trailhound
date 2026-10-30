@@ -460,7 +460,8 @@ struct StatsCardPairRow<Left: View, Right: View>: View {
             layoutClass: layout.layoutClass,
             isLandscape: layout.isLandscape,
             hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction
+            fraction: TrailhoundLayoutResolver.flatStatsLeadingFraction,
+            isPadBook: false
         ) {
             return TrailhoundLayoutResolver.fractionLeadingPaneWidth(
                 contentWidth: contentWidth,

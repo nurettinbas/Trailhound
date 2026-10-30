@@ -96,35 +96,15 @@ struct SettingsView: View {
             settingsForm
         case .split:
             TrailhoundPaneSplit(
-                leadingFraction: TrailhoundLayoutResolver.flatBookLeadingFraction(
+                leadingFraction: TrailhoundLayoutResolver.settingsLeadingFraction(
                     isPhoneBook: layout.isPhoneBook,
                     layoutClass: layout.layoutClass,
                     isLandscape: layout.isLandscape,
-                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen,
-                    fraction: TrailhoundLayoutResolver.flatSettingsLeadingFraction
+                    hingeFullyOpen: TrailhoundHingeMonitor.shared.isFullyOpen
                 )
             ) {
                 settingsIndex
             } focus: {
-                settingsForm
-            }
-        case .grid:
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(SettingsPane.allCases) { pane in
-                        Button {
-                            selectSettingsPane(pane)
-                        } label: {
-                            Text(pane.title)
-                                .font(.headline)
-                                .glassPrimaryInk()
-                                .frame(maxWidth: .infinity, minHeight: 88)
-                        }
-                        .buttonStyle(.glassPlainHit)
-                        .glassCard()
-                    }
-                }
-                .padding(16)
                 settingsForm
             }
         }
