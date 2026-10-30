@@ -29,6 +29,11 @@ final class TipJarStoreTests: XCTestCase {
         XCTAssertTrue(products.allSatisfy { $0["type"] as? String == "Consumable" })
         let prices = products.compactMap { ($0["displayPrice"] as? String).flatMap(Double.init) }
         XCTAssertEqual(prices, prices.sorted())
+        for product in products {
+            let localizations = product["localizations"] as? [[String: Any]] ?? []
+            let locales = Set(localizations.compactMap { $0["locale"] as? String })
+            XCTAssertEqual(locales, ["en_US", "tr_TR"])
+        }
     }
 
     func testProductsLoadSortedByPrice() async throws {

@@ -27,7 +27,7 @@
         {
           "description" : "Küçük bir teşekkür. Hiçbir özellik açmaz.",
           "displayName" : "Küçük destek",
-          "locale" : "tr"
+          "locale" : "tr_TR"
         }
       ],
       "productID" : "com.trailhound.app.tip.small",
@@ -47,7 +47,7 @@
         {
           "description" : "Orta bir teşekkür. Hiçbir özellik açmaz.",
           "displayName" : "Orta destek",
-          "locale" : "tr"
+          "locale" : "tr_TR"
         }
       ],
       "productID" : "com.trailhound.app.tip.medium",
@@ -67,7 +67,7 @@
         {
           "description" : "Büyük bir teşekkür. Hiçbir özellik açmaz.",
           "displayName" : "Büyük destek",
-          "locale" : "tr"
+          "locale" : "tr_TR"
         }
       ],
       "productID" : "com.trailhound.app.tip.large",
