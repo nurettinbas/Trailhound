@@ -116,6 +116,7 @@ struct PairingVehicleEditorForm: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.shellPalette) private var shellPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -262,7 +263,7 @@ struct PairingVehicleEditorForm: View {
         }
         .glassRow(position: .middle)
         LabeledContent(activeDraft.consumptionLabel) {
-            TextField("", value: draftBinding(\.consumption), format: .number)
+            TextField("", value: draftBinding(\.consumption), format: .number.locale(locale))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .focused(focusedField, equals: .consumption)
@@ -297,7 +298,7 @@ struct PairingVehicleEditorForm: View {
                 TextField(
                     "",
                     value: electricChargeBinding,
-                    format: .number
+                    format: .number.locale(locale)
                 )
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
